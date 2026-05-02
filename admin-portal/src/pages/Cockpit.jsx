@@ -15,7 +15,7 @@ import HRMDashboard from './HRMDashboard';
 import '../styles/GlobalStyles.css';
 
 const PulseCard = ({ title, value, trend, icon, color }) => (
-  <div className="glass-morphism pulse-card" style={{ padding: '1.5rem', flex: '1', minWidth: '240px', position: 'relative', overflow: 'hidden', borderBottom: `4px solid ${color}` }}>
+  <div className="glass-morphism pulse-card" style={{ padding: '1.5rem', flex: '1', minWidth: 0, position: 'relative', overflow: 'hidden', borderBottom: `4px solid ${color}` }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
       <div>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px' }}>{title}</p>
@@ -124,7 +124,7 @@ const Cockpit = () => {
         <PulseCard title="Unpaid Invoices" value={`৳${data?.unpaidInvoices?.toLocaleString() || 0}`} icon={<AlertCircle size={24} />} color="#FF4D6D" />
       </div>
       
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '1.5rem' }}>
         {/* Revenue Trend Chart */}
         <div className="glass-morphism" style={{ padding: '1.5rem', height: '350px' }}>
           <h3 style={{ marginBottom: '1rem' }}>Revenue vs Expenses (6 Months)</h3>
@@ -181,7 +181,7 @@ const Cockpit = () => {
           <PulseCard title="Enrolled Students" value={data?.totalStudents || 0} icon={<GraduationCap size={24} />} color="#00FF94" />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '1.5rem' }}>
           {/* Pipeline Funnel / Pie */}
           <div className="glass-morphism" style={{ padding: '1.5rem', height: '350px' }}>
             <h3 style={{ marginBottom: '1rem' }}>Lead Pipeline Status</h3>
@@ -235,7 +235,7 @@ const Cockpit = () => {
           <PulseCard title="Est. Cost Per Lead" value={`৳${data?.costPerLead || 0}`} trend="-12%" icon={<TrendingUp size={24} />} color="#00FF94" />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '1.5rem' }}>
           {/* Source Breakdown */}
           <div className="glass-morphism" style={{ padding: '1.5rem', height: '350px' }}>
             <h3 style={{ marginBottom: '1rem' }}>Lead Source Acquisition</h3>
@@ -296,7 +296,7 @@ const Cockpit = () => {
         <PulseCard title="Total Students" value={data?.totalStudents || 0} icon={<GraduationCap size={24} />} color="#00D4FF" />
         <PulseCard title="Active Leads" value={data?.totalLeads || 0} icon={<Activity size={24} />} color="#9B6DFF" />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '1.5rem' }}>
         <div className="glass-morphism" style={{ padding: '1.5rem', height: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
           <BarChart3 size={48} color="var(--primary)" style={{ opacity: 0.5, marginBottom: '1rem' }} />
           <h3 style={{ marginBottom: '1rem' }}>Enterprise Analytics Module</h3>

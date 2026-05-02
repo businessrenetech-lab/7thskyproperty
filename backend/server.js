@@ -1,18 +1,53 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const path = require('path');
 require('dotenv').config();
 
 // Enforce globally at the system process level
 process.env.TZ = 'Asia/Dhaka';
 
 const sequelize = require('./config/db.config');
+const { getCorsOptions } = require('./config/cors.config');
+const { authMiddleware } = require('./middleware/auth.middleware');
 const app = express();
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-const path = require('path');
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// ─── SECURITY MIDDLEWARE ────────────────────────────────────────────────────
+// C1 Fix: Security headers (CSP, X-Frame-Options, HSTS, nosniff, etc.)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
+
+// M4 Fix: Request logging for audit trail
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('combined'));
+}
+
+// CORS
+app.use(cors(getCorsOptions()));
+
+// M1 Fix: Body size limit (prevents JSON bomb DoS)
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// M2 Fix: Auth-gated uploads (only authenticated users can access uploaded files)
+app.use('/uploads', authMiddleware, express.static(path.join(__dirname, 'uploads')));
+
+// Health check endpoint (no auth, no helmet interference)
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // Routes
 app.use('/api/auth', require('./routes/auth.routes'));
@@ -23,6 +58,7 @@ app.use('/api/accounting', require('./routes/accounting.routes'));
 app.use('/api/reconciliation', require('./routes/reconciliation.routes'));
 app.use('/api/pte', require('./routes/pte.routes'));
 app.use('/api/students', require('./routes/student.routes'));
+app.use('/api/student', require('./routes/student.routes'));
 app.use('/api/attendance', require('./routes/attendance.routes'));
 app.use('/api/enrollments', require('./routes/enrollment.routes'));
 app.use('/api/pos', require('./routes/pos.routes'));
@@ -54,6 +90,12 @@ app.use('/api/settings', require('./routes/settings.routes'));
 app.get('/', (req, res) => {
   res.json({ message: 'Language Academy API is running' });
 });
+
+
+
+// H1 Fix: Global error handler — use centralized middleware
+const { errorHandler } = require('./middleware/errorHandler');
+app.use(errorHandler);
 
 // Ensure critical tables exist
 const ExpenseCategory = require('./models/ExpenseCategory');
@@ -168,8 +210,15 @@ sequelize.authenticate()
       Shift, StaffSchedule, StaffProfile, RbacConfig, SystemSetting,
       IncomeCategory, Customer,
     ];
+    // L2 Fix: Block ALTER sync in production — prevents accidental schema changes
+    const isProduction = process.env.NODE_ENV === 'production';
+    const wantsAlter = process.env.DB_SYNC_ALTER === 'true';
+    if (isProduction && wantsAlter) {
+      console.warn('⚠ DB_SYNC_ALTER=true is BLOCKED in production. Set NODE_ENV=development to enable.');
+    }
+    const syncOptions = (!isProduction && wantsAlter) ? { alter: true } : {};
     return Promise.allSettled(
-      models.map(m => m.sync({ alter: true }).catch(err => {
+      models.map(m => m.sync(syncOptions).catch(err => {
         console.warn(`  ⚠ Sync warning for ${m.name}: ${err.message.substring(0, 80)}`);
       }))
     );

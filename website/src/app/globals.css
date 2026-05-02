@@ -171,7 +171,8 @@
   .gradient-hero {
     background:
       radial-gradient(circle at top right, rgba(24, 110, 182, 0.2), transparent 28%),
-      linear-gradient(135deg, #0f2741 0%, #163a60 56%, #1f4d7b 100%);
+      linear-gradient(135deg, #0f2741 0%, #163a60 56%, #1f4d7b 100%) !important;
+    color: #ffffff !important;
   }
 
   .text-gradient {

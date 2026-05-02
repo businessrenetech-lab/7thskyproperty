@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, BookOpen, DollarSign, Settings, LogOut, Map as RoomMap,
   FileText, BarChart3, Calendar, Layers, GraduationCap, CreditCard, Package, Zap,
   ChevronRight, ChevronDown, Sun, Moon, Wallet, PieChart, TrendingUp, BookOpenCheck,
-  Receipt, Shield, Scale, Globe, Lock, Clock, Briefcase, Award, Network, UserCheck
+  Receipt, Shield, Scale, Globe, Lock, Clock, Briefcase, Award, Network, UserCheck, X
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -12,11 +12,6 @@ import { useTheme } from '../context/ThemeContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../styles/GlobalStyles.css';
 
-/* ─── MASTER ITEM LIST ─────────────────────────────────────────────────── *
- * Every possible sidebar item the admin portal can show.                  *
- * Items are grouped into visual sections.                                 *
- * The PermissionContext will filter these per the user's RBAC config.     *
- * ──────────────────────────────────────────────────────────────────────── */
 const ALL_SECTIONS = [
   {
     label: 'OPERATIONS',
@@ -72,7 +67,7 @@ const ALL_SECTIONS = [
   }
 ];
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }) => {
   const { user, branch, switchBranch, logout } = useAuth();
   const { filterItems, canAccess } = usePermissions();
   const { theme, toggleTheme } = useTheme();
@@ -96,18 +91,24 @@ const Sidebar = () => {
 
   const getItemPath = (itemId) => itemId === 'dashboard' ? '/' : `/${itemId}`;
 
+  const handleNavClick = (path) => {
+    navigate(path);
+    // Close sidebar on mobile after navigation
+    if (onClose) onClose();
+  };
+
   /* ─── Build filtered section list ──────────────────────────────── */
   const sectionList = ALL_SECTIONS
     .map(section => ({
       ...section,
       items: filterItems(section.items),
     }))
-    .filter(section => section.items.length > 0); // Hide empty sections
+    .filter(section => section.items.length > 0);
 
   return (
-    <aside className="sidebar glass-morphism" style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <aside className={`sidebar glass-morphism ${isOpen ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       {/* Logo */}
-      <div style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+      <div style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid var(--border)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
           <div style={{ width: '36px', height: '36px', background: 'var(--primary)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '0.9rem', color: '#fff', boxShadow: '0 4px 12px rgba(50, 97, 154, 0.4)' }}>LA</div>
           <div>
@@ -115,6 +116,10 @@ const Sidebar = () => {
             <p style={{ fontSize: '10px', color: 'var(--accent)', margin: 0, textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '700' }}>Executive Cloud</p>
           </div>
         </div>
+        {/* Close button — visible only on mobile */}
+        <button className="sidebar-close-btn" onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', padding: '4px', cursor: 'pointer' }}>
+          <X size={22} />
+        </button>
       </div>
 
       {/* Scrollable Navigation */}
@@ -142,7 +147,7 @@ const Sidebar = () => {
                 ? location.pathname === '/' || location.pathname === '/dashboard'
                 : location.pathname === itemPath;
               return (
-                <div key={item.id} onClick={() => navigate(itemPath)}
+                <div key={item.id} onClick={() => handleNavClick(itemPath)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '0.8rem',
                     padding: '0.6rem 0.8rem', borderRadius: '8px', cursor: 'pointer',
@@ -169,7 +174,7 @@ const Sidebar = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.8rem' }}>
               <p style={{ fontSize: '0.6rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '600', margin: 0 }}>SYSTEM</p>
             </div>
-            <div onClick={() => navigate('/settings')}
+            <div onClick={() => handleNavClick('/settings')}
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.8rem',
                 padding: '0.6rem 0.8rem', borderRadius: '8px', cursor: 'pointer',
@@ -190,7 +195,7 @@ const Sidebar = () => {
         )}
       </nav>
 
-      {/* Footer — fixed at bottom, not absolute */}
+      {/* Footer */}
       <div style={{ padding: '0.8rem 1rem', borderTop: '1px solid var(--border)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
           <div style={{ width: '32px', height: '32px', background: 'var(--primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000', fontWeight: 'bold', fontSize: '0.75rem' }}>

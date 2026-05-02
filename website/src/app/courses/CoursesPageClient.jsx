@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, Clock3, Filter, Search, Sparkles, Star, Users } from "lucide-react";
+import { ArrowRight, Search } from "lucide-react";
 import AnimateOnScroll, { StaggerContainer, StaggerItem } from "@/components/AnimateOnScroll";
 import CourseCard from "@/components/CourseCard";
 import SectionHeading from "@/components/SectionHeading";
@@ -21,37 +21,7 @@ export default function CoursesPageClient({ initialCourses }) {
   });
 
   return (
-    <div className="pb-24">
-      {/* Hero */}
-      <section className="pb-10 pt-6 md:pb-14 md:pt-8">
-        <div className="container-shell">
-          <div className="gradient-hero fine-grid overflow-hidden rounded-[36px] px-8 py-12 text-white md:px-12 md:py-16">
-            <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
-              <div>
-                <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-white/85">
-                  Premium Programs
-                </span>
-                <h1 className="mt-5 max-w-3xl text-balance text-4xl font-extrabold leading-tight md:text-6xl">
-                  Find the right academic pathway for your goals.
-                </h1>
-                <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-200">
-                  Explore premium learning tracks built around clear outcomes, guided practice, and a credible preparation experience.
-                </p>
-              </div>
-              <div className="premium-card bg-white/12 p-6 text-white">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-2xl bg-emerald-400/15 p-3 text-emerald-300"><Sparkles size={22} /></div>
-                  <div>
-                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/70">What makes it premium</p>
-                    <p className="mt-1 text-lg font-bold">Expert faculty • Small batches • AI mocks</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
+    <div className="pb-24 pt-10 md:pt-14">
       {/* Filter Bar */}
       <section className="pb-8">
         <div className="container-shell">
