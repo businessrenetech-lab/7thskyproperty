@@ -819,356 +819,440 @@ table.stitch tbody tr:hover td { background: rgba(255,255,255,0.03); }
 
 /* ── Sidebar drawer on mobile ── */
 @media (max-width: 768px) {
+
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  APP-LIKE MOBILE TYPOGRAPHY SCALE                   ║
+     ║  Forces all inline font-sizes to mobile scale       ║
+     ╚══════════════════════════════════════════════════════╝ */
+  html { font-size: 15px; }
+  h1 { font-size: 1.4rem !important; }
+  h2 { font-size: 1.15rem !important; }
+  h3 { font-size: 1rem !important; }
+  h4 { font-size: 0.9rem !important; }
+  p, span, label, td, th, li { font-size: 0.85rem !important; }
+
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  SIDEBAR — Off-canvas drawer                        ║
+     ╚══════════════════════════════════════════════════════╝ */
   .sidebar {
     transform: translateX(-100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 2000;
     width: 280px !important;
   }
-  .sidebar.open {
-    transform: translateX(0);
-  }
+  .sidebar.open { transform: translateX(0); }
   .sidebar-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 1999;
-    background: rgba(0, 0, 0, 0.6);
+    position: fixed; inset: 0; z-index: 1999;
+    background: rgba(0,0,0,0.6);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     animation: fadeIn 0.2s ease;
   }
-  .sidebar-close-btn {
-    display: flex !important;
-  }
-  .mobile-menu-btn {
-    display: flex !important;
-  }
+  .sidebar-close-btn { display: flex !important; }
+  .mobile-menu-btn { display: flex !important; }
 
-  /* ── Topbar mobile ── */
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  TOPBAR — Compact mobile header                     ║
+     ╚══════════════════════════════════════════════════════╝ */
   .topbar {
     margin-left: 0 !important;
     padding: 0 0.75rem !important;
-    height: 56px !important;
-    gap: 0.5rem;
-    position: sticky;
-    top: 0;
-    z-index: 1400;
+    height: 52px !important;
+    gap: 0.4rem;
+    position: sticky; top: 0; z-index: 1400;
     border-radius: 0 !important;
-    border-left: 0 !important;
-    border-right: 0 !important;
+    border-left: 0 !important; border-right: 0 !important;
   }
-  .topbar-title {
-    font-size: 0.85rem !important;
-  }
-  .topbar-branch-label {
-    max-width: 160px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    display: inline-block;
-  }
-  .topbar-building-icon {
-    display: none !important;
-  }
-  .topbar-search {
-    display: none !important;
-  }
-  .topbar-address {
-    display: none !important;
-  }
-  .topbar-branch-selector {
-    padding: 0.3rem 0.5rem !important;
-    font-size: 0.7rem !important;
-  }
-  .topbar-branch-selector select {
-    font-size: 0.7rem !important;
-    max-width: 90px;
-  }
-  .topbar-actions {
-    gap: 0.5rem !important;
-  }
-  .topbar-icon-btn {
-    padding: 0.4rem !important;
-  }
+  .topbar-title { font-size: 0.82rem !important; font-weight: 700 !important; }
+  .topbar-branch-label { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
+  .topbar-building-icon, .topbar-search, .topbar-address { display: none !important; }
+  .topbar-branch-selector { padding: 0.25rem 0.4rem !important; font-size: 0.68rem !important; }
+  .topbar-branch-selector select { font-size: 0.68rem !important; max-width: 80px; }
+  .topbar-actions { gap: 0.35rem !important; }
+  .topbar-icon-btn { padding: 0.35rem !important; }
 
-  /* ── Canvas mobile ── */
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  CANVAS — Full-bleed content area                   ║
+     ╚══════════════════════════════════════════════════════╝ */
   .canvas {
     margin-left: 0 !important;
-    padding: 1rem !important;
-    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
-    min-height: calc(100vh - 56px) !important;
+    padding: 0.85rem !important;
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
+    min-height: calc(100vh - 52px) !important;
   }
 
-  /* ── Bottom Navigation ── */
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  BOTTOM NAVIGATION — Native app tab bar             ║
+     ╚══════════════════════════════════════════════════════╝ */
   .bottom-nav {
     display: flex !important;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 1500;
-    min-height: 72px;
-    background: rgba(15, 23, 42, 0.94);
-    background: color-mix(in srgb, var(--bg-deep) 92%, transparent);
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 1500;
+    min-height: 68px;
+    background: color-mix(in srgb, var(--bg-deep) 94%, transparent);
     border-top: 1px solid var(--border);
-    align-items: center;
-    justify-content: space-around;
-    padding: 7px 6px calc(7px + env(safe-area-inset-bottom, 0px));
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 -10px 30px rgba(0,0,0,0.22);
+    align-items: center; justify-content: space-around;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 -8px 30px rgba(0,0,0,0.25);
   }
   :root.light .bottom-nav {
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 -2px 20px rgba(0,0,0,0.08);
+    background: rgba(255,255,255,0.96);
+    box-shadow: 0 -2px 16px rgba(0,0,0,0.06);
   }
-
   .bottom-nav-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    padding: 6px 8px;
-    border: none;
-    background: none;
-    color: var(--text-dim);
-    font-size: 10px;
-    font-weight: 600;
-    cursor: pointer;
-    border-radius: 10px;
-    transition: all 0.2s;
-    min-width: 56px;
-    font-family: var(--font-ui);
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    padding: 5px 6px; border: none; background: none;
+    color: var(--text-dim); font-size: 9.5px !important; font-weight: 600;
+    cursor: pointer; border-radius: 10px; transition: all 0.2s;
+    min-width: 52px; font-family: var(--font-ui);
   }
+  .bottom-nav-item svg { width: 20px !important; height: 20px !important; }
   .bottom-nav-item.active {
     color: var(--primary);
     background: var(--primary-glow);
     box-shadow: inset 0 0 0 1px rgba(123,198,46,0.12);
   }
-  .bottom-nav-item:active {
-    transform: scale(0.92);
-  }
+  .bottom-nav-item:active { transform: scale(0.92); }
 
-  /* ── Check-In FAB (center tab) ── */
+  /* Check-In FAB */
   .bottom-nav-checkin {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    border: none;
-    background: none;
-    cursor: pointer;
-    position: relative;
-    top: -15px;
-    font-family: var(--font-ui);
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    border: none; background: none; cursor: pointer;
+    position: relative; top: -14px; font-family: var(--font-ui);
   }
-  .bottom-nav-checkin span {
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--primary);
-  }
+  .bottom-nav-checkin span { font-size: 9.5px !important; font-weight: 700; color: var(--primary); }
   .bottom-nav-checkin-circle {
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
+    width: 50px; height: 50px; border-radius: 50%;
     background: linear-gradient(135deg, var(--primary), #275fa7);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 20px rgba(123, 198, 46, 0.4);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 18px rgba(123,198,46,0.4);
     transition: all 0.2s;
   }
+  .bottom-nav-checkin:active .bottom-nav-checkin-circle { transform: scale(0.9); }
+  .bottom-nav-checkin:disabled { opacity: 0.7; }
 
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  PULSE CARDS — Compact mobile stat cards            ║
+     ╚══════════════════════════════════════════════════════╝ */
+  .pulse-card {
+    padding: 0.9rem !important;
+    border-radius: 14px !important;
+  }
+  .pulse-card h2, .pc-value {
+    font-size: 1.5rem !important;
+    margin: 0.2rem 0 !important;
+  }
+  .pulse-card p {
+    font-size: 0.65rem !important;
+    letter-spacing: 0.5px !important;
+  }
+  .pulse-card > div > div:last-child {
+    padding: 0.55rem !important;
+    border-radius: 10px !important;
+  }
+  .pulse-card > div > div:last-child svg {
+    width: 18px !important; height: 18px !important;
+  }
+  .pc-icon { font-size: 18px !important; }
+
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  FORCE ALL FLEX/GRID ROWS → STACK ON MOBILE         ║
+     ║  This overrides inline display:flex with gap:1.5rem  ║
+     ╚══════════════════════════════════════════════════════╝ */
+  .canvas > div > div[style*="display: flex"][style*="gap: 1.5rem"],
+  .canvas > div > div[style*="display: flex"][style*="flexWrap: wrap"],
+  .canvas > div > div[style*="display: flex"][style*="flex-wrap"] {
+    flex-direction: column !important;
+    gap: 0.65rem !important;
+  }
+  .canvas > div > div[style*="display: flex"][style*="gap: 1.5rem"] > * {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Force all grids to single column */
+  .canvas div[style*="grid-template-columns"],
+  .canvas div[style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+    gap: 0.65rem !important;
+  }
+  .pg-4, .pg-5, .pg-6, .pg-3, .g2, .g3, .g65 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  GLASS-MORPHISM CARDS — Tighter on mobile           ║
+     ╚══════════════════════════════════════════════════════╝ */
+  .glass-morphism {
+    padding: 0.85rem !important;
+    border-radius: 14px !important;
+  }
+  .glass-morphism:hover {
+    transform: none !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+  .glass-morphism h3 {
+    font-size: 0.9rem !important;
+    margin-bottom: 0.6rem !important;
+  }
+
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  CHARTS — Reduced height on mobile                  ║
+     ╚══════════════════════════════════════════════════════╝ */
+  .glass-morphism[style*="height: 350px"],
+  .glass-morphism[style*="height: 300px"],
+  .glass-morphism[style*="height: 400px"] {
+    height: 260px !important;
+  }
+  .recharts-wrapper { font-size: 10px !important; }
+  .recharts-cartesian-axis-tick-value { font-size: 9px !important; }
+  .recharts-legend-item-text { font-size: 10px !important; }
+
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  TABLES — Horizontal scroll with card-style          ║
+     ╚══════════════════════════════════════════════════════╝ */
+  table {
+    font-size: 0.75rem !important;
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+  thead { font-size: 0.68rem !important; }
+  th, td { padding: 0.5rem 0.6rem !important; }
+  .st-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .desktop-data-table { display: none !important; }
+  .mobile-card-list { display: grid; gap: 0.65rem; }
+  .mobile-empty-state { display: block; }
+
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  VIEW HEADERS — Stacked app-style                   ║
+     ╚══════════════════════════════════════════════════════╝ */
+  .view-head {
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-bottom: 0.75rem !important;
+  }
+  .view-title { font-size: 1.1rem !important; }
+  .view-actions {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .view-actions button, .view-actions a {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    font-size: 0.72rem !important;
+    justify-content: center !important;
+  }
+
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  BUTTONS — Touch-friendly 44px targets              ║
+     ╚══════════════════════════════════════════════════════╝ */
+  .btn-primary, .btn-secondary, .btn-stitch, .btn-ghost,
+  button[style*="padding"] {
+    min-height: 42px !important;
+    padding: 0.5rem 0.9rem !important;
+    font-size: 0.78rem !important;
+    border-radius: 10px !important;
+  }
+  button svg, a svg {
+    flex-shrink: 0;
+  }
   .mobile-menu-btn:active,
   .bottom-nav-item:active,
   .btn-primary:active,
-  .btn-secondary:active {
-    transform: scale(0.96);
-  }
+  .btn-secondary:active { transform: scale(0.96); }
 
-  /* ── App-like page behavior ── */
-  .students-page {
-    gap: 1rem !important;
-  }
-  .students-header {
-    flex-direction: column;
-    gap: 12px;
-  }
-  .students-header h2 {
-    font-size: 1.2rem !important;
-  }
-  .students-add-button {
-    width: 100%;
-    justify-content: center;
-  }
-  .students-tabs {
-    width: 100% !important;
-    max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .students-tabs::-webkit-scrollbar { display: none; }
-  .students-tabs button {
-    flex: 0 0 auto;
-    white-space: nowrap;
-  }
-  .students-metrics-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 0.75rem !important;
-  }
-  .students-metrics-grid > .glass-morphism {
-    padding: 0.85rem !important;
-    border-radius: 16px;
-  }
-  .students-filter-panel {
-    grid-template-columns: 1fr !important;
-    padding: 0.75rem !important;
-    border-radius: 16px !important;
-  }
-  .students-filter-panel input,
-  .students-filter-panel select {
-    min-height: 44px;
-    color: var(--text-main) !important;
-  }
-  .desktop-data-table {
-    display: none !important;
-  }
-  .mobile-card-list {
-    display: grid;
-    gap: 0.85rem;
-  }
-  .mobile-empty-state {
-    display: block;
-  }
-
-  /* ── Forms and modals become bottom-sheet app UI ── */
-  .modal-content {
-    padding: 1rem !important;
-  }
-  .mobile-form-grid,
-  .mobile-education-row {
-    grid-template-columns: 1fr !important;
-  }
-  .mobile-modal-actions {
-    flex-direction: column-reverse;
-    gap: 0.75rem !important;
-  }
-  .mobile-modal-actions-group {
-    width: 100%;
-    flex-direction: column;
-    gap: 0.75rem !important;
-  }
-  .mobile-modal-actions button,
-  .mobile-modal-actions-group button {
-    width: 100%;
-    justify-content: center;
-  }
-  .bottom-nav-checkin:active .bottom-nav-checkin-circle {
-    transform: scale(0.9);
-    box-shadow: 0 2px 10px rgba(123, 198, 46, 0.3);
-  }
-  .bottom-nav-checkin:disabled {
-    opacity: 0.7;
-  }
-
-  /* ── Pulse Grid / Content Grids ── */
-  .pg-4, .pg-5, .pg-6, .pg-3 {
-    grid-template-columns: 1fr !important;
-  }
-  .g2, .g3, .g65 {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* ── Tables horizontal scroll ── */
-  .st-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* ── View headers ── */
-  .view-head {
-    flex-direction: column;
-    gap: 12px;
-  }
-  .view-title {
-    font-size: 18px !important;
-  }
-  .view-actions {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  /* ── Stitch Cards on mobile ── */
-  .sc {
-    border-radius: 12px;
-  }
-  .sc-head {
-    padding: 12px 14px;
-  }
-  .sc-body {
-    padding: 14px;
-  }
-
-  /* ── Pulse Cards on mobile ── */
-  .pulse-card {
-    padding: 16px !important;
-  }
-  .pc-value {
-    font-size: 24px !important;
-  }
-  .pc-icon {
-    font-size: 22px !important;
-  }
-
-  /* ── Modals full-width on mobile ── */
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  MODALS → Bottom Sheet (native app pattern)         ║
+     ╚══════════════════════════════════════════════════════╝ */
   .modal-overlay {
-    padding: 0.5rem !important;
+    padding: 0 !important;
     align-items: flex-end !important;
   }
   .modal-overlay > div {
     width: 100% !important;
     max-width: 100% !important;
-    max-height: 90vh;
+    max-height: 92vh;
     overflow-y: auto;
-    border-radius: 16px 16px 0 0;
-    margin: 0;
+    border-radius: 18px 18px 0 0 !important;
+    margin: 0 !important;
+    animation: slideUpSheet 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
+  .modal-content { padding: 0.85rem !important; }
 
-  /* ── Buttons touch-friendly ── */
-  .btn-primary, .btn-secondary, .btn-stitch, .btn-ghost {
-    min-height: 44px;
-    padding: 0.6rem 1.2rem;
-  }
-
-  /* ── Form Groups ── */
-  .fgrid2 {
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  FORMS — Full-width stacked inputs                  ║
+     ╚══════════════════════════════════════════════════════╝ */
+  .fgrid2, .mobile-form-grid, .mobile-education-row {
     grid-template-columns: 1fr !important;
+  }
+  input, select, textarea {
+    min-height: 42px !important;
+    font-size: 0.85rem !important;
+    border-radius: 10px !important;
+  }
+  .flabel { font-size: 0.72rem !important; }
+  .mobile-modal-actions { flex-direction: column-reverse; gap: 0.6rem !important; }
+  .mobile-modal-actions-group { width: 100%; flex-direction: column; gap: 0.6rem !important; }
+  .mobile-modal-actions button,
+  .mobile-modal-actions-group button { width: 100%; justify-content: center; }
+
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  TABS — Horizontal scroll, pill-style               ║
+     ╚══════════════════════════════════════════════════════╝ */
+  .students-tabs,
+  div[style*="border-bottom"][style*="display: flex"] {
+    width: 100% !important;
+    max-width: 100%;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 4px !important;
+    padding-bottom: 4px !important;
+    flex-wrap: nowrap !important;
+  }
+  .students-tabs::-webkit-scrollbar,
+  div[style*="border-bottom"][style*="display: flex"]::-webkit-scrollbar { display: none; }
+  .students-tabs button,
+  div[style*="border-bottom"][style*="display: flex"] button {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+    font-size: 0.72rem !important;
+    padding: 0.4rem 0.7rem !important;
+    min-height: 34px !important;
+  }
+
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  STITCH CARDS — Mobile compact                      ║
+     ╚══════════════════════════════════════════════════════╝ */
+  .sc { border-radius: 14px !important; }
+  .sc-head { padding: 10px 12px !important; font-size: 0.82rem !important; }
+  .sc-body { padding: 12px !important; }
+
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  STUDENTS PAGE — App-like card layout               ║
+     ╚══════════════════════════════════════════════════════╝ */
+  .students-page { gap: 0.75rem !important; }
+  .students-header { flex-direction: column !important; gap: 8px !important; }
+  .students-header h2 { font-size: 1.1rem !important; }
+  .students-add-button { width: 100% !important; justify-content: center !important; }
+  .students-metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+  }
+  .students-metrics-grid > .glass-morphism {
+    padding: 0.7rem !important;
+    border-radius: 14px !important;
+  }
+  .students-filter-panel {
+    grid-template-columns: 1fr !important;
+    padding: 0.65rem !important;
+    border-radius: 14px !important;
+  }
+  .students-filter-panel input,
+  .students-filter-panel select { min-height: 42px; color: var(--text-main) !important; }
+
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  STUDENT MOBILE CARDS                               ║
+     ╚══════════════════════════════════════════════════════╝ */
+  .student-mobile-card { padding: 12px; border-radius: 16px; animation: mobileCardIn 0.24s ease both; }
+  .student-card-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .student-avatar { width: 38px; height: 38px; border-radius: 12px; }
+  .student-card-title-block h3 { font-size: 0.9rem !important; }
+  .student-card-title-block p { font-size: 0.68rem !important; }
+  .student-state-pill { font-size: 0.6rem !important; padding: 4px 7px !important; }
+  .student-card-contact { font-size: 0.75rem !important; gap: 4px !important; margin: 8px 0 !important; }
+  .student-card-info-grid { padding: 8px !important; border-radius: 12px !important; gap: 6px !important; }
+  .student-card-info-row span { font-size: 0.6rem !important; }
+  .student-card-info-row strong { font-size: 0.75rem !important; }
+  .student-card-actions { gap: 6px !important; margin-top: 8px !important; }
+  .student-card-actions button { font-size: 0.7rem !important; padding: 0.35rem 0.6rem !important; }
+
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  INLINE STYLE OVERRIDES — Force mobile sizing       ║
+     ║  These target React inline styles that can't be     ║
+     ║  overridden otherwise                               ║
+     ╚══════════════════════════════════════════════════════╝ */
+
+  /* Force all flex containers with large gaps to stack */
+  .canvas div[style*="gap: 2rem"] { gap: 0.65rem !important; }
+  .canvas div[style*="gap: 1.5rem"] { gap: 0.65rem !important; }
+  .canvas div[style*="gap: 1rem"] { gap: 0.5rem !important; }
+
+  /* Force padding on inline-styled containers */
+  .canvas div[style*="padding: 1.5rem"] { padding: 0.85rem !important; }
+  .canvas div[style*="padding: 2rem"] { padding: 0.85rem !important; }
+
+  /* Force font sizes on inline-styled headings */
+  .canvas h2[style*="font-size: 2"] { font-size: 1.5rem !important; }
+  .canvas h2[style*="fontSize: 2"] { font-size: 1.5rem !important; }
+  .canvas span[style*="font-size: 2"] { font-size: 1.5rem !important; }
+  .canvas span[style*="fontSize: 2"] { font-size: 1.5rem !important; }
+  .canvas div[style*="fontSize"] h2 { font-size: 1.5rem !important; }
+
+  /* Force margin adjustments */
+  .canvas div[style*="margin-bottom: 2rem"] { margin-bottom: 0.75rem !important; }
+  .canvas div[style*="marginBottom: 2rem"] { margin-bottom: 0.75rem !important; }
+
+  /* Mini-stat text in cards */
+  .canvas div[style*="fontSize: '0.7"] { font-size: 0.65rem !important; }
+  .canvas div[style*="fontSize: '0.8"] { font-size: 0.75rem !important; }
+  .canvas div[style*="fontSize: '0.9"] { font-size: 0.82rem !important; }
+
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  BADGES & PILLS                                     ║
+     ╚══════════════════════════════════════════════════════╝ */
+  .canvas span[style*="padding: '2px"],
+  .canvas span[style*="padding: '3px"],
+  .canvas span[style*="padding: '4px"] {
+    font-size: 0.62rem !important;
+    padding: 3px 6px !important;
+  }
+
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  SPARKLINES — Shorter bars on mobile                ║
+     ╚══════════════════════════════════════════════════════╝ */
+  .sl-bar { min-height: 2px; }
+
+  /* ╔══════════════════════════════════════════════════════╗
+     ║  ACCOUNT/FINANCE LIST ITEMS — Compact               ║
+     ╚══════════════════════════════════════════════════════╝ */
+  .canvas div[style*="justifyContent: 'space-between'"][style*="padding: '1rem'"] {
+    padding: 0.65rem !important;
+    border-radius: 10px !important;
+    flex-wrap: wrap !important;
+  }
+  .canvas div[style*="justifyContent: 'space-between'"] p[style*="fontSize: '0.9"] {
+    font-size: 0.82rem !important;
+  }
+  .canvas div[style*="justifyContent: 'space-between'"] p[style*="fontSize: '1rem'"] {
+    font-size: 0.88rem !important;
   }
 }
 
-/* ── Extra small (< 480px) ── */
-@media (max-width: 480px) {
-  .canvas {
-    padding: 0.75rem !important;
-    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
-  }
-  .pc-value {
-    font-size: 22px !important;
-  }
-  .view-title {
-    font-size: 16px !important;
-  }
-  .topbar-branch-label {
-    max-width: 120px;
-  }
-  .topbar-icon-btn {
-    display: none !important;
-  }
-  .student-card-info-grid {
-    grid-template-columns: 1fr;
-  }
+/* ── Extra small (< 380px) ── */
+@media (max-width: 380px) {
+  html { font-size: 14px; }
+  .canvas { padding: 0.6rem !important; }
+  .pulse-card h2 { font-size: 1.25rem !important; }
+  .topbar-branch-label { max-width: 90px; }
+  .topbar-icon-btn { display: none !important; }
+  .student-card-info-grid { grid-template-columns: 1fr; }
+  .bottom-nav-item { min-width: 44px; font-size: 8.5px !important; }
+  .bottom-nav-checkin-circle { width: 44px; height: 44px; }
+  .students-metrics-grid { grid-template-columns: 1fr !important; }
+  .view-title { font-size: 0.95rem !important; }
+}
+
+/* ── Small phones (381-480px) ── */
+@media (min-width: 381px) and (max-width: 480px) {
+  .canvas { padding: 0.7rem !important; }
+  .pc-value { font-size: 1.35rem !important; }
+  .view-title { font-size: 1rem !important; }
+  .topbar-branch-label { max-width: 120px; }
 }
 
 /* ── Tablet (769px - 1024px) ── */
@@ -1187,10 +1271,13 @@ table.stitch tbody tr:hover td { background: rgba(255,255,255,0.03); }
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes mobileCardIn {
   from { opacity: 0; transform: translateY(8px) scale(0.99); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes slideUpSheet {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1206,3 +1293,4 @@ table.stitch tbody tr:hover td { background: rgba(255,255,255,0.03); }
 .checkin-toast {
   box-shadow: 0 8px 32px rgba(0,0,0,0.3);
 }
+
