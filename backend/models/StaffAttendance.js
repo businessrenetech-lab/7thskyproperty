@@ -34,7 +34,7 @@ const StaffAttendance = sequelize.define('StaffAttendance', {
     defaultValue: 'absent',
   },
   method: {
-    type: DataTypes.ENUM('manual', 'biometric', 'qr'),
+    type: DataTypes.ENUM('manual', 'biometric', 'qr', 'mobile'),
     defaultValue: 'manual',
   },
   notes: {

@@ -45,7 +45,7 @@ router.post('/attendance/self-checkin', branchMiddleware, async (req, res) => {
       date: today,
       status: 'present',
       check_in: now,
-      method: 'mobile_checkin',
+      method: 'mobile',
       ip_address: ip,
       latitude: latitude || null,
       longitude: longitude || null,
