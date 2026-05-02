@@ -10,7 +10,6 @@ process.env.TZ = 'Asia/Dhaka';
 
 const sequelize = require('./config/db.config');
 const { getCorsOptions } = require('./config/cors.config');
-const { authMiddleware } = require('./middleware/auth.middleware');
 const app = express();
 
 // ─── SECURITY MIDDLEWARE ────────────────────────────────────────────────────
@@ -29,9 +28,9 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-// M4 Fix: Request logging for audit trail
+// M4 Fix: Request logging — only log API calls, skip static files for performance
 if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('combined'));
+  app.use('/api', morgan(process.env.NODE_ENV === 'production' ? 'short' : 'dev'));
 }
 
 // CORS
@@ -41,8 +40,24 @@ app.use(cors(getCorsOptions()));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// M2 Fix: Auth-gated uploads (only authenticated users can access uploaded files)
-app.use('/uploads', authMiddleware, express.static(path.join(__dirname, 'uploads')));
+// M2 Fix: Uploads — lightweight token check (no DB query per file)
+// Only verify JWT signature, don't fetch user from DB for static files
+const jwt = require('jsonwebtoken');
+app.use('/uploads', (req, res, next) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '') 
+    || req.query.token; // Allow ?token= for image tags
+  if (!token) return res.status(401).json({ error: 'Authentication required' });
+  try {
+    jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+}, express.static(path.join(__dirname, 'uploads'), {
+  maxAge: '1d',           // Cache files for 1 day
+  etag: true,             // Enable ETag for conditional requests
+  lastModified: true,
+}));
 
 // Health check endpoint (no auth, no helmet interference)
 app.get('/api/health', (req, res) => {
