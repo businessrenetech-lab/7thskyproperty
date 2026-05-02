@@ -28,20 +28,16 @@ const BottomNav = ({ onMoreClick }) => {
         // Location not available, proceed without
       }
 
-      const now = new Date();
-      await api.post('/hrm/attendance/check-in', {
-        staffId: user?.id,
-        timestamp: now.toISOString(),
+      const res = await api.post('/hrm/attendance/self-checkin', {
         latitude: lat,
         longitude: lng,
-        type: 'mobile_checkin'
       });
-      setCheckInResult('success');
+      setCheckInResult(res.data?.type === 'checkout' ? 'checkout' : 'success');
       setTimeout(() => setCheckInResult(null), 3000);
     } catch (err) {
       console.error('Check-in failed', err);
-      setCheckInResult('error');
-      setTimeout(() => setCheckInResult(null), 3000);
+      setCheckInResult(err.response?.data?.error || 'error');
+      setTimeout(() => setCheckInResult(null), 4000);
     } finally {
       setCheckingIn(false);
     }
@@ -79,13 +75,16 @@ const BottomNav = ({ onMoreClick }) => {
           alignItems: 'center',
           gap: '8px',
           animation: 'fadeInUp 0.3s ease',
-          ...(checkInResult === 'success' 
+          ...(checkInResult === 'success' || checkInResult === 'checkout'
             ? { background: 'rgba(0,255,148,0.15)', color: '#4DFFA8', border: '1px solid rgba(0,255,148,0.3)' }
             : { background: 'rgba(255,77,109,0.15)', color: '#FF7088', border: '1px solid rgba(255,77,109,0.3)' }
           )
         }}>
-          {checkInResult === 'success' ? <CheckCircle2 size={16} /> : null}
-          {checkInResult === 'success' ? 'Checked in successfully!' : 'Check-in failed. Try again.'}
+          {(checkInResult === 'success' || checkInResult === 'checkout') ? <CheckCircle2 size={16} /> : null}
+          {checkInResult === 'success' ? '✅ Checked in successfully!' 
+            : checkInResult === 'checkout' ? '✅ Checked out successfully!' 
+            : typeof checkInResult === 'string' && checkInResult !== 'error' ? checkInResult 
+            : 'Check-in failed. Try again.'}
         </div>
       )}
 

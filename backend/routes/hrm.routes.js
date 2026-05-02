@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const hrm = require('../controllers/hrm.controller');
-const { authMiddleware } = require('../middleware/auth.middleware');
+const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
 const { branchMiddleware } = require('../middleware/branch.middleware');
 const multer = require('multer');
 const path = require('path');
@@ -13,11 +13,53 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-router.get('/test-attendance', (req, res, next) => { req.user = { role: 'admin', branch_id: 1 }; req.branchId = 1; next(); }, hrm.getStaffAttendance);
 router.use(authMiddleware);
-router.use(branchMiddleware);
 
-// ─── Staff Attendance ────────────────────────────────────────
+// ─── Self-service Check-In (any authenticated user) ─────────
+router.post('/attendance/self-checkin', branchMiddleware, async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date().toLocaleTimeString('en-GB', { hour12: false, timeZone: 'Asia/Dhaka' });
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
+
+    // Check if already checked in today
+    const existing = await require('../models/StaffAttendance').findOne({
+      where: { user_id: req.user.id, date: today }
+    });
+
+    if (existing && existing.check_in && !existing.check_out) {
+      // Already checked in — this is a check-out
+      await existing.update({ check_out: now, ip_address: ip });
+      return res.json({ message: 'Checked out successfully!', type: 'checkout', record: existing });
+    }
+
+    if (existing && existing.check_out) {
+      return res.status(400).json({ error: 'Already checked in and out for today.' });
+    }
+
+    // New check-in
+    const record = await require('../models/StaffAttendance').create({
+      user_id: req.user.id,
+      branch_id: req.branchId,
+      date: today,
+      status: 'present',
+      check_in: now,
+      method: 'mobile_checkin',
+      ip_address: ip,
+      latitude: latitude || null,
+      longitude: longitude || null,
+    });
+
+    res.json({ message: 'Checked in successfully!', type: 'checkin', record });
+  } catch (error) {
+    console.error('Self check-in error:', error);
+    res.status(500).json({ error: 'Check-in failed. Please try again.' });
+  }
+});
+
+router.use(roleMiddleware(['super_admin', 'branch_admin', 'hr']));
+router.use(branchMiddleware);
 router.post('/attendance/mark', hrm.markStaffAttendance);
 router.get('/attendance', hrm.getStaffAttendance);
 router.get('/attendance/summary', hrm.getStaffAttendanceSummary);
