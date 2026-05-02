@@ -1,4 +1,5 @@
 const Rule = require('../models/Rule');
+const automationService = require('../services/automation.service');
 
 exports.getRules = async (req, res) => {
   try {
@@ -38,6 +39,15 @@ exports.deleteRule = async (req, res) => {
     
     await rule.destroy();
     res.json({ message: 'Rule deleted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.runBirthdayCheck = async (req, res) => {
+  try {
+    const result = await automationService.processBirthdayReminders();
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

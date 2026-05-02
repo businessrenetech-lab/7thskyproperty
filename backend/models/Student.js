@@ -65,6 +65,10 @@ const Student = sequelize.define('Student', {
   date_of_birth: {
     type: DataTypes.DATEONLY,
   },
+  birthday_wish_last_sent_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
   religion: {
     type: DataTypes.STRING,
   },
@@ -120,6 +124,14 @@ const Student = sequelize.define('Student', {
   lead_source: {
     type: DataTypes.ENUM('facebook', 'instagram', 'google', 'referral', 'walk_in', 'website', 'newspaper', 'event', 'other'),
     allowNull: true,
+  },
+  referred_by: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  referral_amount: {
+    type: DataTypes.DECIMAL(12, 2),
+    defaultValue: 0,
   },
   photograph_url: {
     type: DataTypes.STRING,

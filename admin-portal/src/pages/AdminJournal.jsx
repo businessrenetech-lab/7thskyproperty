@@ -116,11 +116,21 @@ const Journal = () => {
 
 
 
-  // Build running balance
-  let runningBalance = 0;
+  // Build running balance PER ACCOUNT (not a global mix)
+  const accountBalances = {};
   const enriched = [...lines].reverse().map(line => {
-    runningBalance += parseFloat(line.debit || 0) - parseFloat(line.credit || 0);
-    return { ...line, balance: runningBalance };
+    const accId = line.account_id || line.Account?.id || 'unknown';
+    const accType = line.Account?.type || 'asset';
+    if (!accountBalances[accId]) accountBalances[accId] = 0;
+    const debit = parseFloat(line.debit || 0);
+    const credit = parseFloat(line.credit || 0);
+    // Assets & expenses: normal debit balance. Liabilities, equity, revenue: normal credit balance.
+    if (accType === 'asset' || accType === 'expense') {
+      accountBalances[accId] += debit - credit;
+    } else {
+      accountBalances[accId] += credit - debit;
+    }
+    return { ...line, balance: accountBalances[accId] };
   }).reverse();
 
   return (

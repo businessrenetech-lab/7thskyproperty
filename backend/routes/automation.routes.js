@@ -8,6 +8,7 @@ router.use(authorize('super_admin'));
 
 router.get('/', automationController.getRules);
 router.post('/', automationController.createRule);
+router.post('/run-birthday-check', automationController.runBirthdayCheck);
 router.patch('/:id/toggle', automationController.toggleRule);
 router.delete('/:id', automationController.deleteRule);
 

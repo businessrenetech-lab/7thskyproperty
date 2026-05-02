@@ -24,6 +24,7 @@ router.patch('/:id/management', studentController.updateStudentManagement);
 router.patch('/:id/success-record', studentController.updateStudentSuccessRecord);
 router.get('/:id/activities', studentController.getStudentActivities);
 router.post('/:id/activities', studentController.createStudentActivity);
+router.post('/:id/request-partner-access', studentController.requestPartnerAccess);
 router.put('/me', studentController.updateMe);
 router.post('/', studentController.createStudent);
 router.post('/enroll', studentController.enrollInBatch);

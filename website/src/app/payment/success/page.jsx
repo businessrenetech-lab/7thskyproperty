@@ -38,12 +38,27 @@ function SuccessContent() {
   const searchParams = useSearchParams();
   const paymentRef = searchParams.get("ref");
   const hasFiredPixel = useRef(false);
+  const hasFetched = useRef(false);
   const [copied, setCopied] = useState(false);
 
   const [status, setStatus] = useState("processing"); // processing, success, error
   const [errorMessage, setErrorMessage] = useState("");
   const [details, setDetails] = useState(null);
   const [order, setOrder] = useState(null);
+
+  const formatSchedule = (scheduleStr) => {
+    if (!scheduleStr) return "TBA";
+    try {
+      const sch = JSON.parse(scheduleStr);
+      if (sch.days && Array.isArray(sch.days)) {
+        const days = sch.days.map(d => d.charAt(0).toUpperCase() + d.slice(1, 3)).join(", ");
+        return `${days} \u2022 ${sch.start_time || ""} - ${sch.end_time || ""}`;
+      }
+    } catch (e) {
+      return scheduleStr;
+    }
+    return scheduleStr;
+  };
 
   // Copy reference to clipboard
   const copyRef = () => {
@@ -58,9 +73,10 @@ function SuccessContent() {
       setErrorMessage("No payment reference found.");
       return;
     }
+    if (hasFetched.current) return;
+    hasFetched.current = true;
 
     const processPayment = async () => {
-      // Get FB tracking cookies for server-side deduplication
       const fbHeaders = getFbHeaders();
 
       try {
@@ -153,37 +169,42 @@ function SuccessContent() {
     ? new Date(order.batch_start_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
     : null;
 
+  const isPayAtBranch = order?.payment_method === 'Pay at branch';
+
   return (
     <div className="animate-fade-in-up">
       {/* ── Success Hero ─────────────────────────────────────── */}
       <section className="text-center mb-10 relative">
-        <CelebrationDots />
-        
-        {/* Animated check circle */}
+        {!isPayAtBranch && <CelebrationDots />}
+
+        {/* Animated icon */}
         <div className="relative inline-flex mb-6">
-          <div className="absolute inset-0 rounded-full bg-primary/15 animate-ping" style={{ animationDuration: "2s" }} />
-          <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 shadow-xl shadow-primary/25">
-            <CheckCircle2 size={48} className="text-white" strokeWidth={2.5} />
+          <div className={`absolute inset-0 rounded-full ${isPayAtBranch ? 'bg-amber-400/15' : 'bg-primary/15'} animate-ping`} style={{ animationDuration: "2s" }} />
+          <div className={`relative flex h-24 w-24 items-center justify-center rounded-full shadow-xl ${isPayAtBranch ? 'bg-gradient-to-br from-amber-500 to-amber-400 shadow-amber-500/25' : 'bg-gradient-to-br from-primary to-primary/80 shadow-primary/25'}`}>
+            {isPayAtBranch ? <Clock3 size={48} className="text-white" strokeWidth={2.5} /> : <CheckCircle2 size={48} className="text-white" strokeWidth={2.5} />}
           </div>
         </div>
 
         <h1 className="text-3xl font-extrabold text-slate-900 md:text-5xl tracking-tight">
-          Enrollment Confirmed!
+          {isPayAtBranch ? 'Enrollment Reserved!' : 'Enrollment Confirmed!'}
         </h1>
         <p className="mt-4 text-lg text-slate-500 max-w-xl mx-auto leading-relaxed">
-          Welcome to <span className="font-bold text-primary">Language Academy</span>. 
-          Your payment has been received and your batch seat is secured.
+          {isPayAtBranch ? (
+            <>Welcome to <span className="font-bold text-primary">Language Academy</span>. Your seat is reserved. Please visit our branch to complete the fee payment.</>
+          ) : (
+            <>Welcome to <span className="font-bold text-primary">Language Academy</span>. Your payment has been received and your batch seat is secured.</>
+          )}
         </p>
       </section>
 
       {/* ── Order Confirmation Card ──────────────────────────── */}
       <div className="max-w-3xl mx-auto">
         <div className="premium-panel overflow-hidden mb-8">
-          {/* Green banner */}
-          <div className="bg-gradient-to-r from-primary to-primary/90 px-8 py-5 flex items-center justify-between">
+          {/* Banner */}
+          <div className={`px-8 py-5 flex items-center justify-between ${isPayAtBranch ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-primary to-primary/90'}`}>
             <div className="flex items-center gap-3">
               <Receipt size={20} className="text-white/80" />
-              <span className="text-white font-bold text-sm uppercase tracking-wider">Order Confirmation</span>
+              <span className="text-white font-bold text-sm uppercase tracking-wider">{isPayAtBranch ? 'Reservation Confirmation' : 'Order Confirmation'}</span>
             </div>
             <span className="text-white/70 text-sm font-medium">{formattedDate}</span>
           </div>
@@ -228,7 +249,6 @@ function SuccessContent() {
               </div>
               <div className="p-6">
                 <div className="flex items-start gap-4">
-                  {/* Course icon */}
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
                     <BookOpen size={24} className="text-primary" />
                   </div>
@@ -262,7 +282,7 @@ function SuccessContent() {
                       {order.batch_schedule && (
                         <div>
                           <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">Schedule</span>
-                          <span className="font-medium text-slate-700">{order.batch_schedule}</span>
+                          <span className="font-medium text-slate-700">{formatSchedule(order.batch_schedule)}</span>
                         </div>
                       )}
                       {batchStart && (
@@ -289,16 +309,18 @@ function SuccessContent() {
               <div className="p-6 space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Course Fee</span>
-                  <span className="font-medium text-slate-900">৳{Number(order?.amount || 0).toLocaleString()}</span>
+                  <span className="font-medium text-slate-900">{'\u09F3'}{Number(order?.amount || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Payment Method</span>
                   <span className="font-medium text-slate-700 capitalize">{order?.payment_method || "Card"}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Transaction Time</span>
-                  <span className="font-medium text-slate-700">{formattedTime}</span>
-                </div>
+                {!isPayAtBranch && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Transaction Time</span>
+                    <span className="font-medium text-slate-700">{formattedTime}</span>
+                  </div>
+                )}
                 {details?.enrollment_id && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-500">Enrollment ID</span>
@@ -307,13 +329,13 @@ function SuccessContent() {
                 )}
                 <hr className="border-slate-100" />
                 <div className="flex justify-between items-center pt-1">
-                  <span className="font-bold text-slate-900">Total Paid</span>
-                  <span className="text-2xl font-extrabold text-primary">
-                    ৳{Number(order?.amount || 0).toLocaleString()}
+                  <span className="font-bold text-slate-900">{isPayAtBranch ? 'Amount Due' : 'Total Paid'}</span>
+                  <span className={`text-2xl font-extrabold ${isPayAtBranch ? 'text-amber-500' : 'text-primary'}`}>
+                    {'\u09F3'}{Number(order?.amount || 0).toLocaleString()}
                   </span>
                 </div>
-                <div className="flex items-center justify-end gap-2 text-xs text-primary font-semibold">
-                  <CheckCircle2 size={14} /> Payment Confirmed
+                <div className={`flex items-center justify-end gap-2 text-xs font-semibold ${isPayAtBranch ? 'text-amber-500' : 'text-primary'}`}>
+                  {isPayAtBranch ? <><Clock3 size={14} /> Payment Pending &mdash; Pay at Branch</> : <><CheckCircle2 size={14} /> Payment Confirmed</>}
                 </div>
               </div>
             </div>
@@ -324,12 +346,17 @@ function SuccessContent() {
                 <Sparkles size={18} className="text-accent" /> What Happens Next?
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
+                {(isPayAtBranch ? [
+                  { icon: CreditCard, text: "Visit our branch to complete fee payment" },
+                  { icon: BookOpen, text: "Student portal access after payment" },
+                  { icon: Calendar, text: "Batch schedule notification coming soon" },
+                  { icon: Phone, text: "Our team will reach out on WhatsApp" },
+                ] : [
                   { icon: Mail, text: "Login credentials sent to your email" },
                   { icon: BookOpen, text: "Access the Student Portal immediately" },
                   { icon: Calendar, text: "Batch schedule notification coming soon" },
                   { icon: Phone, text: "Our team will reach out on WhatsApp" },
-                ].map(({ icon: Icon, text }, i) => (
+                ]).map(({ icon: Icon, text }, i) => (
                   <div key={i} className="flex items-start gap-3">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white border border-slate-200 shadow-sm">
                       <Icon size={14} className="text-accent" />
@@ -344,14 +371,17 @@ function SuccessContent() {
 
         {/* ── Action Buttons ──────────────────────────────── */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-4">
-          <a
-            href="/student"
-            className="accent-btn py-4 px-8 text-base shadow-xl shadow-accent/20"
-          >
-            <GraduationCap size={20} /> Go to Student Portal
-          </a>
-          <Link href="/courses" className="secondary-btn py-4 px-8 text-base">
-            Explore More Courses <ArrowRight size={18} />
+          {isPayAtBranch ? (
+            <Link href="/courses" className="accent-btn py-4 px-8 text-base shadow-xl shadow-accent/20">
+              <BookOpen size={20} /> Browse More Courses
+            </Link>
+          ) : (
+            <a href="/student" className="accent-btn py-4 px-8 text-base shadow-xl shadow-accent/20">
+              <GraduationCap size={20} /> Go to Student Portal
+            </a>
+          )}
+          <Link href="/" className="secondary-btn py-4 px-8 text-base">
+            Back to Home <ArrowRight size={18} />
           </Link>
         </div>
 

@@ -9,6 +9,14 @@ const { fn, col, literal, Op } = require('sequelize');
 
 const AUTO_APPROVAL_THRESHOLD = 5000; // BDT
 
+const isReferralExpense = ({ expenseOrigin, category, description }) => {
+  const explicitOrigin = String(expenseOrigin || '').trim().toLowerCase();
+  if (explicitOrigin === 'referral') return true;
+
+  const text = `${category || ''} ${description || ''}`.toLowerCase();
+  return text.includes('referral expense') || text.includes('referral fee payout') || text.includes('[ref:') || text.includes('referral');
+};
+
 // ── Helper: Create journal entries for an approved expense ──
 const createExpenseJournalEntries = async (expense, userId, transaction) => {
   const targetBranch = expense.branch_id;
@@ -91,7 +99,7 @@ exports.getExpenses = async (req, res) => {
         { model: User, as: 'Approver', attributes: ['name'] },
         { model: User, as: 'Deleter', attributes: ['name'] }
       ],
-      order: [['date', 'DESC']]
+      order: [['created_at', 'DESC']]
     });
     res.json(expenses);
   } catch (error) {
@@ -124,9 +132,10 @@ exports.getExpenseSplit = async (req, res) => {
 exports.createExpense = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { account_id, amount, description, category, payment_method, date } = req.body;
+    const { account_id, amount, description, category, payment_method, date, expense_origin } = req.body;
     const targetBranch = req.branchId || 1;
     const numericAmount = parseFloat(amount);
+    const referralExpense = isReferralExpense({ expenseOrigin: expense_origin, category, description });
 
     // receipt_url comes from multer if file was uploaded
     const receipt_url = req.file ? `/uploads/expenses/${req.file.filename}` : null;
@@ -140,7 +149,7 @@ exports.createExpense = async (req, res) => {
     }
 
     // Determine initial status based on threshold
-    const isAutoApproved = numericAmount < AUTO_APPROVAL_THRESHOLD;
+    const isAutoApproved = !referralExpense && numericAmount < AUTO_APPROVAL_THRESHOLD;
     const initialStatus = isAutoApproved ? 'approved' : 'pending';
 
     const expense = await Expense.create({
@@ -161,9 +170,12 @@ exports.createExpense = async (req, res) => {
     res.status(201).json({ 
       expense, 
       auto_approved: isAutoApproved,
+      referral_expense: referralExpense,
       message: isAutoApproved 
         ? 'Expense auto-approved and journal entry created (below BDT 5,000)' 
-        : 'Expense submitted for branch admin approval (BDT 5,000+). Receipt attached.'
+        : referralExpense
+          ? 'Referral expense submitted for approval. No journal entry created yet.'
+          : 'Expense submitted for branch admin approval (BDT 5,000+). Receipt attached.'
     });
   } catch (error) {
     await t.rollback();

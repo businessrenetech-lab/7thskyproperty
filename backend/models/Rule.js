@@ -19,7 +19,7 @@ const Rule = sequelize.define('Rule', {
     },
   },
   trigger_type: {
-    type: DataTypes.ENUM('fee_overdue', 'student_absent', 'new_lead', 'batch_full', 'enrollment_confirmed'),
+    type: DataTypes.ENUM('fee_overdue', 'student_absent', 'new_lead', 'batch_full', 'enrollment_confirmed', 'birthday_reminder'),
     allowNull: false
   },
   action_type: {

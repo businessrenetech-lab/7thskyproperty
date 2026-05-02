@@ -19,12 +19,26 @@ function CheckoutForm() {
     email: "",
     phone: "",
     dob: "",
-    method: "demo_card",
+    method: "pay_at_branch",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(searchParams.get("error"));
   const [simulating, setSimulating] = useState(false);
   const [step, setStep] = useState(1);
+
+  const formatSchedule = (scheduleStr) => {
+    if (!scheduleStr) return "TBA";
+    try {
+      const sch = JSON.parse(scheduleStr);
+      if (sch.days && Array.isArray(sch.days)) {
+        const days = sch.days.map(d => d.charAt(0).toUpperCase() + d.slice(1, 3)).join(", ");
+        return `${days} • ${sch.start_time || ""} - ${sch.end_time || ""}`;
+      }
+    } catch (e) {
+      return scheduleStr; // generic string fallback
+    }
+    return scheduleStr;
+  };
 
   useEffect(() => {
     fetch("/api/public/courses")
@@ -92,10 +106,10 @@ function CheckoutForm() {
       {/* Hero */}
       <section className="pb-10 pt-6 md:pb-12 md:pt-8">
         <div className="container-shell">
-          <div className="gradient-hero fine-grid overflow-hidden rounded-[36px] px-8 py-10 text-white text-center md:px-12 md:py-14">
-            <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-white/85">Secure Enrollment</span>
-            <h1 className="mx-auto mt-5 max-w-2xl text-3xl font-extrabold md:text-5xl">Complete Your Enrollment</h1>
-            <p className="mx-auto mt-4 max-w-xl text-base text-slate-200">Select your course, fill in your details, and proceed to secure checkout.</p>
+          <div className="gradient-hero fine-grid overflow-hidden rounded-[36px] px-8 py-10 text-center md:px-12 md:py-14">
+            <span className="inline-flex rounded-full border border-primary/15 bg-primary/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary">Secure Enrollment</span>
+            <h1 className="mx-auto mt-5 max-w-2xl text-3xl font-extrabold md:text-5xl text-slate-900">Complete Your Enrollment</h1>
+            <p className="mx-auto mt-4 max-w-xl text-base text-slate-600">Select your course, fill in your details, and proceed to secure checkout.</p>
           </div>
         </div>
       </section>
@@ -145,7 +159,7 @@ function CheckoutForm() {
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Preferred Batch</label>
                       <select name="batch_id" value={formData.batch_id} onChange={(e) => { handleChange(e); setStep(Math.max(step, 2)); }} required disabled={!formData.course_id || batches.length === 0} className="form-input-premium disabled:opacity-50 disabled:cursor-not-allowed">
                         <option value="">{formData.course_id ? (batches.length > 0 ? "-- Choose batch --" : "No batches available") : "-- Select course first --"}</option>
-                        {batches.map((b) => (<option key={b.id} value={b.id}>{b.name} ({b.schedule})</option>))}
+                        {batches.map((b) => (<option key={b.id} value={b.id}>{b.name} ({formatSchedule(b.schedule)})</option>))}
                       </select>
                     </div>
                   </div>
@@ -171,9 +185,10 @@ function CheckoutForm() {
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Payment Method</label>
                       <select name="method" value={formData.method} onChange={(e) => { handleChange(e); setStep(3); }} required className="form-input-premium">
-                        <option value="demo_card">Credit/Debit Card (Demo)</option>
-                        <option value="demo_bkash">bKash (Demo)</option>
-                        <option value="demo_nagad">Nagad (Demo)</option>
+                        <option value="pay_at_branch">Pay at Branch (Cash/Counter)</option>
+                        <option value="card_brac">Debit/Credit Card (BRAC Bank)</option>
+                        <option value="bkash">bKash (Mobile Banking)</option>
+                        <option value="nagad">Nagad (Mobile Banking)</option>
                       </select>
                     </div>
                   </div>
@@ -206,7 +221,7 @@ function CheckoutForm() {
                       <div className="subtle-panel p-4 mb-4">
                         <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Selected Batch</p>
                         <p className="font-bold text-slate-900">{selectedBatch.name}</p>
-                        <p className="text-sm text-slate-500">{selectedBatch.schedule}</p>
+                        <p className="text-sm text-slate-500">{formatSchedule(selectedBatch.schedule)}</p>
                       </div>
                     )}
                     <div className="border-t border-slate-100 pt-4 mt-4">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Users,
   Clock,
@@ -192,7 +193,7 @@ const BatchCard = ({ batch, onManage, readOnly }) => {
         className={readOnly ? 'btn-secondary' : 'btn-primary'}
         style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
       >
-        {readOnly ? 'View Batch' : 'Manage Batch'} <ArrowRight size={16} />
+        View Batch Details <ArrowRight size={16} />
       </button>
     </div>
   );
@@ -264,6 +265,7 @@ const CourseCard = ({ course, onEdit, readOnly }) => {
 
 const LMS = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const isAccountant = ['accounting', 'accounts'].includes(user?.role);
   const [activeTab, setActiveTab] = useState('courses');
   const [batches, setBatches] = useState([]);
@@ -419,12 +421,8 @@ const LMS = () => {
     setIsCourseModalOpen(true);
   };
 
-  const openManageBatch = async (batch) => {
-    setSelectedBatch(batch);
-    setManageBatchData(toBatchFormData(batch));
-    setBatchStudents([]);
-    setIsManageBatchModalOpen(true);
-    await fetchBatchStudents(batch.id);
+  const openManageBatch = (batch) => {
+    navigate(`/lms/batch/${batch.id}`);
   };
 
   const filteredBatches = batches.filter((batch) => {

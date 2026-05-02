@@ -12,7 +12,7 @@ const AddStudentModal = ({ isOpen, onClose, onSubmit, courses, batches, isAdding
     last_name: '',
     mobile_no: '',
     email: '',
-    password: '',
+    date_of_birth: '',
     father_name: '',
     mother_name: '',
     current_address: '',
@@ -21,6 +21,8 @@ const AddStudentModal = ({ isOpen, onClose, onSubmit, courses, batches, isAdding
     post_course_goal_type: '',
     target_country: '',
     english_level: '',
+    referred_by: '',
+    referral_amount: '',
     educational_details: [
       { exam_name: 'SSC', institution_name: '', passing_year: '', result: '' },
       { exam_name: 'HSC', institution_name: '', passing_year: '', result: '' }
@@ -28,7 +30,6 @@ const AddStudentModal = ({ isOpen, onClose, onSubmit, courses, batches, isAdding
     employment_details: ''
   });
 
-  // Reset state when opened
   React.useEffect(() => {
     if (isOpen) {
       setStep(1);
@@ -39,7 +40,7 @@ const AddStudentModal = ({ isOpen, onClose, onSubmit, courses, batches, isAdding
         last_name: '',
         mobile_no: '',
         email: '',
-        password: '',
+        date_of_birth: '',
         father_name: '',
         mother_name: '',
         current_address: '',
@@ -48,6 +49,8 @@ const AddStudentModal = ({ isOpen, onClose, onSubmit, courses, batches, isAdding
         post_course_goal_type: '',
         target_country: '',
         english_level: '',
+        referred_by: '',
+        referral_amount: '',
         educational_details: [
           { exam_name: 'SSC', institution_name: '', passing_year: '', result: '' },
           { exam_name: 'HSC', institution_name: '', passing_year: '', result: '' }
@@ -147,8 +150,8 @@ const AddStudentModal = ({ isOpen, onClose, onSubmit, courses, batches, isAdding
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.85rem' }}>Password *</label>
-            <input required type="password" className="glass-input" name="password" value={formData.password} onChange={handleInputChange} style={{ width: '100%', padding: '0.6rem' }} />
+            <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.85rem' }}>Birthday</label>
+            <input type="date" className="glass-input" name="date_of_birth" value={formData.date_of_birth} onChange={handleInputChange} style={{ width: '100%', padding: '0.6rem' }} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -188,6 +191,17 @@ const AddStudentModal = ({ isOpen, onClose, onSubmit, courses, batches, isAdding
               <input className="glass-input" name="target_country" value={formData.target_country} onChange={handleInputChange} placeholder="e.g. Australia, Canada, UK" style={{ width: '100%', padding: '0.6rem' }} />
             </div>
           )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'rgba(59, 130, 246, 0.05)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.85rem' }}>Referred By</label>
+              <input className="glass-input" name="referred_by" value={formData.referred_by} onChange={handleInputChange} placeholder="Name of referrer" style={{ width: '100%', padding: '0.6rem' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.85rem' }}>Referral Amount (Expense)</label>
+              <input type="number" step="0.01" className="glass-input" name="referral_amount" value={formData.referral_amount} onChange={handleInputChange} placeholder="0.00" style={{ width: '100%', padding: '0.6rem' }} />
+            </div>
+          </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
             <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>

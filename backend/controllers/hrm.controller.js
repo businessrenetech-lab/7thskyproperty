@@ -20,7 +20,10 @@ const StaffSchedule = require('../models/StaffSchedule');
 exports.markStaffAttendance = async (req, res) => {
   try {
     const { attendance_data, date } = req.body;
-    // attendance_data: [{ user_id, status, check_in, check_out, notes }]
+    // Extract IP address from request
+    const ip_address = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
+
+    // attendance_data: [{ user_id, status, check_in, check_out, notes, latitude, longitude }]
     const records = await Promise.all(attendance_data.map(async (record) => {
       const [att, created] = await StaffAttendance.findOrCreate({
         where: { user_id: record.user_id, date },
@@ -31,6 +34,9 @@ exports.markStaffAttendance = async (req, res) => {
           check_out: record.check_out || null,
           method: record.method || 'manual',
           notes: record.notes || null,
+          ip_address: ip_address || null,
+          latitude: record.latitude || null,
+          longitude: record.longitude || null,
         }
       });
       if (!created) {
@@ -39,6 +45,9 @@ exports.markStaffAttendance = async (req, res) => {
           check_in: record.check_in !== undefined ? record.check_in : att.check_in,
           check_out: record.check_out !== undefined ? record.check_out : att.check_out,
           notes: record.notes !== undefined ? record.notes : att.notes,
+          ip_address: ip_address || att.ip_address,
+          latitude: record.latitude !== undefined ? record.latitude : att.latitude,
+          longitude: record.longitude !== undefined ? record.longitude : att.longitude,
         });
       }
       return att;

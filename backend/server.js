@@ -108,6 +108,25 @@ const RbacConfig = require('./models/RbacConfig');
 const SystemSetting = require('./models/SystemSetting');
 const IncomeCategory = require('./models/IncomeCategory');
 const Customer = require('./models/Customer');
+const automationService = require('./services/automation.service');
+
+let birthdaySweepRunning = false;
+
+const runBirthdaySweep = async () => {
+  if (birthdaySweepRunning) return;
+
+  birthdaySweepRunning = true;
+  try {
+    const result = await automationService.processBirthdayReminders();
+    if (result.sent || result.processed) {
+      console.log(`[AUTOMATION] Birthday reminder sweep completed. Processed: ${result.processed}, Sent: ${result.sent}`);
+    }
+  } catch (error) {
+    console.error('[AUTOMATION] Birthday reminder sweep failed:', error.message);
+  } finally {
+    birthdaySweepRunning = false;
+  }
+};
 
 // ─── MODEL ASSOCIATIONS (Centralized to avoid circularity) ──────────────────
 ReconciliationSession.hasMany(ReconciliationLine, { foreignKey: 'session_id' });
@@ -160,13 +179,17 @@ sequelize.authenticate()
     const settingsController = require('./controllers/settings.controller');
     return settingsController.initializeDefaults().catch(err => console.error('Error initializing settings:', err));
   })
+  .then(() => automationService.ensureDefaultBirthdayRule())
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
+      runBirthdaySweep().catch(() => {});
+      setInterval(() => {
+        runBirthdaySweep().catch(() => {});
+      }, 60 * 60 * 1000);
     });
   })
   .catch(err => {
     console.error('Database connection error:', err);
     process.exit(1);
   });
-

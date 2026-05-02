@@ -62,7 +62,6 @@ const ALL_SECTIONS = [
       { name: 'HR Dashboard',      icon: <UserCheck size={18} />,  id: 'hrm-dashboard' },
       { name: 'Staff Attendance',  icon: <Clock size={18} />,      id: 'staff-attendance' },
       { name: 'Staff & Payroll',   icon: <Users size={18} />,      id: 'payroll' },
-      { name: 'Student Attendance',icon: <Calendar size={18} />,   id: 'attendance' },
       { name: 'Leave Manager',     icon: <Calendar size={18} />,   id: 'leave-management' },
       { name: 'Recruitment',       icon: <Briefcase size={18} />,  id: 'recruitment' },
       { name: 'Documents',         icon: <FileText size={18} />,   id: 'staff-documents' },

@@ -274,7 +274,6 @@ const BranchManagement = () => {
                   { header: 'Batch', render: r => r.Batch?.name || '—' },
                   { header: 'Status', render: r => <Badge color={r.status === 'active' ? 'var(--success)' : 'var(--danger)'}>{r.status}</Badge> },
                   { header: 'Enrolled', render: r => r.enrollment_date ? new Date(r.enrollment_date).toLocaleDateString() : '—' },
-                  { header: 'Plan', render: r => <Badge color={r.plan_type === 'premium' ? '#f59e0b' : 'var(--text-dim)'}>{r.plan_type}</Badge> },
                 ]}
                 data={branchStudents}
               />
@@ -605,11 +604,11 @@ const AccountingSection = ({ data }) => {
         <DataTable
           emptyText="No expenses recorded"
           columns={[
-            { header: 'Description', render: r => <span style={{ fontWeight: '600' }}>{r.description || r.title}</span> },
+            { header: 'Description', render: r => <span style={{ fontWeight: '600' }}>{r.description || r.category}</span> },
             { header: 'Category', key: 'category' },
             { header: 'Amount', render: r => `৳${parseFloat(r.amount || 0).toLocaleString()}` },
-            { header: 'Status', render: r => <Badge color={r.status === 'approved' ? 'var(--success)' : 'var(--primary)'}>{r.status}</Badge> },
-            { header: 'Date', render: r => new Date(r.created_at).toLocaleDateString() },
+            { header: 'Status', render: r => <Badge color={r.status === 'approved' ? 'var(--success)' : r.status === 'verified' ? 'var(--success)' : 'var(--primary)'}>{r.status}</Badge> },
+            { header: 'Date', render: r => r.date ? new Date(r.date).toLocaleDateString() : '—' },
           ]}
           data={data.expenses || []}
         />
@@ -619,10 +618,10 @@ const AccountingSection = ({ data }) => {
         <DataTable
           emptyText="No journal entries"
           columns={[
-            { header: 'Ref', render: r => <span style={{ fontWeight: '600', fontFamily: 'monospace', fontSize: '0.78rem' }}>#{r.id}</span> },
-            { header: 'Memo', key: 'memo' },
+            { header: 'Ref', render: r => <span style={{ fontWeight: '600', fontFamily: 'monospace', fontSize: '0.78rem' }}>{r.ref_no || `#${r.id}`}</span> },
+            { header: 'Description', key: 'description' },
             { header: 'Lines', render: r => r.JournalLines?.length || 0 },
-            { header: 'Date', render: r => new Date(r.created_at).toLocaleDateString() },
+            { header: 'Date', render: r => r.date ? new Date(r.date).toLocaleDateString() : '—' },
           ]}
           data={data.journals || []}
         />
@@ -632,12 +631,12 @@ const AccountingSection = ({ data }) => {
         <DataTable
           emptyText="No invoices"
           columns={[
-            { header: 'Invoice #', render: r => <span style={{ fontWeight: '600' }}>{r.invoice_number || `INV-${r.id}`}</span> },
-            { header: 'Customer', key: 'customer_name' },
-            { header: 'Amount', render: r => `৳${parseFloat(r.total || 0).toLocaleString()}` },
-            { header: 'Due', render: r => `৳${parseFloat(r.balance_due || 0).toLocaleString()}` },
+            { header: 'Invoice #', render: r => <span style={{ fontWeight: '600' }}>{r.invoice_no || `INV-${r.id}`}</span> },
+            { header: 'Amount', render: r => `৳${parseFloat(r.amount || 0).toLocaleString()}` },
+            { header: 'Paid', render: r => `৳${parseFloat(r.paid || 0).toLocaleString()}` },
+            { header: 'Due', render: r => <span style={{ color: (r.amount - r.paid) > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: '600' }}>৳{Math.max(parseFloat(r.amount || 0) - parseFloat(r.paid || 0), 0).toLocaleString()}</span> },
             { header: 'Status', render: r => <Badge color={r.status === 'paid' ? 'var(--success)' : r.status === 'overdue' ? 'var(--danger)' : 'var(--primary)'}>{r.status}</Badge> },
-            { header: 'Date', render: r => r.issue_date ? new Date(r.issue_date).toLocaleDateString() : '—' },
+            { header: 'Date', render: r => r.issued_at ? new Date(r.issued_at).toLocaleDateString() : '—' },
           ]}
           data={data.invoices || []}
         />

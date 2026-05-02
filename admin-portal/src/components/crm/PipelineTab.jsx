@@ -11,6 +11,7 @@ const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
     last_name: sourceLead?.name?.split(' ').slice(1).join(' ') || '',
     mobile_no: sourceLead?.phone || '',
     email: sourceLead?.email || '',
+    date_of_birth: sourceLead?.date_of_birth || '',
     password: '',
     father_name: '',
     mother_name: '',
@@ -21,7 +22,9 @@ const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
       { exam_name: 'SSC', institution_name: '', passing_year: '', result: '' },
       { exam_name: 'HSC', institution_name: '', passing_year: '', result: '' }
     ],
-    employment_details: ''
+    employment_details: '',
+    referred_by: sourceLead?.referred_by || '',
+    referral_amount: sourceLead?.referral_amount || ''
   });
 
   const [activities, setActivities] = useState([]);
@@ -54,9 +57,9 @@ const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
   };
 
   useEffect(() => {
-    setSelectedBatch('');
+    setSelectedBatch(lead?.batch_id || '');
     setShowEnrollForm(false);
-    setEnrollForm(createEnrollmentForm(lead));
+    setEnrollForm(createEnrollmentForm(lead, lead?.batch_id || ''));
   }, [lead?.id]);
 
   useEffect(() => {
@@ -120,6 +123,11 @@ const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
     catch { alert('Failed to update course'); }
   };
 
+  const changeBatch = async (batchId) => {
+    try { await api.put(`/crm/leads/${lead.id}`, { batch_id: batchId ? parseInt(batchId) : null }); onRefresh(); }
+    catch { alert('Failed to update batch'); }
+  };
+
   const selectedCourse = courses.find(c => c.id === lead.course_id);
 
   const statusFlow = ['new', 'contacted', 'interested', 'trial', 'enrolled', 'fees_pending', 'payment_rejected', 'successful'];
@@ -165,7 +173,7 @@ const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
           {courses.map(c => <option key={c.id} value={c.id}>{c.title} — ৳{parseFloat(c.base_fee).toLocaleString()}</option>)}
         </select>
         {selectedCourse && selectedCourse.Batches && selectedCourse.Batches.length > 0 && (
-          <select value={selectedBatch} onChange={e => setSelectedBatch(e.target.value)} style={{ ...inputStyle, fontSize: '0.82rem' }}>
+          <select value={selectedBatch} onChange={e => { setSelectedBatch(e.target.value); changeBatch(e.target.value); }} style={{ ...inputStyle, fontSize: '0.82rem' }}>
             <option value="">— Select Batch (optional) —</option>
             {selectedCourse.Batches.map(b => <option key={b.id} value={b.id}>{b.name || b.code} · {b.status} · Starts {b.start_date || 'TBD'}</option>)}
           </select>
@@ -223,6 +231,10 @@ const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
                     <input name="nid_birth_cert" value={enrollForm.nid_birth_cert} onChange={handleEnrollInputChange} style={inputStyle} />
                   </div>
                 </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Birthday</label>
+                  <input type="date" name="date_of_birth" value={enrollForm.date_of_birth || ''} onChange={handleEnrollInputChange} style={inputStyle} />
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Father's Name</label>
@@ -263,6 +275,16 @@ const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Employment Details</label>
                   <textarea name="employment_details" value={enrollForm.employment_details} onChange={handleEnrollInputChange} style={{ ...inputStyle, minHeight: '56px', resize: 'vertical' }} placeholder="Job title, company, duration" />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem', background: 'rgba(59, 130, 246, 0.05)', padding: '0.5rem', borderRadius: '8px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Referred By</label>
+                    <input name="referred_by" value={enrollForm.referred_by} onChange={handleEnrollInputChange} style={inputStyle} placeholder="Referrer Name" />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Referral Amount</label>
+                    <input type="number" step="0.01" name="referral_amount" value={enrollForm.referral_amount} onChange={handleEnrollInputChange} style={inputStyle} placeholder="Amount" />
+                  </div>
                 </div>
                 <button type="submit" disabled={enrolling} style={{ padding: '0.7rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: enrolling ? 'wait' : 'pointer' }}>
                   {enrolling ? 'Creating student and invoice...' : 'Create Student + Enrollment + POS Invoice'}
@@ -361,8 +383,15 @@ const PipelineTab = ({ leads, courses, onRefresh }) => {
   const [search, setSearch] = useState('');
   const [selectedLead, setSelectedLead] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', phone: '', email: '', source: 'Walk-in', course_id: '', priority: 'medium' });
+  const [form, setForm] = useState({ name: '', phone: '', email: '', date_of_birth: '', source: 'Walk-in', course_id: '', priority: 'medium', referred_by: '', referral_amount: '' });
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (selectedLead) {
+      const updatedLead = leads.find(l => l.id === selectedLead.id);
+      if (updatedLead) setSelectedLead(updatedLead);
+    }
+  }, [leads]);
 
   const stages = [
     { key: 'new', label: 'New Leads', desc: 'Fresh enquiries' },
@@ -382,7 +411,7 @@ const PipelineTab = ({ leads, courses, onRefresh }) => {
     e.preventDefault(); setSaving(true);
     try {
       await api.post('/crm/leads', form);
-      setShowForm(false); setForm({ name: '', phone: '', email: '', source: 'Walk-in', course_id: '', priority: 'medium' });
+      setShowForm(false); setForm({ name: '', phone: '', email: '', date_of_birth: '', source: 'Walk-in', course_id: '', priority: 'medium', referred_by: '', referral_amount: '' });
       onRefresh();
     } catch { alert('Failed'); } finally { setSaving(false); }
   };
@@ -409,6 +438,7 @@ const PipelineTab = ({ leads, courses, onRefresh }) => {
             <input required placeholder="Full Name *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} />
             <input placeholder="Phone" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} style={inputStyle} />
             <input placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={inputStyle} />
+            <input type="date" value={form.date_of_birth} onChange={e => setForm(f => ({ ...f, date_of_birth: e.target.value }))} style={inputStyle} title="Lead Birthday" />
             <select value={form.course_id} onChange={e => setForm(f => ({ ...f, course_id: e.target.value }))} style={inputStyle}>
               <option value="">Select Course (auto-fills ৳)</option>
               {courses.map(c => <option key={c.id} value={c.id}>{c.title} — ৳{parseFloat(c.base_fee).toLocaleString()}</option>)}
@@ -419,6 +449,9 @@ const PipelineTab = ({ leads, courses, onRefresh }) => {
             <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))} style={inputStyle}>
               {['low', 'medium', 'high', 'hot'].map(p => <option key={p}>{p}</option>)}
             </select>
+            <input placeholder="Referred By" value={form.referred_by} onChange={e => setForm(f => ({ ...f, referred_by: e.target.value }))} style={inputStyle} />
+            <input type="number" step="0.01" placeholder="Referral Amount" value={form.referral_amount} onChange={e => setForm(f => ({ ...f, referral_amount: e.target.value }))} style={inputStyle} />
+            
             <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => setShowForm(false)} style={{ padding: '0.6rem 1.2rem', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', cursor: 'pointer' }}>Cancel</button>
               <button type="submit" disabled={saving} className="btn-primary" style={{ padding: '0.6rem 1.5rem', fontSize: '0.82rem' }}>{saving ? '...' : 'Create Lead'}</button>

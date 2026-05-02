@@ -10,6 +10,7 @@ const Batch = require('../models/Batch');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const fbCapi = require('../services/facebookCapi.service');
+const { sendEnrollmentConfirmationEmail } = require('../services/communication.service');
 
 const initiateCheckout = async (req, res) => {
   try {
@@ -64,12 +65,19 @@ const paymentSuccess = async (req, res) => {
     const lead = await Lead.findOne({ where: { payment_ref } });
     if (!lead) return res.status(404).json({ error: 'Payment session not found' });
 
-    if (lead.status === 'successful') {
+    if (lead.status === 'successful' || lead.status === 'fees_pending') {
       return res.status(200).json({ message: 'Payment already processed successfully' });
     }
 
     const branch_id = lead.branch_id || 1;
     
+    // Parse method from lead notes
+    let method = 'card_brac';
+    if (lead.notes && lead.notes.includes('Payment Method Initiated:')) {
+      method = lead.notes.replace('Payment Method Initiated:', '').trim();
+    }
+    const isPayAtBranch = method === 'pay_at_branch';
+
     // 1. Create or find User
     let user = await User.findOne({ where: { email: lead.email } });
     if (!user) {
@@ -97,7 +105,7 @@ const paymentSuccess = async (req, res) => {
     }
 
     // 3. Update Lead
-    await lead.update({ status: 'successful' });
+    await lead.update({ status: isPayAtBranch ? 'fees_pending' : 'successful' });
 
     // 4. Create Contact if not exists
     let contact = await Contact.findOne({ where: { email: lead.email } });
@@ -117,8 +125,8 @@ const paymentSuccess = async (req, res) => {
       student_id: student.id,
       batch_id: lead.batch_id,
       total_fee: lead.deal_value,
-      paid_amount: lead.deal_value,
-      status: 'paid'
+      paid_amount: isPayAtBranch ? 0 : lead.deal_value,
+      status: isPayAtBranch ? 'pending' : 'paid'
     });
 
     // 6. Create Invoice
@@ -128,24 +136,65 @@ const paymentSuccess = async (req, res) => {
       enrollment_id: enrollment.id,
       student_id: student.id,
       amount: lead.deal_value,
-      paid: lead.deal_value,
-      status: 'paid',
+      paid: isPayAtBranch ? 0 : lead.deal_value,
+      status: isPayAtBranch ? 'pending' : 'paid',
       due_date: new Date(),
     });
 
-    // 7. Create Transaction
-    const transaction = await Transaction.create({
-      branch_id,
-      enrollment_id: enrollment.id,
-      receipt_no: `REC-${Date.now()}`,
-      amount: lead.deal_value,
-      method: 'card', // demo default
-      transaction_ref: payment_ref,
-      source: 'website',
-      status: 'success',
-      paid_at: new Date(),
-      recorded_by: user.id
-    });
+    // 7. Transaction and Accounting (If actually paid online)
+    let transaction = null;
+    let payment_ref_to_use = payment_ref;
+
+    if (!isPayAtBranch) {
+      const Account = require('../models/Account');
+      const JournalEntry = require('../models/JournalEntry');
+      const JournalLine = require('../models/JournalLine');
+
+      // Map methods to specific accounts
+      let accName = 'BRAC Bank';
+      let accCode = '1012';
+      let parsedMethod = 'card';
+
+      if (method === 'bkash') { accName = 'bKash'; accCode = '1015'; parsedMethod = 'bkash'; }
+      else if (method === 'nagad') { accName = 'Nagad'; accCode = '1016'; parsedMethod = 'nagad'; }
+
+      let debitAccount = await Account.findOne({ where: { name: accName, branch_id } });
+      if (!debitAccount) {
+        debitAccount = await Account.create({ code: accCode, name: accName, type: 'asset', branch_id, balance: 0 });
+      }
+
+      let creditAccount = await Account.findOne({ where: { code: branch_id === 1 ? '4000' : '4000-U' } });
+      if (!creditAccount) {
+        creditAccount = await Account.create({ code: branch_id === 1 ? '4000' : '4000-U', name: 'Tuition Revenue', type: 'revenue', branch_id, balance: 0 });
+      }
+
+      transaction = await Transaction.create({
+        branch_id,
+        enrollment_id: enrollment.id,
+        receipt_no: `REC-${Date.now()}`,
+        amount: lead.deal_value,
+        method: parsedMethod,
+        transaction_ref: payment_ref,
+        source: 'website',
+        account_id: debitAccount.id,
+        status: 'success',
+        paid_at: new Date(),
+        recorded_by: user.id
+      });
+
+      const jEntry = await JournalEntry.create({
+        branch_id,
+        ref_no: `JNL-WEB-${Date.now()}`,
+        description: `Website Checkout - ${invoice.invoice_no}`,
+        date: new Date(),
+        posted_by: user.id
+      });
+
+      await JournalLine.bulkCreate([
+        { journal_entry_id: jEntry.id, account_id: debitAccount.id, debit: lead.deal_value, credit: 0, notes: `Received via ${accName}` },
+        { journal_entry_id: jEntry.id, account_id: creditAccount.id, debit: 0, credit: lead.deal_value, notes: `Course Fee (Online)` }
+      ]);
+    }
 
     // Fetch course and batch details for the confirmation response
     const course = lead.course_id ? await Course.findByPk(lead.course_id) : null;
@@ -155,9 +204,9 @@ const paymentSuccess = async (req, res) => {
       message: 'Payment processed and enrollment successful',
       student_id: student.id,
       enrollment_id: enrollment.id,
-      transaction_id: transaction.id,
-      invoice_no: `INV-${transaction.id}`,
-      payment_ref,
+      transaction_id: transaction?.id || null,
+      invoice_no: invoice.invoice_no,
+      payment_ref: payment_ref_to_use,
       order: {
         student_name: lead.name,
         email: lead.email,
@@ -170,36 +219,54 @@ const paymentSuccess = async (req, res) => {
         batch_start_date: batch?.start_date || null,
         amount: lead.deal_value,
         currency: 'BDT',
-        payment_method: 'card',
-        paid_at: transaction.paid_at,
+        payment_method: isPayAtBranch ? 'Pay at branch' : transaction?.method,
+        paid_at: transaction?.paid_at || new Date(),
       }
     });
 
-    // Fire Facebook CAPI 'Purchase' event (non-blocking)
-    fbCapi.sendEvent(
-      'Purchase',
-      {
-        em: lead.email,
-        ph: lead.phone,
-        fn: lead.name?.split(' ')[0],
-        ln: lead.name?.split(' ').slice(1).join(' '),
-        client_ip_address: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress,
-        client_user_agent: req.headers['user-agent'],
-        fbc: req.headers['x-fbc'] || null,
-        fbp: req.headers['x-fbp'] || null,
-        external_id: String(student.id),
-      },
-      {
+    if (!isPayAtBranch) {
+      // Fire Facebook CAPI 'Purchase' event (non-blocking)
+      fbCapi.sendEvent(
+        'Purchase',
+        {
+          em: lead.email,
+          ph: lead.phone,
+          fn: lead.name?.split(' ')[0],
+          ln: lead.name?.split(' ').slice(1).join(' '),
+          client_ip_address: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress,
+          client_user_agent: req.headers['user-agent'],
+          fbc: req.headers['x-fbc'] || null,
+          fbp: req.headers['x-fbp'] || null,
+          external_id: String(student.id),
+        },
+        {
+          currency: 'BDT',
+          value: lead.deal_value || 0,
+          content_name: course?.title || 'Course Enrollment',
+          content_type: 'product',
+          content_ids: [String(lead.course_id)],
+          num_items: 1,
+        },
+        req.headers['referer'] || req.headers['origin'] || 'https://languageacademy.com.bd/payment/success',
+        req.headers['x-event-id'] || null
+      ).catch(() => {});
+
+      // Send branded enrollment confirmation email (non-blocking)
+      sendEnrollmentConfirmationEmail({
+        student_name: lead.name,
+        email: lead.email,
+        phone: lead.phone,
+        course_name: course?.title || 'Course Enrollment',
+        batch_name: batch?.name || batch?.code || '',
+        batch_schedule: batch?.schedule || '',
+        batch_start_date: batch?.start_date || null,
+        amount: lead.deal_value,
         currency: 'BDT',
-        value: lead.deal_value || 0,
-        content_name: course?.title || 'Course Enrollment',
-        content_type: 'product',
-        content_ids: [String(lead.course_id)],
-        num_items: 1,
-      },
-      req.headers['referer'] || req.headers['origin'] || 'https://languageacademy.com.bd/payment/success',
-      req.headers['x-event-id'] || null
-    ).catch(() => {});
+        payment_ref,
+        paid_at: transaction?.paid_at,
+        course_duration: course?.duration_weeks ? `${course.duration_weeks} weeks` : ''
+      }).catch(err => console.error('[PAYMENT] Enrollment email failed:', err.message));
+    }
   } catch (error) {
     console.error('Payment Success Processing Error:', error);
     res.status(500).json({ error: 'Failed to process payment success' });

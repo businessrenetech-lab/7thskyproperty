@@ -5,12 +5,11 @@ import {
   Mail,
   Phone,
   Calendar,
-  Star,
   Users,
   CheckCircle2,
   BookOpen,
-  Crown,
-  UserCircle
+  UserCircle,
+  Send
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -78,11 +77,12 @@ const Students = () => {
   const [batchFilter, setBatchFilter] = useState('all');
   const [courseFilter, setCourseFilter] = useState('all');
   const [stateFilter, setStateFilter] = useState('all');
-  const [premiumFilter, setPremiumFilter] = useState('all');
+
 
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [requestingAccessId, setRequestingAccessId] = useState(null);
   const [newStudentData, setNewStudentData] = useState({ name: '', email: '', mobile_no: '', batch_id: '', course_id: '' });
   const [isAdding, setIsAdding] = useState(false);
   const [rowSavingId, setRowSavingId] = useState(null);
@@ -146,11 +146,14 @@ const Students = () => {
       const matchBatch = batchFilter === 'all' ? true : String(student.batch_id || '') === batchFilter;
       const matchCourse = courseFilter === 'all' ? true : String(student.Batch?.course_id || '') === courseFilter;
       const matchState = stateFilter === 'all' ? true : student.derivedState === stateFilter;
-      const matchPremium = premiumFilter === 'all' ? true : (premiumFilter === 'premium' ? student.isPremium : !student.isPremium);
 
-      return matchSearch && matchBatch && matchCourse && matchState && matchPremium;
+      return matchSearch && matchBatch && matchCourse && matchState;
     });
-  }, [enrichedStudents, searchTerm, batchFilter, courseFilter, stateFilter, premiumFilter, isAccountant]);
+  }, [enrichedStudents, searchTerm, batchFilter, courseFilter, stateFilter, isAccountant]);
+
+  const enrolledStudents = useMemo(() => {
+    return enrichedStudents.filter((student) => student.derivedState === 'enrolled');
+  }, [enrichedStudents]);
 
   const successRecordStudents = useMemo(() => {
     return enrichedStudents.filter((student) => student.derivedState === 'course_completed' || student.has_success_record);
@@ -160,9 +163,21 @@ const Students = () => {
     total: enrichedStudents.length,
     feesPending: enrichedStudents.filter((s) => s.derivedState === 'fees_pending').length,
     enrolled: enrichedStudents.filter((s) => s.derivedState === 'enrolled').length,
-    completed: enrichedStudents.filter((s) => s.derivedState === 'course_completed').length,
-    premium: enrichedStudents.filter((s) => s.isPremium).length
+    completed: enrichedStudents.filter((s) => s.derivedState === 'course_completed').length
   }), [enrichedStudents]);
+
+  const handleRequestPartnerAccess = async (student) => {
+    setRequestingAccessId(student.id);
+    try {
+      await api.post(`/students/${student.id}/request-partner-access`);
+      alert(`✅ Portal access request email sent for ${student.User?.name || 'Student'}!`);
+    } catch (error) {
+      const errMsg = error.response?.data?.details || error.response?.data?.error || 'Failed to send partner access request';
+      alert(`❌ ${errMsg}`);
+    } finally {
+      setRequestingAccessId(null);
+    }
+  };
 
   const handleSaveBatch = async (student) => {
     const batchId = batchDrafts[student.id] || null;
@@ -250,7 +265,7 @@ const Students = () => {
           <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: '0.2rem 0 0 0' }}>
             {isAccountant
               ? 'View enrolled students with fee status and billing information'
-              : 'Batch-based progress, premium tracking, and profile-level management'}
+              : 'Batch-based progress tracking and profile-level management'}
           </p>
         </div>
         {!isAccountant && (
@@ -262,6 +277,7 @@ const Students = () => {
       <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--glass)', padding: '0.35rem', borderRadius: '12px', width: 'fit-content', border: '1px solid var(--border)' }}>
         {[
           { id: 'all_students', label: 'All Students' },
+          { id: 'enrolled_students', label: `Enrolled Students (${enrolledStudents.length})` },
           { id: 'success_records', label: 'Success Records' }
         ].map((tab) => (
           <button
@@ -292,7 +308,7 @@ const Students = () => {
         <div className="glass-morphism" style={{ padding: '1rem' }}><Loader2 size={16} color="#f97316" /><h3 style={{ margin: '0.4rem 0 0 0' }}>{metrics.feesPending}</h3><p style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Fees Pending</p></div>
         <div className="glass-morphism" style={{ padding: '1rem' }}><BookOpen size={16} /><h3 style={{ margin: '0.4rem 0 0 0' }}>{metrics.enrolled}</h3><p style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Currently Enrolled</p></div>
         <div className="glass-morphism" style={{ padding: '1rem' }}><CheckCircle2 size={16} /><h3 style={{ margin: '0.4rem 0 0 0' }}>{metrics.completed}</h3><p style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Course Completed</p></div>
-        <div className="glass-morphism" style={{ padding: '1rem' }}><Crown size={16} /><h3 style={{ margin: '0.4rem 0 0 0' }}>{metrics.premium}</h3><p style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Premium PTE</p></div>
+
       </div>
 
       {activeTab === 'all_students' && (
@@ -336,11 +352,7 @@ const Students = () => {
           </select>
         )}
 
-        <select className="glass-input" value={premiumFilter} onChange={(e) => setPremiumFilter(e.target.value)} style={{ appearance: 'auto', padding: '0.7rem' }}>
-          <option value="all">All Plans</option>
-          <option value="premium">Premium</option>
-          <option value="free">Free</option>
-        </select>
+
       </div>
       )}
 
@@ -354,6 +366,7 @@ const Students = () => {
               <th style={{ padding: '1rem' }}>Course</th>
               <th style={{ padding: '1rem' }}>Batch</th>
               <th style={{ padding: '1rem' }}>Enrollment</th>
+              <th style={{ padding: '1rem' }}>Referred By</th>
               <th style={{ padding: '1rem' }}>Completion</th>
               <th style={{ padding: '1rem' }}>State</th>
               <th style={{ padding: '1rem' }}>Actions</th>
@@ -366,9 +379,8 @@ const Students = () => {
               return (
                 <tr key={student.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '1rem' }}>
-                    <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <div style={{ fontWeight: 600 }}>
                       {student.User?.name}
-                      {student.isPremium && <Star size={14} color="#facc15" fill="#facc15" />}
                     </div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>ID: STU-{student.id}</div>
                   </td>
@@ -379,6 +391,14 @@ const Students = () => {
                   <td style={{ padding: '1rem', fontSize: '0.82rem' }}>{student.Batch?.Course?.title || 'N/A'}</td>
                   <td style={{ padding: '1rem', fontSize: '0.82rem' }}>{student.Batch?.code || 'Unassigned'}</td>
                   <td style={{ padding: '1rem', fontSize: '0.82rem' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Calendar size={13} />{formatDate(student.enrollment_date)}</div></td>
+                  <td style={{ padding: '1rem', fontSize: '0.82rem' }}>
+                    {student.referred_by ? (
+                      <div>
+                        <div>{student.referred_by}</div>
+                        {student.referral_amount > 0 && <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 'bold' }}>৳{parseFloat(student.referral_amount).toLocaleString()}</span>}
+                      </div>
+                    ) : '—'}
+                  </td>
                   <td style={{ padding: '1rem', fontSize: '0.82rem' }}>{state === 'course_completed' ? formatDate(student.completionDate) : 'In Progress'}</td>
                   <td style={{ padding: '1rem' }}>
                     <span style={{ fontSize: '0.72rem', padding: '4px 10px', borderRadius: '12px', background: style.bg, color: style.color, border: `1px solid ${style.border}` }}>
@@ -419,6 +439,78 @@ const Students = () => {
                 </tr>
               );
             })}
+          </tbody>
+        </table>
+      </div>
+      ) : activeTab === 'enrolled_students' ? (
+      <div className="glass-morphism" style={{ padding: '0', overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1000px' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: '0.8rem' }}>
+              <th style={{ padding: '1rem' }}>Student</th>
+              <th style={{ padding: '1rem' }}>Contact</th>
+              <th style={{ padding: '1rem' }}>Course</th>
+              <th style={{ padding: '1rem' }}>Batch</th>
+              <th style={{ padding: '1rem' }}>Enrollment</th>
+              <th style={{ padding: '1rem' }}>Referred By</th>
+              <th style={{ padding: '1rem' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {enrolledStudents.map((student) => (
+              <tr key={student.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                <td style={{ padding: '1rem' }}>
+                  <div style={{ fontWeight: 600 }}>
+                    {student.User?.name}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>ID: STU-{student.id}</div>
+                </td>
+                <td style={{ padding: '1rem', fontSize: '0.82rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Mail size={13} />{student.User?.email || 'N/A'}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-dim)', marginTop: '0.2rem' }}><Phone size={13} />{student.mobile_no || 'N/A'}</div>
+                </td>
+                <td style={{ padding: '1rem', fontSize: '0.82rem' }}>{student.Batch?.Course?.title || 'N/A'}</td>
+                <td style={{ padding: '1rem', fontSize: '0.82rem' }}>{student.Batch?.code || 'N/A'}</td>
+                <td style={{ padding: '1rem', fontSize: '0.82rem' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Calendar size={13} />{formatDate(student.enrollment_date)}</div></td>
+                <td style={{ padding: '1rem', fontSize: '0.82rem' }}>
+                  {student.referred_by ? (
+                    <div>
+                      <div>{student.referred_by}</div>
+                      {student.referral_amount > 0 && <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 'bold' }}>৳{parseFloat(student.referral_amount).toLocaleString()}</span>}
+                    </div>
+                  ) : '—'}
+                </td>
+                <td style={{ padding: '1rem' }}>
+                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => handleRequestPartnerAccess(student)}
+                      disabled={requestingAccessId === student.id}
+                      style={{
+                        padding: '0.45rem 0.85rem',
+                        borderColor: '#6366f1',
+                        color: '#a78bfa',
+                        background: requestingAccessId === student.id ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.08)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        fontSize: '0.78rem',
+                        fontWeight: 600
+                      }}
+                    >
+                      {requestingAccessId === student.id ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                      {requestingAccessId === student.id ? 'Sending...' : 'Request Portal Access'}
+                    </button>
+                    <button className="btn-secondary" onClick={() => navigate(`/students/${student.id}`)} style={{ padding: '0.45rem 0.7rem' }}>Profile</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {enrolledStudents.length === 0 && (
+              <tr>
+                <td colSpan="6" style={{ padding: '1.5rem', color: 'var(--text-dim)', textAlign: 'center' }}>No enrolled students found.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

@@ -34,7 +34,10 @@ const StaffAttendancePage = () => {
           status: record ? record.status : 'absent', 
           check_in: record?.check_in || '', 
           check_out: record?.check_out || '',
-          notes: record?.notes || ''
+          notes: record?.notes || '',
+          ip_address: record?.ip_address || '',
+          latitude: record?.latitude || '',
+          longitude: record?.longitude || ''
         }; 
       });
       setAttendance(initial);
@@ -142,6 +145,7 @@ const StaffAttendancePage = () => {
                       ))}
                       <th style={{ padding: '1rem', textAlign: 'center' }}>Check In</th>
                       <th style={{ padding: '1rem', textAlign: 'center' }}>Check Out</th>
+                      <th style={{ padding: '1rem', textAlign: 'center' }}>Tracker Info</th>
                       <th style={{ padding: '1rem', textAlign: 'center' }}>Reason / Notes</th>
                       <th style={{ padding: '1rem', textAlign: 'center' }}>Action</th>
                     </tr>
@@ -185,6 +189,23 @@ const StaffAttendancePage = () => {
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
                           <input type="time" className="glass-input" style={{ width: '100px', fontSize: '0.75rem', padding: '0.3rem', background: 'rgba(255,255,255,0.05)', color: 'white' }}
                             value={attendance[member.id]?.check_out || ''} onChange={e => setAttendance(prev => ({ ...prev, [member.id]: { ...prev[member.id], check_out: e.target.value } }))} />
+                        </td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                            <span title="IP Address">{attendance[member.id]?.ip_address || 'No IP'}</span>
+                            {attendance[member.id]?.latitude && attendance[member.id]?.longitude ? (
+                              <a 
+                                href={`https://www.google.com/maps/search/?api=1&query=${attendance[member.id].latitude},${attendance[member.id].longitude}`} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                style={{ color: 'var(--primary)', textDecoration: 'underline', fontSize: '0.65rem' }}
+                              >
+                                View Map
+                              </a>
+                            ) : (
+                              <span style={{ fontSize: '0.65rem' }}>No GPS found</span>
+                            )}
+                          </div>
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
                           <input type="text" placeholder="Reason (e.g. forgot punch out)" className="glass-input" style={{ width: '160px', fontSize: '0.75rem', padding: '0.4rem', background: 'rgba(255,255,255,0.05)', color: 'white' }}

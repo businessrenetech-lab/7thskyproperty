@@ -234,9 +234,8 @@ const StudentDetails = () => {
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h2 style={{ fontSize: '1.6rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h2 style={{ fontSize: '1.6rem', margin: 0 }}>
               {student.User?.name}
-              {student.is_premium_pte && <Star size={18} color="#facc15" fill="#facc15" />}
             </h2>
             <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', margin: '0.2rem 0 0 0' }}>
               STU-{student.id} | {student.Batch?.Course?.title || 'No Course'}

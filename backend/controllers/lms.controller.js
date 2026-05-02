@@ -156,6 +156,37 @@ exports.getAllBatches = async (req, res) => {
   }
 };
 
+// Get a single batch by ID with detail
+exports.getBatchById = async (req, res) => {
+  try {
+    const branchId = getEffectiveBranchId(req);
+    if (!branchId) return res.status(400).json({ error: 'Please select a specific branch' });
+
+    const batch = await Batch.findOne({
+      where: { id: req.params.id, branch_id: branchId },
+      include: [
+        { model: Course, attributes: ['id', 'title'] },
+        { model: User, as: 'Trainer', attributes: ['id', 'name'] }
+      ]
+    });
+
+    if (!batch) return res.status(404).json({ error: 'Batch not found' });
+
+    // Aggregate enrolled count
+    const studentsCount = await Student.count({
+      where: { branch_id: branchId, batch_id: batch.id }
+    });
+
+    res.json({
+      ...batch.toJSON(),
+      enrolled_count: studentsCount
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
 // Create a new batch
 exports.createBatch = async (req, res) => {
   try {
@@ -393,6 +424,73 @@ exports.uploadCourseImageHandler = async (req, res) => {
     }
     const imageUrl = `/uploads/courses/${req.file.filename}`;
     res.json({ url: imageUrl });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const communicationService = require('../services/communication.service');
+
+// Bulk send SMS or Email to batch students
+exports.notifyBatchStudents = async (req, res) => {
+  try {
+    const branchId = getEffectiveBranchId(req);
+    if (!branchId) return res.status(400).json({ error: 'Please select a specific branch' });
+
+    const { id } = req.params;
+    const { type, subject, message } = req.body; // type: 'sms' or 'email'
+
+    if (!type || !message) {
+      return res.status(400).json({ error: 'Notification type and message are required' });
+    }
+
+    const batch = await Batch.findOne({ where: { id, branch_id: branchId } });
+    if (!batch) return res.status(404).json({ error: 'Batch not found' });
+
+    const students = await Student.findAll({
+      where: { branch_id: branchId, batch_id: id },
+      include: [{ model: User, attributes: ['name', 'email'] }]
+    });
+
+    if (!students || students.length === 0) {
+      return res.status(400).json({ error: 'No students enrolled in this batch to notify.' });
+    }
+
+    let successCount = 0;
+    const isEmail = type === 'email';
+
+    for (const student of students) {
+      const destination = isEmail ? student.User?.email : student.mobile_no;
+      if (!destination) continue;
+
+      const recipientMock = {
+        name: student.User?.name || 'Student',
+        phone: student.mobile_no || '',
+        email: student.User?.email || '',
+        course_interest: batch.name || 'our course'
+      };
+
+      const parsedSubject = isEmail ? communicationService.parseTemplate(subject || 'Notification from Language Academy', recipientMock) : '';
+      const parsedBody = communicationService.parseTemplate(message, recipientMock);
+
+      let dispatchResult = { success: false };
+      if (isEmail) {
+        dispatchResult = await communicationService.sendEmail(destination, parsedSubject, parsedBody, []);
+      } else {
+        dispatchResult = await communicationService.sendSMS(destination, parsedBody);
+      }
+
+      if (dispatchResult.success) {
+        successCount++;
+      }
+    }
+
+    res.json({
+      message: `Notification dispatch complete. Successfully sent to ${successCount} out of ${students.length} students.`,
+      successCount,
+      totalStudents: students.length
+    });
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

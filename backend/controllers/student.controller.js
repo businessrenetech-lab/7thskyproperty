@@ -8,6 +8,7 @@ const Activity = require('../models/Activity');
 const bcrypt = require('bcryptjs');
 const sequelize = require('../config/db.config');
 const { Op } = require('sequelize');
+const { sendPartnerAccessRequestEmail } = require('../services/communication.service');
 
 const getEffectiveBranchId = (req) => req.scopedBranchId || req.branchId;
 
@@ -53,7 +54,7 @@ const normalizeNullableText = (value) => {
 
 const OPEN_FEE_STATUSES = ['pending', 'partial', 'overdue'];
 
-const deriveStudentState = (student, feeSummary, rejectedFees = []) => {
+const deriveStudentState = (student, feeSummary, rejectedFees = [], enrollmentSummary = null) => {
   const status = student.status;
   const batchEndDate = student.Batch?.end_date ? new Date(student.Batch.end_date) : null;
   const today = new Date();
@@ -62,6 +63,13 @@ const deriveStudentState = (student, feeSummary, rejectedFees = []) => {
   if (status === 'dropped') return 'dropped';
   if (feeSummary && Number(feeSummary.due || 0) > 0 && OPEN_FEE_STATUSES.includes(feeSummary.status)) return 'fees_pending';
   if (rejectedFees.length > 0) return 'payment_rejected';
+
+  // If enrollment exists but is still pending (no payment made), treat as fees_pending
+  if (enrollmentSummary && enrollmentSummary.status === 'pending' && Number(enrollmentSummary.paid_amount || 0) === 0) return 'fees_pending';
+
+  // If student has a batch but NO enrollment and NO paid invoice at all, treat as fees_pending
+  if (student.batch_id && student.Batch && !enrollmentSummary && !feeSummary) return 'fees_pending';
+
   if (!student.batch_id || !student.Batch) return 'unassigned';
 
   if (batchEndDate && !Number.isNaN(batchEndDate.getTime())) {
@@ -147,14 +155,43 @@ const buildRejectedFeeMap = async (branchId, studentIds) => {
   return rejectedMap;
 };
 
-const decorateStudent = (student, feeSummary = null, rejectedFees = []) => {
-  const derivedState = deriveStudentState(student, feeSummary, rejectedFees);
+const buildEnrollmentSummaryMap = async (branchId, studentIds) => {
+  if (!studentIds.length) return new Map();
+
+  const enrollments = await Enrollment.findAll({
+    where: {
+      branch_id: branchId,
+      student_id: { [Op.in]: studentIds }
+    },
+    attributes: ['id', 'student_id', 'batch_id', 'total_fee', 'paid_amount', 'status'],
+    order: [['created_at', 'DESC']]
+  });
+
+  const summaryMap = new Map();
+  enrollments.forEach((enrollment) => {
+    // Keep the most recent enrollment per student
+    if (!summaryMap.has(enrollment.student_id)) {
+      summaryMap.set(enrollment.student_id, {
+        enrollment_id: enrollment.id,
+        total_fee: Number(enrollment.total_fee || 0),
+        paid_amount: Number(enrollment.paid_amount || 0),
+        status: enrollment.status
+      });
+    }
+  });
+
+  return summaryMap;
+};
+
+const decorateStudent = (student, feeSummary = null, rejectedFees = [], enrollmentSummary = null) => {
+  const derivedState = deriveStudentState(student, feeSummary, rejectedFees, enrollmentSummary);
   const completionDate = derivedState === 'course_completed' ? student.Batch?.end_date : null;
   return {
     ...student.toJSON(),
     derived_state: derivedState,
     fee_summary: feeSummary,
     rejected_fees: rejectedFees,
+    enrollment_summary: enrollmentSummary,
     is_course_completed: derivedState === 'course_completed',
     has_success_record: Boolean(student.final_course_result || student.success_destination_country || student.success_recorded_at),
     course_completion_date: completionDate,
@@ -177,9 +214,17 @@ exports.getAllStudents = async (req, res) => {
     });
 
     const studentIds = students.map((student) => student.id);
-    const feeSummaryMap = await buildFeeSummaryMap(branchId, studentIds);
-    const rejectedFeeMap = await buildRejectedFeeMap(branchId, studentIds);
-    res.json(students.map((student) => decorateStudent(student, feeSummaryMap.get(student.id) || null, rejectedFeeMap.get(student.id) || [])));
+    const [feeSummaryMap, rejectedFeeMap, enrollmentSummaryMap] = await Promise.all([
+      buildFeeSummaryMap(branchId, studentIds),
+      buildRejectedFeeMap(branchId, studentIds),
+      buildEnrollmentSummaryMap(branchId, studentIds)
+    ]);
+    res.json(students.map((student) => decorateStudent(
+      student,
+      feeSummaryMap.get(student.id) || null,
+      rejectedFeeMap.get(student.id) || [],
+      enrollmentSummaryMap.get(student.id) || null
+    )));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -200,9 +245,17 @@ exports.getStudentById = async (req, res) => {
 
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
-    const feeSummaryMap = await buildFeeSummaryMap(branchId, [student.id]);
-    const rejectedFeeMap = await buildRejectedFeeMap(branchId, [student.id]);
-    res.json(decorateStudent(student, feeSummaryMap.get(student.id) || null, rejectedFeeMap.get(student.id) || []));
+    const [feeSummaryMap, rejectedFeeMap, enrollmentSummaryMap] = await Promise.all([
+      buildFeeSummaryMap(branchId, [student.id]),
+      buildRejectedFeeMap(branchId, [student.id]),
+      buildEnrollmentSummaryMap(branchId, [student.id])
+    ]);
+    res.json(decorateStudent(
+      student,
+      feeSummaryMap.get(student.id) || null,
+      rejectedFeeMap.get(student.id) || [],
+      enrollmentSummaryMap.get(student.id) || null
+    ));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -224,7 +277,8 @@ exports.createStudent = async (req, res) => {
       passport_no, passport_expiry, visa_status,
       photograph_url, educational_details, employment_details,
       profession, lead_source,
-      post_course_goal_type, target_country, english_level
+      post_course_goal_type, target_country, english_level,
+      referred_by, referral_amount
     } = req.body;
 
     const normalizedGoalType = normalizePostCourseGoalType(post_course_goal_type);
@@ -259,6 +313,7 @@ exports.createStudent = async (req, res) => {
       current_address, permanent_address,
       passport_no, passport_expiry, visa_status,
       photograph_url, profession, lead_source,
+      referred_by, referral_amount: Number(referral_amount) || 0,
       educational_details: normalizeEducationDetails(educational_details),
       employment_details: normalizeEmploymentDetails(employment_details),
       post_course_goal_type: normalizedGoalType,
@@ -318,7 +373,14 @@ exports.createStudent = async (req, res) => {
       due_date: invoice.due_date
     } : null;
 
-    res.status(201).json({ user, student: decorateStudent(createdStudent, feeSummary, []), enrollment, invoice });
+    const enrollmentSummary = enrollment ? {
+      enrollment_id: enrollment.id,
+      total_fee: Number(enrollment.total_fee || 0),
+      paid_amount: Number(enrollment.paid_amount || 0),
+      status: enrollment.status
+    } : null;
+
+    res.status(201).json({ user, student: decorateStudent(createdStudent, feeSummary, [], enrollmentSummary), enrollment, invoice });
   } catch (error) {
     await t.rollback();
     console.error('[CreateStudent Error]:', error);
@@ -382,7 +444,8 @@ exports.updateStudent = async (req, res) => {
       current_address, permanent_address,
       passport_no, passport_expiry, visa_status,
       educational_details, employment_details, profession, lead_source,
-      post_course_goal_type, target_country, english_level
+      post_course_goal_type, target_country, english_level,
+      referred_by, referral_amount
     } = req.body;
 
     if (first_name !== undefined) student.first_name = first_name;
@@ -407,6 +470,8 @@ exports.updateStudent = async (req, res) => {
     if (visa_status !== undefined) student.visa_status = visa_status;
     if (profession !== undefined) student.profession = profession;
     if (lead_source !== undefined) student.lead_source = lead_source;
+    if (referred_by !== undefined) student.referred_by = referred_by;
+    if (referral_amount !== undefined) student.referral_amount = referral_amount;
     if (educational_details !== undefined) student.educational_details = normalizeEducationDetails(educational_details);
     if (employment_details !== undefined) student.employment_details = normalizeEmploymentDetails(employment_details);
     if (post_course_goal_type !== undefined) {
@@ -433,9 +498,12 @@ exports.updateStudent = async (req, res) => {
         { model: Batch, include: [{ model: Course, attributes: ['id', 'title'] }] }
       ]
     });
-    const feeSummaryMap = await buildFeeSummaryMap(branchId, [updatedStudent.id]);
-    const rejectedFeeMap = await buildRejectedFeeMap(branchId, [updatedStudent.id]);
-    res.json(decorateStudent(updatedStudent, feeSummaryMap.get(updatedStudent.id) || null, rejectedFeeMap.get(updatedStudent.id) || []));
+    const [feeSummaryMap, rejectedFeeMap, enrollmentSummaryMap] = await Promise.all([
+      buildFeeSummaryMap(branchId, [updatedStudent.id]),
+      buildRejectedFeeMap(branchId, [updatedStudent.id]),
+      buildEnrollmentSummaryMap(branchId, [updatedStudent.id])
+    ]);
+    res.json(decorateStudent(updatedStudent, feeSummaryMap.get(updatedStudent.id) || null, rejectedFeeMap.get(updatedStudent.id) || [], enrollmentSummaryMap.get(updatedStudent.id) || null));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -540,9 +608,12 @@ exports.updateStudentManagement = async (req, res) => {
       ]
     });
 
-    const feeSummaryMap = await buildFeeSummaryMap(branchId, [updatedStudent.id]);
-    const rejectedFeeMap = await buildRejectedFeeMap(branchId, [updatedStudent.id]);
-    res.json(decorateStudent(updatedStudent, feeSummaryMap.get(updatedStudent.id) || null, rejectedFeeMap.get(updatedStudent.id) || []));
+    const [feeSummaryMap, rejectedFeeMap, enrollmentSummaryMap] = await Promise.all([
+      buildFeeSummaryMap(branchId, [updatedStudent.id]),
+      buildRejectedFeeMap(branchId, [updatedStudent.id]),
+      buildEnrollmentSummaryMap(branchId, [updatedStudent.id])
+    ]);
+    res.json(decorateStudent(updatedStudent, feeSummaryMap.get(updatedStudent.id) || null, rejectedFeeMap.get(updatedStudent.id) || [], enrollmentSummaryMap.get(updatedStudent.id) || null));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -595,10 +666,54 @@ exports.updateStudentSuccessRecord = async (req, res) => {
       ]
     });
 
-    const feeSummaryMap = await buildFeeSummaryMap(branchId, [updatedStudent.id]);
-    const rejectedFeeMap = await buildRejectedFeeMap(branchId, [updatedStudent.id]);
-    res.json(decorateStudent(updatedStudent, feeSummaryMap.get(updatedStudent.id) || null, rejectedFeeMap.get(updatedStudent.id) || []));
+    const [feeSummaryMap, rejectedFeeMap, enrollmentSummaryMap] = await Promise.all([
+      buildFeeSummaryMap(branchId, [updatedStudent.id]),
+      buildRejectedFeeMap(branchId, [updatedStudent.id]),
+      buildEnrollmentSummaryMap(branchId, [updatedStudent.id])
+    ]);
+    res.json(decorateStudent(updatedStudent, feeSummaryMap.get(updatedStudent.id) || null, rejectedFeeMap.get(updatedStudent.id) || [], enrollmentSummaryMap.get(updatedStudent.id) || null));
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.requestPartnerAccess = async (req, res) => {
+  try {
+    const branchId = getEffectiveBranchId(req);
+    if (!branchId) return res.status(400).json({ error: 'Please select a specific branch' });
+
+    const student = await Student.findOne({
+      where: { id: req.params.id, branch_id: branchId },
+      include: [
+        { model: User },
+        { model: Batch, include: [{ model: Course, attributes: ['id', 'title', 'duration_weeks'] }] }
+      ]
+    });
+
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    const studentData = {
+      student_name: student.User?.name || `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'N/A',
+      student_email: student.User?.email || 'N/A',
+      student_phone: student.mobile_no || 'N/A',
+      course_name: student.Batch?.Course?.title || 'N/A',
+      batch_name: student.Batch?.code || student.Batch?.name || 'N/A',
+      course_duration: student.Batch?.Course?.duration_weeks ? `${student.Batch.Course.duration_weeks} weeks` : 'N/A'
+    };
+
+    // Use the SMTP_USER as admin email for reply-to
+    const adminEmail = process.env.SMTP_USER || 'admin@languageacademy.com.bd';
+
+    const result = await sendPartnerAccessRequestEmail(studentData, adminEmail);
+
+    if (result.success) {
+      res.json({ message: 'Partner access request email sent successfully', details: result.message });
+    } else {
+      console.error('[Partner Access Email Failed]:', result.error);
+      res.status(500).json({ error: 'Failed to send partner access request email', details: result.error });
+    }
+  } catch (error) {
+    console.error('[RequestPartnerAccess Error]:', error.message);
     res.status(500).json({ error: error.message });
   }
 };

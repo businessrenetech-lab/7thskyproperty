@@ -24,12 +24,15 @@ const Automation = () => {
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [runningBirthdayCheck, setRunningBirthdayCheck] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     trigger_type: 'new_lead',
     action_type: 'create_notification',
     template: ''
   });
+
+  const birthdayTemplate = 'Dear {Name}, Wish You Wonderful Year Ahead. Happy Birthday. From Language Academy Bangladesh.';
 
   useEffect(() => {
     fetchRules();
@@ -77,6 +80,19 @@ const Automation = () => {
     }
   };
 
+  const handleRunBirthdayCheck = async () => {
+    setRunningBirthdayCheck(true);
+    try {
+      const res = await api.post('/automation/run-birthday-check');
+      alert(`Birthday check complete. Processed: ${res.data.processed || 0}, Sent: ${res.data.sent || 0}`);
+      fetchRules();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Birthday check failed');
+    } finally {
+      setRunningBirthdayCheck(false);
+    }
+  };
+
   const getActionIcon = (type) => {
     switch (type) {
       case 'send_sms': return <Phone size={16} />;
@@ -98,7 +114,12 @@ const Automation = () => {
           <h2 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Automation Rules Engine</h2>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Configure automated responses and notifications for system events</p>
         </div>
-        <Button icon={<Plus size={18} />} onClick={() => setShowModal(true)}>Create Workflow</Button>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <Button onClick={handleRunBirthdayCheck} style={{ opacity: runningBirthdayCheck ? 0.7 : 1 }}>
+            {runningBirthdayCheck ? 'Running Birthday Check...' : 'Run Birthday Check'}
+          </Button>
+          <Button icon={<Plus size={18} />} onClick={() => setShowModal(true)}>Create Workflow</Button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
@@ -149,9 +170,9 @@ const Automation = () => {
         <div>
            <h5 style={{ color: 'var(--primary)', marginBottom: '0.4rem' }}>Placeholder Guide</h5>
            <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', lineHeight: '1.6' }}>
-             Use these tags in your templates: <code style={{ color: 'white' }}>{'{student_name}'}</code>, <code style={{ color: 'white' }}>{'{amount}'}</code>, <code style={{ color: 'white' }}>{'{date}'}</code>, <code style={{ color: 'white' }}>{'{batch_name}'}</code>. Tags are automatically swapped with live data when triggered.
-           </p>
-        </div>
+             Use these tags in your templates: <code style={{ color: 'white' }}>{'{Name}'}</code>, <code style={{ color: 'white' }}>{'{student_name}'}</code>, <code style={{ color: 'white' }}>{'{amount}'}</code>, <code style={{ color: 'white' }}>{'{date}'}</code>, <code style={{ color: 'white' }}>{'{batch_name}'}</code>. Tags are automatically swapped with live data when triggered.
+            </p>
+         </div>
       </div>
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="New Automation Rule">
@@ -166,12 +187,18 @@ const Automation = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
               <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)', marginBottom: '0.5rem', display: 'block' }}>When this happens (Trigger)</label>
-              <select className="glass-input" style={{ width: '100%', padding: '0.8rem' }} value={formData.trigger_type} onChange={e => setFormData({...formData, trigger_type: e.target.value})}>
+              <select className="glass-input" style={{ width: '100%', padding: '0.8rem' }} value={formData.trigger_type} onChange={e => setFormData(prev => ({
+                ...prev,
+                trigger_type: e.target.value,
+                action_type: e.target.value === 'birthday_reminder' ? 'send_sms' : prev.action_type,
+                template: e.target.value === 'birthday_reminder' && !prev.template ? birthdayTemplate : prev.template
+              }))}>
                 <option value="new_lead">New Lead Created</option>
                 <option value="student_absent">Student Marked Absent</option>
                 <option value="fee_overdue">Fee Becomes Overdue</option>
                 <option value="batch_full">Batch Reaches Capacity</option>
                 <option value="enrollment_confirmed">Enrollment Confirmed</option>
+                <option value="birthday_reminder">Birthday Reminder</option>
               </select>
             </div>
             <div>

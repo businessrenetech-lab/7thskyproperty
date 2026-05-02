@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import Cockpit from './pages/Cockpit';
 import CRMPipeline from './pages/CRM';
 import LMSBatches from './pages/LMS';
+import BatchDetails from './pages/BatchDetails';
 import FinanceHub from './pages/Finance';
 import PTEEngine from './pages/PTE';
 import ERPSpaces from './pages/ERP';
@@ -64,6 +65,7 @@ const App = () => {
             <Route path="/students" element={<P title="Student Directory"><Students /></P>} />
             <Route path="/students/:id" element={<P title="Student Profile"><StudentDetails /></P>} />
             <Route path="/lms" element={<P title="LMS Batch Deck"><LMSBatches /></P>} />
+            <Route path="/lms/batch/:id" element={<P title="Batch Details"><BatchDetails /></P>} />
             <Route path="/pos" element={<P title="POS & Fee Management"><POSFees /></P>} />
             <Route path="/finance" element={<P title="Accounts Overview"><FinanceHub /></P>} />
             <Route path="/invoices" element={<P title="Invoice Management"><Invoices /></P>} />

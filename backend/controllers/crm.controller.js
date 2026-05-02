@@ -116,7 +116,7 @@ exports.getAllLeads = async (req, res) => {
 exports.createLead = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { name, phone, email, source, batch_interest, notes, counselor_id, priority, expected_close, course_id } = req.body;
+    const { name, phone, email, source, batch_interest, notes, counselor_id, priority, expected_close, course_id, date_of_birth } = req.body;
 
     // Auto-fill deal_value from course base_fee if course is selected
     let deal_value = req.body.deal_value || 0;
@@ -132,6 +132,7 @@ exports.createLead = async (req, res) => {
     const lead = await Lead.create({
       branch_id: req.branchId,
       name, phone, email, source,
+      date_of_birth: date_of_birth || null,
       batch_interest: courseTitle || batch_interest,
       notes, counselor_id, course_id,
       deal_value,
@@ -252,12 +253,15 @@ exports.enrollLead = async (req, res) => {
       mother_name,
       mobile_no,
       nid_birth_cert,
+      date_of_birth,
       current_address,
       permanent_address,
       passport_no,
       photograph_url,
       educational_details,
-      employment_details
+      employment_details,
+      referred_by,
+      referral_amount
     } = req.body;
     const courseId = lead.course_id || req.body.course_id;
     if (!courseId) return res.status(400).json({ error: 'No course selected. Please select a course first.' });
@@ -317,12 +321,15 @@ exports.enrollLead = async (req, res) => {
         mother_name: mother_name || null,
         mobile_no: mobile_no || lead.phone || null,
         nid_birth_cert: nid_birth_cert || null,
+        date_of_birth: date_of_birth || lead.date_of_birth || null,
         current_address: current_address || null,
         permanent_address: permanent_address || null,
         passport_no: passport_no || null,
         photograph_url: photograph_url || null,
         educational_details: normalizeEducationDetails(educational_details),
         employment_details: normalizeEmploymentDetails(employment_details),
+        referred_by: referred_by || lead.referred_by || null,
+        referral_amount: Number(referral_amount) || Number(lead.referral_amount) || 0,
         enrollment_date: new Date(),
         status: 'active',
       }, { transaction: t });
@@ -336,14 +343,24 @@ exports.enrollLead = async (req, res) => {
         mother_name: mother_name !== undefined ? mother_name : student.mother_name,
         mobile_no: mobile_no || student.mobile_no || lead.phone,
         nid_birth_cert: nid_birth_cert !== undefined ? nid_birth_cert : student.nid_birth_cert,
+        date_of_birth: date_of_birth !== undefined ? date_of_birth : (student.date_of_birth || lead.date_of_birth),
         current_address: current_address !== undefined ? current_address : student.current_address,
         permanent_address: permanent_address !== undefined ? permanent_address : student.permanent_address,
         passport_no: passport_no !== undefined ? passport_no : student.passport_no,
         photograph_url: photograph_url !== undefined ? photograph_url : student.photograph_url,
         educational_details: educational_details !== undefined ? normalizeEducationDetails(educational_details) : student.educational_details,
         employment_details: employment_details !== undefined ? normalizeEmploymentDetails(employment_details) : student.employment_details,
+        referred_by: referred_by !== undefined ? referred_by : (student.referred_by || lead.referred_by),
+        referral_amount: referral_amount !== undefined ? Number(referral_amount) : (student.referral_amount || lead.referral_amount),
         enrollment_date: student.enrollment_date || new Date(),
         status: student.status || 'active',
+      }, { transaction: t });
+    }
+
+    if (referred_by !== undefined || referral_amount !== undefined) {
+      await lead.update({ 
+        referred_by: referred_by !== undefined ? referred_by : lead.referred_by,
+        referral_amount: referral_amount !== undefined ? Number(referral_amount) : lead.referral_amount
       }, { transaction: t });
     }
 

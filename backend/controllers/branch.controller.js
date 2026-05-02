@@ -318,12 +318,33 @@ exports.getBranchAccounting = async (req, res) => {
       })
     ]);
 
-    // Bank & Cash accounts
-    const bankCash = accounts.filter(a => a.type === 'asset' && ['bank', 'cash'].includes(a.sub_type));
-    // Income accounts
-    const incomeAccounts = accounts.filter(a => a.type === 'revenue');
-    // Expense accounts
-    const expenseAccounts = accounts.filter(a => a.type === 'expense');
+    // Compute actual balance from journal ledger for each account
+    const computeBalance = async (accountId) => {
+      const debit = await JournalLine.sum('debit', { where: { account_id: accountId } }) || 0;
+      const credit = await JournalLine.sum('credit', { where: { account_id: accountId } }) || 0;
+      return debit - credit;
+    };
+
+    // Bank & Cash accounts with computed balance
+    const bankCashRaw = accounts.filter(a => a.type === 'asset' && ['bank', 'cash'].includes(a.sub_type));
+    const bankCash = await Promise.all(bankCashRaw.map(async (a) => {
+      const balance = await computeBalance(a.id);
+      return { ...a.toJSON(), balance };
+    }));
+
+    // Income accounts with computed balance
+    const incomeRaw = accounts.filter(a => a.type === 'revenue');
+    const incomeAccounts = await Promise.all(incomeRaw.map(async (a) => {
+      const credit = await JournalLine.sum('credit', { where: { account_id: a.id } }) || 0;
+      return { ...a.toJSON(), balance: credit };
+    }));
+
+    // Expense accounts with computed balance
+    const expenseRaw = accounts.filter(a => a.type === 'expense');
+    const expenseAccounts = await Promise.all(expenseRaw.map(async (a) => {
+      const debit = await JournalLine.sum('debit', { where: { account_id: a.id } }) || 0;
+      return { ...a.toJSON(), balance: debit };
+    }));
 
     res.json({
       bankCash,

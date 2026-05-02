@@ -10,13 +10,28 @@ const QuickCheckIn = () => {
       const userObj = JSON.parse(localStorage.getItem('user'));
       if(!userObj) return alert("User not found in session!");
 
+      let latitude = null;
+      let longitude = null;
+
+      try {
+        const pos = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 0 });
+        });
+        latitude = pos.coords.latitude.toString();
+        longitude = pos.coords.longitude.toString();
+      } catch (locErr) {
+        console.warn("Location access denied or failed:", locErr);
+      }
+
       const payload = {
         date: new Date().toISOString().split('T')[0],
         attendance_data: [{ 
           user_id: userObj.id, 
           status: 'present', 
           check_in: type === 'in' ? time : null, 
-          check_out: type === 'out' ? time : null 
+          check_out: type === 'out' ? time : null,
+          latitude,
+          longitude
         }]
       };
 

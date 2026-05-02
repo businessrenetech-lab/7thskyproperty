@@ -20,8 +20,14 @@ const getBranchId = (req) => req.scopedBranchId || req.branchId;
 const createDateRangeFilter = (from, to) => {
   const dateFilter = {};
   if (from) dateFilter[Op.gte] = from;
-  if (to) dateFilter[Op.lte] = to;
-  return Object.keys(dateFilter).length ? dateFilter : null;
+  if (to) {
+    let toVal = to;
+    if (typeof toVal === 'string' && toVal.length === 10) {
+      toVal = `${toVal} 23:59:59`;
+    }
+    dateFilter[Op.lte] = toVal;
+  }
+  return (from || to) ? dateFilter : null;
 };
 
 const buildSourceLabel = (transaction) => {
@@ -84,7 +90,8 @@ exports.getFinanceStats = async (req, res) => {
 // ── NEW: Accounts Overview Dashboard ──
 exports.getOverview = async (req, res) => {
   try {
-    const branchFilter = req.branchId ? { branch_id: req.branchId } : {};
+    const branchId = req.scopedBranchId;
+    const branchFilter = branchId ? { branch_id: branchId } : {};
     const revenue = await JournalLine.sum('credit', { include: [{ model: Account, where: { ...branchFilter, type: 'revenue' } }] }) || 0;
     const expenses = await JournalLine.sum('debit', { include: [{ model: Account, where: { ...branchFilter, type: 'expense' } }] }) || 0;
     const totalInvoices = await Invoice.count({ where: branchFilter });
@@ -189,8 +196,8 @@ exports.getCashFlow = async (req, res) => {
     const { from, to } = req.query;
     const txWhere = { branch_id: branchId, status: 'success' };
     const expWhere = { branch_id: branchId, status: { [Op.in]: ['approved', 'verified'] } };
-    if (from) { txWhere.paid_at = { ...(txWhere.paid_at || {}), [Op.gte]: from }; expWhere.date = { ...(expWhere.date || {}), [Op.gte]: from }; }
-    if (to) { txWhere.paid_at = { ...(txWhere.paid_at || {}), [Op.lte]: to }; expWhere.date = { ...(expWhere.date || {}), [Op.lte]: to }; }
+    if (from) { txWhere.paid_at = { ...(txWhere.paid_at || {}), [Op.gte]: `${from} 00:00:00` }; expWhere.date = { ...(expWhere.date || {}), [Op.gte]: from }; }
+    if (to) { txWhere.paid_at = { ...(txWhere.paid_at || {}), [Op.lte]: `${to} 23:59:59` }; expWhere.date = { ...(expWhere.date || {}), [Op.lte]: to }; }
 
     const [transactions, expenses] = await Promise.all([
       Transaction.findAll({
@@ -292,6 +299,7 @@ exports.getIncomeExpense = async (req, res) => {
     // Expense split by category
     const expenseSplit = await Expense.findAll({
       attributes: ['category', [fn('SUM', col('amount')), 'total']],
+      where: { status: { [Op.in]: ['approved', 'verified'] } },
       group: ['category'],
       order: [[literal('total'), 'DESC']]
     });
@@ -420,7 +428,7 @@ exports.getReportSuite = async (req, res) => {
     const transactionWhere = { branch_id: branchId, status: 'success' };
     if (transactionDateFilter) transactionWhere.paid_at = transactionDateFilter;
 
-    const expenseWhere = { branch_id: branchId, status: { [Op.in]: ['approved', 'verified', 'pending', 'rejected'] } };
+    const expenseWhere = { branch_id: branchId, status: { [Op.in]: ['approved', 'verified'] } };
     if (expenseDateFilter) expenseWhere.date = expenseDateFilter;
 
     const premiumWhere = { branch_id: branchId, plan_type: 'premium' };
@@ -429,7 +437,10 @@ exports.getReportSuite = async (req, res) => {
     const invoiceWhere = { branch_id: branchId };
     if (dueDateFilter) invoiceWhere.due_date = dueDateFilter;
 
-    const [transactions, expenses, premiumStudents, liquidAccounts, invoices] = await Promise.all([
+    const referralWhere = { branch_id: branchId, referral_amount: { [Op.gt]: 0 } };
+    if (createDateRangeFilter(from, to)) referralWhere.updatedAt = createDateRangeFilter(from, to);
+
+    const [transactions, expenses, premiumStudents, liquidAccounts, invoices, referralStudents] = await Promise.all([
       Transaction.findAll({
         where: transactionWhere,
         include: [
@@ -486,6 +497,14 @@ exports.getReportSuite = async (req, res) => {
           }
         ],
         order: [['due_date', 'DESC']]
+      }),
+      Student.findAll({
+        where: referralWhere,
+        include: [
+          { model: User, attributes: ['name', 'email'] },
+          { model: Batch, required: false, include: [{ model: Course, attributes: ['title'], required: false }] }
+        ],
+        order: [['enrollment_date', 'DESC']]
       })
     ]);
 
@@ -590,6 +609,17 @@ exports.getReportSuite = async (req, res) => {
       .filter((invoice) => invoice.due > 0)
       .sort((a, b) => b.due - a.due);
 
+    const referralRows = referralStudents.map(student => ({
+      id: student.id,
+      student_name: student.User?.name || 'Unknown',
+      student_email: student.User?.email || '',
+      course_name: student.Batch?.Course?.title || 'N/A',
+      batch_name: student.Batch?.code || 'Unassigned',
+      enrollment_date: student.enrollment_date,
+      referred_by: student.referred_by || 'Unknown',
+      amount: Number(student.referral_amount || 0)
+    }));
+
     const bankStatement = bankStatementLines.map((line) => ({
       id: line.id,
       date: line.JournalEntry?.date,
@@ -638,7 +668,8 @@ exports.getReportSuite = async (req, res) => {
       premium_revenue_estimate: premiumSubscriptions.reduce((sum, row) => sum + row.amount, 0),
       income_transactions: incomeRows.length,
       expense_transactions: expenseRows.length,
-      premium_subscriptions: premiumSubscriptions.length
+      premium_subscriptions: premiumSubscriptions.length,
+      total_referral_payout: referralRows.reduce((sum, row) => sum + row.amount, 0)
     };
 
     res.json({
@@ -671,6 +702,10 @@ exports.getReportSuite = async (req, res) => {
         total_debits: totalDebits,
         total_credits: totalCredits,
         difference: totalDebits - totalCredits
+      },
+      referrals: {
+        total: referralRows.reduce((sum, row) => sum + row.amount, 0),
+        rows: referralRows
       }
     });
   } catch (error) {

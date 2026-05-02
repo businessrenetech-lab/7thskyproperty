@@ -40,6 +40,15 @@ const StaffAttendance = sequelize.define('StaffAttendance', {
   notes: {
     type: DataTypes.TEXT,
   },
+  ip_address: {
+    type: DataTypes.STRING,
+  },
+  latitude: {
+    type: DataTypes.STRING,
+  },
+  longitude: {
+    type: DataTypes.STRING,
+  },
 }, {
   tableName: 'staff_attendance',
   underscored: true,

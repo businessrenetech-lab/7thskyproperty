@@ -12,6 +12,7 @@ const Batch = require('../models/Batch');
 const Course = require('../models/Course');
 const Customer = require('../models/Customer');
 const IncomeCategory = require('../models/IncomeCategory');
+const Expense = require('../models/Expense');
 const sequelize = require('../config/db.config');
 const { Op } = require('sequelize');
 
@@ -19,6 +20,69 @@ const calculateDue = (invoice) => {
   const amount = Number(invoice?.amount || 0);
   const paid = Number(invoice?.paid || 0);
   return Math.max(amount - paid, 0);
+};
+
+const buildReferralExpenseRef = (enrollmentId, invoiceId) => `[REF:${enrollmentId}:${invoiceId || 0}]`;
+
+const upsertPendingReferralExpense = async ({
+  branchId,
+  enrollment,
+  invoiceId,
+  payoutAccountId,
+  paymentMethod,
+  amount,
+  referredBy,
+  transaction,
+}) => {
+  if (!(amount > 0)) return { created: false, updated: false };
+
+  const referralStudent = enrollment.student_id
+    ? await Student.findByPk(enrollment.student_id, { include: [{ model: User, attributes: ['name'] }], transaction })
+    : null;
+  const referrerName = referredBy || referralStudent?.referred_by || 'Unknown Referrer';
+  const studentName = referralStudent?.User?.name || `Student ID: ${enrollment.student_id || 'N/A'}`;
+  const referenceTag = buildReferralExpenseRef(enrollment.id, invoiceId);
+  const category = branchId !== 1 ? 'Referral Expense - Uttara' : 'Referral Expense';
+  const description = `Referral Fee payout to: ${referrerName} (for ${studentName}) ${referenceTag}`;
+
+  const existingExpense = await Expense.findOne({
+    where: {
+      branch_id: branchId,
+      description: { [Op.like]: `%${referenceTag}%` },
+      status: { [Op.notIn]: ['rejected', 'deleted'] },
+    },
+    transaction,
+  });
+
+  if (existingExpense) {
+    if (existingExpense.status === 'pending') {
+      await existingExpense.update({
+        account_id: payoutAccountId,
+        amount,
+        description,
+        category,
+        payment_method: paymentMethod || 'cash',
+        date: new Date(),
+      }, { transaction });
+      return { created: false, updated: true, description };
+    }
+
+    return { created: false, updated: false, description };
+  }
+
+  await Expense.create({
+    branch_id: branchId,
+    account_id: payoutAccountId,
+    amount,
+    description,
+    category,
+    payment_method: paymentMethod || 'cash',
+    date: new Date(),
+    approved_by: null,
+    status: 'pending',
+  }, { transaction });
+
+  return { created: true, updated: false, description };
 };
 
 // ─── Get Transactions (supports both enrollment + custom income) ──────────────
@@ -254,13 +318,30 @@ exports.collectFee = async (req, res) => {
       posted_by: req.user.id
     }, { transaction: t });
 
-    await JournalLine.bulkCreate([
+    const lines = [
       { journal_entry_id: entry.id, account_id: debitAccount.id, debit: paymentAmount, credit: 0, notes: notes || 'POS Payment' },
       { journal_entry_id: entry.id, account_id: creditAccount.id, debit: 0, credit: paymentAmount, notes: 'Tuition Revenue' }
-    ], { transaction: t });
+    ];
+
+    const refAmount = Number(req.body.referral_amount || 0);
+    const referralExpenseResult = await upsertPendingReferralExpense({
+      branchId: req.branchId,
+      enrollment,
+      invoiceId: linkedInvoice?.id,
+      payoutAccountId: debitAccount.id,
+      paymentMethod: method,
+      amount: refAmount,
+      referredBy: req.body.referred_by,
+      transaction: t,
+    });
+
+    await JournalLine.bulkCreate(lines, { transaction: t });
 
     await t.commit();
-    res.status(201).json({ message: 'Fee collected successfully', transaction: txn });
+    const message = referralExpenseResult.created || referralExpenseResult.updated
+      ? 'Fee collected successfully. Referral payout moved to pending expense approval.'
+      : 'Fee collected successfully';
+    res.status(201).json({ message, transaction: txn, referral_expense: referralExpenseResult });
   } catch (error) {
     await t.rollback();
     console.error('[CollectFee Error]:', error);

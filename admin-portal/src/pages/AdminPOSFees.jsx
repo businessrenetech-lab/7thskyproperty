@@ -22,7 +22,7 @@ const POSFees = () => {
   const [selectedTx, setSelectedTx] = useState(null);
   const [receiptHtmlContent, setReceiptHtmlContent] = useState('');
   
-  const [paymentData, setPaymentData] = useState({ amount: '', account_id: '', method: 'cash', transaction_ref: '', notes: '' });
+  const [paymentData, setPaymentData] = useState({ amount: '', account_id: '', method: 'cash', transaction_ref: '', notes: '', referral_amount: 0 });
   const [rejectNote, setRejectNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -42,6 +42,11 @@ const POSFees = () => {
     }
     return invoice?.Student?.User?.name || invoice?.Enrollment?.Student?.User?.name || 'Unknown';
   };
+
+  const getInvoiceReferralInfo = (invoice) => ({
+    referredBy: invoice?.Student?.referred_by || invoice?.Enrollment?.Student?.referred_by || '',
+    amount: Number(invoice?.Student?.referral_amount || invoice?.Enrollment?.Student?.referral_amount || 0),
+  });
 
   useEffect(() => { fetchData(); }, []);
 
@@ -76,6 +81,7 @@ const POSFees = () => {
   };
 
   const methodColors = { bkash: '#e2136e', nagad: '#f6921e', card: '#3b82f6', cash: '#10b981', bank_transfer: '#8b5cf6' };
+  const selectedReferral = getInvoiceReferralInfo(selectedInvoice);
 
 
   return (
@@ -185,7 +191,12 @@ const POSFees = () => {
                           <td><span className="sb2 sb2-amber" style={{ background: 'rgba(39,95,167,0.1)', color: '#275fa7', borderColor: 'rgba(39,95,167,0.3)' }}>{inv.status}</span></td>
                           <td>
                             <div style={{ display: 'flex', gap: '4px' }}>
-                              <button onClick={() => { setSelectedInvoice(inv); setPaymentData({...paymentData, amount: due}); setShowCollectModal(true); }} className="btn-stitch" style={{ padding: '4px 10px', fontSize: '11px', background: '#7bc62e' }}>Collect</button>
+                              <button onClick={() => {
+                                const referral = getInvoiceReferralInfo(inv);
+                                setSelectedInvoice(inv);
+                                setPaymentData((prev) => ({ ...prev, amount: due, referral_amount: referral.amount }));
+                                setShowCollectModal(true);
+                              }} className="btn-stitch" style={{ padding: '4px 10px', fontSize: '11px', background: '#7bc62e' }}>Collect</button>
                               <button onClick={() => { setSelectedInvoice(inv); setRejectNote(''); setShowRejectModal(true); }} className="btn-ghost" style={{ padding: '4px 10px', fontSize: '11px', borderColor: 'rgba(71,85,105,0.3)', color: '#475569' }}>Reject</button>
                             </div>
                           </td>
@@ -241,11 +252,14 @@ const POSFees = () => {
               transaction_ref: paymentData.transaction_ref,
               notes: paymentData.notes
             };
-            if (!isCustom) payload.enrollment_id = selectedInvoice.enrollment_id;
+            if (!isCustom) {
+              payload.enrollment_id = selectedInvoice.enrollment_id;
+              payload.referral_amount = paymentData.referral_amount;
+            }
             const res = await api.post(endpoint, payload);
             setShowCollectModal(false);
             setSelectedInvoice(null);
-            setPaymentData({ amount: '', account_id: liquidAccounts[0]?.id || '', method: mapAccountToMethod(liquidAccounts[0]), transaction_ref: '', notes: '' });
+            setPaymentData({ amount: '', account_id: liquidAccounts[0]?.id || '', method: mapAccountToMethod(liquidAccounts[0]), transaction_ref: '', notes: '', referral_amount: 0 });
             alert(res.data.message || 'Payment collected and Journal recorded!');
             fetchData();
           } catch(err) {
@@ -259,11 +273,27 @@ const POSFees = () => {
             <p style={{ margin: 0, fontSize: '13px' }}>{selectedInvoice?.invoice_type === 'custom' ? 'Customer' : 'Student'}: <strong>{getInvoiceStudentName(selectedInvoice)}</strong></p>
             <p style={{ margin: '6px 0 0 0', fontSize: '13px' }}>Invoice: {selectedInvoice?.invoice_no} {selectedInvoice?.invoice_type === 'custom' && <span style={{ color: '#06b6d4', fontSize: '11px' }}>(Custom Income)</span>}</p>
             <p style={{ margin: '6px 0 0 0', fontSize: '13px' }}>Due: <strong style={{color: '#FFB347'}}>৳{parseFloat(selectedInvoice?.amount) - parseFloat(selectedInvoice?.paid)}</strong></p>
+            {selectedInvoice?.invoice_type !== 'custom' && selectedInvoice?.enrollment_id && selectedReferral.amount > 0 && (
+              <>
+                <p style={{ margin: '6px 0 0 0', fontSize: '13px' }}>Referrer: <strong style={{ color: '#f59e0b' }}>{selectedReferral.referredBy || 'Not set'}</strong></p>
+                <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#f59e0b' }}>This will create a pending expense for approval in Expense Management.</p>
+              </>
+            )}
           </div>
 
           <div className="fgroup">
             <label className="flabel">Amount (BDT)</label>
             <input required type="number" step="0.01" className="glass-input" value={paymentData.amount} onChange={e => setPaymentData({...paymentData, amount: e.target.value})} />
+          </div>
+
+          <div className="fgroup">
+            <label className="flabel">Referral Amount</label>
+            <input type="number" step="0.01" className="glass-input" value={paymentData.referral_amount} onChange={e => setPaymentData({...paymentData, referral_amount: e.target.value})} disabled={selectedInvoice?.invoice_type === 'custom' || !selectedInvoice?.enrollment_id} placeholder="0.00" title={selectedInvoice?.invoice_type === 'custom' ? "Not applicable for custom invoices" : ""} style={Number(paymentData.referral_amount || 0) > 0 ? { borderColor: 'rgba(245,158,11,0.7)', boxShadow: '0 0 0 1px rgba(245,158,11,0.25)' } : undefined} />
+            {selectedInvoice?.invoice_type !== 'custom' && selectedInvoice?.enrollment_id && Number(paymentData.referral_amount || 0) > 0 && (
+              <div style={{ marginTop: '6px', fontSize: '11px', color: '#f59e0b' }}>
+                Referral payout will stay pending until approved from Expense Management.
+              </div>
+            )}
           </div>
 
           <div className="fgroup">

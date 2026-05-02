@@ -121,11 +121,9 @@ const ExpenseManager = () => {
       setSelectedFile(null);
       setForm({ account_id: liquidAccounts[0]?.id || '', amount: '', description: '', category: '', payment_method: liquidAccounts[0]?.sub_type || 'cash', date: '' });
 
-      if (res.data?.auto_approved) {
-        alert('✓ Expense auto-approved (below BDT 5,000). Journal entry created.');
-      } else {
-        alert('Expense submitted for branch admin approval (BDT 5,000+).');
-      }
+      alert(res.data?.message || (res.data?.auto_approved
+        ? '✓ Expense auto-approved (below BDT 5,000). Journal entry created.'
+        : 'Expense submitted for branch admin approval.'));
       fetchData();
     } catch (err) { alert(err.response?.data?.error || 'Failed to submit expense'); }
     finally { setSubmitting(false); }

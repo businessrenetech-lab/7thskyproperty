@@ -27,11 +27,27 @@ const Lead = sequelize.define('Lead', {
   email: {
     type: DataTypes.STRING,
   },
+  date_of_birth: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+  birthday_wish_last_sent_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
   destination_country: {
     type: DataTypes.STRING,
   },
   source: {
     type: DataTypes.STRING,
+  },
+  referred_by: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  referral_amount: {
+    type: DataTypes.DECIMAL(12, 2),
+    defaultValue: 0,
   },
   status: {
     type: DataTypes.ENUM('new', 'contacted', 'interested', 'trial', 'enrolled', 'fees_pending', 'payment_rejected', 'successful', 'lost'),
