@@ -9,7 +9,7 @@ import AnimateOnScroll, { StaggerContainer, StaggerItem } from "@/components/Ani
 import CourseCard from "@/components/CourseCard";
 import BookingFormInline from "@/components/BookingFormInline";
 import BookingModal from "@/components/BookingModal";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 /* ─── Static Data ─────────────────────────────────────────────── */
 const faqs = [
@@ -20,11 +20,22 @@ const faqs = [
   ["What is the class size?", "We maintain a maximum of 12 students per cohort to ensure personalized attention, stronger accountability, and faster improvement."],
 ];
 
-export default function HomepageClient({ courses, blogs }) {
+export default function HomepageClient({ courses: initialCourses, blogs }) {
+  const [courses, setCourses] = useState(initialCourses || []);
   const [openFaq, setOpenFaq] = useState(0);
   const [openFormatFaq, setOpenFormatFaq] = useState(0);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [bookingInterest, setBookingInterest] = useState("");
+
+  // Client-side fallback: re-fetch if SSR delivered empty courses
+  useEffect(() => {
+    if (!initialCourses || initialCourses.length === 0) {
+      fetch("/api/public/courses")
+        .then((res) => res.ok ? res.json() : [])
+        .then((data) => { if (data.length > 0) setCourses(data.slice(0, 6)); })
+        .catch(() => {});
+    }
+  }, [initialCourses]);
 
   const handleBook = (interest = "") => {
     setBookingInterest(interest);

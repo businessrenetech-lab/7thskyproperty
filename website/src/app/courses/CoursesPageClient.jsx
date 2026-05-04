@@ -8,9 +8,19 @@ import CourseCard from "@/components/CourseCard";
 import SectionHeading from "@/components/SectionHeading";
 
 export default function CoursesPageClient({ initialCourses }) {
-  const [courses, setCourses] = useState(initialCourses);
+  const [courses, setCourses] = useState(initialCourses || []);
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Client-side fallback: re-fetch if SSR delivered empty data
+  useEffect(() => {
+    if (!initialCourses || initialCourses.length === 0) {
+      fetch("/api/public/courses")
+        .then((res) => res.ok ? res.json() : [])
+        .then((data) => { if (data.length > 0) setCourses(data); })
+        .catch(() => {});
+    }
+  }, [initialCourses]);
 
   const categories = ["All", "PTE", "IELTS", "Spoken English"];
 
