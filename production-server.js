@@ -173,23 +173,29 @@ async function start() {
   // Static files
   app.use('/uploads', express.static(path.join(__dirname, 'backend', 'uploads')));
 
+  const sendSpaIndex = (indexFile) => (req, res) => {
+    if (path.extname(req.path)) {
+      return res.status(404).type('text/plain').send('Asset not found');
+    }
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(indexFile);
+  };
+
   // Admin Portal
   const adminDist = path.join(__dirname, 'admin-portal', 'dist');
+  const adminIndex = path.join(adminDist, 'index.html');
   log(`  admin-portal/dist exists: ${fs.existsSync(adminDist)}`);
-  log(`  admin-portal/dist/index.html exists: ${fs.existsSync(path.join(adminDist, 'index.html'))}`);
+  log(`  admin-portal/dist/index.html exists: ${fs.existsSync(adminIndex)}`);
   app.use('/admin', express.static(adminDist));
-  app.get('/admin/{*splat}', (req, res) => {
-    res.sendFile(path.join(adminDist, 'index.html'));
-  });
+  app.get('/admin/{*splat}', sendSpaIndex(adminIndex));
 
   // Student Portal
   const studentDist = path.join(__dirname, 'student-portal', 'dist');
+  const studentIndex = path.join(studentDist, 'index.html');
   log(`  student-portal/dist exists: ${fs.existsSync(studentDist)}`);
-  log(`  student-portal/dist/index.html exists: ${fs.existsSync(path.join(studentDist, 'index.html'))}`);
+  log(`  student-portal/dist/index.html exists: ${fs.existsSync(studentIndex)}`);
   app.use('/student', express.static(studentDist));
-  app.get('/student/{*splat}', (req, res) => {
-    res.sendFile(path.join(studentDist, 'index.html'));
-  });
+  app.get('/student/{*splat}', sendSpaIndex(studentIndex));
 
   const portalMounts = [
     ['/teacher', 'teacher-portal'],
@@ -206,9 +212,7 @@ async function start() {
     log(`  ${dirName}/dist/index.html exists: ${fs.existsSync(indexFile)}`);
     if (!hasBuild) continue;
     app.use(mountPath, express.static(distDir));
-    app.get(`${mountPath}/{*splat}`, (req, res) => {
-      res.sendFile(indexFile);
-    });
+    app.get(`${mountPath}/{*splat}`, sendSpaIndex(indexFile));
   }
 
   // Next.js catch-all
