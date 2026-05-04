@@ -186,7 +186,7 @@ async function start() {
   const adminIndex = path.join(adminDist, 'index.html');
   log(`  admin-portal/dist exists: ${fs.existsSync(adminDist)}`);
   log(`  admin-portal/dist/index.html exists: ${fs.existsSync(adminIndex)}`);
-  app.use('/admin', express.static(adminDist));
+  app.use('/admin', express.static(adminDist, { index: false }));
   app.get('/admin/{*splat}', sendSpaIndex(adminIndex));
 
   // Student Portal
@@ -194,7 +194,7 @@ async function start() {
   const studentIndex = path.join(studentDist, 'index.html');
   log(`  student-portal/dist exists: ${fs.existsSync(studentDist)}`);
   log(`  student-portal/dist/index.html exists: ${fs.existsSync(studentIndex)}`);
-  app.use('/student', express.static(studentDist));
+  app.use('/student', express.static(studentDist, { index: false }));
   app.get('/student/{*splat}', sendSpaIndex(studentIndex));
 
   const portalMounts = [
@@ -211,7 +211,7 @@ async function start() {
     log(`  ${dirName}/dist exists: ${fs.existsSync(distDir)}`);
     log(`  ${dirName}/dist/index.html exists: ${fs.existsSync(indexFile)}`);
     if (!hasBuild) continue;
-    app.use(mountPath, express.static(distDir));
+    app.use(mountPath, express.static(distDir, { index: false }));
     app.get(`${mountPath}/{*splat}`, sendSpaIndex(indexFile));
   }
 
