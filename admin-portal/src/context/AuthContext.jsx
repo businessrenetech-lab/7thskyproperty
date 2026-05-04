@@ -8,21 +8,29 @@ export const AuthProvider = ({ children }) => {
   const [branch, setBranch] = useState(null);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
-    const selectedBranch = localStorage.getItem('selectedBranch');
-    
-    if (savedUser && token) {
-      const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-      // If super_admin, respect selectedBranch (or 'all'/null). Otherwise use user.branch_id
-      if (parsedUser.role === 'super_admin') {
-        setBranch(selectedBranch === 'all' ? 'all' : (selectedBranch ? parseInt(selectedBranch) : null));
-      } else {
-        setBranch(parsedUser.branch_id);
+    try {
+      const savedUser = localStorage.getItem('user');
+      const token = localStorage.getItem('token');
+      const selectedBranch = localStorage.getItem('selectedBranch');
+
+      if (savedUser && token) {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        // If super_admin, respect selectedBranch (or 'all'/null). Otherwise use user.branch_id
+        if (parsedUser.role === 'super_admin') {
+          setBranch(selectedBranch === 'all' ? 'all' : (selectedBranch ? parseInt(selectedBranch) : null));
+        } else {
+          setBranch(parsedUser.branch_id);
+        }
       }
+    } catch (err) {
+      console.warn('Clearing invalid admin session data:', err);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('selectedBranch');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   const login = (userData, token) => {
