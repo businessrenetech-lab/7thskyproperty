@@ -977,8 +977,143 @@ table.stitch tbody tr:hover td { background: rgba(255,255,255,0.03); }
     grid-template-columns: 1fr !important;
     gap: 0.65rem !important;
   }
-  .pg-4, .pg-5, .pg-6, .pg-3, .g2, .g3, .g65 {
+  .pg-5, .pg-3, .g2, .g3, .g65 {
     grid-template-columns: 1fr !important;
+  }
+  /* CRM KPI strip — horizontal scroll on mobile */
+  .pg-6 {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 10px !important;
+    padding-bottom: 4px;
+  }
+  .pg-6::-webkit-scrollbar { display: none; }
+  .pg-6 > * {
+    flex: 0 0 140px;
+    scroll-snap-align: start;
+    min-height: 80px !important;
+  }
+  .pg-6 .pc-value {
+    font-size: 1.25rem !important;
+  }
+
+  /* Students KPI strip — horizontal scroll on mobile */
+  .students-metrics-strip {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 10px !important;
+    padding-bottom: 4px;
+  }
+  .students-metrics-strip::-webkit-scrollbar { display: none; }
+  .students-metrics-strip > * {
+    flex: 0 0 140px;
+    scroll-snap-align: start;
+  }
+  .students-metrics-strip h3 {
+    font-size: 1.25rem !important;
+  }
+
+  /* Students tab bar — scrollable on mobile */
+  .students-tabs {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .students-tabs::-webkit-scrollbar { display: none; }
+  .students-tabs button {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Reconciliation / generic KPI scroll strip — horizontal on mobile */
+  .kpi-scroll-strip {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 10px !important;
+    padding-bottom: 4px;
+  }
+  .kpi-scroll-strip::-webkit-scrollbar { display: none; }
+  .kpi-scroll-strip > * {
+    flex: 0 0 175px;
+    scroll-snap-align: start;
+  }
+
+  /* Expenses pg-4 — horizontal scroll instead of stack */
+  .pg-4 {
+    display: flex !important;
+    grid-template-columns: unset !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 10px !important;
+    padding-bottom: 4px;
+  }
+  .pg-4::-webkit-scrollbar { display: none; }
+  .pg-4 > * {
+    flex: 0 0 155px;
+    scroll-snap-align: start;
+  }
+  .pg-4 .pc-value {
+    font-size: 1.2rem !important;
+  }
+
+  /* Reconciliation tab bar — hidden scrollbar */
+  .recon-tabs::-webkit-scrollbar { display: none; }
+
+  /* Students page — mobile layout */
+  .students-header-desktop { display: none !important; }
+  .students-tabs::-webkit-scrollbar { display: none; }
+  .students-filter-dropdowns {
+    grid-template-columns: 1fr !important;
+  }
+  .students-tab-row {
+    flex-wrap: nowrap;
+  }
+
+  /* Reconciliation — hide Quick Actions card on mobile (moved to bottom nav) */
+  .recon-quick-actions { display: none !important; }
+  .bottom-nav .recon-action {
+    color: var(--accent, #f59e0b) !important;
+  }
+
+  /* Dashboard KPI strip — horizontal scroll on mobile */
+  .dashboard-kpi-strip {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 10px !important;
+    padding-bottom: 4px;
+  }
+  .dashboard-kpi-strip::-webkit-scrollbar { display: none; }
+  .dashboard-kpi-strip > * {
+    flex: 0 0 145px;
+    scroll-snap-align: start;
+  }
+  .dashboard-kpi-strip .pulse-card {
+    padding: 0.85rem !important;
+  }
+  .dashboard-kpi-strip .pulse-card h2 {
+    font-size: 1.3rem !important;
   }
 
   /* ╔══════════════════════════════════════════════════════╗

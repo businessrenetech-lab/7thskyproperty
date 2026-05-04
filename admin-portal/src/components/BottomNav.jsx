@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, UserCheck, GraduationCap, MoreHorizontal, Clock, CheckCircle2, Loader2 } from 'lucide-react';
+import { LayoutDashboard, UserCheck, GraduationCap, MoreHorizontal, Clock, CheckCircle2, Loader2, Landmark, Banknote, ArrowLeftRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import '../styles/GlobalStyles.css';
@@ -43,7 +43,9 @@ const BottomNav = ({ onMoreClick }) => {
     }
   };
 
-  const tabs = [
+  const isReconciliation = location.pathname === '/reconciliation';
+
+  const defaultTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
     { id: 'attendance', label: 'Attendance', icon: Clock, path: '/staff-attendance' },
     { id: 'checkin', label: 'Clock In', icon: UserCheck, path: null, isAction: true },
@@ -51,10 +53,24 @@ const BottomNav = ({ onMoreClick }) => {
     { id: 'more', label: 'More', icon: MoreHorizontal, path: null, isMore: true },
   ];
 
+  const reconTabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+    { id: 'recon-opening', label: 'Opening', icon: Landmark, modalAction: 'opening' },
+    { id: 'recon-collection', label: 'Collection', icon: Banknote, modalAction: 'collection' },
+    { id: 'recon-transfer', label: 'Transfer', icon: ArrowLeftRight, modalAction: 'transfer' },
+    { id: 'recon-closing', label: 'Closing', icon: ShieldCheck, modalAction: 'closing' },
+  ];
+
+  const tabs = isReconciliation ? reconTabs : defaultTabs;
+
   const isActive = (path) => {
     if (!path) return false;
     if (path === '/dashboard') return location.pathname === '/' || location.pathname === '/dashboard';
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
+  };
+
+  const openReconModal = (modalName) => {
+    window.dispatchEvent(new CustomEvent('recon-open-modal', { detail: modalName }));
   };
 
   return (
@@ -92,6 +108,22 @@ const BottomNav = ({ onMoreClick }) => {
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = isActive(tab.path);
+
+          // Reconciliation quick action buttons
+          if (tab.modalAction) {
+            return (
+              <button
+                key={tab.id}
+                className="bottom-nav-item recon-action"
+                onClick={() => openReconModal(tab.modalAction)}
+                aria-label={tab.label}
+                type="button"
+              >
+                <Icon size={20} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          }
 
           // Check-In action button (center, prominent)
           if (tab.isAction) {

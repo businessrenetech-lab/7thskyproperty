@@ -26,7 +26,7 @@ const ActivitiesTab = ({ activities, onRefresh }) => {
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
         {a.due_date && <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>{new Date(a.due_date).toLocaleDateString()}</span>}
-        {!a.is_done && <button onClick={() => complete(a.id)} style={{ padding: '3px 8px', fontSize: '0.62rem', background: '#10b98115', color: '#10b981', border: '1px solid #10b98130', borderRadius: '6px', cursor: 'pointer', fontWeight: '700' }}>✓ Done</button>}
+        {!a.is_done && <button onClick={() => complete(a.id)} style={{ padding: '3px 8px', fontSize: '0.62rem', background: '#10b98115', color: '#10b981', border: '1px solid #10b98130', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><CheckCircle size={10} /> Done</button>}
         {a.is_done && <CheckCircle size={14} color="#10b981" />}
       </div>
     </div>

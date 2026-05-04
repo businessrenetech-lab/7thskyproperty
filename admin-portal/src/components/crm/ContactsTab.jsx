@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Edit2, Trash2, X, Upload, Download, CheckSquare, Square } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, Upload, Download, CheckSquare, Square, UserPlus } from 'lucide-react';
 import api from '../../services/api';
 import { inputStyle, stageColors, stageLabels, stageIcons } from './CRMComponents';
 
@@ -128,7 +128,7 @@ const ContactsTab = ({ contacts, onRefresh }) => {
       }
       
       const res = await api.post('/crm/contacts/bulk-upload', { contacts: payload });
-      alert('✅ ' + res.data.message);
+      alert('Contacts imported: ' + res.data.message);
       setShowBulkUpload(false); setBulkFile(null); onRefresh();
     } catch (e) { alert(e.message || 'Failed to upload contacts'); }
     finally { setBulkUploading(false); }
@@ -144,17 +144,36 @@ const ContactsTab = ({ contacts, onRefresh }) => {
 
   return (
     <div>
+      <style>{`
+        .crm-contacts-table-wrap { overflow-x: auto; }
+        .crm-contacts-table-grid { min-width: 980px; }
+        .crm-contact-cards { display: none; }
+        @media (max-width: 820px) {
+          .crm-contacts-header { align-items: stretch !important; flex-direction: column; gap: 0.75rem; }
+          .crm-contacts-actions { width: 100%; display: grid !important; grid-template-columns: 1fr 1fr; }
+          .crm-contacts-actions button { justify-content: center; }
+          .crm-contacts-filters { flex-direction: column; align-items: stretch !important; }
+          .crm-contacts-filters > div,
+          .crm-contacts-filters > select,
+          .crm-contacts-filters > button { width: 100% !important; max-width: none !important; }
+          .crm-contacts-table-wrap { display: none; }
+          .crm-contact-cards { display: grid; gap: 0.75rem; }
+          .crm-contact-form { grid-template-columns: 1fr !important; }
+          .crm-bulk-bar { left: 1rem !important; right: 1rem !important; bottom: 5.25rem !important; transform: none !important; flex-wrap: wrap; justify-content: space-between; }
+        }
+      `}</style>
+
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+      <div className="crm-contacts-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <div>
-          <h3 style={{ fontSize: '1.05rem', fontWeight: '700' }}>Contact Directory</h3>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{filtered.length} of {contacts.length} contacts</p>
+          <h3 style={{ fontSize: '1rem', fontWeight: '800', marginBottom: '0.15rem' }}>Contact Directory</h3>
+          <p style={{ fontSize: '0.74rem', color: 'var(--text-dim)' }}>{filtered.length} of {contacts.length} contacts</p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button className="btn-secondary" onClick={() => setShowBulkUpload(s => !s)} style={{ fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', padding: '0.5rem 1rem', borderRadius: '8px', color: 'var(--text)' }}>
+        <div className="crm-contacts-actions" style={{ display: 'flex', gap: '8px' }}>
+          <button className="btn-secondary" onClick={() => setShowBulkUpload(s => !s)} style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', padding: '0.48rem 0.85rem', borderRadius: '8px', color: 'var(--text)' }}>
             <Upload size={16} /> Bulk Upload
           </button>
-          <button className="btn-primary" onClick={() => { resetForm(); setShowForm(s => !s); }} style={{ fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <button className="btn-primary" onClick={() => { resetForm(); setShowForm(s => !s); }} style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.5rem 0.9rem' }}>
             <Plus size={16} /> Add Contact
           </button>
         </div>
@@ -162,7 +181,7 @@ const ContactsTab = ({ contacts, onRefresh }) => {
 
       {/* Floating Action Bar for Bulk Selecting */}
       {selectedContacts.length > 0 && (
-        <div style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '0.8rem 1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', zIndex: 1000, boxShadow: '0 10px 40px rgba(0,0,0,0.3)' }}>
+        <div className="crm-bulk-bar" style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '0.8rem 1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', zIndex: 1000, boxShadow: '0 10px 40px rgba(0,0,0,0.3)' }}>
           <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary)' }}>{selectedContacts.length} Selected</span>
           <div style={{ height: '24px', width: '1px', background: 'var(--border)' }}></div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -180,8 +199,8 @@ const ContactsTab = ({ contacts, onRefresh }) => {
       )}
 
       {/* Search + Filters */}
-      <div style={{ display: 'flex', gap: '0.8rem', marginBottom: '1rem', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: 1, maxWidth: '320px' }}>
+      <div className="crm-contacts-filters" style={{ display: 'flex', gap: '0.65rem', marginBottom: '1rem', alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: '1 1 280px', maxWidth: '360px' }}>
           <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
           <input placeholder="Search by name, email, phone..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputStyle, paddingLeft: '2rem', width: '100%' }} />
         </div>
@@ -225,10 +244,10 @@ const ContactsTab = ({ contacts, onRefresh }) => {
       {showForm && (
         <div style={{ marginBottom: '1.2rem', padding: '1.5rem', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: '700' }}>{editingId ? '✏️ Edit Contact' : '➕ New Contact'}</h4>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>{editingId ? <><Edit2 size={14} color="var(--primary)" /> Edit Contact</> : <><UserPlus size={14} color="var(--primary)" /> New Contact</>}</h4>
             <X size={16} style={{ cursor: 'pointer', color: 'var(--text-dim)' }} onClick={resetForm} />
           </div>
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.7rem' }}>
+          <form className="crm-contact-form" onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.7rem' }}>
             <input required placeholder="Name *" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} />
             <input placeholder="Phone" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} style={inputStyle} />
             <input placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={inputStyle} />
@@ -246,8 +265,8 @@ const ContactsTab = ({ contacts, onRefresh }) => {
       )}
 
       {/* Contact Table */}
-      <div className="glass-morphism" style={{ padding: '0.5rem', borderRadius: '12px' }}>
-        <div style={{ ...gridStyle, fontSize: '0.6rem', color: 'var(--text-dim)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', fontWeight: '700', letterSpacing: '0.5px' }}>
+      <div className="glass-morphism crm-contacts-table-wrap" style={{ padding: '0.5rem', borderRadius: '12px' }}>
+        <div className="crm-contacts-table-grid" style={{ ...gridStyle, fontSize: '0.6rem', color: 'var(--text-dim)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', fontWeight: '700', letterSpacing: '0.5px' }}>
           <div onClick={toggleAll} style={{ cursor: 'pointer', marginLeft: '5px' }}>
              {selectedContacts.length === filtered.length && filtered.length > 0 ? <CheckSquare size={16} color="var(--primary)" /> : <Square size={16} />}
           </div>
@@ -258,7 +277,7 @@ const ContactsTab = ({ contacts, onRefresh }) => {
             {contacts.length === 0 ? 'No contacts yet. They are auto-created when leads are enrolled.' : 'No contacts match your filters.'}
           </p>
         ) : filtered.map(c => (
-          <div key={c.id} style={{ ...gridStyle, borderBottom: '1px solid var(--border)', fontSize: '0.82rem', transition: 'background 0.15s', background: selectedContacts.includes(c.id) ? 'var(--glass)' : 'transparent' }}
+          <div key={c.id} className="crm-contacts-table-grid" style={{ ...gridStyle, borderBottom: '1px solid var(--border)', fontSize: '0.82rem', transition: 'background 0.15s', background: selectedContacts.includes(c.id) ? 'var(--glass)' : 'transparent' }}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--glass)'}
             onMouseLeave={e => e.currentTarget.style.background = selectedContacts.includes(c.id) ? 'var(--glass)' : 'transparent'}>
             
@@ -311,6 +330,65 @@ const ContactsTab = ({ contacts, onRefresh }) => {
                 <button onClick={() => setConfirmDelete(c.id)} style={{ padding: '3px 6px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center' }} title="Delete">
                   <Trash2 size={12} />
                 </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="crm-contact-cards">
+        {filtered.length === 0 ? (
+          <div className="glass-morphism" style={{ padding: '2rem 1rem', borderRadius: '14px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.85rem' }}>
+            {contacts.length === 0 ? 'No contacts yet. They are auto-created when leads are enrolled.' : 'No contacts match your filters.'}
+          </div>
+        ) : filtered.map(c => (
+          <div key={c.id} className="glass-morphism" style={{ padding: '0.9rem', borderRadius: '14px', border: selectedContacts.includes(c.id) ? '1px solid var(--primary)' : '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', gap: '0.65rem', minWidth: 0 }}>
+                <button type="button" onClick={() => toggleSelection(c.id)} style={{ background: 'transparent', border: 'none', padding: '2px', cursor: 'pointer', color: selectedContacts.includes(c.id) ? 'var(--primary)' : 'var(--text-dim)' }}>
+                  {selectedContacts.includes(c.id) ? <CheckSquare size={17} /> : <Square size={17} />}
+                </button>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: '0.92rem', fontWeight: 800, marginBottom: '0.25rem' }}>{c.name}</p>
+                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.62rem', padding: '2px 7px', background: 'var(--glass)', borderRadius: '999px', fontWeight: 700 }}>{c.source || 'No source'}</span>
+                    {c.company && <span style={{ fontSize: '0.68rem', color: 'var(--text-dim)' }}>{c.company}</span>}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.35rem' }}>
+                <button onClick={() => startEdit(c)} style={{ padding: '5px 7px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center' }} title="Edit">
+                  <Edit2 size={13} />
+                </button>
+                {confirmDelete === c.id ? (
+                  <button onClick={() => handleDelete(c.id)} style={{ padding: '5px 7px', background: '#ef444420', border: '1px solid #ef444440', borderRadius: '8px', cursor: 'pointer', color: '#ef4444', fontSize: '0.65rem', fontWeight: 800 }}>
+                    Sure?
+                  </button>
+                ) : (
+                  <button onClick={() => setConfirmDelete(c.id)} style={{ padding: '5px 7px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center' }} title="Delete">
+                    <Trash2 size={13} />
+                  </button>
+                )}
+              </div>
+            </div>
+            <div style={{ display: 'grid', gap: '0.35rem', marginTop: '0.75rem', fontSize: '0.78rem', color: 'var(--text-dim)' }}>
+              <span><strong style={{ color: 'var(--text)' }}>Phone:</strong> {c.phone || '—'}</span>
+              <span><strong style={{ color: 'var(--text)' }}>Email:</strong> {c.email || '—'}</span>
+              <span><strong style={{ color: 'var(--text)' }}>Since:</strong> {new Date(c.createdAt || c.created_at).toLocaleDateString()}</span>
+              {c.notes && <span><strong style={{ color: 'var(--text)' }}>Notes:</strong> {c.notes.substring(0, 90)}{c.notes.length > 90 ? '...' : ''}</span>}
+            </div>
+            <div style={{ marginTop: '0.75rem' }}>
+              {c.CurrentLead ? (
+                <select
+                  value={c.CurrentLead.status}
+                  onChange={(e) => updateLeadPosition(c, e.target.value)}
+                  disabled={statusSavingId === c.id}
+                  style={{ ...inputStyle, padding: '0.5rem 0.65rem', fontSize: '0.75rem', color: stageColors[c.CurrentLead.status] || 'var(--text)', borderColor: `${stageColors[c.CurrentLead.status] || '#475569'}55`, background: 'var(--glass)', width: '100%' }}
+                >
+                  {leadStages.map((stage) => <option key={stage} value={stage}>{stageLabels[stage] || stage}</option>)}
+                </select>
+              ) : (
+                <span style={{ display: 'inline-flex', fontSize: '0.7rem', color: 'var(--text-dim)', padding: '4px 8px', border: '1px solid var(--border)', borderRadius: '999px' }}>No lead</span>
               )}
             </div>
           </div>

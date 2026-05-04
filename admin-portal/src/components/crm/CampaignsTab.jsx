@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Mail, MessageCircle, Smartphone, Send } from 'lucide-react';
 import api from '../../services/api';
 import { inputStyle } from './CRMComponents';
 
@@ -20,7 +20,7 @@ const CampaignsTab = ({ campaigns, onRefresh }) => {
     catch { alert('Failed'); }
   };
 
-  const channelIcon = { email: '✉️', whatsapp: '💬', sms: '📱' };
+  const channelIcon = { email: <Mail size={16} />, whatsapp: <MessageCircle size={16} />, sms: <Smartphone size={16} /> };
   const statusColor = { draft: '#6b7280', sent: '#10b981', scheduled: '#f59e0b' };
 
   return (
@@ -84,7 +84,7 @@ const CampaignsTab = ({ campaigns, onRefresh }) => {
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Target: {c.target_audience?.replace('_', ' ')} · {c.sent_count > 0 ? `Sent to ${c.sent_count}` : 'Not sent'}</p>
               </div>
               {c.status === 'draft' && (
-                <button onClick={() => handleSend(c.id)} style={{ padding: '0.5rem 1rem', background: 'var(--primary)', border: 'none', borderRadius: '8px', color: '#000', fontWeight: '700', cursor: 'pointer', fontSize: '0.82rem' }}>🚀 Send</button>
+                <button onClick={() => handleSend(c.id)} style={{ padding: '0.5rem 1rem', background: 'var(--primary)', border: 'none', borderRadius: '8px', color: '#000', fontWeight: '700', cursor: 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Send size={14} /> Send</button>
               )}
             </div>
           ))

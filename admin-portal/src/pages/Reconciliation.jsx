@@ -124,6 +124,13 @@ export default function Reconciliation() {
 
   useEffect(() => { load(); }, [range.from, range.to]);
 
+  // Listen for bottom nav quick action events
+  useEffect(() => {
+    const handler = (e) => setActiveModal(e.detail);
+    window.addEventListener('recon-open-modal', handler);
+    return () => window.removeEventListener('recon-open-modal', handler);
+  }, []);
+
   useEffect(() => {
     const needsSnapshot = ['opening', 'closing'].includes(activeModal);
     if (!needsSnapshot || !form.account_id || !form.date) {
@@ -206,7 +213,7 @@ export default function Reconciliation() {
       
 
       {!loading && data && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+        <div className="kpi-scroll-strip" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
           {kpis.map((k, i) => {
             const Icon = k.icon;
             return (
@@ -226,7 +233,7 @@ export default function Reconciliation() {
         </div>
       )}
 
-      <Card style={{ padding: '1.5rem', background: 'var(--surface)' }}>
+      <Card className="recon-quick-actions" style={{ padding: '1.5rem', background: 'var(--surface)' }}>
         <h3 style={{ fontSize: '1rem', color: 'var(--text-main)', margin: '0 0 1rem 0', fontWeight: 600 }}>Quick Actions</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
           
@@ -253,33 +260,33 @@ export default function Reconciliation() {
         </div>
       </Card>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginTop: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--surface)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            {['daily', 'weekly', 'monthly', 'custom'].map((p) => (
-              <button key={p} onClick={() => setPreset(p)} style={{ 
-                padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', 
-                background: preset === p ? 'var(--accent)' : 'transparent', 
-                color: preset === p ? '#ffffff' : 'var(--text-dim)', 
-                fontSize: '0.8rem', fontWeight: 600, textTransform: 'capitalize', cursor: 'pointer', transition: 'all 0.2s' 
-              }}>
-                {p}
-              </button>
-            ))}
-          </div>
-          {preset === 'custom' && (
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} style={{ padding: '0.5rem', borderRadius: '8px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-main)', fontSize: '0.8rem' }} />
-              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} style={{ padding: '0.5rem', borderRadius: '8px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-main)', fontSize: '0.8rem' }} />
-            </div>
-          )}
+      <div className="recon-toolbar" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0', background: 'var(--surface)', padding: '3px', borderRadius: '10px', border: '1px solid var(--border)', flex: 1 }}>
+          {['daily', 'weekly', 'monthly', 'custom'].map((p) => (
+            <button key={p} onClick={() => setPreset(p)} style={{ 
+              padding: '0.4rem 0.7rem', borderRadius: '7px', border: 'none', 
+              background: preset === p ? 'var(--accent)' : 'transparent', 
+              color: preset === p ? '#ffffff' : 'var(--text-dim)', 
+              fontSize: '0.72rem', fontWeight: 600, textTransform: 'capitalize', cursor: 'pointer', transition: 'all 0.2s',
+              flex: 1, textAlign: 'center'
+            }}>
+              {p === 'daily' ? 'Day' : p === 'weekly' ? 'Week' : p === 'monthly' ? 'Month' : 'Custom'}
+            </button>
+          ))}
         </div>
-        <button onClick={exportPdf} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.2rem', borderRadius: '8px', background: 'var(--primary)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}>
-          <Download size={16} /> Export PDF Report
+        <button onClick={exportPdf} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.8rem', borderRadius: '8px', background: 'var(--primary)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontSize: '0.75rem', flexShrink: 0 }}>
+          <Download size={14} /> <span className="recon-export-label">Export</span>
         </button>
       </div>
+      {preset === 'custom' && (
+        <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem' }}>
+          <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} style={{ flex: 1, padding: '0.4rem', borderRadius: '8px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-main)', fontSize: '0.75rem' }} />
+          <span style={{ color: 'var(--text-dim)', alignSelf: 'center', fontSize: '0.7rem' }}>→</span>
+          <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} style={{ flex: 1, padding: '0.4rem', borderRadius: '8px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-main)', fontSize: '0.75rem' }} />
+        </div>
+      )}
 
-      <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)' }}>
+      <div className="recon-tabs" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {tabs.map((t) => {
           const Icon = t.icon;
           const isActive = activeTab === t.id;

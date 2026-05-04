@@ -374,7 +374,7 @@ export default function AdminReportsHub() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', padding: '0.25rem' }}>
+      <div className="kpi-scroll-strip" style={{ display: 'flex', gap: '0.5rem', padding: '0.25rem' }}>
         {tabs.map(([key, label, icon]) => (
           <button
             key={key}

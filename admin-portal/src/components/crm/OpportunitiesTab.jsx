@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BarChart2, Trophy, Flame, ClipboardList, BookOpen, Calendar, Globe, CheckCircle, XCircle } from 'lucide-react';
 import api from '../../services/api';
 import { stageColors } from './CRMComponents';
 
@@ -10,7 +11,7 @@ const OpportunitiesTab = ({ opportunities, onRefresh }) => {
     setSaving(id);
     try {
       const r = await api.post(`/crm/opportunities/${id}/win`);
-      alert(`✅ Deal Won! Invoice ${r.data.invoice?.invoice_no} created.`);
+      alert(`Deal Won! Invoice ${r.data.invoice?.invoice_no} created.`);
       onRefresh();
     } catch (err) { alert(err.response?.data?.error || 'Failed'); }
     finally { setSaving(null); }
@@ -29,17 +30,17 @@ const OpportunitiesTab = ({ opportunities, onRefresh }) => {
 
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.8rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.8rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'PIPELINE VALUE', value: `৳${totalPipeline.toLocaleString()}`, color: '#3b82f6', icon: '📊' },
-          { label: 'WON REVENUE', value: `৳${wonTotal.toLocaleString()}`, color: '#10b981', icon: '🏆' },
-          { label: 'OPEN DEALS', value: openCount, color: '#f59e0b', icon: '🔥' },
-          { label: 'TOTAL DEALS', value: opportunities.length, color: '#8b5cf6', icon: '📋' },
+          { label: 'PIPELINE VALUE', value: `৳${totalPipeline.toLocaleString()}`, color: '#3b82f6', icon: <BarChart2 size={28} /> },
+          { label: 'WON REVENUE', value: `৳${wonTotal.toLocaleString()}`, color: '#10b981', icon: <Trophy size={28} /> },
+          { label: 'OPEN DEALS', value: openCount, color: '#f59e0b', icon: <Flame size={28} /> },
+          { label: 'TOTAL DEALS', value: opportunities.length, color: '#8b5cf6', icon: <ClipboardList size={28} /> },
         ].map(k => (
           <div key={k.label} style={{ padding: '1.2rem', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', borderTop: `3px solid ${k.color}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <p style={{ fontSize: '0.6rem', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: '700' }}>{k.label}</p>
-              <span>{k.icon}</span>
+              <span style={{ opacity: 0.15, color: k.color }}>{k.icon}</span>
             </div>
             <h3 style={{ fontSize: '1.6rem', fontWeight: '800', color: k.color, marginTop: '0.3rem' }}>{k.value}</h3>
           </div>
@@ -61,21 +62,21 @@ const OpportunitiesTab = ({ opportunities, onRefresh }) => {
                   <div style={{ flex: 1 }}>
                     <p style={{ fontWeight: '700', fontSize: '0.88rem' }}>{opp.title}</p>
                     <div style={{ display: 'flex', gap: '1rem', marginTop: '0.3rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>
-                      <span>📚 {opp.course_interest || '—'}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><BookOpen size={12} /> {opp.course_interest || '—'}</span>
                       <span>{opp.probability}% prob</span>
-                      {opp.expected_close && <span>📅 {new Date(opp.expected_close).toLocaleDateString()}</span>}
+                      {opp.expected_close && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Calendar size={12} /> {new Date(opp.expected_close).toLocaleDateString()}</span>}
                     </div>
-                    {opp.description?.includes('SSLCommerz') && <span style={{ fontSize: '0.6rem', background: '#10b98115', color: '#10b981', padding: '2px 6px', borderRadius: '6px', marginTop: '0.3rem', display: 'inline-block' }}>🌐 Website Purchase</span>}
+                    {opp.description?.includes('SSLCommerz') && <span style={{ fontSize: '0.6rem', background: '#10b98115', color: '#10b981', padding: '2px 6px', borderRadius: '6px', marginTop: '0.3rem', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Globe size={10} /> Website Purchase</span>}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <span style={{ fontWeight: '800', fontSize: '1rem', color: '#10b981' }}>৳{parseFloat(opp.value||0).toLocaleString()}</span>
                     {!['won','lost'].includes(opp.stage) && (
                       <div style={{ display: 'flex', gap: '0.3rem' }}>
-                        <button onClick={() => markWon(opp.id)} disabled={saving === opp.id} style={{ padding: '4px 10px', fontSize: '0.68rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '700' }}>✓ Won</button>
-                        <button onClick={() => markLost(opp.id)} style={{ padding: '4px 10px', fontSize: '0.68rem', background: '#ef444415', color: '#ef4444', border: '1px solid #ef444430', borderRadius: '6px', cursor: 'pointer' }}>✗ Lost</button>
+                        <button onClick={() => markWon(opp.id)} disabled={saving === opp.id} style={{ padding: '4px 10px', fontSize: '0.68rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><CheckCircle size={12} /> Won</button>
+                        <button onClick={() => markLost(opp.id)} style={{ padding: '4px 10px', fontSize: '0.68rem', background: '#ef444415', color: '#ef4444', border: '1px solid #ef444430', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px' }}><XCircle size={12} /> Lost</button>
                       </div>
                     )}
-                    {opp.stage === 'won' && <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: '700' }}>🏆</span>}
+                    {opp.stage === 'won' && <Trophy size={16} color="#10b981" />}
                   </div>
                 </div>
               ))}

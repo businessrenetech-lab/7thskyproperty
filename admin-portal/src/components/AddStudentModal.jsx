@@ -110,7 +110,7 @@ const AddStudentModal = ({ isOpen, onClose, onSubmit, courses, batches, isAdding
     <Modal isOpen={isOpen} onClose={onClose} title={step === 1 ? "Add New Student (Step 1 of 2)" : "Student Additional Info (Step 2 of 2)"}>
       {step === 1 ? (
         <form onSubmit={handleContinue} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="mobile-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.85rem' }}>Course *</label>
               <select required className="glass-input" name="course_id" value={formData.course_id} onChange={handleInputChange} style={{ width: '100%', padding: '0.6rem', appearance: 'auto' }}>
@@ -127,7 +127,7 @@ const AddStudentModal = ({ isOpen, onClose, onSubmit, courses, batches, isAdding
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="mobile-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.85rem' }}>First Name *</label>
               <input required className="glass-input" name="first_name" value={formData.first_name} onChange={handleInputChange} style={{ width: '100%', padding: '0.6rem' }} />
@@ -138,7 +138,7 @@ const AddStudentModal = ({ isOpen, onClose, onSubmit, courses, batches, isAdding
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="mobile-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.85rem' }}>Mobile Number *</label>
               <input required className="glass-input" name="mobile_no" value={formData.mobile_no} onChange={handleInputChange} style={{ width: '100%', padding: '0.6rem' }} />
@@ -154,7 +154,7 @@ const AddStudentModal = ({ isOpen, onClose, onSubmit, courses, batches, isAdding
             <input type="date" className="glass-input" name="date_of_birth" value={formData.date_of_birth} onChange={handleInputChange} style={{ width: '100%', padding: '0.6rem' }} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="mobile-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.85rem' }}>Father's Name</label>
               <input className="glass-input" name="father_name" value={formData.father_name} onChange={handleInputChange} style={{ width: '100%', padding: '0.6rem' }} />
@@ -165,7 +165,7 @@ const AddStudentModal = ({ isOpen, onClose, onSubmit, courses, batches, isAdding
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="mobile-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.85rem' }}>After course, where would they like to go?</label>
               <select className="glass-input" name="post_course_goal_type" value={formData.post_course_goal_type} onChange={handleInputChange} style={{ width: '100%', padding: '0.6rem', appearance: 'auto' }}>
@@ -192,7 +192,7 @@ const AddStudentModal = ({ isOpen, onClose, onSubmit, courses, batches, isAdding
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'rgba(59, 130, 246, 0.05)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+          <div className="mobile-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'rgba(59, 130, 246, 0.05)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.85rem' }}>Referred By</label>
               <input className="glass-input" name="referred_by" value={formData.referred_by} onChange={handleInputChange} placeholder="Name of referrer" style={{ width: '100%', padding: '0.6rem' }} />
@@ -203,9 +203,9 @@ const AddStudentModal = ({ isOpen, onClose, onSubmit, courses, batches, isAdding
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+          <div className="mobile-modal-actions" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
             <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            <div className="mobile-modal-actions-group" style={{ display: 'flex', gap: '1rem' }}>
               <button type="button" className="btn-secondary" onClick={handleSkipAndSave} disabled={isAdding} style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}>
                 {isAdding ? <Loader2 size={16} className="animate-spin" /> : 'Skip & Save Student'}
               </button>
@@ -239,7 +239,7 @@ const AddStudentModal = ({ isOpen, onClose, onSubmit, courses, batches, isAdding
             </div>
             
             {formData.educational_details.map((ed, index) => (
-              <div key={index} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr auto', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+              <div key={index} className="mobile-education-row" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr auto', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
                 <input placeholder="Exam (e.g. SSC)" className="glass-input" value={ed.exam_name} onChange={(e) => handleEducationChange(index, 'exam_name', e.target.value)} style={{ width: '100%', padding: '0.5rem', fontSize: '0.8rem' }} />
                 <input placeholder="Institution Name" className="glass-input" value={ed.institution_name} onChange={(e) => handleEducationChange(index, 'institution_name', e.target.value)} style={{ width: '100%', padding: '0.5rem', fontSize: '0.8rem' }} />
                 <input placeholder="Year" className="glass-input" value={ed.passing_year} onChange={(e) => handleEducationChange(index, 'passing_year', e.target.value)} style={{ width: '100%', padding: '0.5rem', fontSize: '0.8rem' }} />
@@ -254,7 +254,7 @@ const AddStudentModal = ({ isOpen, onClose, onSubmit, courses, batches, isAdding
             <textarea placeholder="Job title, company, duration, etc." className="glass-input" name="employment_details" value={formData.employment_details} onChange={handleInputChange} style={{ width: '100%', padding: '0.6rem', minHeight: '60px' }} />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+          <div className="mobile-modal-actions" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
             <button type="button" className="btn-secondary" onClick={() => setStep(1)}>Back</button>
             <button type="submit" className="btn-primary" disabled={isAdding}>
               {isAdding ? <Loader2 size={16} className="animate-spin" /> : 'Save Student Details'}

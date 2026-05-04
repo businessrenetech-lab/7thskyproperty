@@ -1,30 +1,72 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Plus, Phone, Mail, X, ChevronRight, Trash2, Book, DollarSign, Link, Calendar, FileSignature, Hourglass, Trophy, XCircle, Circle, ClipboardEdit } from 'lucide-react';
+import { Search, Plus, Phone, Mail, X, ChevronRight, Trash2, Book, DollarSign, Link, Calendar, FileSignature, Hourglass, Trophy, XCircle, Circle, ClipboardEdit, Copy, MessageCircle, ExternalLink } from 'lucide-react';
 import api from '../../services/api';
 import { ScoreBadge, PriorityBadge, stageColors, stageLabels, stageIcons, actIcons, inputStyle } from './CRMComponents';
+import { useAuth } from '../../context/AuthContext';
+
+const parseLeadTags = (lead) => {
+  if (!lead?.tags) return {};
+  if (typeof lead.tags === 'object') return lead.tags;
+  try {
+    return JSON.parse(lead.tags);
+  } catch {
+    return {};
+  }
+};
+
+const getBookingDetails = (lead) => parseLeadTags(lead).student_details || {};
+
+const pteReasonOptions = [
+  { value: 'study_abroad', label: 'Study abroad' },
+  { value: 'work', label: 'Work' },
+  { value: 'migration_visa', label: 'Migration and visa applications' },
+  { value: 'professional_registration', label: 'Professional registration' },
+  { value: 'build_confidence', label: 'Build confidence in English' },
+  { value: 'others', label: 'Others' },
+];
+
+const countryReasonValues = ['study_abroad', 'work', 'migration_visa'];
+
+const deriveLegacyGoalType = (reason, country) => {
+  if (!reason) return '';
+  return countryReasonValues.includes(reason) && country ? 'specific_country' : 'another_purpose';
+};
 
 const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
   const createEnrollmentForm = (sourceLead, batchId = '') => ({
-    course_id: sourceLead?.course_id || '',
-    batch_id: batchId || '',
-    first_name: sourceLead?.name?.split(' ')[0] || '',
-    last_name: sourceLead?.name?.split(' ').slice(1).join(' ') || '',
-    mobile_no: sourceLead?.phone || '',
-    email: sourceLead?.email || '',
-    date_of_birth: sourceLead?.date_of_birth || '',
-    password: '',
-    father_name: '',
-    mother_name: '',
-    current_address: '',
-    permanent_address: '',
-    nid_birth_cert: '',
-    educational_details: [
-      { exam_name: 'SSC', institution_name: '', passing_year: '', result: '' },
-      { exam_name: 'HSC', institution_name: '', passing_year: '', result: '' }
-    ],
-    employment_details: '',
-    referred_by: sourceLead?.referred_by || '',
-    referral_amount: sourceLead?.referral_amount || ''
+    ...(() => {
+      const booking = getBookingDetails(sourceLead);
+      return {
+        course_id: sourceLead?.course_id || '',
+        batch_id: batchId || '',
+        first_name: booking.first_name || sourceLead?.name?.split(' ')[0] || '',
+        middle_name: booking.middle_name || '',
+        last_name: booking.last_name || sourceLead?.name?.split(' ').slice(1).join(' ') || '',
+        mobile_no: booking.mobile_no || sourceLead?.phone || '',
+        email: booking.email || sourceLead?.email || '',
+        date_of_birth: booking.date_of_birth || sourceLead?.date_of_birth || '',
+        password: '',
+        father_name: booking.father_name || '',
+        mother_name: booking.mother_name || '',
+        current_address: booking.current_address || '',
+        permanent_address: booking.permanent_address || '',
+        nid_birth_cert: booking.nid_birth_cert || '',
+        profession: booking.profession || '',
+        course_reason: booking.course_reason || '',
+        preferred_country: booking.preferred_country || booking.target_country || sourceLead?.destination_country || '',
+        other_reason: booking.other_reason || '',
+        post_course_goal_type: booking.post_course_goal_type || '',
+        target_country: booking.target_country || '',
+        english_level: booking.english_level || '',
+        educational_details: booking.educational_details?.length ? booking.educational_details : [
+          { exam_name: 'SSC', institution_name: '', passing_year: '', result: '' },
+          { exam_name: 'HSC', institution_name: '', passing_year: '', result: '' }
+        ],
+        employment_details: booking.employment_details || '',
+        referred_by: booking.referred_by || sourceLead?.referred_by || '',
+        referral_amount: booking.referral_amount || sourceLead?.referral_amount || ''
+      };
+    })()
   });
 
   const [activities, setActivities] = useState([]);
@@ -71,10 +113,18 @@ const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
   }, [lead?.course_id, selectedBatch]);
 
   if (!lead) return null;
+  const leadTags = parseLeadTags(lead);
+  const bookingChannel = leadTags.booking_type === 'student_booking' ? leadTags.booking_channel || 'manual' : null;
 
   const handleEnrollInputChange = (e) => {
     const { name, value } = e.target;
-    setEnrollForm(prev => ({ ...prev, [name]: value }));
+    setEnrollForm(prev => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'course_reason' && !countryReasonValues.includes(value) ? { preferred_country: '', target_country: '' } : {}),
+      ...(name === 'course_reason' && value !== 'others' ? { other_reason: '' } : {}),
+      ...(name === 'post_course_goal_type' && value !== 'specific_country' ? { target_country: '' } : {})
+    }));
   };
 
   const handleEducationChange = (index, field, value) => {
@@ -109,10 +159,12 @@ const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
         ...enrollForm,
         course_id: lead.course_id,
         batch_id: selectedBatch || enrollForm.batch_id || undefined,
+        post_course_goal_type: deriveLegacyGoalType(enrollForm.course_reason, enrollForm.preferred_country) || enrollForm.post_course_goal_type,
+        target_country: countryReasonValues.includes(enrollForm.course_reason) ? enrollForm.preferred_country : '',
         name: `${enrollForm.first_name} ${enrollForm.last_name}`.trim() || lead.name
       };
       const r = await api.post(`/crm/leads/${lead.id}/enroll`, payload);
-      alert(`✅ ${r.data.message}`);
+      alert(`Success: ${r.data.message}`);
       onRefresh(); onClose();
     } catch (err) { alert(err.response?.data?.error || 'Failed to enroll'); }
     finally { setEnrolling(false); }
@@ -133,10 +185,18 @@ const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
   const statusFlow = ['new', 'contacted', 'interested', 'trial', 'enrolled', 'fees_pending', 'payment_rejected', 'successful'];
   const daysAge = Math.floor((Date.now() - new Date(lead.createdAt || lead.created_at)) / 86400000);
 
+  const copyLeadDetails = async () => {
+    const text = `${lead.name}\nPhone: ${lead.phone || 'N/A'}\nEmail: ${lead.email || 'N/A'}\nCourse: ${lead.Course?.title || lead.batch_interest || 'N/A'}\nValue: ৳${parseFloat(lead.deal_value || 0).toLocaleString()}`;
+    try { await navigator.clipboard.writeText(text); } catch { window.prompt('Copy:', text); }
+  };
+
   return (
-    <div style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: '440px', background: 'var(--bg-card)', borderLeft: '1px solid var(--border)', zIndex: 500, overflowY: 'auto', boxShadow: '-10px 0 40px rgba(0,0,0,0.4)' }}>
+    <>
+    {/* Backdrop */}
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 499, backdropFilter: 'blur(2px)' }} />
+    <div style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(440px, 100vw)', background: 'var(--bg-card)', borderLeft: '1px solid var(--border)', zIndex: 500, overflowY: 'auto', boxShadow: '-10px 0 40px rgba(0,0,0,0.4)' }}>
       {/* Header */}
-      <div style={{ padding: '1.5rem', background: `linear-gradient(135deg, ${stageColors[lead.status]}15, transparent)`, borderBottom: '1px solid var(--border)' }}>
+      <div style={{ padding: '1.2rem 1.5rem', background: `linear-gradient(135deg, ${stageColors[lead.status]}15, transparent)`, borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(12px)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
           <div>
             <h3 style={{ fontSize: '1.15rem', fontWeight: '800' }}>{lead.name}</h3>
@@ -144,9 +204,17 @@ const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
               <ScoreBadge score={lead.score || 0} />
               <PriorityBadge priority={lead.priority} />
               <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '10px', background: `${stageColors[lead.status]}20`, color: stageColors[lead.status], fontWeight: '700' }}>{stageIcons[lead.status]} {stageLabels[lead.status]}</span>
+              {bookingChannel && <span style={{ fontSize: '0.58rem', padding: '2px 8px', borderRadius: '10px', background: '#06b6d420', color: '#06b6d4', fontWeight: '800', border: '1px solid #06b6d440', textTransform: 'uppercase' }}>{bookingChannel} booking</span>}
             </div>
           </div>
-          <X size={18} style={{ cursor: 'pointer', color: 'var(--text-dim)' }} onClick={onClose} />
+          <button onClick={onClose} style={{ background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex' }}><X size={16} /></button>
+        </div>
+        {/* Quick Actions */}
+        <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.8rem' }}>
+          {lead.phone && <a href={`tel:${lead.phone}`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '0.45rem', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.68rem', fontWeight: '700', color: 'var(--text)', textDecoration: 'none', cursor: 'pointer' }}><Phone size={12} /> Call</a>}
+          {lead.email && <a href={`mailto:${lead.email}`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '0.45rem', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.68rem', fontWeight: '700', color: 'var(--text)', textDecoration: 'none', cursor: 'pointer' }}><Mail size={12} /> Email</a>}
+          {lead.phone && <a href={`https://wa.me/${(lead.phone || '').replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '0.45rem', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.68rem', fontWeight: '700', color: 'var(--text)', textDecoration: 'none', cursor: 'pointer' }}><MessageCircle size={12} /> WhatsApp</a>}
+          <button onClick={copyLeadDetails} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '0.45rem', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.68rem', fontWeight: '700', color: 'var(--text)', cursor: 'pointer' }}><Copy size={12} /> Copy</button>
         </div>
       </div>
 
@@ -200,93 +268,73 @@ const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
               </button>
             )}
             {showEnrollForm && !['fees_pending', 'payment_rejected', 'successful', 'lost'].includes(lead.status) && (
-              <form onSubmit={handleEnroll} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', padding: '1rem', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '10px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>First Name *</label>
-                    <input required name="first_name" value={enrollForm.first_name} onChange={handleEnrollInputChange} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Last Name *</label>
-                    <input required name="last_name" value={enrollForm.last_name} onChange={handleEnrollInputChange} style={inputStyle} />
-                  </div>
+              <form onSubmit={handleEnroll} style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '1rem', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '10px' }}>
+                {/* Essential Info — always visible */}
+                <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>Essential Info</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>First Name *</label><input required name="first_name" value={enrollForm.first_name} onChange={handleEnrollInputChange} style={inputStyle} /></div>
+                  <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>Last Name *</label><input required name="last_name" value={enrollForm.last_name} onChange={handleEnrollInputChange} style={inputStyle} /></div>
+                  <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>Mobile *</label><input required name="mobile_no" value={enrollForm.mobile_no} onChange={handleEnrollInputChange} style={inputStyle} /></div>
+                  <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>Email</label><input type="email" name="email" value={enrollForm.email} onChange={handleEnrollInputChange} style={inputStyle} placeholder="Optional" /></div>
+                  <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>Password</label><input type="password" name="password" value={enrollForm.password} onChange={handleEnrollInputChange} style={inputStyle} placeholder="Default if blank" /></div>
+                  <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>English Level</label><select name="english_level" value={enrollForm.english_level || ''} onChange={handleEnrollInputChange} style={inputStyle}><option value="">Select</option><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="expert">Expert</option></select></div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Mobile *</label>
-                    <input required name="mobile_no" value={enrollForm.mobile_no} onChange={handleEnrollInputChange} style={inputStyle} />
+                {/* Course Goal — collapsible */}
+                <details style={{ borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+                  <summary style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text)', cursor: 'pointer', padding: '0.3rem 0' }}>Course Goal & Reason</summary>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>Reason for PTE</label><select name="course_reason" value={enrollForm.course_reason || ''} onChange={handleEnrollInputChange} style={inputStyle}><option value="">Select Reason</option>{pteReasonOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
+                    <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>{enrollForm.course_reason === 'study_abroad' ? 'Desired Country' : 'Preferred Country'}</label><input name="preferred_country" value={enrollForm.preferred_country || ''} onChange={handleEnrollInputChange} style={inputStyle} disabled={!countryReasonValues.includes(enrollForm.course_reason)} placeholder={countryReasonValues.includes(enrollForm.course_reason) ? 'e.g. Australia' : 'N/A'} /></div>
                   </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Email</label>
-                    <input type="email" name="email" value={enrollForm.email} onChange={handleEnrollInputChange} style={inputStyle} placeholder="Optional" />
+                  {enrollForm.course_reason === 'others' && <div style={{ marginTop: '0.5rem' }}><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>Other Reason</label><input name="other_reason" value={enrollForm.other_reason || ''} onChange={handleEnrollInputChange} style={inputStyle} /></div>}
+                </details>
+                {/* Personal Details — collapsible */}
+                <details style={{ borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+                  <summary style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text)', cursor: 'pointer', padding: '0.3rem 0' }}>Personal Details</summary>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>Birthday</label><input type="date" name="date_of_birth" value={enrollForm.date_of_birth || ''} onChange={handleEnrollInputChange} style={inputStyle} /></div>
+                    <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>NID / Birth Cert</label><input name="nid_birth_cert" value={enrollForm.nid_birth_cert} onChange={handleEnrollInputChange} style={inputStyle} /></div>
+                    <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>Profession</label><input name="profession" value={enrollForm.profession || ''} onChange={handleEnrollInputChange} style={inputStyle} /></div>
+                    <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>Father's Name</label><input name="father_name" value={enrollForm.father_name} onChange={handleEnrollInputChange} style={inputStyle} /></div>
+                    <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>Mother's Name</label><input name="mother_name" value={enrollForm.mother_name} onChange={handleEnrollInputChange} style={inputStyle} /></div>
                   </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Password</label>
-                    <input type="password" name="password" value={enrollForm.password} onChange={handleEnrollInputChange} style={inputStyle} placeholder="Default set if blank" />
+                </details>
+                {/* Addresses — collapsible */}
+                <details style={{ borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+                  <summary style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text)', cursor: 'pointer', padding: '0.3rem 0' }}>Addresses</summary>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>Current Address</label><textarea name="current_address" value={enrollForm.current_address} onChange={handleEnrollInputChange} style={{ ...inputStyle, minHeight: '48px', resize: 'vertical' }} /></div>
+                    <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>Permanent Address</label><textarea name="permanent_address" value={enrollForm.permanent_address} onChange={handleEnrollInputChange} style={{ ...inputStyle, minHeight: '48px', resize: 'vertical' }} /></div>
                   </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>NID / Birth Cert</label>
-                    <input name="nid_birth_cert" value={enrollForm.nid_birth_cert} onChange={handleEnrollInputChange} style={inputStyle} />
-                  </div>
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Birthday</label>
-                  <input type="date" name="date_of_birth" value={enrollForm.date_of_birth || ''} onChange={handleEnrollInputChange} style={inputStyle} />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Father's Name</label>
-                    <input name="father_name" value={enrollForm.father_name} onChange={handleEnrollInputChange} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Mother's Name</label>
-                    <input name="mother_name" value={enrollForm.mother_name} onChange={handleEnrollInputChange} style={inputStyle} />
-                  </div>
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Current Address</label>
-                  <textarea name="current_address" value={enrollForm.current_address} onChange={handleEnrollInputChange} style={{ ...inputStyle, minHeight: '56px', resize: 'vertical' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Permanent Address</label>
-                  <textarea name="permanent_address" value={enrollForm.permanent_address} onChange={handleEnrollInputChange} style={{ ...inputStyle, minHeight: '56px', resize: 'vertical' }} />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                    <label style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Education Details</label>
-                    <button type="button" onClick={addEducationRow} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.75rem' }}>+ Add Row</button>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                </details>
+                {/* Education — collapsible */}
+                <details style={{ borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+                  <summary style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text)', cursor: 'pointer', padding: '0.3rem 0' }}>Education Details</summary>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
                     {enrollForm.educational_details.map((row, index) => (
-                      <div key={`${row.exam_name || 'ed'}-${index}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 0.8fr 0.8fr auto', gap: '0.4rem', alignItems: 'center' }}>
+                      <div key={`${row.exam_name || 'ed'}-${index}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 0.8fr 0.8fr auto', gap: '0.3rem', alignItems: 'center' }}>
                         <input value={row.exam_name} onChange={(e) => handleEducationChange(index, 'exam_name', e.target.value)} placeholder="Exam" style={inputStyle} />
                         <input value={row.institution_name} onChange={(e) => handleEducationChange(index, 'institution_name', e.target.value)} placeholder="Institution" style={inputStyle} />
                         <input value={row.passing_year} onChange={(e) => handleEducationChange(index, 'passing_year', e.target.value)} placeholder="Year" style={inputStyle} />
                         <input value={row.result} onChange={(e) => handleEducationChange(index, 'result', e.target.value)} placeholder="Result" style={inputStyle} />
-                        <button type="button" onClick={() => removeEducationRow(index)} disabled={enrollForm.educational_details.length === 1} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: enrollForm.educational_details.length === 1 ? 'not-allowed' : 'pointer', opacity: enrollForm.educational_details.length === 1 ? 0.4 : 1 }}>
-                          <Trash2 size={14} />
-                        </button>
+                        <button type="button" onClick={() => removeEducationRow(index)} disabled={enrollForm.educational_details.length === 1} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: enrollForm.educational_details.length === 1 ? 'not-allowed' : 'pointer', opacity: enrollForm.educational_details.length === 1 ? 0.4 : 1 }}><Trash2 size={14} /></button>
                       </div>
                     ))}
+                    <button type="button" onClick={addEducationRow} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.72rem', textAlign: 'left' }}>+ Add Row</button>
                   </div>
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Employment Details</label>
-                  <textarea name="employment_details" value={enrollForm.employment_details} onChange={handleEnrollInputChange} style={{ ...inputStyle, minHeight: '56px', resize: 'vertical' }} placeholder="Job title, company, duration" />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.7rem', background: 'rgba(59, 130, 246, 0.05)', padding: '0.5rem', borderRadius: '8px' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Referred By</label>
-                    <input name="referred_by" value={enrollForm.referred_by} onChange={handleEnrollInputChange} style={inputStyle} placeholder="Referrer Name" />
+                </details>
+                {/* Employment & Referral — collapsible */}
+                <details style={{ borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+                  <summary style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text)', cursor: 'pointer', padding: '0.3rem 0' }}>Employment & Referral</summary>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>Employment Details</label><textarea name="employment_details" value={enrollForm.employment_details} onChange={handleEnrollInputChange} style={{ ...inputStyle, minHeight: '48px', resize: 'vertical' }} placeholder="Job title, company, duration" /></div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', background: 'rgba(59, 130, 246, 0.05)', padding: '0.5rem', borderRadius: '8px' }}>
+                      <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>Referred By</label><input name="referred_by" value={enrollForm.referred_by} onChange={handleEnrollInputChange} style={inputStyle} placeholder="Referrer Name" /></div>
+                      <div><label style={{ display: 'block', marginBottom: '0.2rem', fontSize: '0.72rem', color: 'var(--text-dim)' }}>Referral Amount</label><input type="number" step="0.01" name="referral_amount" value={enrollForm.referral_amount} onChange={handleEnrollInputChange} style={inputStyle} placeholder="Amount" /></div>
+                    </div>
                   </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>Referral Amount</label>
-                    <input type="number" step="0.01" name="referral_amount" value={enrollForm.referral_amount} onChange={handleEnrollInputChange} style={inputStyle} placeholder="Amount" />
-                  </div>
-                </div>
-                <button type="submit" disabled={enrolling} style={{ padding: '0.7rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: enrolling ? 'wait' : 'pointer' }}>
+                </details>
+                <button type="submit" disabled={enrolling} style={{ padding: '0.7rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: enrolling ? 'wait' : 'pointer', marginTop: '0.3rem' }}>
                   {enrolling ? 'Creating student and invoice...' : 'Create Student + Enrollment + POS Invoice'}
                 </button>
               </form>
@@ -351,6 +399,7 @@ const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
         )}
       </div>
     </div>
+    </>
   );
 };
 
@@ -380,11 +429,39 @@ const LeadCard = ({ lead, onClick }) => {
 };
 
 const PipelineTab = ({ leads, courses, onRefresh }) => {
+  const { user, branch } = useAuth();
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('');
   const [selectedLead, setSelectedLead] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', phone: '', email: '', date_of_birth: '', source: 'Walk-in', course_id: '', priority: 'medium', referred_by: '', referral_amount: '' });
   const [saving, setSaving] = useState(false);
+
+  const getActiveBranchId = () => {
+    const selectedBranch = localStorage.getItem('selectedBranch');
+    if (branch && branch !== 'all') return branch;
+    if (selectedBranch && selectedBranch !== 'all') return selectedBranch;
+    return user?.branch_id || '';
+  };
+
+  const buildBookingLink = (channel) => {
+    const branchId = getActiveBranchId();
+    if (!branchId) return '';
+    const baseUrl = (import.meta.env.VITE_WEBSITE_URL || window.location.origin).replace(/\/$/, '');
+    return `${baseUrl}/student-booking?branch=${encodeURIComponent(branchId)}&source=walk_in&channel=${channel}`;
+  };
+
+  const copyBookingLink = async (channel) => {
+    const url = buildBookingLink(channel);
+    if (!url) return alert('Select a specific branch before copying a booking link.');
+    try {
+      await navigator.clipboard.writeText(url);
+      alert(`${channel === 'kiosk' ? 'Kiosk QR' : 'Manual'} booking link copied.`);
+    } catch {
+      window.prompt('Copy booking link:', url);
+    }
+  };
 
   useEffect(() => {
     if (selectedLead) {
@@ -404,7 +481,14 @@ const PipelineTab = ({ leads, courses, onRefresh }) => {
     { key: 'successful', label: 'Successful', desc: 'Fees collected · Student created' },
   ];
 
-  const filtered = leads.filter(l => l.status !== 'lost' && (!search || l.name?.toLowerCase().includes(search.toLowerCase()) || l.batch_interest?.toLowerCase().includes(search.toLowerCase())));
+  const sourceOptions = [...new Set(leads.map(l => l.source).filter(Boolean))];
+  const filtered = leads.filter(l => {
+    if (l.status === 'lost') return false;
+    if (statusFilter && l.status !== statusFilter) return false;
+    if (sourceFilter && l.source !== sourceFilter) return false;
+    if (search && !l.name?.toLowerCase().includes(search.toLowerCase()) && !l.batch_interest?.toLowerCase().includes(search.toLowerCase()) && !l.phone?.includes(search)) return false;
+    return true;
+  });
   const lostCount = leads.filter(l => l.status === 'lost').length;
 
   const handleAdd = async (e) => {
@@ -418,17 +502,33 @@ const PipelineTab = ({ leads, courses, onRefresh }) => {
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem', padding: '0.65rem', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '12px' }}>
+        <div style={{ display: 'flex', gap: '0.55rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', width: '260px' }}>
             <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
             <input placeholder="Search leads..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputStyle, paddingLeft: '2rem', width: '100%' }} />
           </div>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ ...inputStyle, width: '150px', fontSize: '0.75rem' }}>
+            <option value="">All stages</option>
+            {stages.map(stage => <option key={stage.key} value={stage.key}>{stage.label}</option>)}
+          </select>
+          <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} style={{ ...inputStyle, width: '145px', fontSize: '0.75rem' }}>
+            <option value="">All sources</option>
+            {sourceOptions.map(source => <option key={source} value={source}>{source}</option>)}
+          </select>
           {lostCount > 0 && <span style={{ fontSize: '0.7rem', color: '#ef4444', background: '#ef444410', padding: '4px 10px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}><XCircle size={12} /> {lostCount} lost</span>}
         </div>
-        <button className="btn-primary" onClick={() => setShowForm(s => !s)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem' }}>
-          <Plus size={16} /> New Lead
-        </button>
+        <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+          <button type="button" onClick={() => copyBookingLink('kiosk')} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.5rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(6,182,212,0.35)', background: 'rgba(6,182,212,0.1)', color: '#06b6d4', fontSize: '0.72rem', fontWeight: 800, cursor: 'pointer' }}>
+            <Copy size={13} /> Kiosk Link
+          </button>
+          <button type="button" onClick={() => copyBookingLink('manual')} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.5rem 0.7rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: '0.72rem', fontWeight: 800, cursor: 'pointer' }}>
+            <Copy size={13} /> Manual Link
+          </button>
+          <button className="btn-primary" onClick={() => setShowForm(s => !s)} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', padding: '0.52rem 0.85rem' }}>
+            <Plus size={15} /> New Lead
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -477,7 +577,7 @@ const PipelineTab = ({ leads, courses, onRefresh }) => {
                 <p style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: '0.2rem' }}>{stage.desc}</p>
                 {totalVal > 0 && <p style={{ fontSize: '0.62rem', color: '#10b981', fontWeight: '700', marginTop: '0.2rem' }}>৳{totalVal.toLocaleString()}</p>}
               </div>
-              <div style={{ padding: '0.5rem', maxHeight: 'calc(100vh - 420px)', overflowY: 'auto' }}>
+              <div style={{ padding: '0.5rem', maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }}>
                 {stageLeads.length === 0
                   ? <p style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textAlign: 'center', padding: '1.5rem 0', opacity: 0.4 }}>Empty</p>
                   : stageLeads.map(l => <LeadCard key={l.id} lead={l} onClick={setSelectedLead} />)

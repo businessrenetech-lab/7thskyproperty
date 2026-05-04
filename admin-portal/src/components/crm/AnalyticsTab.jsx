@@ -29,7 +29,7 @@ const AnalyticsTab = ({ analytics }) => {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.2rem' }}>
         {/* Funnel */}
         <div className="glass-morphism" style={{ padding: '1.5rem' }}>
           <h3 style={{ marginBottom: '1.2rem', fontSize: '1rem', fontWeight: '700' }}>Conversion Funnel</h3>
@@ -83,7 +83,7 @@ const AnalyticsTab = ({ analytics }) => {
       {forecast?.byStage && forecast.byStage.some(s => s.count > 0) && (
         <div className="glass-morphism" style={{ padding: '1.5rem' }}>
           <h3 style={{ marginBottom: '1rem', fontSize: '1rem', fontWeight: '700' }}>Pipeline by Deal Stage</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
             {forecast.byStage.map(s => (
               <div key={s.stage} style={{ padding: '1rem', background: 'var(--glass)', borderRadius: '10px', borderLeft: `3px solid ${stageColors[s.stage]}`, textAlign: 'center' }}>
                 <p style={{ fontSize: '0.65rem', color: stageColors[s.stage], fontWeight: '700', textTransform: 'uppercase' }}>{s.stage}</p>
@@ -95,7 +95,7 @@ const AnalyticsTab = ({ analytics }) => {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.2rem' }}>
         <div className="glass-morphism" style={{ padding: '1.5rem' }}>
           <h3 style={{ marginBottom: '1rem', fontSize: '1rem', fontWeight: '700' }}>Successful Students by Final Result</h3>
           {successResults && successResults.length > 0 ? successResults.map((item, index) => {

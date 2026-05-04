@@ -117,7 +117,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           </div>
         </div>
         {/* Close button — visible only on mobile */}
-        <button className="sidebar-close-btn" onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', padding: '4px', cursor: 'pointer' }}>
+        <button className="sidebar-close-btn" onClick={(e) => { e.stopPropagation(); onClose(); }} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', padding: '8px', cursor: 'pointer', zIndex: 10, position: 'relative', minWidth: '40px', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent' }}>
           <X size={22} />
         </button>
       </div>

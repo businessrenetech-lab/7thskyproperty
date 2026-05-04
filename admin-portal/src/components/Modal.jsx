@@ -6,7 +6,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
 
   return (
-    <div style={{
+    <div className="modal-overlay" style={{
       position: 'fixed',
       top: 0,
       left: 0,
@@ -17,10 +17,10 @@ const Modal = ({ isOpen, onClose, title, children }) => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 1000,
+      zIndex: 3000,
       padding: '1rem'
     }} onClick={onClose}>
-      <div className="glass-morphism" style={{
+      <div className="glass-morphism modal-content" style={{
         maxWidth: '600px',
         width: '100%',
         maxHeight: '90vh',
