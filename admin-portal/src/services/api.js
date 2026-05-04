@@ -9,8 +9,14 @@ const api = axios.create({
 // Request interceptor for adding JWT token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    const branchId = localStorage.getItem('selectedBranch');
+    let token = null;
+    let branchId = null;
+    try {
+      token = localStorage.getItem('token');
+      branchId = localStorage.getItem('selectedBranch');
+    } catch {
+      // Storage can fail in restricted browser contexts; continue without auth headers.
+    }
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -21,6 +27,25 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if ([401, 403].includes(error?.response?.status)) {
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('selectedBranch');
+      } catch {}
+
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
+        window.location.replace('/admin/login');
+      }
+    }
+
     return Promise.reject(error);
   }
 );

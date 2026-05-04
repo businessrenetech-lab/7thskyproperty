@@ -2,6 +2,25 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
 
+const clearStoredSession = () => {
+  try {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('selectedBranch');
+  } catch {
+    // Storage may be unavailable in locked-down browsers. UI should still render.
+  }
+};
+
+const writeStoredSession = (userData, token) => {
+  try {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+  } catch {
+    // Keep in-memory auth working even if persistence fails.
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,24 +44,21 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (err) {
       console.warn('Clearing invalid admin session data:', err);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('selectedBranch');
+      clearStoredSession();
     } finally {
       setLoading(false);
     }
   }, []);
 
   const login = (userData, token) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
+    clearStoredSession();
+    writeStoredSession(userData, token);
     setUser(userData);
     setBranch(userData.branch_id);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearStoredSession();
     setUser(null);
     setBranch(null);
   };
@@ -50,10 +66,10 @@ export const AuthProvider = ({ children }) => {
   const switchBranch = (branchId) => {
     if (user?.role === 'super_admin') {
       if (branchId === 'all') {
-        localStorage.setItem('selectedBranch', 'all');
+        try { localStorage.setItem('selectedBranch', 'all'); } catch {}
         setBranch('all');
       } else {
-        localStorage.setItem('selectedBranch', branchId);
+        try { localStorage.setItem('selectedBranch', branchId); } catch {}
         setBranch(branchId);
       }
       window.location.reload();

@@ -6,6 +6,7 @@ import { ArrowRight, Search } from "lucide-react";
 import AnimateOnScroll, { StaggerContainer, StaggerItem } from "@/components/AnimateOnScroll";
 import CourseCard from "@/components/CourseCard";
 import SectionHeading from "@/components/SectionHeading";
+import { COURSE_FALLBACKS } from "@/lib/courseFallbacks";
 
 export default function CoursesPageClient({ initialCourses }) {
   const [courses, setCourses] = useState(initialCourses || []);
@@ -17,8 +18,8 @@ export default function CoursesPageClient({ initialCourses }) {
     if (!initialCourses || initialCourses.length === 0) {
       fetch("/api/public/courses")
         .then((res) => res.ok ? res.json() : [])
-        .then((data) => { if (data.length > 0) setCourses(data); })
-        .catch(() => {});
+        .then((data) => { setCourses(Array.isArray(data) && data.length > 0 ? data : COURSE_FALLBACKS); })
+        .catch(() => { setCourses(COURSE_FALLBACKS); });
     }
   }, [initialCourses]);
 

@@ -4,13 +4,22 @@ import { ArrowRight, Award, Calendar, CheckCircle2, Clock3, Globe2, MapPin, Phon
 import BookingModalTrigger from "@/components/BookingModalTrigger";
 import JsonLd, { courseSchema, breadcrumbSchema } from "@/components/JsonLd";
 import { getApiBase } from "@/lib/api";
+import { getFallbackCourse } from "@/lib/courseFallbacks";
+
+// Force SSR — prevent Next.js from static-generating this page at build time
+// (the API isn't available during build, so fetch would fail → 404)
+export const dynamic = "force-dynamic";
 
 async function getCourseDetails(slug) {
   try {
-    const res = await fetch(`${getApiBase()}/api/public/courses/${slug}`, { next: { revalidate: 60 } });
-    if (!res.ok) { if (res.status === 404) return null; throw new Error("Failed"); }
-    return res.json();
-  } catch (error) { console.error("Error:", error); return null; }
+    const res = await fetch(`${getApiBase()}/api/public/courses/${slug}`, { cache: "no-store" });
+    if (!res.ok) return getFallbackCourse(slug);
+    const course = await res.json();
+    return course?.id ? course : getFallbackCourse(slug);
+  } catch (error) {
+    console.error("Error fetching course details:", error);
+    return getFallbackCourse(slug);
+  }
 }
 
 function safeParse(value, fallback) {

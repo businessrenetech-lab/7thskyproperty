@@ -21,11 +21,15 @@ const LoginPage = () => {
     setError('');
     try {
       const response = await api.post('/auth/login', { email, password });
-      login(response.data.user, response.data.token);
-      navigate('/');
+      const { user, token } = response.data || {};
+      if (!token || !user?.role) {
+        throw new Error('Invalid login response');
+      }
+      login(user, token);
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       if (!err.response) {
-        setError('Cannot reach the backend at port 5000. Start the API server and try again.');
+        setError('Cannot reach the server. Please check your connection or try again later.');
       } else {
         setError(err.response?.data?.error || 'Login failed. Please check credentials.');
       }

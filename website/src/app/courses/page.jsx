@@ -1,6 +1,7 @@
 import CoursesPageClient from "./CoursesPageClient";
 import JsonLd, { courseListSchema, breadcrumbSchema } from "@/components/JsonLd";
 import { getApiBase } from "@/lib/api";
+import { COURSE_FALLBACKS } from "@/lib/courseFallbacks";
 
 export const dynamic = "force-dynamic";
 
@@ -19,12 +20,13 @@ export const metadata = {
 
 async function getCourses() {
   try {
-    const res = await fetch(`${getApiBase()}/api/public/courses`, { next: { revalidate: 60 } });
-    if (!res.ok) return [];
-    return res.json();
+    const res = await fetch(`${getApiBase()}/api/public/courses`, { cache: "no-store" });
+    if (!res.ok) return COURSE_FALLBACKS;
+    const data = await res.json();
+    return Array.isArray(data) && data.length > 0 ? data : COURSE_FALLBACKS;
   } catch (error) {
     console.error("Error fetching courses:", error);
-    return [];
+    return COURSE_FALLBACKS;
   }
 }
 

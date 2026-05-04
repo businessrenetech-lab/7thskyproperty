@@ -83,8 +83,11 @@ const Sidebar = ({ isOpen, onClose }) => {
   const fetchBranches = async () => {
     try {
       const res = await api.get('/branches');
-      setBranches(res.data);
-    } catch (err) { console.error('Failed to fetch branches'); }
+      setBranches(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error('Failed to fetch branches');
+      setBranches([]);
+    }
   };
 
   const toggleSection = (label) => setCollapsed(prev => ({ ...prev, [label]: !prev[label] }));

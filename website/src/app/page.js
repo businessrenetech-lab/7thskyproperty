@@ -2,6 +2,7 @@ import React from "react";
 import HomepageClient from "./HomepageClient";
 import JsonLd, { faqSchema, breadcrumbSchema } from "@/components/JsonLd";
 import { getApiBase } from "@/lib/api";
+import { COURSE_FALLBACKS } from "@/lib/courseFallbacks";
 
 export const dynamic = "force-dynamic";
 
@@ -49,19 +50,19 @@ const homeFaqs = [
 
 async function getFeaturedCourses() {
   try {
-    const res = await fetch(`${getApiBase()}/api/public/courses`, { next: { revalidate: 60 } });
-    if (!res.ok) return [];
+    const res = await fetch(`${getApiBase()}/api/public/courses`, { cache: "no-store" });
+    if (!res.ok) return COURSE_FALLBACKS.slice(0, 6);
     const data = await res.json();
-    return data.slice(0, 6);
+    return (Array.isArray(data) && data.length > 0 ? data : COURSE_FALLBACKS).slice(0, 6);
   } catch (error) {
     console.error("Error fetching courses:", error);
-    return [];
+    return COURSE_FALLBACKS.slice(0, 6);
   }
 }
 
 async function getRecentBlogs() {
   try {
-    const res = await fetch(`${getApiBase()}/api/public/blog`, { next: { revalidate: 60 } });
+    const res = await fetch(`${getApiBase()}/api/public/blog`, { cache: "no-store" });
     if (!res.ok) return [];
     const data = await res.json();
     return data.slice(0, 3);
