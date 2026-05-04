@@ -25,7 +25,7 @@
       "static/chunks/117-30dd55646d6a1175.js",
       "static/chunks/main-app-133facaeca716db3.js",
       "static/chunks/664-dcba0b7144ecc727.js",
-      "static/chunks/app/blog/[slug]/page-9ada86162916c141.js"
+      "static/chunks/app/blog/[slug]/page-fa3c8a2f17fc75e5.js"
     ],
     "/courses/[slug]/page": [
       "static/chunks/webpack-62ce520cd1b02482.js",
@@ -60,6 +60,39 @@
       "static/chunks/77-8917c71551f1efa0.js",
       "static/chunks/app/payment/success/page-63c8c5b205d68d99.js"
     ],
+    "/courses/page": [
+      "static/chunks/webpack-62ce520cd1b02482.js",
+      "static/chunks/fd9d1056-ea949d58b73d551c.js",
+      "static/chunks/117-30dd55646d6a1175.js",
+      "static/chunks/main-app-133facaeca716db3.js",
+      "static/chunks/664-dcba0b7144ecc727.js",
+      "static/chunks/807-be0a5a135c93955c.js",
+      "static/chunks/app/courses/page-7bcf4889aab3385a.js"
+    ],
+    "/blog/page": [
+      "static/chunks/webpack-62ce520cd1b02482.js",
+      "static/chunks/fd9d1056-ea949d58b73d551c.js",
+      "static/chunks/117-30dd55646d6a1175.js",
+      "static/chunks/main-app-133facaeca716db3.js",
+      "static/chunks/664-dcba0b7144ecc727.js",
+      "static/chunks/app/blog/page-afe9c1941a03159f.js"
+    ],
+    "/about/page": [
+      "static/chunks/webpack-62ce520cd1b02482.js",
+      "static/chunks/fd9d1056-ea949d58b73d551c.js",
+      "static/chunks/117-30dd55646d6a1175.js",
+      "static/chunks/main-app-133facaeca716db3.js",
+      "static/chunks/664-dcba0b7144ecc727.js",
+      "static/chunks/app/about/page-fc640adba9994974.js"
+    ],
+    "/enroll/success/page": [
+      "static/chunks/webpack-62ce520cd1b02482.js",
+      "static/chunks/fd9d1056-ea949d58b73d551c.js",
+      "static/chunks/117-30dd55646d6a1175.js",
+      "static/chunks/main-app-133facaeca716db3.js",
+      "static/chunks/664-dcba0b7144ecc727.js",
+      "static/chunks/app/enroll/success/page-2006db8e6b8a4d68.js"
+    ],
     "/page": [
       "static/chunks/webpack-62ce520cd1b02482.js",
       "static/chunks/fd9d1056-ea949d58b73d551c.js",
@@ -70,46 +103,13 @@
       "static/chunks/466-cdc42d8d46237b59.js",
       "static/chunks/app/page-560c9d746cff0016.js"
     ],
-    "/courses/page": [
-      "static/chunks/webpack-62ce520cd1b02482.js",
-      "static/chunks/fd9d1056-ea949d58b73d551c.js",
-      "static/chunks/117-30dd55646d6a1175.js",
-      "static/chunks/main-app-133facaeca716db3.js",
-      "static/chunks/664-dcba0b7144ecc727.js",
-      "static/chunks/807-be0a5a135c93955c.js",
-      "static/chunks/app/courses/page-7bcf4889aab3385a.js"
-    ],
-    "/enroll/success/page": [
-      "static/chunks/webpack-62ce520cd1b02482.js",
-      "static/chunks/fd9d1056-ea949d58b73d551c.js",
-      "static/chunks/117-30dd55646d6a1175.js",
-      "static/chunks/main-app-133facaeca716db3.js",
-      "static/chunks/664-dcba0b7144ecc727.js",
-      "static/chunks/app/enroll/success/page-2e9da65a596e377e.js"
-    ],
-    "/about/page": [
-      "static/chunks/webpack-62ce520cd1b02482.js",
-      "static/chunks/fd9d1056-ea949d58b73d551c.js",
-      "static/chunks/117-30dd55646d6a1175.js",
-      "static/chunks/main-app-133facaeca716db3.js",
-      "static/chunks/664-dcba0b7144ecc727.js",
-      "static/chunks/app/about/page-de627de5f9d6951a.js"
-    ],
-    "/blog/page": [
-      "static/chunks/webpack-62ce520cd1b02482.js",
-      "static/chunks/fd9d1056-ea949d58b73d551c.js",
-      "static/chunks/117-30dd55646d6a1175.js",
-      "static/chunks/main-app-133facaeca716db3.js",
-      "static/chunks/664-dcba0b7144ecc727.js",
-      "static/chunks/app/blog/page-6547b92d0cb2000c.js"
-    ],
     "/materials/page": [
       "static/chunks/webpack-62ce520cd1b02482.js",
       "static/chunks/fd9d1056-ea949d58b73d551c.js",
       "static/chunks/117-30dd55646d6a1175.js",
       "static/chunks/main-app-133facaeca716db3.js",
       "static/chunks/664-dcba0b7144ecc727.js",
-      "static/chunks/app/materials/page-3dfd811458cd7409.js"
+      "static/chunks/app/materials/page-62b5293e5406f285.js"
     ],
     "/contact/page": [
       "static/chunks/webpack-62ce520cd1b02482.js",
