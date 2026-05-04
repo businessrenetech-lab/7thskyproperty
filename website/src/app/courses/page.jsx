@@ -2,6 +2,8 @@ import CoursesPageClient from "./CoursesPageClient";
 import JsonLd, { courseListSchema, breadcrumbSchema } from "@/components/JsonLd";
 import { getApiBase } from "@/lib/api";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Courses — PTE, IELTS & Spoken English Programs in Dhaka",
   description:

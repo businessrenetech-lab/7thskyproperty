@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const lmsController = require('../controllers/lms.controller');
-const { authMiddleware } = require('../middleware/auth.middleware');
+const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
 const { branchMiddleware } = require('../middleware/branch.middleware');
 
 router.use(authMiddleware);
+router.use(roleMiddleware(['super_admin', 'branch_admin', 'trainer', 'staff']));
 router.use(branchMiddleware);
 
 router.get('/batches', lmsController.getAllBatches);

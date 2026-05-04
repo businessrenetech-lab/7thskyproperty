@@ -156,6 +156,7 @@ const ContactsTab = ({ contacts, onRefresh }) => {
           .crm-contacts-filters > div,
           .crm-contacts-filters > select,
           .crm-contacts-filters > button { width: 100% !important; max-width: none !important; }
+          .crm-contacts-search-wrap { flex: none !important; height: auto !important; min-height: 0 !important; }
           .crm-contacts-table-wrap { display: none; }
           .crm-contact-cards { display: grid; gap: 0.75rem; }
           .crm-contact-form { grid-template-columns: 1fr !important; }
@@ -200,7 +201,7 @@ const ContactsTab = ({ contacts, onRefresh }) => {
 
       {/* Search + Filters */}
       <div className="crm-contacts-filters" style={{ display: 'flex', gap: '0.65rem', marginBottom: '1rem', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: '1 1 280px', maxWidth: '360px' }}>
+        <div className="crm-contacts-search-wrap" style={{ position: 'relative', flex: '1 1 280px', maxWidth: '360px' }}>
           <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
           <input placeholder="Search by name, email, phone..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputStyle, paddingLeft: '2rem', width: '100%' }} />
         </div>

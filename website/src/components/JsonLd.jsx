@@ -22,7 +22,7 @@ export function localBusinessSchema() {
     "alternateName": ["Language Academy", "Language Academy BD", "LA Bangladesh"],
     "description": "Best PTE Coaching Centre in Bangladesh. Language Academy offers expert-led PTE Academic, IELTS preparation, and Spoken English courses in Dhaka with both online and offline classes.",
     "url": "https://languageacademy.com.bd",
-    "logo": "https://languageacademy.com.bd/LOGO.png",
+    "logo": "https://languageacademy.com.bd/logo.png",
     "image": "https://languageacademy.com.bd/hero_banner.png",
     "telephone": "+880-1913-373581",
     "email": "hello@languageacademy.com.bd",
@@ -69,10 +69,10 @@ export function localBusinessSchema() {
       }
     ],
     "sameAs": [
-      "https://facebook.com/languageacademybd",
-      "https://instagram.com/languageacademyb",
-      "https://youtube.com/@languageacademybd",
-      "https://linkedin.com/company/languageacademybd"
+      "https://www.facebook.com/languageacademybangladesh",
+      "https://instagram.com/languageacademy.bd/",
+      "https://linkedin.com/company/languageacademybangladesh",
+      "https://tiktok.com/@languageacademybangladesh"
     ],
     "aggregateRating": {
       "@type": "AggregateRating",

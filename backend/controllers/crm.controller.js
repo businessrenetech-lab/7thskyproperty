@@ -46,6 +46,85 @@ const normalizeEmploymentDetails = (value) => {
   return value;
 };
 
+const normalizePostCourseGoalType = (value) => {
+  const normalized = normalizeCourseReason(value);
+  if (normalized) return COUNTRY_REASON_VALUES.has(normalized) ? 'specific_country' : 'another_purpose';
+  return ['specific_country', 'another_purpose'].includes(value) ? value : null;
+};
+
+const PTE_REASON_LABELS = {
+  study_abroad: 'Study abroad',
+  work: 'Work',
+  migration_visa: 'Migration and visa applications',
+  professional_registration: 'Professional registration',
+  build_confidence: 'Build confidence in English',
+  others: 'Others',
+};
+
+const COUNTRY_REASON_VALUES = new Set(['study_abroad', 'work', 'migration_visa']);
+
+const normalizeCourseReason = (value) => {
+  const normalized = String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  const aliases = {
+    study_abroad: 'study_abroad',
+    work: 'work',
+    migration_visa: 'migration_visa',
+    migration_and_visa_applications: 'migration_visa',
+    professional_registration: 'professional_registration',
+    build_confidence: 'build_confidence',
+    build_confidence_in_english: 'build_confidence',
+    others: 'others',
+    other: 'others',
+  };
+  return aliases[normalized] || null;
+};
+
+const normalizeNullableText = (value) => {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value).trim();
+  return normalized || null;
+};
+
+const derivePostCourseGoalType = (courseReason, country, fallback) => {
+  if (courseReason) return COUNTRY_REASON_VALUES.has(courseReason) && country ? 'specific_country' : 'another_purpose';
+  return normalizePostCourseGoalType(fallback);
+};
+
+const parseLeadTags = (lead) => {
+  if (!lead?.tags) return {};
+  if (typeof lead.tags === 'object') return lead.tags;
+  try {
+    return JSON.parse(lead.tags);
+  } catch {
+    return {};
+  }
+};
+
+const getLeadStudentDetails = (lead) => parseLeadTags(lead).student_details || {};
+
+const normalizeEnglishLevel = (value) => {
+  return ['beginner', 'intermediate', 'expert'].includes(value) ? value : null;
+};
+
+const normalizeLeadSource = (value) => {
+  const normalized = String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  const map = {
+    walk_in: 'walk_in',
+    walkin: 'walk_in',
+    walk: 'walk_in',
+    website_enquiry: 'website',
+    website: 'website',
+    facebook: 'facebook',
+    fb: 'facebook',
+    instagram: 'instagram',
+    google: 'google',
+    referral: 'referral',
+    newspaper: 'newspaper',
+    event: 'event',
+  };
+  return map[normalized] || 'other';
+};
+
 // ============================================================
 //  COURSES (for CRM course picker)
 // ============================================================
@@ -260,6 +339,13 @@ exports.enrollLead = async (req, res) => {
       photograph_url,
       educational_details,
       employment_details,
+      profession,
+      course_reason,
+      preferred_country,
+      other_reason,
+      post_course_goal_type,
+      target_country,
+      english_level,
       referred_by,
       referral_amount
     } = req.body;
@@ -286,14 +372,27 @@ exports.enrollLead = async (req, res) => {
     const fullName = (name || `${first_name || lead.name?.split(' ')[0] || ''} ${last_name || lead.name?.split(' ').slice(1).join(' ') || ''}`.trim() || lead.name).trim();
     const primaryEmail = (email || lead.email || '').trim();
     const userEmail = primaryEmail || `lead-${lead.id}@languageacademy.local`;
+    const bookingDetails = getLeadStudentDetails(lead);
+    const normalizedCourseReason = normalizeCourseReason(course_reason ?? bookingDetails.course_reason);
+    const normalizedPreferredCountry = normalizeNullableText(
+      preferred_country ?? target_country ?? bookingDetails.preferred_country ?? bookingDetails.target_country ?? lead.destination_country
+    );
+    const normalizedOtherReason = normalizedCourseReason === 'others' ? normalizeNullableText(other_reason ?? bookingDetails.other_reason) : null;
+    const normalizedGoalType = derivePostCourseGoalType(normalizedCourseReason, normalizedPreferredCountry, post_course_goal_type ?? bookingDetails.post_course_goal_type);
+    const normalizedTargetCountry = normalizedGoalType === 'specific_country' ? normalizedPreferredCountry : null;
+    const normalizedEnglishLevel = normalizeEnglishLevel(english_level ?? bookingDetails.english_level);
+    const studentLeadSource = normalizeLeadSource(lead.source);
 
     let user = await User.findOne({ where: { email: userEmail }, transaction: t });
     if (!user && primaryEmail && primaryEmail !== userEmail) {
       user = await User.findOne({ where: { email: primaryEmail }, transaction: t });
     }
 
+    let generatedPassword = null;
     if (!user) {
-      const hashedPassword = await bcrypt.hash(password || 'Student123', 10);
+      generatedPassword = password ? null : require('crypto').randomBytes(12).toString('base64url');
+      const rawPassword = password || generatedPassword;
+      const hashedPassword = await bcrypt.hash(rawPassword, 10);
       user = await User.create({
         name: fullName,
         email: userEmail,
@@ -328,6 +427,11 @@ exports.enrollLead = async (req, res) => {
         photograph_url: photograph_url || null,
         educational_details: normalizeEducationDetails(educational_details),
         employment_details: normalizeEmploymentDetails(employment_details),
+        profession: profession || null,
+        lead_source: studentLeadSource,
+        post_course_goal_type: normalizedGoalType,
+        target_country: normalizedTargetCountry,
+        english_level: normalizedEnglishLevel,
         referred_by: referred_by || lead.referred_by || null,
         referral_amount: Number(referral_amount) || Number(lead.referral_amount) || 0,
         enrollment_date: new Date(),
@@ -350,6 +454,11 @@ exports.enrollLead = async (req, res) => {
         photograph_url: photograph_url !== undefined ? photograph_url : student.photograph_url,
         educational_details: educational_details !== undefined ? normalizeEducationDetails(educational_details) : student.educational_details,
         employment_details: employment_details !== undefined ? normalizeEmploymentDetails(employment_details) : student.employment_details,
+        profession: profession !== undefined ? profession : student.profession,
+        lead_source: student.lead_source || studentLeadSource,
+        post_course_goal_type: post_course_goal_type !== undefined ? normalizedGoalType : student.post_course_goal_type,
+        target_country: target_country !== undefined ? normalizedTargetCountry : student.target_country,
+        english_level: english_level !== undefined ? normalizedEnglishLevel : student.english_level,
         referred_by: referred_by !== undefined ? referred_by : (student.referred_by || lead.referred_by),
         referral_amount: referral_amount !== undefined ? Number(referral_amount) : (student.referral_amount || lead.referral_amount),
         enrollment_date: student.enrollment_date || new Date(),
@@ -357,12 +466,32 @@ exports.enrollLead = async (req, res) => {
       }, { transaction: t });
     }
 
-    if (referred_by !== undefined || referral_amount !== undefined) {
-      await lead.update({ 
-        referred_by: referred_by !== undefined ? referred_by : lead.referred_by,
-        referral_amount: referral_amount !== undefined ? Number(referral_amount) : lead.referral_amount
-      }, { transaction: t });
-    }
+    const mergedTags = {
+      ...parseLeadTags(lead),
+      student_details: {
+        ...bookingDetails,
+        first_name: first_name || bookingDetails.first_name || fullName.split(' ')[0] || '',
+        middle_name: middle_name !== undefined ? middle_name : bookingDetails.middle_name,
+        last_name: last_name || bookingDetails.last_name || fullName.split(' ').slice(1).join(' ') || '',
+        mobile_no: mobile_no || bookingDetails.mobile_no || lead.phone || '',
+        email: primaryEmail || bookingDetails.email || '',
+        date_of_birth: date_of_birth !== undefined ? date_of_birth : (bookingDetails.date_of_birth || lead.date_of_birth || null),
+        course_reason: normalizedCourseReason || '',
+        course_reason_label: normalizedCourseReason ? PTE_REASON_LABELS[normalizedCourseReason] : '',
+        preferred_country: normalizedPreferredCountry || '',
+        other_reason: normalizedOtherReason || '',
+        post_course_goal_type: normalizedGoalType || '',
+        target_country: normalizedTargetCountry || '',
+        english_level: normalizedEnglishLevel || '',
+      }
+    };
+
+    await lead.update({
+      tags: mergedTags,
+      destination_country: normalizedTargetCountry || lead.destination_country,
+      referred_by: referred_by !== undefined ? referred_by : lead.referred_by,
+      referral_amount: referral_amount !== undefined ? Number(referral_amount) : lead.referral_amount,
+    }, { transaction: t });
 
     // 1. Create enrollment with linked student profile
     const enrollment = await Enrollment.create({
@@ -438,6 +567,7 @@ exports.enrollLead = async (req, res) => {
     res.status(201).json({
       message: `Student, enrollment, and invoice created for ${course.title}. Invoice ${invoiceNo} is ready for POS collection.`,
       student, enrollment, invoice, opportunity, contact,
+      temporary_password: generatedPassword,
     });
 
     // Fire Facebook CAPI 'CompleteRegistration' event (non-blocking)

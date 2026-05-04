@@ -1397,6 +1397,73 @@ table.stitch tbody tr:hover td { background: rgba(255,255,255,0.03); }
   .g65, .g2 { grid-template-columns: 1fr; }
 }
 
+/* Dashboard KPI strip — scrollable cards for mobile and small tablets */
+@media (max-width: 900px) {
+  .dashboard-kpi-strip {
+    display: flex !important;
+    grid-template-columns: none !important;
+    gap: 10px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: 2px 4px 8px !important;
+    margin-bottom: 1rem !important;
+  }
+  .dashboard-kpi-strip::-webkit-scrollbar { display: none; }
+  .dashboard-kpi-strip > .pulse-card {
+    flex: 0 0 156px !important;
+    width: 156px !important;
+    min-width: 156px !important;
+    min-height: 96px !important;
+    scroll-snap-align: start;
+    padding: 0.85rem !important;
+  }
+  .dashboard-kpi-strip .pulse-card > div {
+    position: relative;
+    display: block !important;
+    min-height: 68px;
+  }
+  .dashboard-kpi-strip .pulse-card > div > div:first-child {
+    position: relative;
+    z-index: 2;
+    max-width: 118px;
+  }
+  .dashboard-kpi-strip .pulse-card > div > div:last-child {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    z-index: 1;
+    padding: 0.48rem !important;
+    border-radius: 11px !important;
+    opacity: 0.92;
+  }
+  .dashboard-kpi-strip .pulse-card > div > div:last-child svg {
+    width: 17px !important;
+    height: 17px !important;
+  }
+  .dashboard-kpi-strip .pulse-card p {
+    max-width: 96px;
+    min-height: 1.9em;
+    margin: 0 !important;
+    color: #64748b !important;
+    font-size: 0.62rem !important;
+    line-height: 1.15 !important;
+    letter-spacing: 0.06em !important;
+  }
+  .dashboard-kpi-strip .pulse-card h2 {
+    max-width: 126px;
+    margin: 0.35rem 0 0 !important;
+    color: #020617 !important;
+    font-size: 1.18rem !important;
+    line-height: 1.05 !important;
+    letter-spacing: -0.05em !important;
+    white-space: nowrap;
+  }
+}
+
 /* ── Animation helpers ── */
 @keyframes fadeIn {
   from { opacity: 0; }

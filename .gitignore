@@ -6,11 +6,17 @@ node_modules/
 # Build (only ignore at root level, allow sub-project dist/ and .next/)
 build/
 .cache/
+**/.next/
 
 # Environment
 .env
+.env.*
 .env.local
 .env.*.local
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
 *.log
 *build_log*.txt
 *dev_log.txt

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Globe, Mail, MapPin, Phone, Clock } from "lucide-react";
-import { FiFacebook as Facebook, FiInstagram as Instagram, FiYoutube as Youtube, FiLinkedin as Linkedin } from "react-icons/fi";
+import { FiFacebook as Facebook, FiInstagram as Instagram, FiLinkedin as Linkedin } from "react-icons/fi";
+import { SiTiktok as Tiktok } from "react-icons/si";
 import NewsletterSignup from "./NewsletterSignup";
 
 const quickLinks = [
@@ -21,10 +22,10 @@ const programs = [
 ];
 
 const socialLinks = [
-  { icon: Facebook, href: "https://facebook.com/languageacademybd", label: "Facebook" },
-  { icon: Instagram, href: "https://instagram.com/languageacademyb", label: "Instagram" },
-  { icon: Youtube, href: "https://youtube.com/@languageacademybd", label: "YouTube" },
-  { icon: Linkedin, href: "https://linkedin.com/company/languageacademybd", label: "LinkedIn" },
+  { icon: Facebook, href: "https://www.facebook.com/languageacademybangladesh", label: "Facebook" },
+  { icon: Instagram, href: "https://instagram.com/languageacademy.bd/", label: "Instagram" },
+  { icon: Linkedin, href: "https://linkedin.com/company/languageacademybangladesh", label: "LinkedIn" },
+  { icon: Tiktok, href: "https://tiktok.com/@languageacademybangladesh", label: "TikTok" },
 ];
 
 export default function Footer() {
@@ -129,12 +130,9 @@ export default function Footer() {
                 </div>
               </div>
             </div>
-            <div className="mt-5 flex flex-col gap-2">
+            <div className="mt-5">
               <Link href="/contact" className="inline-flex items-center gap-2 text-sm font-semibold text-white transition hover:text-accent">
                 Book a consultation <ArrowRight size={14} />
-              </Link>
-              <Link href="/student" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 transition hover:text-white">
-                <Globe size={14} /> Student Portal
               </Link>
             </div>
           </div>

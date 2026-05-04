@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const expenseController = require('../controllers/expense.controller');
-const { authMiddleware } = require('../middleware/auth.middleware');
+const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
 const { branchMiddleware } = require('../middleware/branch.middleware');
 
 const upload = require('../utils/upload');
 
 router.use(authMiddleware);
+router.use(roleMiddleware(['super_admin', 'branch_admin', 'accounts']));
 router.use(branchMiddleware);
 
 router.get('/', expenseController.getExpenses);

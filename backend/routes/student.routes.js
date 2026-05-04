@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const studentController = require('../controllers/student.controller');
-const { authMiddleware } = require('../middleware/auth.middleware');
+const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
 const { branchMiddleware } = require('../middleware/branch.middleware');
 
 router.use(authMiddleware);
+router.put('/me', studentController.updateMe);
+router.use(roleMiddleware(['super_admin', 'branch_admin', 'counselor', 'trainer', 'staff']));
 router.use(branchMiddleware);
 
 const multer = require('multer');
@@ -25,7 +27,6 @@ router.patch('/:id/success-record', studentController.updateStudentSuccessRecord
 router.get('/:id/activities', studentController.getStudentActivities);
 router.post('/:id/activities', studentController.createStudentActivity);
 router.post('/:id/request-partner-access', studentController.requestPartnerAccess);
-router.put('/me', studentController.updateMe);
 router.post('/', studentController.createStudent);
 router.post('/enroll', studentController.enrollInBatch);
 

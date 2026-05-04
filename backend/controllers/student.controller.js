@@ -10,7 +10,13 @@ const sequelize = require('../config/db.config');
 const { Op } = require('sequelize');
 const { sendPartnerAccessRequestEmail } = require('../services/communication.service');
 
-const getEffectiveBranchId = (req) => req.scopedBranchId || req.branchId;
+const getEffectiveBranchId = (req) => (
+  Object.prototype.hasOwnProperty.call(req, 'scopedBranchId') ? req.scopedBranchId : req.branchId
+);
+
+const withBranchScope = (branchId, where = {}) => (
+  branchId === null ? where : { ...where, branch_id: branchId }
+);
 
 const normalizeEducationDetails = (value) => {
   if (Array.isArray(value)) return value;
@@ -36,8 +42,11 @@ const normalizeEmploymentDetails = (value) => {
 };
 
 const normalizePostCourseGoalType = (value) => {
-  if (value !== 'specific_country' && value !== 'another_purpose') return null;
-  return value;
+  if (value === 'specific_country' || value === 'another_purpose') return value;
+  const normalized = String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  if (['study_abroad', 'work', 'migration_visa', 'migration_and_visa_applications'].includes(normalized)) return 'specific_country';
+  if (['professional_registration', 'build_confidence', 'build_confidence_in_english', 'others', 'other'].includes(normalized)) return 'another_purpose';
+  return null;
 };
 
 const normalizeEnglishLevel = (value) => {
@@ -84,10 +93,7 @@ const buildFeeSummaryMap = async (branchId, studentIds) => {
   if (!studentIds.length) return new Map();
 
   const invoices = await Invoice.findAll({
-    where: {
-      branch_id: branchId,
-      student_id: { [Op.in]: studentIds }
-    },
+    where: withBranchScope(branchId, { student_id: { [Op.in]: studentIds } }),
     attributes: ['id', 'student_id', 'enrollment_id', 'amount', 'paid', 'status', 'due_date', 'invoice_no'],
     order: [['issued_at', 'DESC']]
   });
@@ -118,10 +124,7 @@ const buildRejectedFeeMap = async (branchId, studentIds) => {
   if (!studentIds.length) return new Map();
 
   const invoices = await Invoice.findAll({
-    where: {
-      branch_id: branchId,
-      status: 'rejected'
-    },
+    where: withBranchScope(branchId, { status: 'rejected' }),
     attributes: ['id', 'student_id', 'enrollment_id', 'invoice_no', 'amount', 'paid', 'status', 'notes', 'updated_at'],
     include: [
       {
@@ -159,10 +162,7 @@ const buildEnrollmentSummaryMap = async (branchId, studentIds) => {
   if (!studentIds.length) return new Map();
 
   const enrollments = await Enrollment.findAll({
-    where: {
-      branch_id: branchId,
-      student_id: { [Op.in]: studentIds }
-    },
+    where: withBranchScope(branchId, { student_id: { [Op.in]: studentIds } }),
     attributes: ['id', 'student_id', 'batch_id', 'total_fee', 'paid_amount', 'status'],
     order: [['created_at', 'DESC']]
   });
@@ -202,10 +202,10 @@ const decorateStudent = (student, feeSummary = null, rejectedFees = [], enrollme
 exports.getAllStudents = async (req, res) => {
   try {
     const branchId = getEffectiveBranchId(req);
-    if (!branchId) return res.status(400).json({ error: 'Please select a specific branch' });
+    if (branchId === undefined) return res.status(400).json({ error: 'Please select a specific branch' });
 
     const students = await Student.findAll({
-      where: { branch_id: branchId },
+      where: withBranchScope(branchId),
       include: [
         { model: User },
         { model: Batch, include: [{ model: Course, attributes: ['id', 'title'] }] }
@@ -288,7 +288,9 @@ exports.createStudent = async (req, res) => {
     // Fallback for name if first_name/last_name provided but not name
     const fullName = name || `${first_name || ''} ${last_name || ''}`.trim() || 'No Name Provided';
 
-    const hashedPassword = await bcrypt.hash(password || 'Student123', 10);
+    const generatedPassword = password ? null : require('crypto').randomBytes(12).toString('base64url');
+    const rawPassword = password || generatedPassword;
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
     
     // Create User account
     const user = await User.create({
@@ -380,7 +382,13 @@ exports.createStudent = async (req, res) => {
       status: enrollment.status
     } : null;
 
-    res.status(201).json({ user, student: decorateStudent(createdStudent, feeSummary, [], enrollmentSummary), enrollment, invoice });
+    res.status(201).json({
+      user,
+      student: decorateStudent(createdStudent, feeSummary, [], enrollmentSummary),
+      enrollment,
+      invoice,
+      temporary_password: generatedPassword
+    });
   } catch (error) {
     await t.rollback();
     console.error('[CreateStudent Error]:', error);

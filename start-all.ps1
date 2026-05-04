@@ -14,6 +14,10 @@ $components = @(
     @{ Name = "Website";         Dir = "website";        Cmd = "npm run dev";    Port = 3001 },
     @{ Name = "Admin Portal";    Dir = "admin-portal";   Cmd = "npm run dev";    Port = 5174 },
     @{ Name = "Student Portal";  Dir = "student-portal"; Cmd = "npm run dev";    Port = 5173 },
+    @{ Name = "Teacher Portal";  Dir = "teacher-portal"; Cmd = "npm run dev";    Port = 5175 },
+    @{ Name = "Accounting Portal"; Dir = "accounting-portal"; Cmd = "npm run dev"; Port = 5176 },
+    @{ Name = "HR Portal";       Dir = "hr-portal";      Cmd = "npm run dev";    Port = 5177 },
+    @{ Name = "CRM Portal";      Dir = "crm-portal";     Cmd = "npm run dev";    Port = 5178 },
     @{ Name = "Gateway";         Dir = "gateway";        Cmd = "node server.js"; Port = 3000 }
 )
 
@@ -38,4 +42,8 @@ Write-Host ""
 Write-Host "  Website  : http://localhost:3000" -ForegroundColor White
 Write-Host "  Admin    : http://localhost:3000/admin" -ForegroundColor White
 Write-Host "  Student  : http://localhost:3000/student" -ForegroundColor White
+Write-Host "  Teacher  : http://localhost:3000/teacher" -ForegroundColor White
+Write-Host "  HRM      : http://localhost:3000/hrm" -ForegroundColor White
+Write-Host "  Accounts : http://localhost:3000/accounting" -ForegroundColor White
+Write-Host "  CRM      : http://localhost:3000/brandmanager" -ForegroundColor White
 Write-Host ""

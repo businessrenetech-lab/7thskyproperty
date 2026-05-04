@@ -13,10 +13,11 @@ const sequelize = new Sequelize(
     // Performance: Disable SQL logging in production
     logging: isProduction ? false : console.log,
     pool: {
-      max: 10,          // Increased from 5 for better concurrency
-      min: 2,           // Keep 2 warm connections ready
-      acquire: 30000,
-      idle: 10000,
+      max: Number(process.env.DB_POOL_MAX || 2),
+      min: Number(process.env.DB_POOL_MIN || 0),
+      acquire: Number(process.env.DB_POOL_ACQUIRE || 30000),
+      idle: Number(process.env.DB_POOL_IDLE || 300000),
+      evict: Number(process.env.DB_POOL_EVICT || 60000),
     },
     // Performance: Reduce connection overhead
     dialectOptions: {

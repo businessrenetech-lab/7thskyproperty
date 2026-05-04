@@ -4,5 +4,9 @@
  * In development, it goes through the gateway on port 3000.
  */
 export function getApiBase() {
-  return process.env.INTERNAL_API_URL || 'http://localhost:3000';
+  if (process.env.INTERNAL_API_URL) return process.env.INTERNAL_API_URL;
+  if (process.env.NODE_ENV !== 'production') return 'http://127.0.0.1:3000';
+
+  const port = process.env.PORT || 3000;
+  return `http://127.0.0.1:${port}`;
 }

@@ -118,9 +118,6 @@ export default function Navbar() {
 
           {/* Desktop CTAs */}
           <div className="hidden items-center gap-2.5 lg:flex">
-            <Link href="/student" className="secondary-btn px-4 py-2">
-              Student Portal
-            </Link>
             <Link href="/contact" className="primary-btn px-4 py-2">
               Book Consultation
             </Link>
@@ -161,13 +158,7 @@ export default function Navbar() {
                     {link.name}
                   </Link>
                 ))}
-                <Link
-                  href="/student"
-                  className="mt-2 flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <GraduationCap size={18} /> Student Portal
-                </Link>
+
                 <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <Link href="/contact" className="primary-btn" onClick={() => setMobileMenuOpen(false)}>
                     Book Consultation

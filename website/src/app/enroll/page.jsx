@@ -90,10 +90,10 @@ function CheckoutForm() {
     return (
       <div className="pt-32 pb-24 min-h-screen flex flex-col items-center justify-center">
         <Loader2 className="animate-spin text-primary mb-6" size={48} />
-        <h2 className="text-2xl font-bold text-slate-900">Redirecting to Payment Gateway...</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Reserving your seat...</h2>
         <p className="mt-2 text-slate-500">Please do not refresh or close this page.</p>
         <div className="mt-8 flex items-center gap-3 bg-white px-6 py-4 rounded-full border border-slate-200 shadow-sm text-sm font-semibold text-slate-700">
-          <ShieldCheck size={20} className="text-primary" /> Securing connection
+          <ShieldCheck size={20} className="text-primary" /> Preparing enrollment confirmation
         </div>
       </div>
     );
@@ -186,9 +186,6 @@ function CheckoutForm() {
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Payment Method</label>
                       <select name="method" value={formData.method} onChange={(e) => { handleChange(e); setStep(3); }} required className="form-input-premium">
                         <option value="pay_at_branch">Pay at Branch (Cash/Counter)</option>
-                        <option value="card_brac">Debit/Credit Card (BRAC Bank)</option>
-                        <option value="bkash">bKash (Mobile Banking)</option>
-                        <option value="nagad">Nagad (Mobile Banking)</option>
                       </select>
                     </div>
                   </div>
@@ -201,7 +198,7 @@ function CheckoutForm() {
 
                 <div className="flex justify-center items-center gap-2 text-xs text-slate-400 font-medium">
                   <ShieldCheck size={14} className="text-accent" />
-                  <span>256-bit encrypted checkout. We do not store your card details.</span>
+                  <span>Your seat is reserved first. Complete payment at the branch counter.</span>
                 </div>
               </form>
             </div>

@@ -3,6 +3,8 @@ import HomepageClient from "./HomepageClient";
 import JsonLd, { faqSchema, breadcrumbSchema } from "@/components/JsonLd";
 import { getApiBase } from "@/lib/api";
 
+export const dynamic = "force-dynamic";
+
 /* ─── Homepage SEO Metadata ────────────────────────────────── */
 export const metadata = {
   title: "Best PTE Coaching Centre in Bangladesh | Language Academy Dhaka",

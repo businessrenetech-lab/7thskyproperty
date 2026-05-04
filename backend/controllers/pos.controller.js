@@ -15,6 +15,8 @@ const IncomeCategory = require('../models/IncomeCategory');
 const Expense = require('../models/Expense');
 const sequelize = require('../config/db.config');
 const { Op } = require('sequelize');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const calculateDue = (invoice) => {
   const amount = Number(invoice?.amount || 0);
@@ -252,16 +254,18 @@ exports.collectFee = async (req, res) => {
       });
     }
 
+    let generatedPassword = null;
     if (!enrollment.student_id && lead) {
       let user = null;
       if (lead.email) {
         user = await User.findOne({ where: { email: lead.email }, transaction: t });
       }
       if (!user) {
+        generatedPassword = crypto.randomBytes(12).toString('base64url');
         user = await User.create({
           name: lead.name,
           email: lead.email || `lead-${lead.id}@languageacademy.local`,
-          password: Math.random().toString(36).substring(7),
+          password: await bcrypt.hash(generatedPassword, 10),
           role: 'student',
           branch_id: req.branchId,
         }, { transaction: t });
@@ -341,7 +345,7 @@ exports.collectFee = async (req, res) => {
     const message = referralExpenseResult.created || referralExpenseResult.updated
       ? 'Fee collected successfully. Referral payout moved to pending expense approval.'
       : 'Fee collected successfully';
-    res.status(201).json({ message, transaction: txn, referral_expense: referralExpenseResult });
+    res.status(201).json({ message, transaction: txn, referral_expense: referralExpenseResult, temporary_password: generatedPassword });
   } catch (error) {
     await t.rollback();
     console.error('[CollectFee Error]:', error);

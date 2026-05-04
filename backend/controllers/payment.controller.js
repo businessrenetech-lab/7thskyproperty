@@ -11,6 +11,12 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const fbCapi = require('../services/facebookCapi.service');
 const { sendEnrollmentConfirmationEmail } = require('../services/communication.service');
+const sequelize = require('../config/db.config');
+
+const parsePaymentMethod = (lead) => {
+  if (!lead.notes || !lead.notes.includes('Payment Method Initiated:')) return 'card_brac';
+  return lead.notes.replace('Payment Method Initiated:', '').trim();
+};
 
 const initiateCheckout = async (req, res) => {
   try {
@@ -25,6 +31,10 @@ const initiateCheckout = async (req, res) => {
 
     if (!course || !batch) {
       return res.status(404).json({ error: 'Course or Batch not found' });
+    }
+
+    if (method !== 'pay_at_branch') {
+      return res.status(501).json({ error: 'Online payment is not configured yet. Please choose pay at branch.' });
     }
 
     const payment_ref = `PAY-${uuidv4().substring(0, 8).toUpperCase()}`;
@@ -57,6 +67,7 @@ const initiateCheckout = async (req, res) => {
 };
 
 const paymentSuccess = async (req, res) => {
+  let dbTransaction;
   try {
     const { payment_ref } = req.body;
 
@@ -71,28 +82,34 @@ const paymentSuccess = async (req, res) => {
 
     const branch_id = lead.branch_id || 1;
     
-    // Parse method from lead notes
-    let method = 'card_brac';
-    if (lead.notes && lead.notes.includes('Payment Method Initiated:')) {
-      method = lead.notes.replace('Payment Method Initiated:', '').trim();
-    }
+    const method = parsePaymentMethod(lead);
     const isPayAtBranch = method === 'pay_at_branch';
 
+    if (!isPayAtBranch) {
+      return res.status(409).json({
+        error: 'Online payment has not been verified by the payment provider.',
+        status: lead.status
+      });
+    }
+
+    dbTransaction = await sequelize.transaction();
+
     // 1. Create or find User
-    let user = await User.findOne({ where: { email: lead.email } });
+    let user = await User.findOne({ where: { email: lead.email }, transaction: dbTransaction });
     if (!user) {
-      const hashedPassword = await bcrypt.hash('Abc@1234', 10);
+      const temporaryPassword = require('crypto').randomBytes(24).toString('hex');
+      const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
       user = await User.create({
         name: lead.name,
         email: lead.email,
         password: hashedPassword,
         branch_id,
         role: 'student'
-      });
+      }, { transaction: dbTransaction });
     }
 
     // 2. Create or find Student
-    let student = await Student.findOne({ where: { user_id: user.id } });
+    let student = await Student.findOne({ where: { user_id: user.id }, transaction: dbTransaction });
     if (!student) {
       student = await Student.create({
         user_id: user.id,
@@ -101,14 +118,14 @@ const paymentSuccess = async (req, res) => {
         mobile_no: lead.phone,
         enrollment_date: new Date(),
         status: 'active'
-      });
+      }, { transaction: dbTransaction });
     }
 
     // 3. Update Lead
-    await lead.update({ status: isPayAtBranch ? 'fees_pending' : 'successful' });
+    await lead.update({ status: isPayAtBranch ? 'fees_pending' : 'successful' }, { transaction: dbTransaction });
 
     // 4. Create Contact if not exists
-    let contact = await Contact.findOne({ where: { email: lead.email } });
+    let contact = await Contact.findOne({ where: { email: lead.email }, transaction: dbTransaction });
     if (!contact) {
       await Contact.create({
         branch_id,
@@ -116,7 +133,7 @@ const paymentSuccess = async (req, res) => {
         email: lead.email,
         phone: lead.phone,
         source: 'website'
-      });
+      }, { transaction: dbTransaction });
     }
 
     // 5. Create Enrollment
@@ -127,7 +144,7 @@ const paymentSuccess = async (req, res) => {
       total_fee: lead.deal_value,
       paid_amount: isPayAtBranch ? 0 : lead.deal_value,
       status: isPayAtBranch ? 'pending' : 'paid'
-    });
+    }, { transaction: dbTransaction });
 
     // 6. Create Invoice
     const invoice = await Invoice.create({
@@ -139,7 +156,10 @@ const paymentSuccess = async (req, res) => {
       paid: isPayAtBranch ? 0 : lead.deal_value,
       status: isPayAtBranch ? 'pending' : 'paid',
       due_date: new Date(),
-    });
+    }, { transaction: dbTransaction });
+
+    await dbTransaction.commit();
+    dbTransaction = null;
 
     // 7. Transaction and Accounting (If actually paid online)
     let transaction = null;
@@ -207,6 +227,7 @@ const paymentSuccess = async (req, res) => {
       transaction_id: transaction?.id || null,
       invoice_no: invoice.invoice_no,
       payment_ref: payment_ref_to_use,
+      portal_access: 'after_branch_payment',
       order: {
         student_name: lead.name,
         email: lead.email,
@@ -268,6 +289,7 @@ const paymentSuccess = async (req, res) => {
       }).catch(err => console.error('[PAYMENT] Enrollment email failed:', err.message));
     }
   } catch (error) {
+    if (dbTransaction) await dbTransaction.rollback().catch(() => {});
     console.error('Payment Success Processing Error:', error);
     res.status(500).json({ error: 'Failed to process payment success' });
   }

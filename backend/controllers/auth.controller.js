@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Branch = require('../models/Branch');
+const { getTableColumns, hasColumn } = require('../utils/schemaSafe');
 
 const ASSIGNABLE_ROLES = ['super_admin', 'branch_admin', 'counselor', 'trainer', 'accounts', 'hr', 'staff', 'unassigned'];
 const BRANCH_ADMIN_ROLES = ['counselor', 'trainer', 'accounts', 'hr', 'staff', 'unassigned'];
@@ -21,7 +22,15 @@ const validatePassword = (password) => {
 };
 
 // M5 Fix: Safe user attributes that never include password hash
-const SAFE_USER_ATTRIBUTES = ['id', 'name', 'email', 'role', 'branch_id', 'status', 'createdAt', 'updatedAt'];
+const BASE_SAFE_USER_ATTRIBUTES = ['id', 'name', 'email', 'role', 'branch_id'];
+
+const getSafeUserAttributes = async (includePassword = false) => {
+  const columns = await getTableColumns('users');
+  const attributes = [...BASE_SAFE_USER_ATTRIBUTES];
+  if (hasColumn(columns, 'status')) attributes.push('status');
+  if (includePassword) attributes.push('password');
+  return attributes;
+};
 
 const canAssignRole = (actor, role) => {
   if (!ASSIGNABLE_ROLES.includes(role)) return false;
@@ -98,13 +107,13 @@ exports.login = async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required.' });
     }
 
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ where: { email }, attributes: await getSafeUserAttributes(true) });
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Check if account is active
-    if (user.status && user.status !== 'active') {
+    if (Object.prototype.hasOwnProperty.call(user.toJSON(), 'status') && user.status && user.status !== 'active') {
       return res.status(403).json({ error: 'Account is suspended. Contact your administrator.' });
     }
 
@@ -119,8 +128,7 @@ exports.login = async (req, res) => {
     // M5 Fix: Fetch user WITHOUT password hash
     const fullUser = await User.findOne({
       where: { id: user.id },
-      attributes: SAFE_USER_ATTRIBUTES,
-      include: ['Branch', 'Student'].filter(m => !!User.associations[m])
+      attributes: await getSafeUserAttributes(false),
     });
 
     res.json({ token, user: fullUser });

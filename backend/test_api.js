@@ -4,8 +4,8 @@ async function testFrontendFlow() {
   try {
     console.log('Logging in...');
     const loginRes = await axios.post('http://127.0.0.1:5000/api/auth/login', {
-      email: 'admin@renetech.com',
-      password: 'Redowan173123'
+      email: process.env.TEST_ADMIN_EMAIL,
+      password: process.env.TEST_ADMIN_PASSWORD
     });
     const token = loginRes.data.token;
     console.log('Login successful. Token acquired.');

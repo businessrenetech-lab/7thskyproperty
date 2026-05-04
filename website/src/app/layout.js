@@ -56,6 +56,12 @@ export const metadata = {
     address: true,
   },
 
+  icons: {
+    icon: [{ url: "/logo.png", type: "image/png" }],
+    shortcut: ["/logo.png"],
+    apple: [{ url: "/logo.png", type: "image/png" }],
+  },
+
   alternates: {
     canonical: "https://languageacademy.com.bd",
   },

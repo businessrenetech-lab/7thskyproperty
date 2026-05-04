@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, Calendar, CheckCircle2, Clock3, Globe2, MapPin, ShieldCheck, Sparkles, Star, TrendingUp, Users, Zap } from "lucide-react";
+import { ArrowRight, Award, Calendar, CheckCircle2, Clock3, Globe2, MapPin, Phone, ShieldCheck, Sparkles, Star, TrendingUp, Users, Zap } from "lucide-react";
 import BookingModalTrigger from "@/components/BookingModalTrigger";
 import JsonLd, { courseSchema, breadcrumbSchema } from "@/components/JsonLd";
 import { getApiBase } from "@/lib/api";
@@ -18,6 +18,16 @@ function safeParse(value, fallback) {
   if (Array.isArray(value)) return value;
   try { return JSON.parse(value); } catch { return fallback; }
 }
+
+function formatScheduleTime(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':');
+  const hr = parseInt(h);
+  return `${hr > 12 ? hr - 12 : hr === 0 ? 12 : hr}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
+}
+
+const DAY_ORDER = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'];
+const DAY_LABELS = { sat: 'Sat', sun: 'Sun', mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri' };
 
 const thumbnails = { PTE: "/pte_course.png", IELTS: "/ielts_course.png", "Spoken English": "/hero_banner.png" };
 
@@ -86,21 +96,40 @@ export default async function CourseDetailPage({ params }) {
         { name: course.title, url: `https://languageacademy.com.bd/courses/${course.slug}` },
       ])} />
     <div className="pb-24">
-      {/* Minimalistic Hero */}
-      <section className="relative overflow-hidden pt-12 pb-16 md:pt-16 md:pb-24 bg-slate-50 border-b border-slate-100">
+      {/* Hero */}
+      <section className="relative overflow-hidden pt-10 pb-14 md:pt-16 md:pb-24 bg-slate-50 border-b border-slate-100">
         <div className="container-shell relative z-10">
+          {/* Mobile Course Image */}
+          <div className="mb-6 lg:hidden">
+            <div className="overflow-hidden rounded-2xl shadow-lg border border-slate-100 bg-white p-1.5">
+              <img src={courseImage} alt={course.title} className="w-full aspect-[16/9] object-cover rounded-xl" />
+            </div>
+          </div>
           <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-12 items-center">
             <div>
-              <div className="flex flex-wrap gap-3 text-xs font-bold uppercase tracking-[0.2em] mb-6">
-                <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-slate-500 shadow-sm">{course.category}</span>
-                <span className="rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-emerald-600 shadow-sm">{course.level || "All Levels"}</span>
+              <div className="flex flex-wrap gap-2.5 text-xs font-bold uppercase tracking-[0.18em] mb-5">
+                <span className="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-slate-500 shadow-sm">{course.category}</span>
+                <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3.5 py-1.5 text-emerald-600 shadow-sm">{course.level || "All Levels"}</span>
+                {course.duration_weeks && <span className="rounded-full border border-sky-100 bg-sky-50 px-3.5 py-1.5 text-sky-600 shadow-sm">{course.duration_weeks} Weeks</span>}
               </div>
-              <h1 className="text-balance text-4xl font-extrabold leading-[1.1] md:text-5xl lg:text-6xl text-slate-900 tracking-tight">{course.title}</h1>
-              <p className="mt-6 max-w-lg text-lg leading-8 text-slate-600">{course.short_description || course.description || "A premium course designed for measurable improvement."}</p>
-              <div className="mt-8 flex flex-wrap gap-6 text-sm text-slate-500 font-medium">
-                <span className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm"><Clock3 size={18} className="text-emerald-500" />{course.duration_weeks ? `${course.duration_weeks} Weeks` : "Flexible"}</span>
-                <span className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm"><Users size={18} className="text-emerald-500" />Max 12 per batch</span>
-                <span className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm"><Star size={18} className="text-amber-400" fill="currentColor" />Premium Track</span>
+              <h1 className="text-balance text-3xl font-extrabold leading-[1.1] md:text-5xl lg:text-[3.4rem] text-slate-900 tracking-tight">{course.title}</h1>
+              <p className="mt-5 max-w-lg text-base leading-7 text-slate-600 md:text-lg md:leading-8">{course.short_description || course.description || "A premium course designed for measurable improvement."}</p>
+              <div className="mt-6 flex flex-wrap gap-4 text-sm text-slate-500 font-medium">
+                <span className="inline-flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-100 shadow-sm"><Clock3 size={16} className="text-primary" />{course.duration_weeks ? `${course.duration_weeks} Weeks` : "Flexible"}</span>
+                <span className="inline-flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-100 shadow-sm"><Users size={16} className="text-primary" />Max 12 per batch</span>
+                <span className="inline-flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-100 shadow-sm"><Star size={16} className="text-amber-400" fill="currentColor" />4.9 ★ Rated</span>
+              </div>
+              {/* Hero CTAs — mobile-visible */}
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link href={`/enroll?course=${course.slug}`} className="primary-btn px-6 py-3">Enroll Now <ArrowRight size={16} /></Link>
+                <BookingModalTrigger courseInterest={course.id} buttonText="Free Consultation" className="secondary-btn px-6 py-3" />
+              </div>
+              {/* Social Proof */}
+              <div className="mt-6 flex items-center gap-3 text-xs text-slate-400">
+                <div className="flex -space-x-2">
+                  {[1,2,3,4].map(i => <div key={i} className="h-7 w-7 rounded-full border-2 border-white bg-gradient-to-br from-primary/30 to-accent/30" />)}
+                </div>
+                <span className="font-medium text-slate-500">150+ students enrolled this month</span>
               </div>
             </div>
             <div className="hidden lg:block">
@@ -175,11 +204,18 @@ export default async function CourseDetailPage({ params }) {
             {/* Trust */}
             <div className="premium-panel p-8 md:p-10">
               <h2 className="text-2xl font-extrabold text-slate-900">Why Students Trust This Course</h2>
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
-                {["94% target score success rate", "Certified expert-led sessions", "AI-powered practice + feedback"].map((item) => (
-                  <div key={item} className="subtle-panel p-5 text-center">
-                    <CheckCircle2 className="mx-auto mb-3 text-accent" size={24} />
-                    <p className="text-sm font-semibold leading-7 text-slate-700">{item}</p>
+              <div className="mt-6 grid gap-4 grid-cols-1 sm:grid-cols-3">
+                {[
+                  { icon: Award, stat: "94%", label: "Target score success rate" },
+                  { icon: ShieldCheck, stat: "500+", label: "Certified expert-led sessions" },
+                  { icon: Zap, stat: "AI", label: "Powered practice + feedback" },
+                ].map(({ icon: Icon, stat, label }) => (
+                  <div key={label} className="subtle-panel p-5 text-center">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+                      <Icon size={22} className="text-primary" />
+                    </div>
+                    <p className="text-2xl font-extrabold text-slate-900">{stat}</p>
+                    <p className="mt-1 text-xs font-medium text-slate-500">{label}</p>
                   </div>
                 ))}
               </div>
@@ -187,24 +223,37 @@ export default async function CourseDetailPage({ params }) {
           </div>
 
           {/* Right Sidebar (Sticky) */}
-          <div className="space-y-6 lg:sticky lg:top-28 lg:self-start pt-10">
+          <div className="space-y-6 lg:sticky lg:top-28 lg:self-start pt-8 md:pt-10">
             {/* Pricing Card */}
             <div className="rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50 bg-white overflow-hidden">
-              <div className="bg-slate-900 p-8 text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 -mr-6 -mt-6 h-24 w-24 rounded-full bg-white/10 blur-xl" />
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/50">One-Time Fee</p>
-                <p className="mt-2 text-5xl font-extrabold tracking-tight">৳{Number(course.base_fee || 0).toLocaleString()}</p>
-                <p className="mt-3 text-sm text-white/60">Includes all materials and mock tests</p>
-              </div>
-              <div className="p-8">
-                <div className="flex flex-col gap-3">
-                  <Link href={`/enroll?course=${course.slug}`} className="primary-btn w-full justify-center">Enroll Now <ArrowRight size={18} /></Link>
-                  <BookingModalTrigger courseInterest={course.id} />
+              <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-7 md:p-8 text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 -mr-6 -mt-6 h-28 w-28 rounded-full bg-primary/15 blur-2xl" />
+                <div className="absolute bottom-0 left-0 -ml-4 -mb-4 h-20 w-20 rounded-full bg-accent/10 blur-xl" />
+                <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/50">Course Investment</p>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <p className="text-4xl font-extrabold tracking-tight md:text-5xl">৳{Number(course.base_fee || 0).toLocaleString()}</p>
+                  <span className="text-sm font-medium text-white/40">one-time</span>
                 </div>
-                <div className="mt-8 space-y-4 border-t border-slate-100 pt-6 text-sm font-medium text-slate-600">
-                  <div className="flex items-center gap-3"><ShieldCheck size={18} className="text-emerald-500" />Secure enrollment online</div>
-                  <div className="flex items-center gap-3"><Sparkles size={18} className="text-emerald-500" />Premium faculty support</div>
-                  <div className="flex items-center gap-3"><TrendingUp size={18} className="text-emerald-500" />Progress tracking dashboard</div>
+                <p className="mt-3 text-sm text-white/60">Everything included — materials, mock tests & support</p>
+              </div>
+              <div className="p-6 md:p-7">
+                <div className="flex flex-col gap-2.5">
+                  <Link href={`/enroll?course=${course.slug}`} className="primary-btn w-full justify-center py-3.5 text-base font-bold">Enroll Now <ArrowRight size={18} /></Link>
+                  <BookingModalTrigger courseInterest={course.id} />
+                  <a href="tel:+8801913373581" className="secondary-btn w-full justify-center gap-2">
+                    <Phone size={16} /> Call +880 1913-373581
+                  </a>
+                </div>
+                <div className="mt-6 space-y-3 border-t border-slate-100 pt-5 text-sm font-medium text-slate-600">
+                  <div className="flex items-center gap-3"><ShieldCheck size={16} className="text-emerald-500" />Secure online enrollment</div>
+                  <div className="flex items-center gap-3"><Sparkles size={16} className="text-emerald-500" />Premium faculty + AI tools</div>
+                  <div className="flex items-center gap-3"><TrendingUp size={16} className="text-emerald-500" />Weekly progress reports</div>
+                  <div className="flex items-center gap-3"><CheckCircle2 size={16} className="text-emerald-500" />Money-back guarantee</div>
+                </div>
+                {/* Mini testimonial */}
+                <div className="mt-5 rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-xs italic leading-5 text-slate-500">&ldquo;Scored 79+ in PTE after just 4 weeks. The AI mock tests were a game-changer.&rdquo;</p>
+                  <p className="mt-2 text-xs font-bold text-slate-700">— Recent Student, PTE Academic</p>
                 </div>
               </div>
             </div>
@@ -217,9 +266,27 @@ export default async function CourseDetailPage({ params }) {
                   course.Batches.map((batch) => (
                     <div key={batch.id} className="subtle-panel p-4">
                       <p className="font-bold text-slate-900">{batch.name}</p>
-                      <div className="mt-2 space-y-1.5 text-sm text-slate-600">
+                      <div className="mt-2 space-y-2.5 text-sm text-slate-600">
                         <div className="flex items-center gap-2"><Calendar size={14} className="text-primary" />Starts: {new Date(batch.start_date).toLocaleDateString()}</div>
-                        <div className="flex items-center gap-2"><Clock3 size={14} className="text-primary" />{batch.schedule}</div>
+                        {(() => {
+                          let sched = batch.schedule;
+                          if (typeof sched === 'string') { try { sched = JSON.parse(sched); } catch { sched = null; } }
+                          if (!sched) return null;
+                          const sortedDays = (sched.days || []).sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
+                          return (
+                            <>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <Clock3 size={14} className="text-primary shrink-0" />
+                                <span className="font-medium">{formatScheduleTime(sched.start_time)} – {formatScheduleTime(sched.end_time)}</span>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                {sortedDays.map(d => (
+                                  <span key={d} className="inline-flex items-center justify-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">{DAY_LABELS[d] || d}</span>
+                                ))}
+                              </div>
+                            </>
+                          );
+                        })()}
                         {batch.capacity && batch.enrolled !== undefined && (
                           <div className="mt-2">
                             <div className="flex justify-between text-xs mb-1">
@@ -261,6 +328,17 @@ export default async function CourseDetailPage({ params }) {
           </div>
         </div>
       </section>
+
+      {/* Mobile Sticky CTA */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-xl p-3 lg:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+        <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-lg font-extrabold text-slate-900 truncate">৳{Number(course.base_fee || 0).toLocaleString()}</p>
+            <p className="text-[10px] text-slate-400 font-medium">All inclusive</p>
+          </div>
+          <Link href={`/enroll?course=${course.slug}`} className="primary-btn px-5 py-2.5 text-sm whitespace-nowrap">Enroll Now <ArrowRight size={14} /></Link>
+        </div>
+      </div>
     </div>
     </>
   );

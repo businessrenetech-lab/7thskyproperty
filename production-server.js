@@ -53,7 +53,12 @@ require('dotenv').config({ path: envPath });
 process.env.TZ = 'Asia/Dhaka';
 
 const PORT = HOSTINGER_PORT || process.env.PORT || 3000;
+process.env.PORT = String(PORT);
+if (!process.env.INTERNAL_API_URL) {
+  process.env.INTERNAL_API_URL = `http://127.0.0.1:${PORT}`;
+}
 log(`  Final PORT: ${PORT}`);
+log(`  INTERNAL_API_URL: ${process.env.INTERNAL_API_URL}`);
 log(`  DB_HOST: ${process.env.DB_HOST || '(NOT SET!)'}`);
 log(`  DB_NAME: ${process.env.DB_NAME || '(NOT SET!)'}`);
 log('STEP 1: Done');
@@ -110,7 +115,8 @@ async function start() {
   log('STEP 5: Creating Express app and mounting routes...');
   const app = express();
   const cors = require('cors');
-  app.use(cors());
+  const { getCorsOptions } = require('./backend/config/cors.config');
+  app.use(cors(getCorsOptions()));
   app.use(express.json());
 
   // Health check endpoint (test before everything else)
@@ -128,6 +134,7 @@ async function start() {
     ['/api/reconciliation', './backend/routes/reconciliation.routes'],
     ['/api/pte', './backend/routes/pte.routes'],
     ['/api/students', './backend/routes/student.routes'],
+    ['/api/student', './backend/routes/student.routes'],
     ['/api/attendance', './backend/routes/attendance.routes'],
     ['/api/enrollments', './backend/routes/enrollment.routes'],
     ['/api/pos', './backend/routes/pos.routes'],
@@ -183,6 +190,26 @@ async function start() {
   app.get('/student/{*splat}', (req, res) => {
     res.sendFile(path.join(studentDist, 'index.html'));
   });
+
+  const portalMounts = [
+    ['/teacher', 'teacher-portal'],
+    ['/accounting', 'accounting-portal'],
+    ['/hrm', 'hr-portal'],
+    ['/brandmanager', 'crm-portal'],
+  ];
+
+  for (const [mountPath, dirName] of portalMounts) {
+    const distDir = path.join(__dirname, dirName, 'dist');
+    const indexFile = path.join(distDir, 'index.html');
+    const hasBuild = fs.existsSync(distDir) && fs.existsSync(indexFile);
+    log(`  ${dirName}/dist exists: ${fs.existsSync(distDir)}`);
+    log(`  ${dirName}/dist/index.html exists: ${fs.existsSync(indexFile)}`);
+    if (!hasBuild) continue;
+    app.use(mountPath, express.static(distDir));
+    app.get(`${mountPath}/{*splat}`, (req, res) => {
+      res.sendFile(indexFile);
+    });
+  }
 
   // Next.js catch-all
   app.all('{*splat}', (req, res) => {
@@ -274,8 +301,9 @@ async function start() {
     ];
 
     log('  Syncing models...');
+    const syncOptions = process.env.DB_SYNC_ALTER === 'true' ? { alter: true } : {};
     await Promise.allSettled(
-      models.map(m => m.sync({ alter: true }).catch(err => {
+      models.map(m => m.sync(syncOptions).catch(err => {
         log(`  ⚠ Sync warning ${m.name}: ${err.message.substring(0, 100)}`);
       }))
     );
@@ -289,7 +317,7 @@ async function start() {
 
   } catch (err) {
     log(`STEP 6 FAILED: Database error: ${err.stack || err.message}`);
-    log('  ⚠ Continuing without database (server will still start)...');
+    log('STEP 6: Continuing without a startup DB connection. DB-backed API routes may fail until MySQL accepts connections again.');
   }
 
   // Step 7: Listen

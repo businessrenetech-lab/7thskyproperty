@@ -12,6 +12,7 @@ router.get('/blog/:slug', publicController.getBlogDetails);
 
 router.post('/contact', publicController.submitContactForm);
 router.post('/enquiries', publicController.submitCourseEnquiry);
+router.post('/student-bookings', publicController.submitStudentBooking);
 
 // Note: Registration and Payment points are handled separately or via another route file
 module.exports = router;

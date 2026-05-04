@@ -8,8 +8,9 @@ const branchMiddleware = (req, res, next) => {
 
   // If super_admin from head branch, they can optionally specify a branchId in query or header
   const branchId = req.headers['x-branch-id'] || req.query.branchId;
+  const branchType = user.Branch?.type;
 
-  if (user.role === 'super_admin' && user.Branch.type === 'head') {
+  if (user.role === 'super_admin' && branchType === 'head') {
     if (branchId && branchId !== 'all') {
       req.scopedBranchId = parseInt(branchId);
     } else if (branchId === 'all') {

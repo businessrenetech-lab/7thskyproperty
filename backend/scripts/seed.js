@@ -40,7 +40,11 @@ const seedData = async () => {
         });
 
         // 2. Create Users
-        const hashedPassword = await bcrypt.hash('Redowan173123', 10);
+        const seedPassword = process.env.SEED_DEFAULT_PASSWORD || require('crypto').randomBytes(12).toString('base64url');
+        if (!process.env.SEED_DEFAULT_PASSWORD) {
+            console.log(`Generated seed user password: ${seedPassword}`);
+        }
+        const hashedPassword = await bcrypt.hash(seedPassword, 10);
         
         const superAdmin = await User.create({
             name: 'Super Admin',

@@ -1,7 +1,17 @@
 const crypto = require('crypto');
 
 const ALGORITHM = 'aes-256-cbc';
-const SECRET_KEY = crypto.createHash('sha256').update(String(process.env.JWT_SECRET || 'fallback_secret_key_12345')).digest('base64').substr(0, 32); 
+const encryptionSecret = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET;
+
+if (!encryptionSecret && process.env.NODE_ENV === 'production') {
+  throw new Error('ENCRYPTION_KEY or JWT_SECRET is required in production.');
+}
+
+const SECRET_KEY = crypto
+  .createHash('sha256')
+  .update(String(encryptionSecret || 'development-only-encryption-key'))
+  .digest('base64')
+  .substr(0, 32);
 
 const encrypt = (text) => {
   if (!text) return text;
