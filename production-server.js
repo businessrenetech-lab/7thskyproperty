@@ -205,8 +205,8 @@ async function start() {
   log(`  admin-portal/dist/index.html exists: ${fs.existsSync(adminIndex)}`);
 
   // Explicit admin asset handler — guaranteed correct MIME types
-  app.get('/admin/assets/*', (req, res) => {
-    const assetPath = path.join(adminDist, req.path.replace('/admin/', ''));
+  app.use('/admin/assets', (req, res, next) => {
+    const assetPath = path.join(adminDist, 'assets', req.path.substring(1));
     const ext = path.extname(assetPath).toLowerCase();
     if (fs.existsSync(assetPath)) {
       const mime = MIME_MAP[ext] || 'application/octet-stream';
@@ -217,7 +217,7 @@ async function start() {
     return res.status(404).type('text/plain').send('Asset not found');
   });
   app.use('/admin', express.static(adminDist, { index: false }));
-  app.get('/admin/*', sendSpaIndex(adminIndex));
+  app.get('/admin/{*splat}', sendSpaIndex(adminIndex));
 
   // Student Portal
   const studentDist = path.join(__dirname, 'student-portal', 'dist');
@@ -225,7 +225,7 @@ async function start() {
   log(`  student-portal/dist exists: ${fs.existsSync(studentDist)}`);
   log(`  student-portal/dist/index.html exists: ${fs.existsSync(studentIndex)}`);
   app.use('/student', express.static(studentDist, { index: false }));
-  app.get('/student/*', sendSpaIndex(studentIndex));
+  app.get('/student/{*splat}', sendSpaIndex(studentIndex));
 
   const portalMounts = [
     ['/teacher', 'teacher-portal'],
@@ -242,11 +242,11 @@ async function start() {
     log(`  ${dirName}/dist/index.html exists: ${fs.existsSync(indexFile)}`);
     if (!hasBuild) continue;
     app.use(mountPath, express.static(distDir, { index: false }));
-    app.get(`${mountPath}/*`, sendSpaIndex(indexFile));
+    app.get(`${mountPath}/{*splat}`, sendSpaIndex(indexFile));
   }
 
   // Next.js catch-all
-  app.all('*', (req, res) => {
+  app.all('{*splat}', (req, res) => {
     return nextHandle(req, res);
   });
 
