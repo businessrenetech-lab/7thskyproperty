@@ -55,11 +55,11 @@ export default function Footer() {
               </div>
               <div>
                 <div className="text-lg font-extrabold text-white">Language Academy</div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">Premium English Coaching</div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">PTE Preparation Centre</div>
               </div>
             </div>
             <p className="text-sm leading-7 text-slate-400">
-              Bangladesh&apos;s best PTE coaching centre. Expert-led PTE Academic preparation, IELTS coaching, and Spoken English courses in Dhaka &mdash; available both online and offline. AI-scored mock tests and small-batch classes for guaranteed score improvement.
+              Language Academy Bangladesh is a world-class PTE preparation centre in Dhaka. We help students prepare smarter with expert trainers, unlimited mock tests, and small-batch classes, with IELTS and English language courses also available.
             </p>
             {/* Social Links */}
             <div className="mt-6 flex gap-3">

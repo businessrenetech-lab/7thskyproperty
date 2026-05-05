@@ -2,8 +2,10 @@ import React from 'react';
 import { AlertCircle, Clock, CheckCircle } from 'lucide-react';
 import api from '../../services/api';
 import { actIcons } from './CRMComponents';
+import { useToast } from '../../context/ToastContext';
 
 const ActivitiesTab = ({ activities, onRefresh }) => {
+  const toast = useToast();
   const overdue = activities.filter(a => !a.is_done && a.due_date && new Date(a.due_date) < new Date());
   const pending = activities.filter(a => !a.is_done && (!a.due_date || new Date(a.due_date) >= new Date()));
   const done = activities.filter(a => a.is_done);
@@ -11,7 +13,7 @@ const ActivitiesTab = ({ activities, onRefresh }) => {
   const complete = async (id) => {
     const outcome = window.prompt('What was the outcome?') || '';
     try { await api.patch(`/crm/activities/${id}/complete`, { outcome }); onRefresh(); }
-    catch { alert('Failed'); }
+    catch { toast.error('Failed'); }
   };
 
   const Row = ({ a }) => (

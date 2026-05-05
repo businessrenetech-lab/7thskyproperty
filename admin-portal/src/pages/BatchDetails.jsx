@@ -4,6 +4,7 @@ import { Loader2, ArrowLeft, Users, Mail, MessageSquare, Calendar, Clock, CheckC
 import api from '../services/api';
 import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const readableSchedule = (schedule) => {
   if (!schedule) return 'Not set';
@@ -24,6 +25,7 @@ const formatDate = (dateValue) => {
 };
 
 const BatchDetails = () => {
+  const toast = useToast();
   const { id } = useParams();
   const navigate = useNavigate();
   
@@ -52,7 +54,7 @@ const BatchDetails = () => {
       setStudents(studentsRes.data || []);
     } catch (error) {
       console.error('Failed to fetch batch data:', error);
-      alert('Failed to load batch. It may have been deleted.');
+      toast.error('Failed to load batch. It may have been deleted.');
       navigate('/lms');
     } finally {
       setLoading(false);
@@ -61,8 +63,8 @@ const BatchDetails = () => {
 
   const handleSendNotification = async (e) => {
     e.preventDefault();
-    if (!notifyMessage.trim()) return alert('Please enter a message');
-    if (notifyType === 'email' && !notifySubject.trim()) return alert('Email notifications require a subject');
+    if (!notifyMessage.trim()) { toast.info('Please enter a message'); return; };
+    if (notifyType === 'email' && !notifySubject.trim()) { toast.info('Email notifications require a subject'); return; };
     
     if (!window.confirm(`Are you sure you want to send this ${notifyType.toUpperCase()} to ${students.length} students?`)) return;
 
@@ -73,12 +75,12 @@ const BatchDetails = () => {
         subject: notifySubject,
         message: notifyMessage
       });
-      alert(response.data.message || 'Notification sent successfully');
+      toast.success(response.data.message || 'Notification sent successfully');
       setIsNotifyModalOpen(false);
       setNotifyMessage('');
       setNotifySubject('');
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to send notification');
+      toast.error(error.response?.data?.error || 'Failed to send notification');
     } finally {
       setSubmitting(false);
     }

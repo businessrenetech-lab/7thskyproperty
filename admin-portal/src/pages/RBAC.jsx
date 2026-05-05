@@ -6,6 +6,7 @@ import {
 import api from '../services/api';
 import { usePermissions } from '../context/PermissionContext';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 /* ─── CONSTANTS ───────────────────────────────────────────── */
 const PORTALS = [
@@ -102,6 +103,7 @@ const INITIAL_SYSTEM_ROLES = [
 
 /* ─── BASELINE PERMISSION GENERATOR ──────────────────────── */
 const getBaselineConfig = (roleKey, portalKey, featuresList) => {
+  const toast = useToast();
   let enabled = false;
   let features = {};
 
@@ -247,7 +249,7 @@ const RBAC = () => {
       await api.patch('/auth/role', { userId, role: newRole });
       setStaff(staff.map(s => s.id === userId ? { ...s, role: newRole } : s));
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to update user role');
+      toast.error(err.response?.data?.error || 'Failed to update user role');
     }
   };
 
@@ -257,7 +259,7 @@ const RBAC = () => {
     
     // Ensure uniqueness
     if (systemRoles.find(r => r.key === roleKey)) {
-      alert('A role with this name already exists.');
+      toast.warning('A role with this name already exists.');
       return;
     }
 
@@ -282,14 +284,14 @@ const RBAC = () => {
   };
 
   const handleSetPassword = async () => {
-    if (newPassword.length < 6) return alert('Password must be 6+ characters');
+    if (newPassword.length < 6) { toast.warning('Password must be 6+ characters'); return; };
     try {
       await api.patch('/auth/staff-password', { userId: passModalUser.id, newPassword });
-      alert('Password created successfully.');
+      toast.success('Password created successfully.');
       setPassModalUser(null);
       setNewPassword('');
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to update password');
+      toast.error(err.response?.data?.error || 'Failed to update password');
     }
   };
 
@@ -341,9 +343,9 @@ const RBAC = () => {
       await savePermissions(permissions, customRoles);
       // Also refresh the permission context so sidebar updates immediately
       await loadPermissions();
-      alert('RBAC configuration saved to database successfully!');
+      toast.success('RBAC configuration saved to database successfully!');
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to save RBAC configuration');
+      toast.error(err.response?.data?.error || 'Failed to save RBAC configuration');
     } finally {
       setSaving(false);
     }

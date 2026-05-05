@@ -20,8 +20,10 @@ import api from '../services/api';
 import StudentBookingFormPDF from '../components/pdf/StudentBookingFormPDF';
 import CertificatePDF from '../components/pdf/CertificatePDF';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const formatDate = (value) => {
+  const toast = useToast();
   if (!value) return 'N/A';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return 'N/A';
@@ -104,7 +106,7 @@ const StudentDetails = () => {
       });
     } catch (error) {
       console.error('Error fetching student:', error);
-      alert('Failed to load student data');
+      toast.error('Failed to load student data');
     } finally {
       setLoading(false);
     }
@@ -147,10 +149,10 @@ const StudentDetails = () => {
     try {
       const response = await api.put(`/students/${id}`, formData);
       setStudent(response.data);
-      alert('Profile updated successfully');
+      toast.success('Profile updated successfully');
     } catch (error) {
       console.error('Update error:', error);
-      alert(error.response?.data?.error || 'Failed to update profile');
+      toast.error(error.response?.data?.error || 'Failed to update profile');
     } finally {
       setSaving(false);
     }
@@ -169,10 +171,10 @@ const StudentDetails = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setStudent((prev) => ({ ...prev, photograph_url: response.data.photograph_url }));
-      alert('Photo uploaded successfully');
+      toast.success('Photo uploaded successfully');
     } catch (error) {
       console.error('Photo upload error:', error);
-      alert(error.response?.data?.error || 'Failed to upload photo');
+      toast.error(error.response?.data?.error || 'Failed to upload photo');
     } finally {
       setPhotoUploading(false);
     }
@@ -189,7 +191,7 @@ const StudentDetails = () => {
       setNewActivity({ subject: '', description: '', type: 'note' });
     } catch (error) {
       console.error('Activity creation error:', error);
-      alert(error.response?.data?.error || 'Failed to save activity');
+      toast.error(error.response?.data?.error || 'Failed to save activity');
     } finally {
       setActivitySaving(false);
     }

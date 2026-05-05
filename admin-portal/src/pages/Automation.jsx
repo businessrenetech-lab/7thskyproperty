@@ -19,8 +19,10 @@ import Badge from '../components/ui/Badge';
 import Input from '../components/ui/Input';
 import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const Automation = () => {
+  const toast = useToast();
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -57,7 +59,7 @@ const Automation = () => {
       setFormData({ name: '', trigger_type: 'new_lead', action_type: 'create_notification', template: '' });
       fetchRules();
     } catch (err) {
-      alert('Failed to create rule');
+      toast.error('Failed to create rule');
     }
   };
 
@@ -66,7 +68,7 @@ const Automation = () => {
       await api.patch(`/automation/${id}/toggle`);
       setRules(rules.map(r => r.id === id ? { ...r, is_active: !r.is_active } : r));
     } catch (err) {
-      alert('Toggle failed');
+      toast.error('Toggle failed');
     }
   };
 
@@ -76,7 +78,7 @@ const Automation = () => {
       await api.delete(`/automation/${id}`);
       fetchRules();
     } catch (err) {
-      alert('Delete failed');
+      toast.error('Delete failed');
     }
   };
 
@@ -84,10 +86,10 @@ const Automation = () => {
     setRunningBirthdayCheck(true);
     try {
       const res = await api.post('/automation/run-birthday-check');
-      alert(`Birthday check complete. Processed: ${res.data.processed || 0}, Sent: ${res.data.sent || 0}`);
+      toast.success(`Birthday check complete. Processed: ${res.data.processed || 0}, Sent: ${res.data.sent || 0}`);
       fetchRules();
     } catch (err) {
-      alert(err.response?.data?.error || 'Birthday check failed');
+      toast.error(err.response?.data?.error || 'Birthday check failed');
     } finally {
       setRunningBirthdayCheck(false);
     }

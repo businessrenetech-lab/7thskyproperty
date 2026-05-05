@@ -16,8 +16,10 @@ import {
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const PTEEngine = () => {
+  const toast = useToast();
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -75,7 +77,7 @@ const PTEEngine = () => {
       setResult(res.data);
       if (isTrainer) fetchBranchPerformance(); // Refresh performance if trainer is testing
     } catch (err) {
-      alert('Submission failed');
+      toast.error('Submission failed');
     } finally {
       setSubmitting(false);
     }

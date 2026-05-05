@@ -6,13 +6,13 @@ import { COURSE_FALLBACKS } from "@/lib/courseFallbacks";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Courses — PTE, IELTS & Spoken English Programs in Dhaka",
+  title: "Courses - PTE Preparation, IELTS & English Language Programs in Dhaka",
   description:
-    "Explore premium PTE Academic, IELTS preparation, and Spoken English courses at Language Academy, the best PTE coaching centre in Bangladesh. Expert faculty, small batches (max 12), AI mock tests, online & offline classes.",
+    "Explore PTE-focused courses at Language Academy Bangladesh, with IELTS preparation and English language courses also available. Small batches, unlimited mock tests, online and offline classes in Dhaka.",
   alternates: { canonical: "https://languageacademy.com.bd/courses" },
   openGraph: {
-    title: "PTE, IELTS & Spoken English Courses — Language Academy Dhaka",
-    description: "Find the right course for your English proficiency goals. Small batches, AI mocks, certified faculty. Enroll online.",
+    title: "PTE-Focused Courses - Language Academy Bangladesh",
+    description: "Find the right PTE course, with IELTS and English language programs also available. Small batches, unlimited mock tests, and certified faculty.",
     url: "https://languageacademy.com.bd/courses",
     images: [{ url: "/pte_course.png", width: 1200, height: 630, alt: "Language Academy Courses" }],
   },

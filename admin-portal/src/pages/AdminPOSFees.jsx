@@ -4,8 +4,10 @@ import api from '../services/api';
 import Modal from '../components/Modal';
 import { generateReceiptHtml, downloadReceiptPdf } from '../utils/pdfUtils';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const POSFees = () => {
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState([]);
   const [pendingInvoices, setPendingInvoices] = useState([]);
@@ -260,10 +262,10 @@ const POSFees = () => {
             setShowCollectModal(false);
             setSelectedInvoice(null);
             setPaymentData({ amount: '', account_id: liquidAccounts[0]?.id || '', method: mapAccountToMethod(liquidAccounts[0]), transaction_ref: '', notes: '', referral_amount: 0 });
-            alert(res.data.message || 'Payment collected and Journal recorded!');
+            toast.success(res.data.message || 'Payment collected and Journal recorded!');
             fetchData();
           } catch(err) {
-            alert(err.response?.data?.error || 'Failed to collect payment');
+            toast.error(err.response?.data?.error || 'Failed to collect payment');
           } finally {
             setSubmitting(false);
           }
@@ -333,10 +335,10 @@ const POSFees = () => {
             setShowRejectModal(false);
             setSelectedInvoice(null);
             setRejectNote('');
-            alert(res.data.message || 'Pending fee rejected.');
+            toast.success(res.data.message || 'Pending fee rejected.');
             fetchData();
           } catch (err) {
-            alert(err.response?.data?.error || 'Failed to reject fee');
+            toast.error(err.response?.data?.error || 'Failed to reject fee');
           } finally {
             setSubmitting(false);
           }

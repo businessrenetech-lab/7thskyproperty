@@ -4,6 +4,7 @@ import api from '../services/api';
 import '../styles/GlobalStyles.css';
 import html2pdf from 'html2pdf.js';
 import { buildPdfHeaderHtml, getInstitutionInfo } from '../utils/pdfUtils';
+import { useToast } from '../context/ToastContext';
 
 const money = (v) => `BDT ${Number(v || 0).toLocaleString()}`;
 const date = (v) => (v ? new Date(v).toLocaleDateString() : '-');
@@ -27,6 +28,7 @@ const cols = {
 };
 
 const formatDateLocal = (dateObj) => {
+  const toast = useToast();
   const d = new Date(dateObj);
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 };
@@ -268,7 +270,7 @@ export default function AdminReportsHub() {
       .save()
       .catch((error) => {
         console.error('PDF generation error:', error);
-        alert('Failed to generate PDF. Please try again.');
+        toast.error('Failed to generate PDF. Please try again.');
       });
   };
 

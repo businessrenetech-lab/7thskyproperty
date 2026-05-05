@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 const QuickCheckIn = () => {
+  const toast = useToast();
   const [time, setTime] = useState(new Date().toTimeString().substring(0, 5));
 
   const handlePunch = async (type) => {
     try {
       const userObj = JSON.parse(localStorage.getItem('user'));
-      if(!userObj) return alert("User not found in session!");
+      if(!userObj) { toast.error("User not found in session!"); return; }
 
       let latitude = null;
       let longitude = null;
@@ -36,9 +38,9 @@ const QuickCheckIn = () => {
       };
 
       await api.post('/hrm/attendance/mark', payload);
-      alert(`Successfully punched ${type === 'in' ? 'in' : 'out'} at ` + time);
+      toast.success(`Successfully punched ${type === 'in' ? 'in' : 'out'} at ${time}`);
     } catch(e) {
-      alert(`Failed to punch ${type}!`);
+      toast.error(`Failed to punch ${type}!`);
     }
   };
 

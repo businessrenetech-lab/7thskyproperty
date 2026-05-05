@@ -3,11 +3,13 @@ import { FileText, Plus, Loader2, Trash2, AlertCircle, Download } from 'lucide-r
 import api from '../services/api';
 import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const CATEGORIES = ['contract', 'id', 'certificate', 'tax', 'other'];
 const CAT_COLORS = { contract: '#00D4FF', id: '#00FF94', certificate: '#FFB347', tax: '#9B6DFF', other: '#777' };
 
 const StaffDocuments = () => {
+  const toast = useToast();
   const [docs, setDocs] = useState([]);
   const [staff, setStaff] = useState([]);
   const [expiring, setExpiring] = useState([]);
@@ -46,13 +48,13 @@ const StaffDocuments = () => {
       setShowModal(false);
       setForm({ user_id: '', title: '', category: 'other', expiry_date: '', notes: '', file: null });
       fetchData();
-    } catch (err) { alert('Failed to upload document'); }
+    } catch (err) { toast.error('Failed to upload document'); }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this document?')) return;
     try { await api.delete(`/hrm/documents/${id}`); fetchData(); }
-    catch (err) { alert('Failed'); }
+    catch (err) { toast.error('Failed'); }
   };
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}><Loader2 size={48} className="animate-spin" color="var(--primary)" /></div>;

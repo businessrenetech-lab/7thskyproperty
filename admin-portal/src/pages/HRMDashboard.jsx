@@ -3,8 +3,10 @@ import { Users, Calendar, Clock, Briefcase, FileText, Award, ArrowUpRight, Loade
 import api from '../services/api';
 import QuickCheckIn from '../components/QuickCheckIn';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const HRMDashboard = () => {
+  const toast = useToast();
   const [stats, setStats] = useState(null);
   const [birthdays, setBirthdays] = useState([]);
   const [anniversaries, setAnniversaries] = useState([]);
@@ -89,11 +91,11 @@ const HRMDashboard = () => {
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button className="btn-primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem' }}
-                      onClick={async () => { try { await api.patch(`/hrm/leaves/${req.id}/approve`); window.location.reload(); } catch(e) { alert('Failed'); } }}>
+                      onClick={async () => { try { await api.patch(`/hrm/leaves/${req.id}/approve`); window.location.reload(); } catch(e) { toast.error('Failed'); } }}>
                       Approve
                     </button>
                     <button className="btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem' }}
-                      onClick={async () => { try { await api.patch(`/hrm/leaves/${req.id}/reject`); window.location.reload(); } catch(e) { alert('Failed'); } }}>
+                      onClick={async () => { try { await api.patch(`/hrm/leaves/${req.id}/reject`); window.location.reload(); } catch(e) { toast.error('Failed'); } }}>
                       Reject
                     </button>
                   </div>

@@ -44,9 +44,9 @@ export async function generateMetadata({ params }) {
   const course = await getCourseDetails(params.slug);
   if (!course) return { title: "Course Not Found" };
 
-  const title = `${course.title} — Best ${course.category || "Language"} Course in Dhaka`;
+  const title = `${course.title} - Language Academy Bangladesh`;
   const description = course.short_description || course.description ||
-    `Enroll in ${course.title} at Language Academy, the best PTE coaching centre in Bangladesh. Expert faculty, small batches, AI mock tests.`;
+    `Enroll in ${course.title} at Language Academy Bangladesh. Prepare smarter with expert trainers, small batches, and unlimited mock tests in Dhaka.`;
 
   return {
     title,
@@ -75,7 +75,7 @@ export default async function CourseDetailPage({ params }) {
     "Build confidence through structured, trainer-led learning",
     "Prepare with stronger accountability and support",
     "Develop time management and exam techniques",
-    "Access premium study materials and practice banks",
+    "Access unlimited mock tests and practice banks",
   ]);
 
   const modules = safeParse(course.modules, [
@@ -92,7 +92,7 @@ export default async function CourseDetailPage({ params }) {
     { icon: ShieldCheck, label: "Certified Faculty", desc: "Pearson certified" },
     { icon: TrendingUp, label: "Progress Tracking", desc: "Weekly reports" },
     { icon: Globe2, label: "Online + Offline", desc: "Hybrid learning" },
-    { icon: Star, label: "Premium Materials", desc: "Curated resources" },
+    { icon: Star, label: "Unlimited Mock Tests", desc: "Practice until ready" },
   ];
 
   return (
@@ -122,7 +122,7 @@ export default async function CourseDetailPage({ params }) {
                 {course.duration_weeks && <span className="rounded-full border border-sky-100 bg-sky-50 px-3.5 py-1.5 text-sky-600 shadow-sm">{course.duration_weeks} Weeks</span>}
               </div>
               <h1 className="text-balance text-3xl font-extrabold leading-[1.1] md:text-5xl lg:text-[3.4rem] text-slate-900 tracking-tight">{course.title}</h1>
-              <p className="mt-5 max-w-lg text-base leading-7 text-slate-600 md:text-lg md:leading-8">{course.short_description || course.description || "A premium course designed for measurable improvement."}</p>
+              <p className="mt-5 max-w-lg text-base leading-7 text-slate-600 md:text-lg md:leading-8">{course.short_description || course.description || "A focused course designed for measurable improvement."}</p>
               <div className="mt-6 flex flex-wrap gap-4 text-sm text-slate-500 font-medium">
                 <span className="inline-flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-100 shadow-sm"><Clock3 size={16} className="text-primary" />{course.duration_weeks ? `${course.duration_weeks} Weeks` : "Flexible"}</span>
                 <span className="inline-flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-100 shadow-sm"><Users size={16} className="text-primary" />Max 12 per batch</span>
@@ -255,7 +255,7 @@ export default async function CourseDetailPage({ params }) {
                 </div>
                 <div className="mt-6 space-y-3 border-t border-slate-100 pt-5 text-sm font-medium text-slate-600">
                   <div className="flex items-center gap-3"><ShieldCheck size={16} className="text-emerald-500" />Secure online enrollment</div>
-                  <div className="flex items-center gap-3"><Sparkles size={16} className="text-emerald-500" />Premium faculty + AI tools</div>
+                  <div className="flex items-center gap-3"><Sparkles size={16} className="text-emerald-500" />Unlimited mock tests + AI tools</div>
                   <div className="flex items-center gap-3"><TrendingUp size={16} className="text-emerald-500" />Weekly progress reports</div>
                   <div className="flex items-center gap-3"><CheckCircle2 size={16} className="text-emerald-500" />Money-back guarantee</div>
                 </div>

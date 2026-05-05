@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Plus, Search, Edit2, Trash2, X, Upload, Download, CheckSquare, Square, UserPlus } from 'lucide-react';
 import api from '../../services/api';
 import { inputStyle, stageColors, stageLabels, stageIcons } from './CRMComponents';
+import { useToast } from '../../context/ToastContext';
 
 const ContactsTab = ({ contacts, onRefresh }) => {
+  const toast = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ name: '', phone: '', email: '', company: '', source: 'Walk-in', notes: '' });
@@ -53,7 +55,7 @@ const ContactsTab = ({ contacts, onRefresh }) => {
         await api.post('/crm/contacts', form);
       }
       resetForm(); onRefresh();
-    } catch { alert('Failed to save contact'); }
+    } catch { toast.error('Failed to save contact'); }
     finally { setSaving(false); }
   };
 
@@ -65,7 +67,7 @@ const ContactsTab = ({ contacts, onRefresh }) => {
 
   const handleDelete = async (id) => {
     try { await api.delete(`/crm/contacts/${id}`); setConfirmDelete(null); onRefresh(); }
-    catch { alert('Failed to delete'); }
+    catch { toast.error('Failed to delete'); }
   };
 
   const updateLeadPosition = async (contact, status) => {
@@ -75,7 +77,7 @@ const ContactsTab = ({ contacts, onRefresh }) => {
       await api.patch(`/crm/leads/${contact.CurrentLead.id}/status`, { status });
       onRefresh();
     } catch {
-      alert('Failed to update pipeline position');
+      toast.error('Failed to update pipeline position');
     } finally {
       setStatusSavingId(null);
     }
@@ -92,12 +94,12 @@ const ContactsTab = ({ contacts, onRefresh }) => {
   };
 
   const handleBulkStatusUpdate = async () => {
-    if (!bulkActionStage) return alert('Select a stage first');
+    if (!bulkActionStage) { toast.warning('Select a stage first'); return; };
     setSaving(true);
     try {
       await api.patch('/crm/contacts/bulk-status', { contactIds: selectedContacts, status: bulkActionStage });
       setSelectedContacts([]); onRefresh();
-    } catch { alert('Failed to update bulk status'); }
+    } catch { toast.error('Failed to update bulk status'); }
     finally { setSaving(false); setBulkActionStage(''); }
   };
 
@@ -109,7 +111,7 @@ const ContactsTab = ({ contacts, onRefresh }) => {
 
   const handleCSVUpload = async (e) => {
     e.preventDefault();
-    if (!bulkFile) return alert('Please select a file to upload');
+    if (!bulkFile) { toast.warning('Please select a file to upload'); return; };
     setBulkUploading(true);
     try {
       const fileText = await bulkFile.text();
@@ -128,9 +130,9 @@ const ContactsTab = ({ contacts, onRefresh }) => {
       }
       
       const res = await api.post('/crm/contacts/bulk-upload', { contacts: payload });
-      alert('Contacts imported: ' + res.data.message);
+      toast.success('Contacts imported: ' + res.data.message);
       setShowBulkUpload(false); setBulkFile(null); onRefresh();
-    } catch (e) { alert(e.message || 'Failed to upload contacts'); }
+    } catch (e) { toast.error(e.message || 'Failed to upload contacts'); }
     finally { setBulkUploading(false); }
   };
 

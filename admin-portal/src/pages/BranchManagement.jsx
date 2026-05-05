@@ -9,6 +9,7 @@ import {
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 /* ─── Helper Components ────────────────────────────────────── */
 const StatCard = ({ icon: Icon, label, value, color = 'var(--primary)', sub }) => (
@@ -66,6 +67,7 @@ const TabButton = ({ active, onClick, icon: Icon, label, count }) => (
 
 /* ─── MAIN COMPONENT ─────────────────────────────────────────── */
 const BranchManagement = () => {
+  const toast = useToast();
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -110,7 +112,7 @@ const BranchManagement = () => {
       setShowCreateModal(false);
       setCreateForm({ name: '', code: '', address: '', phone: '', email: '', admin_name: '', admin_email: '', admin_password: '' });
       fetchBranches();
-    } catch (err) { alert(err.response?.data?.error || 'Failed to create branch'); }
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to create branch'); }
     finally { setFormLoading(false); }
   };
 
@@ -122,7 +124,7 @@ const BranchManagement = () => {
       setShowEditModal(false);
       setEditBranch(null);
       fetchBranches();
-    } catch (err) { alert(err.response?.data?.error || 'Failed to update branch'); }
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to update branch'); }
     finally { setFormLoading(false); }
   };
 
@@ -131,7 +133,7 @@ const BranchManagement = () => {
     try {
       await api.patch(`/branches/${id}/status`);
       fetchBranches();
-    } catch (err) { alert('Failed to toggle status'); }
+    } catch (err) { toast.error('Failed to toggle status'); }
   };
 
   const handleDeactivate = async (id) => {
@@ -139,7 +141,7 @@ const BranchManagement = () => {
     try {
       await api.delete(`/branches/${id}`);
       fetchBranches();
-    } catch (err) { alert(err.response?.data?.error || 'Failed to deactivate'); }
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to deactivate'); }
   };
 
   // ── DRILL-DOWN ──

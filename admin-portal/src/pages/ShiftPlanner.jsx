@@ -3,8 +3,10 @@ import { Clock, Plus, Loader2, Trash2 } from 'lucide-react';
 import api from '../services/api';
 import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const ShiftPlanner = () => {
+  const toast = useToast();
   const [shifts, setShifts] = useState([]);
   const [staff, setStaff] = useState([]);
   const [schedules, setSchedules] = useState([]);
@@ -49,18 +51,18 @@ const ShiftPlanner = () => {
   const handleCreateShift = async (e) => {
     e.preventDefault();
     try { await api.post('/hrm/shifts', shiftForm); setShowShiftModal(false); fetchData(); }
-    catch (err) { alert('Failed'); }
+    catch (err) { toast.error('Failed'); }
   };
 
   const handleAssign = async (e) => {
     e.preventDefault();
     try { await api.post('/hrm/schedules', assignForm); setShowAssignModal(false); fetchData(); }
-    catch (err) { alert('Failed'); }
+    catch (err) { toast.error('Failed'); }
   };
 
   const handleRemove = async (id) => {
     try { await api.delete(`/hrm/schedules/${id}`); fetchData(); }
-    catch (err) { alert('Failed'); }
+    catch (err) { toast.error('Failed'); }
   };
 
   const weekDates = getWeekDates();

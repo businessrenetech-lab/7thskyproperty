@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { BarChart2, Trophy, Flame, ClipboardList, BookOpen, Calendar, Globe, CheckCircle, XCircle } from 'lucide-react';
 import api from '../../services/api';
 import { stageColors } from './CRMComponents';
+import { useToast } from '../../context/ToastContext';
 
 const OpportunitiesTab = ({ opportunities, onRefresh }) => {
+  const toast = useToast();
   const [saving, setSaving] = useState(null);
   const stages = ['qualification', 'proposal', 'demo', 'negotiation', 'won', 'lost'];
 
@@ -11,9 +13,9 @@ const OpportunitiesTab = ({ opportunities, onRefresh }) => {
     setSaving(id);
     try {
       const r = await api.post(`/crm/opportunities/${id}/win`);
-      alert(`Deal Won! Invoice ${r.data.invoice?.invoice_no} created.`);
+      toast.success(`Deal Won! Invoice ${r.data.invoice?.invoice_no} created.`);
       onRefresh();
-    } catch (err) { alert(err.response?.data?.error || 'Failed'); }
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed'); }
     finally { setSaving(null); }
   };
 
@@ -21,7 +23,7 @@ const OpportunitiesTab = ({ opportunities, onRefresh }) => {
     const reason = window.prompt('Reason for losing?');
     if (reason === null) return;
     try { await api.post(`/crm/opportunities/${id}/lose`, { lost_reason: reason }); onRefresh(); }
-    catch { alert('Failed'); }
+    catch { toast.error('Failed'); }
   };
 
   const totalPipeline = opportunities.filter(o => !['won','lost'].includes(o.stage)).reduce((s,o) => s + parseFloat(o.value||0), 0);

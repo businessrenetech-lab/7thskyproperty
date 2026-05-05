@@ -3,8 +3,10 @@ import { Loader2, Search, Plus, Trash2 } from 'lucide-react';
 import api from '../services/api';
 import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const Journal = () => {
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [lines, setLines] = useState([]);
   const [search, setSearch] = useState('');
@@ -97,8 +99,8 @@ const Journal = () => {
   const submitEntry = async (e) => {
     e.preventDefault();
     const { totalDebit, totalCredit, balanced } = calculateTotals();
-    if (!balanced || totalDebit === 0) return alert('Debits and Credits must be equal and greater than 0.');
-    if (newEntry.lines.some(l => !l.account_id)) return alert('All lines must have an account selected.');
+    if (!balanced || totalDebit === 0) { toast.warning('Debits and Credits must be equal and greater than 0.'); return; };
+    if (newEntry.lines.some(l => !l.account_id)) { toast.warning('All lines must have an account selected.'); return; };
 
     setSubmitting(true);
     try {
@@ -110,7 +112,7 @@ const Journal = () => {
         lines: [{ account_id: '', debit: '', credit: '', notes: '' }, { account_id: '', debit: '', credit: '', notes: '' }]
       });
       fetchJournal();
-    } catch (err) { alert(err?.response?.data?.error || 'Failed to submit'); }
+    } catch (err) { toast.error(err?.response?.data?.error || 'Failed to submit'); }
     finally { setSubmitting(false); }
   };
 

@@ -3,8 +3,10 @@ import { Loader2, Plus, Trash2, Tag, Book, Edit2, X, Save, Search, Download } fr
 import api from '../services/api';
 import { downloadInvoicePdf } from '../utils/pdfUtils';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const Invoices = () => {
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState([]);
   const [stats, setStats] = useState({});
@@ -77,7 +79,7 @@ const Invoices = () => {
       }
       setShowCustomerModal(false);
       fetchAll();
-    } catch (err) { alert(err.response?.data?.error || 'Failed'); }
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed'); }
   };
 
   const deleteCustomer = async (id) => {
@@ -95,7 +97,7 @@ const Invoices = () => {
       setShowCategoryModal(false);
       setCategoryName('');
       fetchAll();
-    } catch (err) { alert(err.response?.data?.error || 'Failed to create category'); }
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to create category'); }
   };
 
   const deleteCategory = async (id) => {
@@ -128,7 +130,7 @@ const Invoices = () => {
       setInvoiceStep(1);
       setInvoiceData({ invoice_type: 'custom', income_category_id: '', customer_id: '', customer_name: '', customer_phone: '', customer_email: '', customer_company: '', customer_address: '', amount: '', due_date: '', notes: '', save_customer: false });
       fetchAll();
-    } catch (err) { alert(err.response?.data?.error || 'Failed to create invoice'); }
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to create invoice'); }
   };
 
   // ── Edit Invoice
@@ -154,7 +156,7 @@ const Invoices = () => {
       });
       setShowEditModal(false);
       fetchAll();
-    } catch (err) { alert(err.response?.data?.error || 'Failed to update invoice'); }
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to update invoice'); }
   };
 
   const filteredInvoices = activeFilter === 'all' ? invoices : invoices.filter(inv => inv.status === activeFilter);
@@ -472,7 +474,7 @@ const Invoices = () => {
                     </label>
                   </div>
 
-                  <button onClick={() => { if (invoiceData.customer_name || invoiceData.customer_id) setInvoiceStep(2); else alert('Please select or enter a customer name'); }}
+                  <button onClick={() => { if (invoiceData.customer_name || invoiceData.customer_id) setInvoiceStep(2); else toast.info('Please select or enter a customer name'); }}
                     className="btn-primary" style={{ width: '100%', marginTop: '1.5rem', padding: '0.8rem' }}>
                     Continue to Invoice Details →
                   </button>

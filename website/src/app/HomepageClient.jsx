@@ -51,17 +51,20 @@ export default function HomepageClient({ courses: initialCourses, blogs }) {
             <AnimateOnScroll variant="slide-left">
               <div>
                 <span className="inline-flex items-center gap-2 rounded-full bg-blue-100/60 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-primary shadow-sm mb-6">
-                  #1 PTE COACHING CENTRE IN BANGLADESH
+                  LANGUAGE ACADEMY BANGLADESH
                 </span>
                 
                 <h1 className="text-balance text-4xl font-extrabold leading-[1.15] text-slate-900 sm:text-5xl lg:text-[3.5rem] tracking-tight">
-                  Best PTE Coaching <br className="hidden md:block"/>
-                  Centre in Dhaka, <br className="hidden md:block"/>
+                  Best PTE Centre <br className="hidden md:block"/>
+                  in Dhaka, <br className="hidden md:block"/>
                   Bangladesh
                 </h1>
                 
                 <p className="mt-6 text-lg leading-relaxed text-slate-600 max-w-xl">
-                  Language Academy is the leading PTE coaching centre in Dhaka, Bangladesh — offering expert-led PTE Academic preparation with AI-scored mock tests, small-batch classes, and guaranteed score improvement. We also offer IELTS preparation, Spoken English, and study abroad consulting — both online and offline.
+                  Language Academy Bangladesh is a world-class PTE preparation centre in Dhaka, built for students who want stronger English skills, smarter exam preparation, and more confidence. We also provide IELTS and English language courses for study, migration, career growth, and global opportunities.
+                </p>
+                <p className="mt-4 text-base leading-7 text-slate-500 max-w-xl">
+                  Experience world-class English and PTE preparation designed to elevate your skills and boost your confidence. Get ready to learn smarter, speak better, and achieve your goals. Your journey to global success starts here.
                 </p>
                 
                 {/* Topic Pills */}
@@ -95,7 +98,7 @@ export default function HomepageClient({ courses: initialCourses, blogs }) {
                   </h2>
                   
                   <div className="space-y-4 relative z-10">
-                    {["PTE, IELTS & Spoken English coaching", "AI-scored mock tests & analytics", "Online + Offline classes in Dhaka"].map((item, i) => (
+                    {["PTE-focused preparation", "Unlimited mock tests & analytics", "IELTS and English courses available"].map((item, i) => (
                       <div key={i} className="flex items-center gap-4 rounded-2xl bg-white/10 p-4 border border-white/5 backdrop-blur-sm">
                         <Check size={20} className="text-white shrink-0" strokeWidth={3} />
                         <span className="font-medium text-sm sm:text-base">{item}</span>
@@ -113,9 +116,9 @@ export default function HomepageClient({ courses: initialCourses, blogs }) {
       <section className="py-20 bg-white">
         <div className="container-shell">
           <div className="mb-12 text-center max-w-2xl mx-auto">
-            <span className="text-sm font-bold uppercase tracking-widest text-primary mb-3 block">PTE, IELTS & More</span>
-            <h2 className="text-3xl font-extrabold text-slate-900 md:text-4xl">Expert-led courses — enroll in the next batch.</h2>
-            <p className="mt-4 text-slate-500">PTE Academic, IELTS preparation, and Spoken English. Small batches, max 12 students. Online & offline in Dhaka.</p>
+            <span className="text-sm font-bold uppercase tracking-widest text-primary mb-3 block">PTE First, English Always</span>
+            <h2 className="text-3xl font-extrabold text-slate-900 md:text-4xl">PTE-focused courses - enroll in the next batch.</h2>
+            <p className="mt-4 text-slate-500">PTE Academic preparation is our core focus, with IELTS and English language courses also available. Small batches, max 12 students. Online and offline in Dhaka.</p>
           </div>
           
           {courses.length > 0 ? (
@@ -145,21 +148,21 @@ export default function HomepageClient({ courses: initialCourses, blogs }) {
           <div className="grid gap-12 lg:grid-cols-2 items-center">
             <AnimateOnScroll variant="slide-left">
               <div className="rounded-[2rem] overflow-hidden shadow-2xl shadow-slate-200/50">
-                <img src="/hero_banner.png" alt="PTE coaching centre in Dhaka - Language Academy Bangladesh" className="w-full h-[400px] object-cover" />
+                <img src="/hero_banner.png" alt="Best PTE centre in Dhaka - Language Academy Bangladesh" className="w-full h-[400px] object-cover" />
               </div>
             </AnimateOnScroll>
             <AnimateOnScroll variant="slide-right">
               <div>
                 <h2 className="text-3xl font-extrabold text-primary md:text-4xl leading-tight mb-6">
-                  Best PTE Coaching Centre <br className="hidden md:block"/>
-                  in Dhaka, Bangladesh
+                  World-Class PTE Preparation <br className="hidden md:block"/>
+                  in Dhaka
                 </h2>
                 <div className="space-y-6 text-slate-600 leading-relaxed">
                   <p>
-                    Looking for the <strong>best PTE coaching in Dhaka</strong>? Language Academy is Bangladesh&apos;s top-rated PTE coaching centre — helping students achieve their target PTE Academic scores through expert trainers, AI-scored mock tests, and small-batch interactive classes. We offer both online and offline PTE courses from our Dhanmondi campus.
+                    Language Academy Bangladesh helps students prepare for PTE with expert trainers, unlimited mock tests, small-batch classes, and practical feedback. Every class is designed to help you understand the exam, improve your English, and build confidence before test day.
                   </p>
                   <p>
-                    Beyond PTE, we also offer <strong>IELTS preparation</strong>, <strong>Spoken English courses</strong>, and <strong>study abroad consulting</strong> — making us a complete English language academy for students and professionals in Bangladesh. Whether you need PTE for migration, university admissions, or career growth, we have a program for you.
+                    Alongside our main PTE programs, we also offer <strong>IELTS preparation</strong>, <strong>English language courses</strong>, and <strong>study abroad consulting</strong> for students and professionals who want to study abroad, migrate, improve communication, or grow their careers.
                   </p>
                 </div>
               </div>

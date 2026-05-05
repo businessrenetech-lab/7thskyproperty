@@ -44,6 +44,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import { PermissionProvider } from './context/PermissionContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
 import './styles/GlobalStyles.css';
 
 const P = ({ title, children }) => (
@@ -53,6 +54,7 @@ const P = ({ title, children }) => (
 const App = () => {
   return (
       <ThemeProvider>
+      <ToastProvider>
       <AuthProvider>
         <PermissionProvider>
         <Router basename="/admin">
@@ -100,6 +102,7 @@ const App = () => {
         </Router>
         </PermissionProvider>
       </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 };

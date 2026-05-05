@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Plus, Mail, MessageCircle, Smartphone, Send } from 'lucide-react';
 import api from '../../services/api';
 import { inputStyle } from './CRMComponents';
+import { useToast } from '../../context/ToastContext';
 
 const CampaignsTab = ({ campaigns, onRefresh }) => {
+  const toast = useToast();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', channel: 'email', subject: '', body: '', target_audience: 'all_leads', attachment_url: '' });
   const [saving, setSaving] = useState(false);
@@ -11,13 +13,13 @@ const CampaignsTab = ({ campaigns, onRefresh }) => {
   const handleCreate = async (e) => {
     e.preventDefault(); setSaving(true);
     try { await api.post('/crm/campaigns', form); setShowForm(false); onRefresh(); }
-    catch { alert('Failed'); } finally { setSaving(false); }
+    catch { toast.error('Failed'); } finally { setSaving(false); }
   };
 
   const handleSend = async (id) => {
     if (!window.confirm('Send this campaign now?')) return;
-    try { const r = await api.post(`/crm/campaigns/${id}/send`); alert(r.data.message); onRefresh(); }
-    catch { alert('Failed'); }
+    try { const r = await api.post(`/crm/campaigns/${id}/send`); toast.success(r.data.message); onRefresh(); }
+    catch { toast.error('Failed'); }
   };
 
   const channelIcon = { email: <Mail size={16} />, whatsapp: <MessageCircle size={16} />, sms: <Smartphone size={16} /> };

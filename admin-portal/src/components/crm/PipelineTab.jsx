@@ -3,8 +3,10 @@ import { Search, Plus, Phone, Mail, X, ChevronRight, Trash2, Book, DollarSign, L
 import api from '../../services/api';
 import { ScoreBadge, PriorityBadge, stageColors, stageLabels, stageIcons, actIcons, inputStyle } from './CRMComponents';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 
 const parseLeadTags = (lead) => {
+  const toast = useToast();
   if (!lead?.tags) return {};
   if (typeof lead.tags === 'object') return lead.tags;
   try {
@@ -90,12 +92,12 @@ const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
       setActForm({ type: 'call', subject: '', description: '' });
       const r = await api.get(`/crm/activities?lead_id=${lead.id}`);
       setActivities(r.data); onRefresh();
-    } catch { alert('Failed'); } finally { setSaving(false); }
+    } catch { toast.error('Failed'); } finally { setSaving(false); }
   };
 
   const updateStatus = async (status) => {
     try { await api.patch(`/crm/leads/${lead.id}/status`, { status }); onRefresh(); onClose(); }
-    catch { alert('Failed'); }
+    catch { toast.error('Failed'); }
   };
 
   useEffect(() => {
@@ -152,7 +154,7 @@ const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
 
   const handleEnroll = async (e) => {
     e?.preventDefault();
-    if (!lead.course_id) return alert('Please select a course for this lead first.');
+    if (!lead.course_id) { toast.warning('Please select a course for this lead first.'); return; };
     setEnrolling(true);
     try {
       const payload = {
@@ -164,20 +166,20 @@ const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
         name: `${enrollForm.first_name} ${enrollForm.last_name}`.trim() || lead.name
       };
       const r = await api.post(`/crm/leads/${lead.id}/enroll`, payload);
-      alert(`Success: ${r.data.message}`);
+      toast.success(`${r.data.message}`);
       onRefresh(); onClose();
-    } catch (err) { alert(err.response?.data?.error || 'Failed to enroll'); }
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to enroll'); }
     finally { setEnrolling(false); }
   };
 
   const changeCourse = async (courseId) => {
     try { await api.put(`/crm/leads/${lead.id}`, { course_id: parseInt(courseId) }); onRefresh(); }
-    catch { alert('Failed to update course'); }
+    catch { toast.error('Failed to update course'); }
   };
 
   const changeBatch = async (batchId) => {
     try { await api.put(`/crm/leads/${lead.id}`, { batch_id: batchId ? parseInt(batchId) : null }); onRefresh(); }
-    catch { alert('Failed to update batch'); }
+    catch { toast.error('Failed to update batch'); }
   };
 
   const selectedCourse = courses.find(c => c.id === lead.course_id);
@@ -454,10 +456,10 @@ const PipelineTab = ({ leads, courses, onRefresh }) => {
 
   const copyBookingLink = async (channel) => {
     const url = buildBookingLink(channel);
-    if (!url) return alert('Select a specific branch before copying a booking link.');
+    if (!url) { toast.warning('Select a specific branch before copying a booking link.'); return; };
     try {
       await navigator.clipboard.writeText(url);
-      alert(`${channel === 'kiosk' ? 'Kiosk QR' : 'Manual'} booking link copied.`);
+      toast.success(`${channel === 'kiosk' ? 'Kiosk QR' : 'Manual'} booking link copied.`);
     } catch {
       window.prompt('Copy booking link:', url);
     }
@@ -497,7 +499,7 @@ const PipelineTab = ({ leads, courses, onRefresh }) => {
       await api.post('/crm/leads', form);
       setShowForm(false); setForm({ name: '', phone: '', email: '', date_of_birth: '', source: 'Walk-in', course_id: '', priority: 'medium', referred_by: '', referral_amount: '' });
       onRefresh();
-    } catch { alert('Failed'); } finally { setSaving(false); }
+    } catch { toast.error('Failed'); } finally { setSaving(false); }
   };
 
   return (

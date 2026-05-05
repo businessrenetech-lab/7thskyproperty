@@ -23,13 +23,13 @@ export const metadata = {
   metadataBase: new URL("https://languageacademy.com.bd"),
 
   title: {
-    default: "Language Academy | Best PTE Coaching Centre in Bangladesh",
+    default: "Language Academy Bangladesh | Best PTE Centre in Dhaka, Bangladesh",
     template: "%s | Language Academy Bangladesh",
   },
   description:
-    "Language Academy is the best PTE coaching centre in Dhaka, Bangladesh. Expert-led PTE Academic, IELTS preparation, and Spoken English courses — online & offline. 94% target-score success rate.",
+    "Language Academy Bangladesh is a world-class PTE centre in Dhaka. Prepare smarter with expert trainers, unlimited mock tests, small batches, and IELTS and English language courses.",
   keywords: [
-    "best PTE coaching centre Bangladesh",
+    "best PTE centre Dhaka Bangladesh",
     "PTE coaching Dhaka",
     "PTE Academic preparation",
     "IELTS coaching Dhaka",
@@ -71,24 +71,24 @@ export const metadata = {
     locale: "en_US",
     url: "https://languageacademy.com.bd",
     siteName: "Language Academy Bangladesh",
-    title: "Language Academy | Best PTE & IELTS Coaching in Dhaka, Bangladesh",
+    title: "Language Academy Bangladesh | Best PTE Centre in Dhaka, Bangladesh",
     description:
-      "Expert-led PTE Academic, IELTS, and Spoken English courses in Dhaka. Online & offline classes with 94% target-score success rate. Book a free consultation today.",
+      "World-class PTE preparation in Dhaka with expert trainers, unlimited mock tests, small batches, and IELTS and English language courses also available.",
     images: [
       {
         url: "/hero_banner.png",
         width: 1200,
         height: 630,
-        alt: "Language Academy Bangladesh — Best PTE Coaching Centre in Dhaka",
+        alt: "Language Academy Bangladesh - Best PTE Centre in Dhaka",
       },
     ],
   },
 
   twitter: {
     card: "summary_large_image",
-    title: "Language Academy | Best PTE Coaching Centre in Bangladesh",
+    title: "Language Academy Bangladesh | Best PTE Centre in Dhaka, Bangladesh",
     description:
-      "Expert-led PTE, IELTS, and Spoken English courses in Dhaka. 94% success rate. Online & offline.",
+      "World-class PTE preparation in Dhaka with IELTS and English language courses also available.",
     images: ["/hero_banner.png"],
   },
 
@@ -114,7 +114,7 @@ export const metadata = {
     "ICBM": "23.7461, 90.3742",
     "rating": "General",
     "revisit-after": "7 days",
-    "DC.title": "Language Academy — Best PTE Coaching Centre in Bangladesh",
+    "DC.title": "Language Academy Bangladesh - Best PTE Centre in Dhaka, Bangladesh",
     "DC.creator": "Language Academy Bangladesh",
     "DC.subject": "PTE Coaching, IELTS Preparation, Spoken English, Dhaka",
   },

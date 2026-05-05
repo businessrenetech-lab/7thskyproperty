@@ -15,8 +15,10 @@ import {
 import api from '../services/api';
 import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const RoomCard = ({ room, onSelect }) => {
+  const toast = useToast();
   return (
     <div 
       className="glass-morphism transition-hover" 
@@ -111,9 +113,9 @@ const ERPSpaces = () => {
       await api.post('/erp/bookings', bookingData);
       setShowBookingModal(false);
       fetchData();
-      alert('Room booked successfully');
+      toast.success('Room booked successfully');
     } catch (err) {
-      alert(err.response?.data?.error || 'Booking failed');
+      toast.error(err.response?.data?.error || 'Booking failed');
     }
   };
 
@@ -128,7 +130,7 @@ const ERPSpaces = () => {
       setRoomData({ name: '', floor: '', capacity: 30, facilities: '' });
       fetchData();
     } catch (err) {
-      alert('Failed to create room');
+      toast.error('Failed to create room');
     }
   };
 
@@ -138,7 +140,7 @@ const ERPSpaces = () => {
       await api.delete(`/erp/bookings/${id}`);
       fetchData();
     } catch (err) {
-      alert('Failed to cancel booking');
+      toast.error('Failed to cancel booking');
     }
   };
 

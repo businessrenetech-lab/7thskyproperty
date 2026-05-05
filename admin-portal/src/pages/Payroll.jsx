@@ -16,8 +16,10 @@ import {
 import api from '../services/api';
 import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const Payroll = () => {
+  const toast = useToast();
   const [staff, setStaff] = useState([]);
   const [payrollHistory, setPayrollHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,7 +84,7 @@ const Payroll = () => {
       setShowProfileModal(false);
       fetchData();
     } catch (err) {
-      alert('Failed to update staff profile or invalid JSON format.');
+      toast.error('Failed to update staff profile or invalid JSON format.');
     }
   };
 
@@ -126,9 +128,9 @@ const Payroll = () => {
         educational_background: '', work_experience: ''
       });
       fetchData();
-      alert('Staff created successfully!');
+      toast.success('Staff created successfully!');
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to create staff or invalid JSON.');
+      toast.error(err.response?.data?.error || 'Failed to create staff or invalid JSON.');
       setLoading(false);
     }
   };
@@ -138,9 +140,9 @@ const Payroll = () => {
     try {
       await api.post('/payroll/generate', { month, year });
       fetchData();
-      alert('Draft payroll generated successfully');
+      toast.success('Draft payroll generated successfully');
     } catch (err) {
-      alert(err.response?.data?.error || 'Generation failed');
+      toast.error(err.response?.data?.error || 'Generation failed');
     }
   };
 
@@ -148,9 +150,9 @@ const Payroll = () => {
     try {
       await api.post(`/payroll/pay/${id}`, { payment_method: method });
       fetchData();
-      alert('Salary processed successfully');
+      toast.success('Salary processed successfully');
     } catch (err) {
-      alert(err.response?.data?.error || 'Payment failed');
+      toast.error(err.response?.data?.error || 'Payment failed');
     }
   };
 
@@ -167,7 +169,7 @@ const Payroll = () => {
       };
       html2pdf().set(opt).from(element).save();
     } catch(err) {
-      alert("Failed to export PDF! " + err.message);
+      toast.error(`Failed to export PDF! ${err.message}`);
     }
   };
 

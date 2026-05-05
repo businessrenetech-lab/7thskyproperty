@@ -6,6 +6,7 @@ import {
   CreditCard, ExternalLink, MonitorSmartphone, Music2, AlertCircle
 } from 'lucide-react';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 /* ─── Brand-colored SVG icons for platforms ────────────────── */
 const FacebookIcon = () => (
@@ -34,6 +35,7 @@ const CATEGORIES = [
 
 /* ─── Input Component ──────────────────────────────────────── */
 const SettingInput = ({ setting, value, onChange }) => {
+  const toast = useToast();
   const [showSecret, setShowSecret] = useState(false);
   const isColor = setting.key.includes('COLOR');
   const isTextarea = setting.key.includes('ADDRESS') || setting.key.includes('META_DESCRIPTION') || setting.key.includes('ROBOTS_TXT') || setting.key.includes('MAP_EMBED');
@@ -236,7 +238,7 @@ const Settings = () => {
     } catch (err) {
       console.error(err);
       if (err.response?.status === 403) {
-        alert('Access denied. Super Admin privileges required.');
+        toast.warning('Access denied. Super Admin privileges required.');
       }
     } finally {
       setLoading(false);
@@ -256,7 +258,7 @@ const Settings = () => {
       fetchSettings();
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
-      alert('Failed to save settings: ' + err.message);
+      toast.error(`Failed to save settings: ${err.message}`);
     } finally {
       setSaving(false);
     }

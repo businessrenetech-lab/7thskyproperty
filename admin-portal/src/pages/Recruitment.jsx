@@ -3,11 +3,13 @@ import { Briefcase, Plus, Users, Star, ArrowRight, Loader2, Trash2 } from 'lucid
 import api from '../services/api';
 import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const STAGES = ['applied', 'screening', 'interview', 'offer', 'hired', 'rejected'];
 const STAGE_COLORS = { applied: '#00D4FF', screening: '#FFB347', interview: '#9B6DFF', offer: '#00FF94', hired: '#38E8FF', rejected: '#FF4D6D' };
 
 const Recruitment = () => {
+  const toast = useToast();
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [applicants, setApplicants] = useState([]);
@@ -44,7 +46,7 @@ const Recruitment = () => {
       setShowJobModal(false);
       setJobForm({ title: '', department: '', description: '', requirements: '', salary_range: '', deadline: '' });
       fetchJobs();
-    } catch (err) { alert('Failed'); }
+    } catch (err) { toast.error('Failed'); }
   };
 
   const handleAddApplicant = async (e) => {
@@ -54,14 +56,14 @@ const Recruitment = () => {
       setShowAppModal(false);
       setAppForm({ name: '', email: '', phone: '', cover_letter: '' });
       fetchApplicants(selectedJob.id);
-    } catch (err) { alert('Failed'); }
+    } catch (err) { toast.error('Failed'); }
   };
 
   const moveStage = async (appId, newStage) => {
     try {
       await api.patch(`/hrm/applicants/${appId}`, { stage: newStage });
       fetchApplicants(selectedJob.id);
-    } catch (err) { alert('Failed'); }
+    } catch (err) { toast.error('Failed'); }
   };
 
   const hireApplicant = async (appId) => {
@@ -69,8 +71,8 @@ const Recruitment = () => {
     try {
       await api.post(`/hrm/applicants/${appId}/hire`);
       fetchApplicants(selectedJob.id);
-      alert('Applicant hired and staff account created!');
-    } catch (err) { alert(err.response?.data?.error || 'Failed'); }
+      toast.success('Applicant hired and staff account created!');
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed'); }
   };
 
   return (

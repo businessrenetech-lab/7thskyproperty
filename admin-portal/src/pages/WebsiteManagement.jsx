@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Plus, Edit, Trash2, Globe, FileText, Check, X } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const WebsiteManagement = () => {
+  const toast = useToast();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('blogs');
   const [blogs, setBlogs] = useState([]);
@@ -49,7 +51,7 @@ const WebsiteManagement = () => {
       setFormData({ title: '', slug: '', excerpt: '', content: '', image_url: '', is_published: true });
       fetchData();
     } catch (err) {
-      alert('Error saving blog: ' + (err.response?.data?.error || err.message));
+      toast.error(`Error saving blog: ${err.response?.data?.error || err.message}`);
     }
   };
 
@@ -65,7 +67,7 @@ const WebsiteManagement = () => {
       await api.put(`/website/courses/${course.id}`, { is_published: !course.is_published });
       fetchData();
     } catch (err) {
-      alert('Error updating course');
+      toast.error('Error updating course');
     }
   };
 

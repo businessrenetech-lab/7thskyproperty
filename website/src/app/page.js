@@ -8,11 +8,11 @@ export const dynamic = "force-dynamic";
 
 /* ─── Homepage SEO Metadata ────────────────────────────────── */
 export const metadata = {
-  title: "Best PTE Coaching Centre in Bangladesh | Language Academy Dhaka",
+  title: "Best PTE Centre in Dhaka, Bangladesh | Language Academy Bangladesh",
   description:
-    "Language Academy is the #1 PTE coaching centre in Dhaka, Bangladesh. Expert-led PTE Academic, IELTS preparation, and Spoken English courses — online & offline. Small batches, AI mock tests, and 94% target-score success rate. Located in Dhanmondi, Dhaka.",
+    "Language Academy Bangladesh is a world-class PTE centre in Dhaka. Prepare smarter with expert trainers, unlimited mock tests, small batches, and IELTS and English language courses.",
   keywords: [
-    "best PTE coaching centre Bangladesh",
+    "best PTE centre Dhaka Bangladesh",
     "PTE coaching Dhaka",
     "PTE classes near me",
     "IELTS coaching Dhaka",
@@ -31,11 +31,11 @@ export const metadata = {
     canonical: "https://languageacademy.com.bd",
   },
   openGraph: {
-    title: "Best PTE Coaching Centre in Bangladesh — Language Academy Dhaka",
+    title: "Best PTE Centre in Dhaka, Bangladesh - Language Academy Bangladesh",
     description:
-      "Expert-led PTE, IELTS, and Spoken English courses in Dhaka. Online & offline classes. 94% success rate. Book a free consultation!",
+      "World-class PTE preparation in Dhaka with expert trainers, unlimited mock tests, small batches, and IELTS and English language courses also available.",
     url: "https://languageacademy.com.bd",
-    images: [{ url: "/hero_banner.png", width: 1200, height: 630, alt: "Language Academy — Best PTE Coaching Centre in Dhaka, Bangladesh" }],
+    images: [{ url: "/hero_banner.png", width: 1200, height: 630, alt: "Language Academy Bangladesh - Best PTE Centre in Dhaka, Bangladesh" }],
   },
 };
 

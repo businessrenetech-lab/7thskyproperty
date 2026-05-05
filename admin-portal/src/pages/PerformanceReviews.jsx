@@ -3,10 +3,12 @@ import { Award, Plus, Loader2, Star } from 'lucide-react';
 import api from '../services/api';
 import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const CRITERIA = ['Punctuality', 'Teamwork', 'Technical Skills', 'Communication', 'Initiative', 'Reliability'];
 
 const PerformanceReviews = () => {
+  const toast = useToast();
   const [reviews, setReviews] = useState([]);
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +35,7 @@ const PerformanceReviews = () => {
       await api.post('/hrm/reviews', { ...form, overall_score: overall, status: 'submitted' });
       setShowModal(false);
       fetchData();
-    } catch (err) { alert('Failed'); }
+    } catch (err) { toast.error('Failed'); }
   };
 
   const setRating = (key, val) => setForm(p => ({ ...p, ratings: { ...p.ratings, [key]: val } }));

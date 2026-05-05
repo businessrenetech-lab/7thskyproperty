@@ -16,6 +16,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const initialBatchData = {
   course_id: '',
@@ -53,6 +54,7 @@ const initialCourseData = {
 };
 
 const readableSchedule = (schedule) => {
+  const toast = useToast();
   if (!schedule) return 'Not set';
 
   if (typeof schedule === 'string') return schedule;
@@ -341,7 +343,7 @@ const LMS = () => {
       setBatchData(initialBatchData);
       fetchData();
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to create batch');
+      toast.error(error.response?.data?.error || 'Failed to create batch');
     } finally {
       setSubmitting(false);
     }
@@ -360,7 +362,7 @@ const LMS = () => {
       setCourseData(initialCourseData);
       fetchData();
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to save course');
+      toast.error(error.response?.data?.error || 'Failed to save course');
     } finally {
       setSubmitting(false);
     }
@@ -390,9 +392,9 @@ const LMS = () => {
       setBatches((prev) => prev.map((batch) => (batch.id === updated.id ? updated : batch)));
       setSelectedBatch(updated);
       setManageBatchData(toBatchFormData(updated));
-      alert('Batch updated successfully');
+      toast.success('Batch updated successfully');
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to update batch');
+      toast.error(error.response?.data?.error || 'Failed to update batch');
     } finally {
       setManageSubmitting(false);
     }
@@ -518,9 +520,9 @@ const LMS = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setCourseData({ ...courseData, image_url: response.data.url });
-      alert('Image uploaded successfully!');
+      toast.success('Image uploaded successfully!');
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to upload image. Please try again.');
+      toast.error(error.response?.data?.error || 'Failed to upload image. Please try again.');
     } finally {
       setIsUploadingImage(false);
     }

@@ -3,11 +3,13 @@ import { ArrowLeftRight, ArrowDownRight, ArrowUpRight, Calendar, Download, Landm
 import api from '../services/api';
 import '../styles/GlobalStyles.css';
 import DrillDownModal from '../components/reconciliation/DrillDownModal';
+import { useToast } from '../context/ToastContext';
 
 const money = (v) => `BDT ${Number(v || 0).toLocaleString()}`;
 const fmtDate = (v) => (v ? new Date(v).toLocaleDateString() : '-');
 
 const formatDateLocal = (dateObj) => {
+  const toast = useToast();
   const d = new Date(dateObj);
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 };
@@ -164,12 +166,12 @@ export default function Reconciliation() {
     setSaving(true);
     try {
       const res = await api.post(url, payload);
-      alert(res.data.message || successMessage);
+      toast.success(res.data.message || successMessage);
       setActiveModal(null);
       setForm(f => ({ ...f, amount: '', actual_closing_balance: '', reason: '', reference: '', remarks: '', source: '', opening_balance: '' }));
       await load();
     } catch (err) {
-      alert(err.response?.data?.error || 'Action failed');
+      toast.error(err.response?.data?.error || 'Action failed');
     } finally {
       setSaving(false);
     }

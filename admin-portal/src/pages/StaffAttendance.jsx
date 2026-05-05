@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Clock, Calendar, Users, Loader2, Save, Download } from 'lucide-react';
 import api from '../services/api';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const StaffAttendancePage = () => {
+  const toast = useToast();
   const [staff, setStaff] = useState([]);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendance, setAttendance] = useState({});
@@ -68,8 +70,8 @@ const StaffAttendancePage = () => {
         user_id: parseInt(user_id), status: data.status, check_in: data.check_in || null, check_out: data.check_out || null, notes: data.notes || null
       }));
       await api.post('/hrm/attendance/mark', { date, attendance_data });
-      alert('Staff attendance saved successfully!');
-    } catch (err) { alert('Failed to save attendance'); }
+      toast.success('Staff attendance saved successfully!');
+    } catch (err) { toast.error('Failed to save attendance'); }
     finally { setSaving(false); }
   };
 
@@ -86,7 +88,7 @@ const StaffAttendancePage = () => {
       };
       html2pdf().set(opt).from(element).save();
     } catch(err) {
-      alert("Failed to export PDF! " + err.message);
+      toast.error(`Failed to export PDF! ${err.message}`);
     }
   };
 
@@ -222,9 +224,9 @@ const StaffAttendancePage = () => {
                                     date, 
                                     attendance_data: [{ user_id: member.id, status: data.status, check_in: data.check_in || null, check_out: data.check_out || null, notes: data.notes || null }] 
                                   });
-                                  alert(`Attendance logged for ${member.name}`);
+                                  toast.success(`Attendance logged for ${member.name}`);
                                 } catch (e) {
-                                  alert('Failed to log attendance');
+                                  toast.error('Failed to log attendance');
                                 }
                               }}
                             >

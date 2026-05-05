@@ -3,13 +3,13 @@ import Link from "next/link";
 import { Target, Award, Users, Globe2, Heart, BookOpen, Lightbulb, Shield, TrendingUp, MapPin, ArrowRight, Star, CheckCircle2, Laptop } from "lucide-react";
 
 export const metadata = {
-  title: "About Us — Bangladesh's Leading PTE & IELTS Coaching Centre",
+  title: "About Us - Language Academy Bangladesh PTE Centre in Dhaka",
   description:
-    "Language Academy is a modern English language coaching centre in Dhanmondi, Dhaka. We offer expert-led PTE Academic, IELTS, and Spoken English courses with international standards, AI mock tests, and small-batch classes for students planning to study abroad.",
+    "Language Academy Bangladesh is a world-class PTE centre in Dhanmondi, Dhaka, with IELTS preparation and English language courses also available for students planning global success.",
   alternates: { canonical: "https://languageacademy.com.bd/about" },
   openGraph: {
-    title: "About Language Academy — Best PTE Coaching Centre in Dhaka",
-    description: "Discover our mission, values, and world-class facilities designed for serious PTE & IELTS preparation in Bangladesh.",
+    title: "About Language Academy Bangladesh - Best PTE Centre in Dhaka",
+    description: "Discover our mission, values, and world-class facilities designed for focused PTE preparation, with IELTS and English courses also available.",
     url: "https://languageacademy.com.bd/about",
     images: [{ url: "/hero_banner.png", width: 1200, height: 630, alt: "About Language Academy Bangladesh" }],
   },
@@ -39,9 +39,9 @@ export default function AboutPage() {
             <div className="absolute inset-0 opacity-10 fine-grid mix-blend-overlay"></div>
             <div className="relative z-10">
               <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] shadow-sm">About Language Academy</span>
-              <h1 className="mx-auto mt-6 max-w-4xl text-4xl font-black leading-tight md:text-6xl tracking-tight">Bangladesh&apos;s Best PTE & IELTS Coaching Centre in Dhaka</h1>
+              <h1 className="mx-auto mt-6 max-w-4xl text-4xl font-black leading-tight md:text-6xl tracking-tight">Best PTE Centre in Dhaka, Bangladesh</h1>
               <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-white/90">
-                Language Academy is a modern, premium coaching centre specializing in PTE Academic preparation — plus IELTS, Spoken English, and study abroad consulting. We offer both online and offline classes from our Dhanmondi campus in Dhaka, Bangladesh.
+                Language Academy Bangladesh is a world-class PTE preparation centre in Dhaka. We help students learn smarter, speak better, and prepare with confidence, with IELTS and English language courses also available.
               </p>
             </div>
           </div>
@@ -54,7 +54,7 @@ export default function AboutPage() {
           <div className="premium-panel p-8 md:p-10 flex flex-col items-center text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-6"><Target size={32} /></div>
             <h2 className="text-2xl font-bold text-slate-900 mb-4">Our Mission</h2>
-            <p className="text-slate-600 leading-relaxed">To be Bangladesh&apos;s best PTE coaching centre — providing world-class PTE Academic, IELTS, and Spoken English training through expert instructors, AI-powered mock tests, and personalized coaching that helps every student achieve their target score.</p>
+            <p className="text-slate-600 leading-relaxed">To be the best PTE centre in Dhaka, Bangladesh, providing world-class PTE Academic preparation through expert instructors, unlimited mock tests, and personalized coaching that helps every student build confidence and achieve their target score.</p>
           </div>
           <div className="premium-panel bg-slate-950 p-8 md:p-10 text-center text-white">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/20 text-accent mx-auto mb-6"><Globe2 size={32} /></div>

@@ -8,6 +8,7 @@ import {
 import api from '../services/api';
 import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 /* ─── Category icon map ─── */
 const CATEGORY_MAP = {
@@ -37,6 +38,7 @@ const STATUS_BADGE = {
 
 /* ─── Format currency ─── */
 const fmt = (v) => {
+  const toast = useToast();
   const num = parseFloat(v) || 0;
   return '৳' + num.toLocaleString('en-IN');
 };
@@ -105,7 +107,7 @@ const AssetRegistry = () => {
       resetForm();
       fetchAssets();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to save asset');
+      toast.error(err.response?.data?.error || 'Failed to save asset');
     }
   };
 
@@ -116,7 +118,7 @@ const AssetRegistry = () => {
       setShowDetailModal(false);
       fetchAssets();
     } catch (err) {
-      alert('Failed to delete asset');
+      toast.error('Failed to delete asset');
     }
   };
 

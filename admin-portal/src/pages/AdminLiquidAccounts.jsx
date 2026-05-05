@@ -3,8 +3,10 @@ import { Loader2, Plus, Wallet, Search, Landmark, Smartphone, Banknote } from 'l
 import api from '../services/api';
 import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const AdminLiquidAccounts = () => {
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -39,7 +41,7 @@ const AdminLiquidAccounts = () => {
       setNewAccData({ name: '', sub_type: 'bank' });
       fetchData();
     } catch (err) {
-      alert('Failed to create account');
+      toast.error('Failed to create account');
     } finally {
       setSubmitting(false);
     }
@@ -190,7 +192,7 @@ const AdminLiquidAccounts = () => {
             <label>Reconciliation Notes (Discrepancy reason)</label>
             <input type="text" className="glass-input" placeholder="e.g. Found 50tk extra in drawer" value={reconcileData.notes} onChange={e => setReconcileData({...reconcileData, notes: e.target.value})} />
           </div>
-          <button type="button" onClick={() => { alert('Reconciliation Saved! Journal variance posted (simulated)'); setShowReconcileModal(false); }} className="btn-primary" style={{ padding: '1rem', marginTop: '0.5rem' }}>
+          <button type="button" onClick={() => { toast.success('Reconciliation Saved! Journal variance posted (simulated)'); setShowReconcileModal(false); }} className="btn-primary" style={{ padding: '1rem', marginTop: '0.5rem' }}>
             Lock End of Day Balance
           </button>
         </div>

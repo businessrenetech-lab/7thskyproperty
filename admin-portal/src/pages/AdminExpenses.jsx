@@ -4,6 +4,7 @@ import api from '../services/api';
 import Modal from '../components/Modal';
 import { downloadVoucherPdf, downloadExpenseListPdf, numberToWords } from '../utils/pdfUtils';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const AUTO_THRESHOLD = 5000;
 
@@ -25,6 +26,7 @@ const formatDateLocal = (d) => {
 const getTodayLocal = () => formatDateLocal(new Date());
 
 const ExpenseManager = () => {
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState([]);
   const [liquidAccounts, setLiquidAccounts] = useState([]);
@@ -121,22 +123,22 @@ const ExpenseManager = () => {
       setSelectedFile(null);
       setForm({ account_id: liquidAccounts[0]?.id || '', amount: '', description: '', category: '', payment_method: liquidAccounts[0]?.sub_type || 'cash', date: '' });
 
-      alert(res.data?.message || (res.data?.auto_approved
+      toast.success(res.data?.message || (res.data?.auto_approved
         ? '✓ Expense auto-approved (below BDT 5,000). Journal entry created.'
         : 'Expense submitted for branch admin approval.'));
       fetchData();
-    } catch (err) { alert(err.response?.data?.error || 'Failed to submit expense'); }
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to submit expense'); }
     finally { setSubmitting(false); }
   };
 
   const handleVerify = async (id) => {
     try { await api.put(`/expenses/${id}/verify`); fetchData(); }
-    catch (err) { alert('Verification failed'); }
+    catch (err) { toast.error('Verification failed'); }
   };
 
   const handleApprove = async (id) => {
     try { await api.put(`/expenses/${id}/approve`); fetchData(); }
-    catch (err) { alert(err.response?.data?.error || 'Approval failed'); }
+    catch (err) { toast.error(err.response?.data?.error || 'Approval failed'); }
   };
 
   const handleReject = async () => {
@@ -144,7 +146,7 @@ const ExpenseManager = () => {
       await api.put(`/expenses/${rejectionModal.id}/reject`, { rejection_reason: rejectionModal.reason });
       setRejectionModal({ isOpen: false, id: null, reason: '' });
       fetchData();
-    } catch (err) { alert('Rejection failed'); }
+    } catch (err) { toast.error('Rejection failed'); }
   };
 
   const handleDelete = async () => {
@@ -152,8 +154,8 @@ const ExpenseManager = () => {
       await api.delete(`/expenses/${deleteModal.id}`, { data: { deletion_reason: deleteModal.reason } });
       setDeleteModal({ isOpen: false, id: null, reason: '', status: '' });
       fetchData();
-      alert('Expense deleted successfully.' + (deleteModal.status === 'approved' ? ' Journal entries reversed.' : ''));
-    } catch (err) { alert(err.response?.data?.error || 'Deletion failed'); }
+      toast.success(`Expense deleted successfully.${deleteModal.status === 'approved' ? ' Journal entries reversed.' : ''}`);
+    } catch (err) { toast.error(err.response?.data?.error || 'Deletion failed'); }
   };
 
   const handleCreateCategory = async (e) => {
@@ -164,13 +166,13 @@ const ExpenseManager = () => {
       setCatForm({ name: '', parent_id: '', description: '' });
       setShowCatForm(false);
       fetchData();
-    } catch (err) { alert(err.response?.data?.error || 'Failed'); }
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed'); }
     finally { setSubmitting(false); }
   };
 
   const handleDeleteCategory = async (id) => {
     if (!window.confirm('Deactivate this category and all sub-categories?')) return;
-    try { await api.delete(`/expenses/categories/${id}`); fetchData(); } catch (err) { alert('Failed'); }
+    try { await api.delete(`/expenses/categories/${id}`); fetchData(); } catch (err) { toast.error('Failed'); }
   };
 
   const filteredExpenses = expenses.filter(e => filterStatus === 'all' || e.status === filterStatus);

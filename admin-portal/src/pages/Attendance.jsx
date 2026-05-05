@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Clock, Calendar, Search, Loader2 } from 'lucide-react';
 import api from '../services/api';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const Attendance = () => {
+  const toast = useToast();
   const [batches, setBatches] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [students, setStudents] = useState([]);
@@ -81,10 +83,10 @@ const Attendance = () => {
         attendance_data: attendanceData
       });
 
-      alert('Attendance saved successfully!');
+      toast.success('Attendance saved successfully!');
     } catch (error) {
       console.error('Failed to save attendance:', error);
-      alert('Failed to save attendance');
+      toast.error('Failed to save attendance');
     } finally {
       setMarking(false);
     }

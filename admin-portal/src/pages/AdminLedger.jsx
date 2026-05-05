@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, BookOpen, CheckCircle, XCircle, Search, Download } from 'lucide-react';
 import api from '../services/api';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const typeBadge = (type) => {
+  const toast = useToast();
   const colors = { asset: '#3b82f6', liability: '#f59e0b', equity: '#8b5cf6', revenue: '#10b981', expense: '#ef4444' };
   return (
     <span style={{ padding: '2px 10px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: '700', textTransform: 'capitalize', background: `${colors[type] || '#666'}20`, color: colors[type] || '#666' }}>{type}</span>
@@ -40,7 +42,7 @@ const Ledger = () => {
       const res = await api.get(`/accounting/ledger/${id}`);
       setAccountDetails(res.data);
     } catch (err) {
-      alert('Failed to load ledger details');
+      toast.error('Failed to load ledger details');
       setShowDetailModal(false);
     } finally {
       setDetailLoading(false);

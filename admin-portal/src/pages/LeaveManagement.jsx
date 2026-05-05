@@ -3,8 +3,10 @@ import { Calendar, Plus, CheckCircle, XCircle, Clock, Loader2, AlertCircle } fro
 import api from '../services/api';
 import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const LeaveManagement = () => {
+  const toast = useToast();
   const [leaves, setLeaves] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ const LeaveManagement = () => {
       setShowModal(false);
       setForm({ leave_type_id: '', start_date: '', end_date: '', total_days: 1, reason: '' });
       fetchData();
-    } catch (err) { alert('Failed to submit leave request'); }
+    } catch (err) { toast.error('Failed to submit leave request'); }
   };
 
   const handleCreateType = async (e) => {
@@ -46,14 +48,14 @@ const LeaveManagement = () => {
       setShowTypeModal(false);
       setTypeForm({ name: '', days_per_year: 14, is_paid: true, color: '#00D4FF' });
       fetchData();
-    } catch (err) { alert('Failed'); }
+    } catch (err) { toast.error('Failed'); }
   };
 
   const handleAction = async (id, action) => {
     try {
       await api.patch(`/hrm/leaves/${id}/${action}`);
       fetchData();
-    } catch (err) { alert('Failed'); }
+    } catch (err) { toast.error('Failed'); }
   };
 
   const statusColors = { pending: '#FFB347', approved: '#00FF94', rejected: '#FF4D6D', cancelled: '#777' };

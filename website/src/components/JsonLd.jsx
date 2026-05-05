@@ -20,7 +20,7 @@ export function localBusinessSchema() {
     "@id": "https://languageacademy.com.bd/#organization",
     "name": "Language Academy Bangladesh",
     "alternateName": ["Language Academy", "Language Academy BD", "LA Bangladesh"],
-    "description": "Best PTE Coaching Centre in Bangladesh. Language Academy offers expert-led PTE Academic, IELTS preparation, and Spoken English courses in Dhaka with both online and offline classes.",
+    "description": "Language Academy Bangladesh is a world-class PTE centre in Dhaka, offering PTE Academic preparation as its core focus with IELTS and English language courses also available.",
     "url": "https://languageacademy.com.bd",
     "logo": "https://languageacademy.com.bd/logo.png",
     "image": "https://languageacademy.com.bd/hero_banner.png",
@@ -92,7 +92,7 @@ export function localBusinessSchema() {
       "English proficiency coaching",
       "Study abroad consulting Bangladesh"
     ],
-    "slogan": "Best PTE Coaching Centre in Bangladesh"
+    "slogan": "Best PTE Centre in Dhaka, Bangladesh"
   };
 }
 
@@ -104,7 +104,7 @@ export function websiteSchema() {
     "name": "Language Academy Bangladesh",
     "alternateName": "Language Academy",
     "url": "https://languageacademy.com.bd",
-    "description": "Best PTE & IELTS Coaching Centre in Dhaka, Bangladesh. Expert-led courses, AI mock tests, and guaranteed score improvement.",
+    "description": "Best PTE Centre in Dhaka, Bangladesh. World-class PTE preparation with IELTS and English language courses also available.",
     "publisher": { "@id": "https://languageacademy.com.bd/#organization" },
     "inLanguage": ["en", "bn"],
     "potentialAction": {
@@ -204,7 +204,7 @@ export function courseListSchema(courses) {
     "@context": "https://schema.org",
     "@type": "ItemList",
     "name": "Language Academy Courses",
-    "description": "Premium PTE, IELTS, and Spoken English courses in Dhaka, Bangladesh",
+    "description": "PTE-focused courses in Dhaka, with IELTS preparation and English language courses also available",
     "numberOfItems": courses.length,
     "itemListElement": courses.map((course, i) => ({
       "@type": "ListItem",

@@ -14,8 +14,10 @@ import {
 import api from '../services/api';
 import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const MaterialCenter = () => {
+  const toast = useToast();
   const [batches, setBatches] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState('');
   const [materials, setMaterials] = useState([]);
@@ -73,7 +75,7 @@ const MaterialCenter = () => {
       setFormData({ title: '', description: '', url: '', type: 'document' });
       fetchMaterials();
     } catch (err) {
-      alert('Failed to share material');
+      toast.error('Failed to share material');
     }
   };
 
@@ -83,7 +85,7 @@ const MaterialCenter = () => {
       await api.delete(`/materials/${id}`);
       fetchMaterials();
     } catch (err) {
-      alert('Failed to delete material');
+      toast.error('Failed to delete material');
     }
   };
 
@@ -93,9 +95,9 @@ const MaterialCenter = () => {
       await api.post('/materials/share', { ...commsData, batch_id: selectedBatch });
       setCommsModal(false);
       setCommsData({ message: '', channel: 'whatsapp' });
-      alert('Message dispatched to batch members');
+      toast.info('Message dispatched to batch members');
     } catch (err) {
-      alert('Communication failed');
+      toast.error('Communication failed');
     }
   };
 

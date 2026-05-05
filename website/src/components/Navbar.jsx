@@ -14,7 +14,7 @@ const navLinks = [
 
 const courseDropdown = [
   { name: "PTE Academic", desc: "Score-focused AI-supported coaching", icon: PenTool, href: "/courses" },
-  { name: "IELTS Preparation", desc: "Premium academic & general training", icon: BookOpen, href: "/courses" },
+  { name: "IELTS Preparation", desc: "Academic and general training", icon: BookOpen, href: "/courses" },
   { name: "Spoken English", desc: "Confidence-building communication", icon: Mic, href: "/courses" },
 ];
 

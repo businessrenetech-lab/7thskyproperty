@@ -11,8 +11,10 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const FeeCollection = () => {
+  const toast = useToast();
   const [enrollments, setEnrollments] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEnrollment, setSelectedEnrollment] = useState(null);
@@ -65,7 +67,7 @@ const FeeCollection = () => {
         fetchEnrollments();
       }, 3000);
     } catch (err) {
-      alert(err.response?.data?.error || 'Payment failed');
+      toast.error(err.response?.data?.error || 'Payment failed');
     } finally {
       setSubmitting(false);
     }

@@ -19,8 +19,10 @@ import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import AddStudentModal from '../components/AddStudentModal';
 import '../styles/GlobalStyles.css';
+import { useToast } from '../context/ToastContext';
 
 const toDateOnly = (value) => {
+  const toast = useToast();
   if (!value) return null;
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
@@ -277,10 +279,10 @@ const Students = () => {
     setRequestingAccessId(student.id);
     try {
       await api.post(`/students/${student.id}/request-partner-access`);
-      alert(`✅ Portal access request email sent for ${student.User?.name || 'Student'}!`);
+      toast.success(`Portal access request email sent for ${student.User?.name || 'Student'}!`);
     } catch (error) {
       const errMsg = error.response?.data?.details || error.response?.data?.error || 'Failed to send partner access request';
-      alert(`❌ ${errMsg}`);
+      toast.error(`${errMsg}`);
     } finally {
       setRequestingAccessId(null);
     }
@@ -293,7 +295,7 @@ const Students = () => {
       const response = await api.patch(`/students/${student.id}/management`, { batch_id: batchId || null });
       setStudents((prev) => prev.map((item) => (item.id === student.id ? response.data : item)));
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to change batch');
+      toast.error(error.response?.data?.error || 'Failed to change batch');
     } finally {
       setRowSavingId(null);
     }
@@ -306,7 +308,7 @@ const Students = () => {
       setStudents((prev) => prev.map((item) => (item.id === student.id ? response.data : item)));
       if (selectedStudent?.id === student.id) setSelectedStudent(response.data);
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to change student status');
+      toast.error(error.response?.data?.error || 'Failed to change student status');
     } finally {
       setRowSavingId(null);
     }
@@ -319,11 +321,11 @@ const Students = () => {
       setStudents([response.data.student, ...students]);
       setIsAddModalOpen(false);
       if (response.data.invoice) {
-        alert('Student added with Fees Pending. Collect the admission fee from POS & Fees to complete enrollment.');
+        toast.info('Student added with Fees Pending. Collect the admission fee from POS & Fees to complete enrollment.');
       }
       fetchData(); // refresh to get enriched data
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to add student');
+      toast.error(error.response?.data?.error || 'Failed to add student');
     } finally {
       setIsAdding(false);
     }
@@ -348,7 +350,7 @@ const Students = () => {
       setSelectedStudent(response.data);
       setIsSuccessModalOpen(false);
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to save success record');
+      toast.error(error.response?.data?.error || 'Failed to save success record');
     } finally {
       setRowSavingId(null);
     }

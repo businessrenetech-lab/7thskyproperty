@@ -23,12 +23,12 @@ export default function CourseCard({ course }) {
       <div className="flex flex-1 flex-col p-8">
         <h3 className="text-xl font-extrabold text-slate-900 line-clamp-2 leading-tight group-hover:text-emerald-600 transition-colors">{course.title}</h3>
         <p className="mt-4 flex-1 text-sm leading-7 text-slate-500 line-clamp-3">
-          {course.short_description || "Premium coaching, practical feedback, and a stronger pathway toward visible progress."}
+          {course.short_description || "Focused coaching, practical feedback, and a stronger pathway toward visible progress."}
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-slate-100 pt-6 text-xs font-bold text-slate-500 uppercase tracking-widest">
           <span className="inline-flex items-center gap-1.5"><Clock3 size={15} className="text-emerald-500" />{course.duration_weeks ? `${course.duration_weeks}W` : "Flex"}</span>
           <span className="inline-flex items-center gap-1.5"><Users size={15} className="text-emerald-500" />Max 12</span>
-          <span className="inline-flex items-center gap-1.5"><Star size={15} className="text-amber-400" fill="currentColor" />Premium</span>
+          <span className="inline-flex items-center gap-1.5"><Star size={15} className="text-amber-400" fill="currentColor" />Unlimited Mock Tests</span>
         </div>
         <div className="mt-8 flex items-center justify-between gap-4">
           <div>
