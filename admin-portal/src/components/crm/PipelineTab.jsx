@@ -6,7 +6,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 
 const parseLeadTags = (lead) => {
-  const toast = useToast();
   if (!lead?.tags) return {};
   if (typeof lead.tags === 'object') return lead.tags;
   try {
@@ -35,6 +34,7 @@ const deriveLegacyGoalType = (reason, country) => {
 };
 
 const LeadPanel = ({ lead, onClose, onRefresh, courses }) => {
+  const toast = useToast();
   const createEnrollmentForm = (sourceLead, batchId = '') => ({
     ...(() => {
       const booking = getBookingDetails(sourceLead);
@@ -431,6 +431,7 @@ const LeadCard = ({ lead, onClick }) => {
 };
 
 const PipelineTab = ({ leads, courses, onRefresh }) => {
+  const toast = useToast();
   const { user, branch } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
