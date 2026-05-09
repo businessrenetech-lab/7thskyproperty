@@ -24,6 +24,12 @@ const calculateDue = (invoice) => {
   return Math.max(amount - paid, 0);
 };
 
+const requestError = (message, statusCode = 400) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+};
+
 const buildReferralExpenseRef = (enrollmentId, invoiceId) => `[REF:${enrollmentId}:${invoiceId || 0}]`;
 
 const upsertPendingReferralExpense = async ({
@@ -139,19 +145,36 @@ exports.collectFee = async (req, res) => {
 
     const linkedInvoice = invoice_id ? await Invoice.findOne({
       where: { id: invoice_id, branch_id: req.branchId },
-      transaction: t
+      transaction: t,
+      lock: true
     }) : await Invoice.findOne({
       where: { enrollment_id, branch_id: req.branchId },
-      transaction: t
+      transaction: t,
+      lock: true
     });
 
     const resolvedEnrollmentId = linkedInvoice?.enrollment_id || enrollment_id;
-    const enrollment = await Enrollment.findOne({ where: { id: resolvedEnrollmentId, branch_id: req.branchId }, transaction: t });
-    if (!enrollment) throw new Error('Enrollment not found');
+    const enrollment = await Enrollment.findOne({ where: { id: resolvedEnrollmentId, branch_id: req.branchId }, transaction: t, lock: true });
+    if (!enrollment) throw requestError('Enrollment not found', 404);
 
     const paymentAmount = Number(amount || 0);
     if (!paymentAmount || Number.isNaN(paymentAmount) || paymentAmount <= 0) {
-      throw new Error('Valid payment amount is required');
+      throw requestError('Valid payment amount is required');
+    }
+
+    const dueAmount = linkedInvoice ? calculateDue(linkedInvoice) : Math.max(Number(enrollment.total_fee || 0) - Number(enrollment.paid_amount || 0), 0);
+    if (dueAmount <= 0) throw requestError('Invoice or enrollment is already fully paid');
+    if (paymentAmount > dueAmount) {
+      throw requestError(`Payment amount exceeds outstanding due (${dueAmount})`);
+    }
+
+    if (transaction_ref) {
+      const duplicate = await Transaction.findOne({
+        where: { branch_id: req.branchId, transaction_ref, source: 'pos_fee', status: 'success' },
+        transaction: t,
+        lock: true
+      });
+      if (duplicate) throw requestError('Duplicate payment reference already recorded', 409);
     }
 
     // 1. Double-Entry Journaling Accounts
@@ -373,13 +396,29 @@ exports.collectCustomIncome = async (req, res) => {
     const invoice = await Invoice.findOne({
       where: { id: invoice_id, branch_id: req.branchId },
       include: [{ model: IncomeCategory, required: false }, { model: Customer, required: false }],
-      transaction: t
+      transaction: t,
+      lock: true
     });
-    if (!invoice) throw new Error('Invoice not found');
+    if (!invoice) throw requestError('Invoice not found', 404);
 
     const paymentAmount = Number(amount || 0);
     if (!paymentAmount || Number.isNaN(paymentAmount) || paymentAmount <= 0) {
-      throw new Error('Valid payment amount is required');
+      throw requestError('Valid payment amount is required');
+    }
+
+    const dueAmount = calculateDue(invoice);
+    if (dueAmount <= 0) throw requestError('Invoice is already fully paid');
+    if (paymentAmount > dueAmount) {
+      throw requestError(`Payment amount exceeds outstanding due (${dueAmount})`);
+    }
+
+    if (transaction_ref) {
+      const duplicate = await Transaction.findOne({
+        where: { branch_id: req.branchId, transaction_ref, source: 'manual', status: 'success' },
+        transaction: t,
+        lock: true
+      });
+      if (duplicate) throw requestError('Duplicate payment reference already recorded', 409);
     }
 
     // 1. Resolve Debit Account (Cash / Bank / Bkash / Nagad)
@@ -460,7 +499,7 @@ exports.collectCustomIncome = async (req, res) => {
   } catch (error) {
     await t.rollback();
     console.error('[CollectCustomIncome Error]:', error);
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 };
 
@@ -547,6 +586,6 @@ exports.rejectPendingInvoice = async (req, res) => {
     res.json({ message: 'Pending fee rejected and noted.', invoice });
   } catch (error) {
     await t.rollback();
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 };

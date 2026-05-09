@@ -13,6 +13,12 @@ const JournalLine = require('../models/JournalLine');
 const sequelize = require('../config/db.config');
 const { Op, fn, col } = require('sequelize');
 
+const requestError = (message, statusCode = 400) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+};
+
 exports.getInvoices = async (req, res) => {
   try {
     const { status, search, type } = req.query;
@@ -249,39 +255,62 @@ exports.payCustomInvoice = async (req, res) => {
   try {
     const invoice = await Invoice.findOne({
       where: { id: req.params.id, branch_id: req.branchId },
-      include: [{ model: IncomeCategory }]
+      include: [{ model: IncomeCategory }],
+      transaction: t,
+      lock: true
     });
     if (!invoice) {
         await t.rollback();
         return res.status(404).json({ error: 'Invoice not found' });
     }
-    const { method, account_id, amount, paid_date } = req.body;
+    const { method, account_id, amount, paid_date, transaction_ref } = req.body;
     // Resolve payment timestamp — use provided date or default to now
     const paymentTimestamp = paid_date ? new Date(`${paid_date}T12:00:00+06:00`) : new Date();
+    const paymentAmount = Number(amount || invoice.amount || 0);
+    const dueAmount = Math.max(Number(invoice.amount || 0) - Number(invoice.paid || 0), 0);
+    if (!paymentAmount || Number.isNaN(paymentAmount) || paymentAmount <= 0) {
+      throw requestError('Valid payment amount is required');
+    }
+    if (dueAmount <= 0) throw requestError('Invoice is already fully paid');
+    if (paymentAmount > dueAmount) {
+      throw requestError(`Payment amount exceeds outstanding due (${dueAmount})`);
+    }
+
+    if (transaction_ref) {
+      const duplicate = await Transaction.findOne({
+        where: { branch_id: req.branchId, transaction_ref, source: 'manual', status: 'success' },
+        transaction: t,
+        lock: true
+      });
+      if (duplicate) throw requestError('Duplicate payment reference already recorded', 409);
+    }
+
+    const liquidAcc = await Account.findOne({ where: { id: account_id, branch_id: req.branchId }, transaction: t });
+    if (!liquidAcc) throw requestError('Selected asset account not found', 404);
     
     const tx = await Transaction.create({
       branch_id: req.branchId,
       invoice_id: invoice.id,
       receipt_no: `MR-CUST-${Date.now()}`,
-      amount: amount || invoice.amount,
+      amount: paymentAmount,
       method: method || 'cash',
       source: 'manual',
       account_id,
+      transaction_ref,
       status: 'success',
       paid_at: paymentTimestamp,
       recorded_by: req.user?.id
     }, { transaction: t });
 
-    const newPaid = Number(invoice.paid || 0) + Number(amount || invoice.amount);
+    const newPaid = Number(invoice.paid || 0) + paymentAmount;
     await invoice.update({
       paid: newPaid,
       status: newPaid >= invoice.amount ? 'paid' : 'partial'
     }, { transaction: t });
 
-    const liquidAcc = await Account.findOne({ where: { id: account_id, branch_id: req.branchId } });
     const isUttara = req.branchId !== 1;
     const revenueCode = isUttara ? '4010-U' : '4010';
-    let revenueAcc = await Account.findOne({ where: { is_active: true, branch_id: req.branchId, code: revenueCode } }); 
+    let revenueAcc = await Account.findOne({ where: { is_active: true, branch_id: req.branchId, code: revenueCode }, transaction: t });
     if (!revenueAcc) {
       revenueAcc = await Account.create({
         code: revenueCode, name: isUttara ? 'Custom Income Revenue - Uttara' : 'Custom Income Revenue',
@@ -307,7 +336,7 @@ exports.payCustomInvoice = async (req, res) => {
     res.json({ message: 'Payment successful', transaction: tx });
   } catch (error) {
     await t.rollback();
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 };
 
