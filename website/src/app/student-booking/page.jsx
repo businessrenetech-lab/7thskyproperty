@@ -24,7 +24,7 @@ function StudentBookingForm() {
 
   const [courses, setCourses] = useState([]);
   const [batches, setBatches] = useState([]);
-  const [loadingCourses, setLoadingCourses] = useState(false);
+  const [loadingCourses, setLoadingCourses] = useState(true);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [formData, setFormData] = useState({
@@ -60,9 +60,12 @@ function StudentBookingForm() {
   );
 
   useEffect(() => {
-    if (!branchId) return;
+    if (!branchId) {
+      setLoadingCourses(false);
+      return;
+    }
     setLoadingCourses(true);
-    fetch(`/api/public/courses?branch_id=${encodeURIComponent(branchId)}`)
+    fetch(`/api/public/courses?branch_id=${encodeURIComponent(branchId)}&booking=true`)
       .then((res) => res.json())
       .then((data) => setCourses(Array.isArray(data) ? data : []))
       .catch(() => setCourses([]))
@@ -75,7 +78,7 @@ function StudentBookingForm() {
       return;
     }
 
-    fetch(`/api/public/courses/${formData.course_id}/batches?branch_id=${encodeURIComponent(branchId)}`)
+    fetch(`/api/public/courses/${formData.course_id}/batches?branch_id=${encodeURIComponent(branchId)}&booking=true`)
       .then((res) => res.json())
       .then((data) => setBatches(Array.isArray(data) ? data : []))
       .catch(() => setBatches([]));
@@ -193,11 +196,14 @@ function StudentBookingForm() {
             <div>
               <label className="mb-2 block text-sm font-bold text-slate-700">Course Interest</label>
               <select name="course_id" value={formData.course_id} onChange={handleChange} className="form-input-premium" disabled={loadingCourses}>
-                <option value="">{loadingCourses ? "Loading courses..." : "Select course"}</option>
+                <option value="">{loadingCourses ? "Loading courses..." : courses.length === 0 ? "No courses offered by this branch" : "Select course"}</option>
                 {courses.map((course) => (
                   <option key={course.id} value={course.id}>{course.title}</option>
                 ))}
               </select>
+              {!loadingCourses && courses.length === 0 && (
+                <p className="mt-2 text-xs font-semibold text-amber-600">This branch has no published courses available for booking yet.</p>
+              )}
             </div>
             <div>
               <label className="mb-2 block text-sm font-bold text-slate-700">Preferred Batch</label>

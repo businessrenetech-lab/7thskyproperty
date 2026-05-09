@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Edit, Trash2, Globe, FileText, Check, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Globe, FileText, Check, X, Upload, Loader2 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 const WebsiteManagement = () => {
@@ -10,6 +10,9 @@ const WebsiteManagement = () => {
   const [activeTab, setActiveTab] = useState('blogs');
   const [blogs, setBlogs] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [courseDrafts, setCourseDrafts] = useState({});
+  const [savingCourseId, setSavingCourseId] = useState(null);
+  const [uploadingCourseId, setUploadingCourseId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Form states
@@ -29,7 +32,15 @@ const WebsiteManagement = () => {
         setBlogs(res.data);
       } else {
         const res = await api.get('/website/courses');
-        setCourses(res.data);
+        const nextCourses = Array.isArray(res.data) ? res.data : [];
+        setCourses(nextCourses);
+        setCourseDrafts(nextCourses.reduce((acc, course) => {
+          acc[course.id] = {
+            image_url: course.image_url || '',
+            short_description: course.short_description || '',
+          };
+          return acc;
+        }, {}));
       }
     } catch (err) {
       console.error(err);
@@ -68,6 +79,51 @@ const WebsiteManagement = () => {
       fetchData();
     } catch (err) {
       toast.error('Error updating course');
+    }
+  };
+
+  const updateCourseDraft = (courseId, field, value) => {
+    setCourseDrafts((prev) => ({
+      ...prev,
+      [courseId]: {
+        ...(prev[courseId] || {}),
+        [field]: value,
+      },
+    }));
+  };
+
+  const saveCourseWebsiteFields = async (course) => {
+    const draft = courseDrafts[course.id] || {};
+    setSavingCourseId(course.id);
+    try {
+      await api.put(`/website/courses/${course.id}`, {
+        image_url: draft.image_url || '',
+        short_description: draft.short_description || '',
+      });
+      toast.success('Course website details updated');
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Error updating course');
+    } finally {
+      setSavingCourseId(null);
+    }
+  };
+
+  const uploadCourseImage = async (course, file) => {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('image', file);
+    setUploadingCourseId(course.id);
+    try {
+      const response = await api.post('/website/courses/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      updateCourseDraft(course.id, 'image_url', response.data.url || '');
+      toast.success('Image uploaded. Click Save Details to publish it.');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to upload image');
+    } finally {
+      setUploadingCourseId(null);
     }
   };
 
@@ -181,40 +237,86 @@ const WebsiteManagement = () => {
         )
       ) : (
         <div className="card">
-          <p style={{ marginBottom: '1rem', color: 'var(--text-dim)' }}>Toggle which courses appear on the public website.</p>
+          <p style={{ marginBottom: '1rem', color: 'var(--text-dim)' }}>Toggle visibility and update the public course image shown on the website.</p>
           <table className="data-table" style={{ width: '100%', textAlign: 'left' }}>
             <thead>
               <tr>
                 <th>Course Title</th>
                 <th>Category</th>
                 <th>Fee</th>
+                <th>Website Image</th>
                 <th>Public Status</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
-              {courses.map(course => (
-                <tr key={course.id}>
-                  <td>{course.title}</td>
-                  <td>{course.category}</td>
-                  <td>{course.base_fee} BDT</td>
-                  <td>
-                    {course.is_published ? (
-                        <span style={{ color: '#22c55e', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Check size={16} /> Visible</span>
-                    ) : (
-                        <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><X size={16} /> Hidden</span>
-                    )}
-                  </td>
-                  <td>
-                    <button 
-                      className={course.is_published ? 'btn btn-secondary' : 'btn btn-primary'} 
-                      onClick={() => toggleCoursePublish(course)}
-                    >
-                      {course.is_published ? 'Hide on Website' : 'Publish to Website'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {courses.map(course => {
+                const draft = courseDrafts[course.id] || { image_url: '', short_description: '' };
+                return (
+                  <tr key={course.id}>
+                    <td>{course.title}</td>
+                    <td>{course.category}</td>
+                    <td>{course.base_fee} BDT</td>
+                    <td style={{ minWidth: 320 }}>
+                      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                        <div style={{ width: 84, height: 54, borderRadius: 8, overflow: 'hidden', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', flexShrink: 0 }}>
+                          {draft.image_url ? (
+                            <img src={draft.image_url} alt={course.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                          ) : (
+                            <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: 'var(--text-dim)', fontSize: '0.7rem' }}>No image</div>
+                          )}
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                          <input
+                            className="input-field"
+                            placeholder="/uploads/courses/image.jpg or https://..."
+                            value={draft.image_url}
+                            onChange={(e) => updateCourseDraft(course.id, 'image_url', e.target.value)}
+                          />
+                          <textarea
+                            className="input-field"
+                            rows="2"
+                            placeholder="Short website description"
+                            value={draft.short_description}
+                            onChange={(e) => updateCourseDraft(course.id, 'short_description', e.target.value)}
+                          />
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <label className="btn btn-secondary" style={{ position: 'relative', overflow: 'hidden', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: uploadingCourseId === course.id ? 'not-allowed' : 'pointer' }}>
+                              {uploadingCourseId === course.id ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                              Upload
+                              <input
+                                type="file"
+                                accept="image/*"
+                                disabled={uploadingCourseId === course.id}
+                                onChange={(e) => uploadCourseImage(course, e.target.files?.[0])}
+                                style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                              />
+                            </label>
+                            <button className="btn btn-primary" onClick={() => saveCourseWebsiteFields(course)} disabled={savingCourseId === course.id}>
+                              {savingCourseId === course.id ? 'Saving...' : 'Save Details'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      {course.is_published ? (
+                          <span style={{ color: '#22c55e', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Check size={16} /> Visible</span>
+                      ) : (
+                          <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><X size={16} /> Hidden</span>
+                      )}
+                    </td>
+                    <td>
+                      <button 
+                        className={course.is_published ? 'btn btn-secondary' : 'btn btn-primary'} 
+                        onClick={() => toggleCoursePublish(course)}
+                      >
+                        {course.is_published ? 'Hide on Website' : 'Publish to Website'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

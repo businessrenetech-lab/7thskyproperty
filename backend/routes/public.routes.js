@@ -3,6 +3,11 @@ const router = express.Router();
 const publicController = require('../controllers/public.controller');
 
 // Unauthenticated public routes for the website
+router.get('/branches', publicController.getPublicBranches);
+router.get('/branches/:slug', publicController.getPublicBranchDetails);
+router.get('/branches/:slug/courses', publicController.getPublicBranchCourses);
+router.get('/branches/:slug/blog', publicController.getPublicBranchBlogs);
+
 router.get('/courses', publicController.getPublishedCourses);
 router.get('/courses/:slug', publicController.getCourseDetails);
 router.get('/courses/:slug/batches', publicController.getCourseBatches);

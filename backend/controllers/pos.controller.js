@@ -132,7 +132,10 @@ exports.getPendingInvoices = async (req, res) => {
 exports.collectFee = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { enrollment_id, invoice_id, amount, method, transaction_ref, notes, account_id } = req.body;
+    const { enrollment_id, invoice_id, amount, method, transaction_ref, notes, account_id, paid_date } = req.body;
+
+    // Resolve payment timestamp — use provided date or default to now
+    const paymentTimestamp = paid_date ? new Date(`${paid_date}T12:00:00+06:00`) : new Date();
 
     const linkedInvoice = invoice_id ? await Invoice.findOne({
       where: { id: invoice_id, branch_id: req.branchId },
@@ -189,7 +192,7 @@ exports.collectFee = async (req, res) => {
       account_id: debitAccount.id,
       recorded_by: req.user.id,
       status: 'success',
-      paid_at: new Date()
+      paid_at: paymentTimestamp
     }, { transaction: t });
 
     // 3. Update Enrollment paid_amount
@@ -318,7 +321,7 @@ exports.collectFee = async (req, res) => {
       branch_id: req.branchId,
       ref_no: `PAY-${txn.id}`,
       description: `Fee Collection - Enrollment: ${enrollment.id} | Ref: ${transaction_ref || 'N/A'}`,
-      date: new Date(),
+      date: paymentTimestamp,
       posted_by: req.user.id
     }, { transaction: t });
 
@@ -360,7 +363,10 @@ exports.collectFee = async (req, res) => {
 exports.collectCustomIncome = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { invoice_id, amount, method, transaction_ref, notes, account_id } = req.body;
+    const { invoice_id, amount, method, transaction_ref, notes, account_id, paid_date } = req.body;
+
+    // Resolve payment timestamp — use provided date or default to now
+    const paymentTimestamp = paid_date ? new Date(`${paid_date}T12:00:00+06:00`) : new Date();
 
     if (!invoice_id) throw new Error('Invoice ID is required for custom income collection');
 
@@ -421,7 +427,7 @@ exports.collectCustomIncome = async (req, res) => {
       account_id: debitAccount.id,
       recorded_by: req.user.id,
       status: 'success',
-      paid_at: new Date()
+      paid_at: paymentTimestamp
     }, { transaction: t });
 
     // 4. Update Invoice paid amount & status
@@ -439,7 +445,7 @@ exports.collectCustomIncome = async (req, res) => {
       branch_id: req.branchId,
       ref_no: receiptNo,
       description: `Custom Income: ${categoryName} - ${customerName}`,
-      date: new Date(),
+      date: paymentTimestamp,
       posted_by: req.user.id
     }, { transaction: t });
 

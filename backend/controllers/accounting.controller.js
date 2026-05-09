@@ -102,7 +102,7 @@ exports.getJournal = async (req, res) => {
 // ── NEW: Ledger Summary (Account-level) ──
 exports.getLedgerSummary = async (req, res) => {
   try {
-    const accounts = await Account.findAll({ where: { is_active: true }, order: [['type', 'ASC'], ['code', 'ASC']] });
+    const accounts = await Account.findAll({ where: { branch_id: req.branchId, is_active: true }, order: [['type', 'ASC'], ['code', 'ASC']] });
     const summary = [];
 
     for (const acc of accounts) {
@@ -128,6 +128,7 @@ exports.getLedgerAccountDetails = async (req, res) => {
     const { id } = req.params;
     const account = await Account.findByPk(id);
     if (!account) return res.status(404).json({ error: 'Account not found' });
+    if (account.branch_id !== req.branchId) return res.status(403).json({ error: 'Access denied to this account' });
 
     const lines = await JournalLine.findAll({
       where: { account_id: id },
@@ -168,6 +169,7 @@ exports.getLedgerAccountDetails = async (req, res) => {
 exports.getAuditLog = async (req, res) => {
   try {
     const logs = await AuditLog.findAll({
+      where: { branch_id: req.branchId },
       include: [{ model: User, attributes: ['name'] }],
       order: [['created_at', 'DESC']],
       limit: 100

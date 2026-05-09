@@ -1,0 +1,28 @@
+Production Build
+From repo root:
+npm install
+npm run build:admin
+npm run build:website
+What those do:
+"build:admin": "cd admin-portal && npm install && npx vite build"
+"build:website": "cd website && npm install && npx next build"
+Outputs:
+admin-portal/dist/
+website/.next/
+Local Production Smoke Test
+Run the monolith production server:
+$env:PORT="3200"
+$env:NODE_ENV="production"
+node production-server.js
+Then test:
+Invoke-WebRequest http://127.0.0.1:3200/health -UseBasicParsing
+Invoke-WebRequest http://127.0.0.1:3200/ -UseBasicParsing
+Invoke-WebRequest http://127.0.0.1:3200/admin -UseBasicParsing
+Invoke-WebRequest http://127.0.0.1:3200/admin/crm -UseBasicParsing
+Expected result: all return 200.
+Important Deploy Note
+If Hostinger does not run npm run build:website during deployment, then website/.next must exist on the server. In this repo, .next is ignored, so if you deploy by Git only, you need to force-add build artifacts:
+git add admin-portal/dist
+git add -f website/.next
+git commit -m "build: update production artifacts"
+git push origin main

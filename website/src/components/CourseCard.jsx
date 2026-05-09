@@ -1,5 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, Clock3, Star, Users } from "lucide-react";
+import { getPublicImageUrl } from "@/lib/imageUrl";
 
 export default function CourseCard({ course }) {
   const thumbnails = {
@@ -8,12 +10,12 @@ export default function CourseCard({ course }) {
     "Spoken English": "/hero_banner.png",
   };
 
-  const thumbnail = course.image_url || thumbnails[course.category] || "/hero_banner.png";
+  const thumbnail = getPublicImageUrl(course.image_url, thumbnails[course.category] || "/hero_banner.png");
 
   return (
     <div className="group rounded-3xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-xl hover:shadow-slate-200/50 flex h-full flex-col overflow-hidden">
       <div className="relative aspect-[16/10] overflow-hidden">
-        <img src={thumbnail} alt={course.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />
+        <Image src={thumbnail} alt={course.title} fill sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw" className="object-cover transition-transform duration-700 group-hover:scale-105" unoptimized />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent opacity-60" />
         <div className="absolute bottom-4 left-4 flex gap-2">
           <span className="rounded-full bg-white/95 px-3 py-1 text-xs font-bold text-slate-900 shadow-sm backdrop-blur">{course.category}</span>

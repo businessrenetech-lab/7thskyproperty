@@ -18,9 +18,18 @@ async function getBlogs() {
   } catch { return []; }
 }
 
+async function getBranches() {
+  try {
+    const res = await fetch(`${getApiBase()}/api/public/branches`, { next: { revalidate: 3600 } });
+    if (!res.ok) return [];
+    return res.json();
+  } catch { return []; }
+}
+
 export default async function sitemap() {
   const courses = await getCourses();
   const blogs = await getBlogs();
+  const branches = await getBranches();
 
   const staticRoutes = [
     { url: `${SITE_URL}`, lastModified: new Date(), changeFrequency: "weekly", priority: 1.0 },
@@ -28,6 +37,7 @@ export default async function sitemap() {
     { url: `${SITE_URL}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE_URL}/contact`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE_URL}/blog`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
+    { url: `${SITE_URL}/branches`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
     { url: `${SITE_URL}/enroll`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE_URL}/materials`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
   ];
@@ -46,5 +56,14 @@ export default async function sitemap() {
     priority: 0.6,
   }));
 
-  return [...staticRoutes, ...courseRoutes, ...blogRoutes];
+  const branchRoutes = branches
+    .filter((branch) => branch.is_active)
+    .map((branch) => ({
+      url: `${SITE_URL}/branches/${branch.slug || branch.id}`,
+      lastModified: branch.updated_at ? new Date(branch.updated_at) : new Date(),
+      changeFrequency: "weekly",
+      priority: branch.type === "head" ? 0.85 : 0.75,
+    }));
+
+  return [...staticRoutes, ...courseRoutes, ...blogRoutes, ...branchRoutes];
 }

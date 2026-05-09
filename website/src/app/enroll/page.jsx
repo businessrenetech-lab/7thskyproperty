@@ -8,11 +8,14 @@ import { ArrowRight, CheckCircle2, Clock3, Loader2, ShieldCheck, Star, Users } f
 function CheckoutForm() {
   const searchParams = useSearchParams();
   const initialCourseId = searchParams.get("course") || "";
+  const initialBranchId = searchParams.get("branch") || searchParams.get("branch_id") || "";
 
+  const [branches, setBranches] = useState([]);
   const [courses, setCourses] = useState([]);
   const [batches, setBatches] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [formData, setFormData] = useState({
+    branch_id: initialBranchId,
     course_id: initialCourseId,
     batch_id: "",
     name: "",
@@ -41,26 +44,70 @@ function CheckoutForm() {
   };
 
   useEffect(() => {
-    fetch("/api/public/courses")
+    fetch("/api/public/branches")
       .then((res) => res.json())
-      .then((data) => { if (Array.isArray(data)) setCourses(data); else setCourses([]); })
-      .catch((err) => console.error("Failed to load courses", err));
-  }, []);
+      .then((data) => {
+        const activeBranches = Array.isArray(data) ? data.filter((branch) => branch.is_active) : [];
+        setBranches(activeBranches);
+        if (initialBranchId) return;
+        const headBranch = activeBranches.find((branch) => branch.type === "head");
+        if (headBranch) setFormData((prev) => ({ ...prev, branch_id: String(headBranch.id) }));
+      })
+      .catch((err) => console.error("Failed to load branches", err));
+  }, [initialBranchId]);
+
+  useEffect(() => {
+    if (!formData.branch_id) {
+      setCourses([]);
+      setBatches([]);
+      setSelectedCourse(null);
+      return;
+    }
+
+    fetch(`/api/public/courses?branch_id=${encodeURIComponent(formData.branch_id)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const nextCourses = Array.isArray(data) ? data : [];
+        setCourses(nextCourses);
+        setBatches([]);
+        setFormData((prev) => {
+          const current = nextCourses.find((course) => String(course.id) === String(prev.course_id) || course.slug === prev.course_id);
+          const initialMatch = nextCourses.find((course) => String(course.id) === String(initialCourseId) || course.slug === initialCourseId);
+          return {
+            ...prev,
+            course_id: current ? String(current.id) : initialMatch ? String(initialMatch.id) : "",
+            batch_id: "",
+          };
+        });
+      })
+      .catch((err) => {
+        console.error("Failed to load branch courses", err);
+        setCourses([]);
+      });
+  }, [formData.branch_id, initialCourseId]);
 
   useEffect(() => {
     if (!formData.course_id) { setBatches([]); setSelectedCourse(null); return; }
     const sc = courses.find((c) => c.id.toString() === formData.course_id.toString() || c.slug === formData.course_id);
     setSelectedCourse(sc || null);
     const slugToFetch = sc ? sc.slug : formData.course_id;
-    if (slugToFetch) {
-      fetch(`/api/public/courses/${slugToFetch}/batches`)
+    if (slugToFetch && formData.branch_id) {
+      fetch(`/api/public/courses/${slugToFetch}/batches?branch_id=${encodeURIComponent(formData.branch_id)}`)
         .then((res) => res.json())
         .then((data) => { if (Array.isArray(data)) setBatches(data); else setBatches([]); })
         .catch(() => setBatches([]));
     }
-  }, [formData.course_id, courses]);
+  }, [formData.branch_id, formData.course_id, courses]);
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+      ...(name === "branch_id" ? { course_id: "", batch_id: "" } : {}),
+      ...(name === "course_id" ? { batch_id: "" } : {}),
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -73,7 +120,7 @@ function CheckoutForm() {
       const res = await fetch("/api/payment/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, course_id: payloadCourseId }),
+        body: JSON.stringify({ ...formData, branch_id: formData.branch_id, course_id: payloadCourseId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || data.message || "Payment initiation failed");
@@ -146,16 +193,23 @@ function CheckoutForm() {
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-4">1. Select Your Course & Batch</h3>
+                  <h3 className="text-lg font-bold text-slate-900 mb-4">1. Select Branch, Course & Batch</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Course</label>
-                      <select name="course_id" value={formData.course_id} onChange={(e) => { handleChange(e); setStep(Math.max(step, 1)); }} required className="form-input-premium">
-                        <option value="">-- Choose a course --</option>
-                        {courses.map((c) => (<option key={c.id} value={c.id}>{c.title} - ৳{c.base_fee}</option>))}
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Branch</label>
+                      <select name="branch_id" value={formData.branch_id} onChange={(e) => { handleChange(e); setStep(1); }} required className="form-input-premium">
+                        <option value="">-- Choose a branch --</option>
+                        {branches.map((branch) => (<option key={branch.id} value={branch.id}>{branch.name}</option>))}
                       </select>
                     </div>
                     <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Course</label>
+                      <select name="course_id" value={formData.course_id} onChange={(e) => { handleChange(e); setStep(Math.max(step, 1)); }} required disabled={!formData.branch_id} className="form-input-premium disabled:opacity-50 disabled:cursor-not-allowed">
+                        <option value="">{formData.branch_id ? "-- Choose a course --" : "-- Select branch first --"}</option>
+                        {courses.map((c) => (<option key={c.id} value={c.id}>{c.title} - ৳{c.base_fee}</option>))}
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Preferred Batch</label>
                       <select name="batch_id" value={formData.batch_id} onChange={(e) => { handleChange(e); setStep(Math.max(step, 2)); }} required disabled={!formData.course_id || batches.length === 0} className="form-input-premium disabled:opacity-50 disabled:cursor-not-allowed">
                         <option value="">{formData.course_id ? (batches.length > 0 ? "-- Choose batch --" : "No batches available") : "-- Select course first --"}</option>
@@ -209,6 +263,10 @@ function CheckoutForm() {
                 <h3 className="text-lg font-extrabold text-slate-900 mb-5">Order Summary</h3>
                 {selectedCourse ? (
                   <div>
+                    <div className="subtle-panel p-4 mb-4">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Selected Branch</p>
+                      <p className="font-bold text-slate-900">{branches.find((branch) => String(branch.id) === String(formData.branch_id))?.name || "Branch selected"}</p>
+                    </div>
                     <div className="subtle-panel p-4 mb-4">
                       <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Selected Course</p>
                       <p className="font-bold text-slate-900">{selectedCourse.title}</p>

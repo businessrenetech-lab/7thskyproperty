@@ -1,10 +1,12 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ArrowRight, Award, Calendar, CheckCircle2, Clock3, Globe2, MapPin, Phone, ShieldCheck, Sparkles, Star, TrendingUp, Users, Zap } from "lucide-react";
 import BookingModalTrigger from "@/components/BookingModalTrigger";
 import JsonLd, { courseSchema, breadcrumbSchema } from "@/components/JsonLd";
 import { getApiBase } from "@/lib/api";
 import { getFallbackCourse } from "@/lib/courseFallbacks";
+import { getAbsolutePublicImageUrl, getPublicImageUrl } from "@/lib/imageUrl";
 
 // Force SSR — prevent Next.js from static-generating this page at build time
 // (the API isn't available during build, so fetch would fail → 404)
@@ -57,7 +59,7 @@ export async function generateMetadata({ params }) {
       description,
       url: `https://languageacademy.com.bd/courses/${params.slug}`,
       images: [{
-        url: course.image_url || thumbnails[course.category] || "/hero_banner.png",
+        url: getAbsolutePublicImageUrl(course.image_url, thumbnails[course.category] || "/hero_banner.png"),
         width: 1200, height: 630,
         alt: `${course.title} at Language Academy Bangladesh`,
       }],
@@ -84,7 +86,7 @@ export default async function CourseDetailPage({ params }) {
     { title: "Mock Tests & Review", lessons: [{ title: "Full-length mock test", duration: "120m" }, { title: "1-on-1 review session", duration: "45m" }] },
   ]);
 
-  const courseImage = course.image_url || thumbnails[course.category] || "/hero_banner.png";
+  const courseImage = getPublicImageUrl(course.image_url, thumbnails[course.category] || "/hero_banner.png");
 
   const features = [
     { icon: Users, label: "Small Batch", desc: "Max 12 students" },
@@ -111,7 +113,9 @@ export default async function CourseDetailPage({ params }) {
           {/* Mobile Course Image */}
           <div className="mb-6 lg:hidden">
             <div className="overflow-hidden rounded-2xl shadow-lg border border-slate-100 bg-white p-1.5">
-              <img src={courseImage} alt={course.title} className="w-full aspect-[16/9] object-cover rounded-xl" />
+              <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl">
+                <Image src={courseImage} alt={course.title} fill sizes="100vw" className="object-cover" priority unoptimized />
+              </div>
             </div>
           </div>
           <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-12 items-center">
@@ -143,7 +147,9 @@ export default async function CourseDetailPage({ params }) {
             </div>
             <div className="hidden lg:block">
               <div className="overflow-hidden rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-slate-100 bg-white p-2">
-                <img src={courseImage} alt={course.title} className="w-full aspect-[4/3] object-cover rounded-[1.5rem]" />
+                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[1.5rem]">
+                  <Image src={courseImage} alt={course.title} fill sizes="40vw" className="object-cover" priority unoptimized />
+                </div>
               </div>
             </div>
           </div>

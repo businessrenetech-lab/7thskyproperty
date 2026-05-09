@@ -43,6 +43,7 @@ const ExpenseManager = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [rejectionModal, setRejectionModal] = useState({ isOpen: false, id: null, reason: '' });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, reason: '', status: '' });
+  const [sourceModal, setSourceModal] = useState({ isOpen: false, id: null, account_id: '' });
 
   // Date filter state
   const [dateFrom, setDateFrom] = useState('');
@@ -133,7 +134,7 @@ const ExpenseManager = () => {
 
   const handleVerify = async (id) => {
     try { await api.put(`/expenses/${id}/verify`); fetchData(); }
-    catch (err) { toast.error('Verification failed'); }
+    catch (err) { toast.error(err.response?.data?.error || 'Verification failed'); }
   };
 
   const handleApprove = async (id) => {
@@ -147,6 +148,25 @@ const ExpenseManager = () => {
       setRejectionModal({ isOpen: false, id: null, reason: '' });
       fetchData();
     } catch (err) { toast.error('Rejection failed'); }
+  };
+
+  const openSourceModal = (expense) => {
+    setSourceModal({ isOpen: true, id: expense.id, account_id: expense.account_id || liquidAccounts[0]?.id || '' });
+  };
+
+  const handleSelectPaymentSource = async () => {
+    if (!sourceModal.account_id) {
+      toast.error('Choose a cash, bank, or mobile wallet account');
+      return;
+    }
+    try {
+      await api.put(`/expenses/${sourceModal.id}/payment-source`, { account_id: parseInt(sourceModal.account_id) });
+      setSourceModal({ isOpen: false, id: null, account_id: '' });
+      fetchData();
+      toast.success('Payroll payment source selected');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to select payment source');
+    }
   };
 
   const handleDelete = async () => {
@@ -306,6 +326,8 @@ const ExpenseManager = () => {
                       const amt = parseFloat(exp.amount);
                       const needsApproval = amt >= AUTO_THRESHOLD;
                       const sc = statusConfig[exp.status] || statusConfig.pending;
+                      const isPayroll = exp.expense_origin === 'payroll';
+                      const sourceSelected = !isPayroll || exp.payment_source_selected;
                       return (
                         <tr key={exp.id}>
                           <td>
@@ -313,11 +335,14 @@ const ExpenseManager = () => {
                             {exp.receipt_url && <a href={exp.receipt_url} target="_blank" rel="noreferrer" style={{ fontSize: '10px', color: '#275fa7', textDecoration: 'none' }}>📎 Receipt</a>}
                           </td>
                           <td className="td-name">
+                            {isPayroll && <span style={{ display: 'inline-flex', padding: '2px 7px', borderRadius: '999px', background: 'rgba(39,95,167,0.12)', color: '#275fa7', fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', marginRight: '6px' }}>Payroll</span>}
                             {exp.status === 'deleted' ? (
                               <span style={{ textDecoration: 'line-through', color: '#64748b' }}>{exp.description || '-'}</span>
                             ) : (
                               exp.description || '-'
                             )}
+                            {isPayroll && <div style={{ fontSize: '11px', color: '#275fa7', marginTop: '4px' }}>Salary payment request · Payroll #{exp.payroll_id || 'N/A'}</div>}
+                            {isPayroll && !sourceSelected && <div style={{ fontSize: '11px', color: '#9B6DFF', marginTop: '4px', fontWeight: 700 }}>Admin must choose cash, bank, or mobile wallet before accounting action.</div>}
                             {exp.status === 'deleted' && <div style={{ fontSize: '11px', color: '#475569', marginTop: '4px' }}>Reversal Reason: {exp.deletion_reason || 'N/A'}</div>}
                           </td>
                           <td><span className="exp-cat">{exp.category || 'Uncategorized'}</span></td>
@@ -332,7 +357,10 @@ const ExpenseManager = () => {
                               <div style={{ fontSize: '9px', color: '#7bc62e', marginTop: '2px' }}>Auto-Approved</div>
                             )}
                           </td>
-                          <td style={{ fontSize: '12px', textTransform: 'capitalize' }}>{(exp.payment_method || '').replace(/_/g, ' ')}</td>
+                          <td style={{ fontSize: '12px', textTransform: 'capitalize' }}>
+                            {sourceSelected ? (exp.payment_method || '').replace(/_/g, ' ') : <span style={{ color: '#9B6DFF', fontWeight: 700 }}>Not selected</span>}
+                            {exp.Account?.name && <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '2px' }}>{exp.Account.name}</div>}
+                          </td>
                           <td>
                             <span className={`sb2 ${sc.cls}`}>
                               {sc.icon} {sc.label}
@@ -342,13 +370,15 @@ const ExpenseManager = () => {
                             <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                               {exp.status === 'pending' && (
                                 <>
-                                  <button onClick={() => handleVerify(exp.id)} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(0,212,255,0.3)', color: '#38E8FF' }}>Verify</button>
+                                  {isPayroll && !sourceSelected && <button onClick={() => openSourceModal(exp)} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(155,109,255,0.3)', color: '#B896FF' }}>Choose Source</button>}
+                                  {sourceSelected && <button onClick={() => handleVerify(exp.id)} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(0,212,255,0.3)', color: '#38E8FF' }}>Verify</button>}
                                   <button onClick={() => setRejectionModal({ isOpen: true, id: exp.id, reason: '' })} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(255,77,109,0.3)', color: '#FF7088' }}>Reject</button>
                                 </>
                               )}
                               {exp.status === 'verified' && (
                                 <>
-                                  <button onClick={() => handleApprove(exp.id)} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(0,255,148,0.3)', color: '#4DFFA8' }}>Approve</button>
+                                  {isPayroll && !sourceSelected && <button onClick={() => openSourceModal(exp)} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(155,109,255,0.3)', color: '#B896FF' }}>Choose Source</button>}
+                                  {sourceSelected && <button onClick={() => handleApprove(exp.id)} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(0,255,148,0.3)', color: '#4DFFA8' }}>Approve</button>}
                                   <button onClick={() => setRejectionModal({ isOpen: true, id: exp.id, reason: '' })} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(255,77,109,0.3)', color: '#FF7088' }}>Reject</button>
                                 </>
                               )}
@@ -553,6 +583,31 @@ const ExpenseManager = () => {
             {submitting ? 'Processing...' : parseFloat(form.amount) >= AUTO_THRESHOLD ? 'Submit for Approval' : 'Record & Auto-Approve'}
           </button>
         </form>
+      </Modal>
+
+      {/* ═══ PAYROLL PAYMENT SOURCE MODAL ═══ */}
+      <Modal isOpen={sourceModal.isOpen} onClose={() => setSourceModal({ isOpen: false, id: null, account_id: '' })} title="Choose Payroll Payment Source">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{
+            background: 'rgba(155,109,255,0.08)', border: '1px solid rgba(155,109,255,0.2)',
+            borderRadius: '10px', padding: '10px 14px', fontSize: '11px', color: '#B896FF'
+          }}>
+            Select the actual cash, bank, or mobile wallet account for this payroll request. Accounting approval will deduct this source and reconciliation will pick it up after approval.
+          </div>
+          <div className="fgroup">
+            <label className="flabel">Payment Source</label>
+            <select value={sourceModal.account_id} onChange={e => setSourceModal({ ...sourceModal, account_id: e.target.value })} className="glass-input">
+              <option value="">Select cash, bank, or mobile wallet</option>
+              {liquidAccounts.map(acc => (
+                <option key={acc.id} value={acc.id}>{acc.name} ({String(acc.sub_type || 'cash').toUpperCase()}) · ৳{parseFloat(acc.balance || 0).toLocaleString()}</option>
+              ))}
+            </select>
+          </div>
+          <div className="row" style={{ gap: '8px' }}>
+            <button className="btn-ghost" onClick={() => setSourceModal({ isOpen: false, id: null, account_id: '' })} style={{ flex: 1, justifyContent: 'center' }}>Cancel</button>
+            <button className="btn-stitch" onClick={handleSelectPaymentSource} disabled={!sourceModal.account_id} style={{ flex: 1, justifyContent: 'center', background: '#9B6DFF', opacity: sourceModal.account_id ? 1 : 0.5 }}>Confirm Source</button>
+          </div>
+        </div>
       </Modal>
 
       {/* ═══ REJECTION MODAL ═══ */}

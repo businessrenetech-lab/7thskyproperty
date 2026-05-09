@@ -16,6 +16,21 @@ const Transaction = require('../models/Transaction');
 const bcrypt = require('bcryptjs');
 const sequelize = require('../config/db.config');
 const { Op } = require('sequelize');
+const { uniqueSlug } = require('../utils/slug');
+
+const branchEditableFields = [
+  'name', 'address', 'phone', 'email', 'manager_id',
+  'public_title', 'public_description', 'seo_title', 'seo_description',
+  'hero_image_url', 'opening_hours', 'map_url', 'coming_soon_message'
+];
+
+const applyBranchFields = (branch, body) => {
+  branchEditableFields.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(body, field)) {
+      branch[field] = body[field] === '' ? null : body[field];
+    }
+  });
+};
 
 // ─── GET ALL BRANCHES ──────────────────────────────────────────
 exports.getAllBranches = async (req, res) => {
@@ -59,9 +74,18 @@ exports.createBranch = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { name, code, address, phone, email, admin_name, admin_email, admin_password } = req.body;
+    const slug = await uniqueSlug(Branch, req.body.slug || name, { fallback: 'branch' });
 
     const branch = await Branch.create({
-      name, code, type: 'branch', address, phone, email, is_active: true
+      name, code, slug, type: 'branch', address, phone, email, is_active: true,
+      public_title: req.body.public_title || null,
+      public_description: req.body.public_description || null,
+      seo_title: req.body.seo_title || null,
+      seo_description: req.body.seo_description || null,
+      hero_image_url: req.body.hero_image_url || null,
+      opening_hours: req.body.opening_hours || null,
+      map_url: req.body.map_url || null,
+      coming_soon_message: req.body.coming_soon_message || null,
     }, { transaction: t });
 
     const hashedPassword = await bcrypt.hash(admin_password, 10);
@@ -98,17 +122,40 @@ exports.updateBranch = async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    const { name, address, phone, email, manager_id } = req.body;
-    if (name) branch.name = name;
-    if (address) branch.address = address;
-    if (phone) branch.phone = phone;
-    if (email) branch.email = email;
-    if (manager_id) branch.manager_id = manager_id;
+    applyBranchFields(branch, req.body);
+    if (Object.prototype.hasOwnProperty.call(req.body, 'slug')) {
+      branch.slug = await uniqueSlug(Branch, req.body.slug || branch.name, { fallback: 'branch', excludeId: branch.id });
+    } else if (!branch.slug) {
+      branch.slug = await uniqueSlug(Branch, branch.name, { fallback: 'branch', excludeId: branch.id });
+    }
 
     await branch.save();
     res.json(branch);
   } catch (error) {
     console.error('updateBranch error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.uploadBranchImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const branch = await Branch.findByPk(id);
+    if (!branch) return res.status(404).json({ error: 'Branch not found' });
+
+    if (req.user.role === 'branch_admin' && req.user.branch_id !== branch.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    if (!req.file) return res.status(400).json({ error: 'No image file provided' });
+
+    const url = `/uploads/branches/${req.file.filename}`;
+    branch.hero_image_url = url;
+    await branch.save();
+
+    res.json({ url, branch });
+  } catch (error) {
+    console.error('uploadBranchImage error:', error);
     res.status(500).json({ error: error.message });
   }
 };

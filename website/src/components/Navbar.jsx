@@ -2,11 +2,13 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Menu, X, ArrowRight, GraduationCap, ChevronDown, BookOpen, Mic, PenTool } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const navLinks = [
   { name: "Courses", path: "/courses", hasDropdown: true },
+  { name: "Branches", path: "/branches" },
   { name: "About", path: "/about" },
   { name: "Resources", path: "/blog" },
   { name: "Contact", path: "/contact" },
@@ -59,7 +61,7 @@ export default function Navbar() {
         <div className={`container-shell flex items-center justify-between transition-all duration-300 ${scrolled ? "py-2.5" : "py-3.5"}`}>
           {/* Logo */}
           <Link href="/" className="flex items-center transition-transform hover:scale-105">
-            <img src="/logo.png" alt="Language Academy Logo" className="h-16 w-auto object-contain drop-shadow-sm" />
+            <Image src="/logo.png" alt="Language Academy Logo" width={160} height={64} className="h-16 w-auto object-contain drop-shadow-sm" priority />
           </Link>
 
           {/* Desktop Links */}

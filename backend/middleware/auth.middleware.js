@@ -16,9 +16,14 @@ const getBranchInclude = async () => {
   return [{ model: Branch, attributes: pickExisting(columns, ['id', 'name', 'code', 'type']) }];
 };
 
+const getRequestToken = (req) => {
+  const bearerToken = req.header('Authorization')?.replace('Bearer ', '');
+  return req.cookies?.la_admin_token || bearerToken;
+};
+
 const authMiddleware = async (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const token = getRequestToken(req);
 
     if (!token) {
       return res.status(401).json({ error: 'Authentication required' });

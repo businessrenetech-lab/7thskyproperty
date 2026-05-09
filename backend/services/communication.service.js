@@ -184,54 +184,136 @@ const processCampaignBatch = async (campaign, recipients) => {
 
 /**
  * Branded HTML wrapper for Language Academy emails
+ * Mobile-first, responsive, professional design using LA brand identity
+ * Brand Colors: Blue #32619A, Green #95C04D
  */
 const brandedEmailWrapper = (title, bodyContent) => {
-  return `
-  <!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${title}</title>
-  </head>
-  <body style="margin:0;padding:0;background:#0f1117;font-family:'Segoe UI',Roboto,Arial,sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f1117;padding:32px 16px;">
-      <tr>
-        <td align="center">
-          <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-            <!-- Header -->
-            <tr>
-              <td style="background:linear-gradient(135deg,#0d9488 0%,#0f766e 50%,#134e4a 100%);padding:32px 40px;border-radius:16px 16px 0 0;text-align:center;">
-                <h1 style="margin:0;font-size:28px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">🎓 Language Academy</h1>
-                <p style="margin:8px 0 0 0;font-size:14px;color:rgba(255,255,255,0.8);font-weight:500;">Best PTE & IELTS Coaching Centre in Bangladesh</p>
-              </td>
-            </tr>
-            <!-- Body -->
-            <tr>
-              <td style="background:#1a1d27;padding:32px 40px;">
-                ${bodyContent}
-              </td>
-            </tr>
-            <!-- Footer -->
-            <tr>
-              <td style="background:#12141c;padding:24px 40px;border-radius:0 0 16px 16px;border-top:1px solid rgba(255,255,255,0.06);">
-                <table width="100%" cellpadding="0" cellspacing="0">
-                  <tr>
-                    <td style="text-align:center;">
-                      <p style="margin:0 0 8px 0;font-size:13px;color:#94a3b8;">📍 House 23, Road 1, Dhanmondi, Dhaka 1205</p>
-                      <p style="margin:0 0 8px 0;font-size:13px;color:#94a3b8;">📞 +880 1234-567890 &nbsp;|&nbsp; 📧 info@languageacademy.com.bd</p>
-                      <p style="margin:12px 0 0 0;font-size:12px;color:#475569;">© ${new Date().getFullYear()} Language Academy Bangladesh. All rights reserved.</p>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-  </html>`;
+  const year = new Date().getFullYear();
+  return `<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <meta name="color-scheme" content="light" />
+  <meta name="supported-color-schemes" content="light" />
+  <title>${title}</title>
+  <!--[if mso]>
+  <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
+  <![endif]-->
+  <style>
+    /* Reset */
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    body { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+    /* Mobile */
+    @media only screen and (max-width: 620px) {
+      .email-container { width: 100% !important; max-width: 100% !important; }
+      .fluid-padding { padding-left: 20px !important; padding-right: 20px !important; }
+      .stack-column { display: block !important; width: 100% !important; }
+      .mobile-center { text-align: center !important; }
+      .mobile-padding { padding: 20px !important; }
+      .header-pad { padding: 24px 20px !important; }
+      .body-pad { padding: 24px 20px !important; }
+      .footer-pad { padding: 20px !important; }
+      .receipt-label { width: 38% !important; }
+      .receipt-value { width: 62% !important; }
+      .detail-row td { padding-top: 6px !important; padding-bottom: 6px !important; font-size: 13px !important; }
+      .hero-title { font-size: 22px !important; }
+      .amount-text { font-size: 18px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#f0f2f5;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+  <!-- Preheader (hidden preview text) -->
+  <div style="display:none;font-size:1px;color:#f0f2f5;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">${title}</div>
+
+  <!-- Outer wrapper -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f0f2f5;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+
+        <!-- Email container -->
+        <table role="presentation" class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;margin:0 auto;">
+
+          <!-- ===== HEADER WITH LOGO ===== -->
+          <tr>
+            <td class="header-pad" align="center" style="background-color:#32619A;padding:28px 40px 24px 40px;border-radius:12px 12px 0 0;">
+              <!-- Logo -->
+              <img src="https://languageacademy.com.bd/logo.png" alt="Language Academy" width="72" height="72" style="display:block;margin:0 auto 12px auto;width:72px;height:72px;border-radius:12px;" />
+              <!-- Brand Name -->
+              <h1 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:0.3px;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">Language Academy</h1>
+              <!-- Tagline -->
+              <p style="margin:6px 0 0 0;font-size:13px;color:rgba(255,255,255,0.8);font-weight:400;letter-spacing:0.2px;">Best PTE &amp; IELTS Coaching Centre in Bangladesh</p>
+              <!-- Accent bar -->
+              <div style="width:48px;height:3px;background-color:#95C04D;margin:14px auto 0 auto;border-radius:2px;"></div>
+            </td>
+          </tr>
+
+          <!-- ===== BODY CONTENT ===== -->
+          <tr>
+            <td class="body-pad" style="background-color:#ffffff;padding:32px 40px;">
+              ${bodyContent}
+            </td>
+          </tr>
+
+          <!-- ===== FOOTER ===== -->
+          <tr>
+            <td class="footer-pad" style="background-color:#f8f9fa;padding:24px 40px;border-top:1px solid #e9ecef;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <!-- Address -->
+                <tr>
+                  <td align="center" style="padding-bottom:10px;">
+                    <p style="margin:0;font-size:13px;color:#6c757d;line-height:1.5;">
+                      SEL SUFI SQUARE, Unit: 1104, Level: 11,<br/>Dhanmondi R/A, Dhaka 1209
+                    </p>
+                  </td>
+                </tr>
+                <!-- Contact -->
+                <tr>
+                  <td align="center" style="padding-bottom:14px;">
+                    <p style="margin:0;font-size:13px;color:#6c757d;">
+                      Phone: <a href="tel:+8801805738300" style="color:#32619A;text-decoration:none;font-weight:600;">01805-738300</a>
+                    </p>
+                  </td>
+                </tr>
+                <!-- Divider -->
+                <tr>
+                  <td align="center" style="padding-bottom:14px;">
+                    <div style="width:60px;height:2px;background-color:#95C04D;margin:0 auto;border-radius:1px;"></div>
+                  </td>
+                </tr>
+                <!-- Social / Website -->
+                <tr>
+                  <td align="center" style="padding-bottom:12px;">
+                    <a href="https://languageacademy.com.bd" style="font-size:13px;color:#32619A;text-decoration:none;font-weight:600;">languageacademy.com.bd</a>
+                  </td>
+                </tr>
+                <!-- Copyright -->
+                <tr>
+                  <td align="center">
+                    <p style="margin:0;font-size:11px;color:#adb5bd;">&copy; ${year} Language Academy Bangladesh. All rights reserved.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Bottom rounded border -->
+          <tr>
+            <td style="height:6px;background-color:#32619A;border-radius:0 0 12px 12px;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+
+        </table>
+        <!-- /Email container -->
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 };
 
 /**
@@ -250,69 +332,69 @@ const sendEnrollmentConfirmationEmail = async (orderData) => {
 
   const bodyContent = `
     <!-- Greeting -->
-    <h2 style="margin:0 0 8px 0;font-size:22px;font-weight:700;color:#ffffff;">Congratulations! 🎉</h2>
-    <p style="margin:0 0 24px 0;font-size:15px;color:#cbd5e1;line-height:1.6;">
-      Dear <strong style="color:#2dd4bf;">${student_name}</strong>, you have been successfully enrolled at Language Academy. Welcome to your journey towards excellence!
+    <h2 class="hero-title" style="margin:0 0 6px 0;font-size:24px;font-weight:700;color:#1a1a2e;">Congratulations!</h2>
+    <p style="margin:0 0 24px 0;font-size:15px;color:#495057;line-height:1.7;">
+      Dear <strong style="color:#32619A;">${student_name}</strong>, you have been successfully enrolled at Language Academy. Welcome to your journey towards excellence!
     </p>
 
     <!-- Receipt Card -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e9ecef;border-radius:10px;overflow:hidden;margin-bottom:24px;">
+      <!-- Receipt Header -->
       <tr>
-        <td style="background:linear-gradient(135deg,#0d9488,#0f766e);padding:14px 20px;">
-          <h3 style="margin:0;font-size:16px;font-weight:700;color:#ffffff;">💳 Payment Receipt</h3>
+        <td style="background-color:#32619A;padding:14px 20px;">
+          <h3 style="margin:0;font-size:15px;font-weight:700;color:#ffffff;letter-spacing:0.3px;">Payment Receipt</h3>
         </td>
       </tr>
+      <!-- Receipt Body -->
       <tr>
-        <td style="padding:20px;">
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="padding:8px 0;font-size:14px;color:#94a3b8;width:40%;">Student Name</td>
-              <td style="padding:8px 0;font-size:14px;color:#f1f5f9;font-weight:600;">${student_name}</td>
+        <td style="padding:0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr class="detail-row">
+              <td class="receipt-label" style="padding:12px 20px 12px 20px;font-size:14px;color:#6c757d;width:40%;border-bottom:1px solid #f0f2f5;">Student Name</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;font-weight:600;border-bottom:1px solid #f0f2f5;">${student_name}</td>
             </tr>
-            <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
-            <tr>
-              <td style="padding:8px 0;font-size:14px;color:#94a3b8;">Email</td>
-              <td style="padding:8px 0;font-size:14px;color:#f1f5f9;">${email}</td>
+            <tr class="detail-row">
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Email</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;border-bottom:1px solid #f0f2f5;">${email}</td>
             </tr>
-            <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
-            <tr>
-              <td style="padding:8px 0;font-size:14px;color:#94a3b8;">Course</td>
-              <td style="padding:8px 0;font-size:14px;color:#2dd4bf;font-weight:600;">${course_name}</td>
+            <tr class="detail-row">
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Course</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#32619A;font-weight:700;border-bottom:1px solid #f0f2f5;">${course_name}</td>
             </tr>
-            <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
-            <tr>
-              <td style="padding:8px 0;font-size:14px;color:#94a3b8;">Batch</td>
-              <td style="padding:8px 0;font-size:14px;color:#f1f5f9;">${batch_name || 'TBA'}</td>
+            <tr class="detail-row">
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Batch</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;border-bottom:1px solid #f0f2f5;">${batch_name || 'TBA'}</td>
             </tr>
-            <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
-            <tr>
-              <td style="padding:8px 0;font-size:14px;color:#94a3b8;">Batch Start Date</td>
-              <td style="padding:8px 0;font-size:14px;color:#f1f5f9;">${formattedStartDate}</td>
+            <tr class="detail-row">
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Batch Start Date</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;border-bottom:1px solid #f0f2f5;">${formattedStartDate}</td>
             </tr>
             ${course_duration ? `
-            <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
-            <tr>
-              <td style="padding:8px 0;font-size:14px;color:#94a3b8;">Duration</td>
-              <td style="padding:8px 0;font-size:14px;color:#f1f5f9;">${course_duration}</td>
+            <tr class="detail-row">
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Duration</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;border-bottom:1px solid #f0f2f5;">${course_duration}</td>
             </tr>` : ''}
-            <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
-            <tr>
-              <td style="padding:8px 0;font-size:14px;color:#94a3b8;">Payment Ref</td>
-              <td style="padding:8px 0;font-size:14px;color:#f1f5f9;font-family:monospace;">${payment_ref || 'N/A'}</td>
+            <tr class="detail-row">
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Payment Ref</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;font-family:'Courier New',monospace;border-bottom:1px solid #f0f2f5;">${payment_ref || 'N/A'}</td>
             </tr>
-            <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
-            <tr>
-              <td style="padding:8px 0;font-size:14px;color:#94a3b8;">Payment Date</td>
-              <td style="padding:8px 0;font-size:14px;color:#f1f5f9;">${formattedDate}</td>
+            <tr class="detail-row">
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:2px solid #32619A;">Payment Date</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;border-bottom:2px solid #32619A;">${formattedDate}</td>
             </tr>
-            <tr><td colspan="2" style="border-bottom:2px solid rgba(13,148,136,0.3);"></td></tr>
+            <!-- Amount Row -->
             <tr>
-              <td style="padding:12px 0;font-size:16px;color:#94a3b8;font-weight:700;">Amount Paid</td>
-              <td style="padding:12px 0;font-size:20px;color:#10b981;font-weight:800;">৳${formattedAmount} ${currency || 'BDT'}</td>
+              <td style="padding:14px 20px;font-size:15px;color:#495057;font-weight:700;">Amount Paid</td>
+              <td class="amount-text" style="padding:14px 20px 14px 0;font-size:20px;color:#95C04D;font-weight:800;">${String.fromCharCode(2547)}${formattedAmount} ${currency || 'BDT'}</td>
             </tr>
+            <!-- Status Badge -->
             <tr>
-              <td colspan="2" style="padding:8px 0;">
-                <span style="display:inline-block;padding:6px 16px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:20px;font-size:13px;font-weight:700;">✅ PAYMENT SUCCESSFUL</span>
+              <td colspan="2" style="padding:0 20px 16px 20px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td style="background-color:#e8f5e9;padding:6px 18px;border-radius:20px;font-size:13px;font-weight:700;color:#2e7d32;letter-spacing:0.3px;">PAYMENT SUCCESSFUL</td>
+                  </tr>
+                </table>
               </td>
             </tr>
           </table>
@@ -321,22 +403,26 @@ const sendEnrollmentConfirmationEmail = async (orderData) => {
     </table>
 
     <!-- PTE Portal Access Notice -->
-    <div style="margin:24px 0;padding:16px 20px;background:linear-gradient(135deg,rgba(99,102,241,0.12),rgba(139,92,246,0.12));border:1px solid rgba(99,102,241,0.25);border-radius:10px;">
-      <p style="margin:0;font-size:15px;color:#a78bfa;font-weight:700;">🖥️ PTE Practice Portal Access</p>
-      <p style="margin:8px 0 0 0;font-size:14px;color:#c4b5fd;line-height:1.5;">You will receive <strong>PTE PRACTICE PORTAL ACCESS</strong> soon! Our team is processing your credentials and you'll get a separate email with your login details shortly.</p>
-    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+      <tr>
+        <td style="background-color:#eef2ff;border-left:4px solid #32619A;padding:16px 20px;border-radius:0 8px 8px 0;">
+          <p style="margin:0 0 6px 0;font-size:15px;color:#32619A;font-weight:700;">PTE Practice Portal Access</p>
+          <p style="margin:0;font-size:14px;color:#495057;line-height:1.6;">You will receive <strong>PTE PRACTICE PORTAL ACCESS</strong> soon! Our team is processing your credentials and you'll get a separate email with your login details shortly.</p>
+        </td>
+      </tr>
+    </table>
 
     <!-- Welcome message -->
-    <p style="margin:16px 0 0 0;font-size:14px;color:#94a3b8;line-height:1.6;">
+    <p style="margin:0 0 16px 0;font-size:14px;color:#495057;line-height:1.7;">
       We're thrilled to have you onboard. If you have any questions, feel free to reach out to us anytime. We look forward to helping you achieve your goals!
     </p>
-    <p style="margin:16px 0 0 0;font-size:14px;color:#64748b;">
-      Warm regards,<br/><strong style="color:#cbd5e1;">Language Academy Team</strong>
+    <p style="margin:0;font-size:14px;color:#6c757d;">
+      Warm regards,<br/><strong style="color:#1a1a2e;">Language Academy Team</strong>
     </p>
   `;
 
   const html = brandedEmailWrapper('Enrollment Confirmation — Language Academy', bodyContent);
-  return sendEmail(email, '🎓 Enrollment Confirmed — Welcome to Language Academy!', html);
+  return sendEmail(email, 'Enrollment Confirmed — Welcome to Language Academy!', html);
 };
 
 /**
@@ -352,63 +438,64 @@ const sendPartnerAccessRequestEmail = async (studentData, adminEmail) => {
 
   const bodyContent = `
     <!-- Title -->
-    <h2 style="margin:0 0 8px 0;font-size:22px;font-weight:700;color:#ffffff;">Portal Access Request</h2>
-    <p style="margin:0 0 24px 0;font-size:15px;color:#cbd5e1;line-height:1.6;">
+    <h2 class="hero-title" style="margin:0 0 6px 0;font-size:24px;font-weight:700;color:#1a1a2e;">Portal Access Request</h2>
+    <p style="margin:0 0 24px 0;font-size:15px;color:#495057;line-height:1.7;">
       A new student has been enrolled and requires PTE practice portal access. Please provide the login credentials at your earliest convenience.
     </p>
 
     <!-- Student Details Card -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e9ecef;border-radius:10px;overflow:hidden;margin-bottom:24px;">
+      <!-- Card Header -->
       <tr>
-        <td style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:14px 20px;">
-          <h3 style="margin:0;font-size:16px;font-weight:700;color:#ffffff;">👤 Student Details</h3>
+        <td style="background-color:#32619A;padding:14px 20px;">
+          <h3 style="margin:0;font-size:15px;font-weight:700;color:#ffffff;letter-spacing:0.3px;">Student Details</h3>
         </td>
       </tr>
+      <!-- Card Body -->
       <tr>
-        <td style="padding:20px;">
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="padding:10px 0;font-size:14px;color:#94a3b8;width:40%;">Student Name</td>
-              <td style="padding:10px 0;font-size:14px;color:#f1f5f9;font-weight:600;">${student_name}</td>
+        <td style="padding:0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr class="detail-row">
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;width:40%;border-bottom:1px solid #f0f2f5;">Student Name</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;font-weight:600;border-bottom:1px solid #f0f2f5;">${student_name}</td>
             </tr>
-            <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
-            <tr>
-              <td style="padding:10px 0;font-size:14px;color:#94a3b8;">Student Email</td>
-              <td style="padding:10px 0;font-size:14px;color:#2dd4bf;">${student_email}</td>
+            <tr class="detail-row">
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Student Email</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#32619A;font-weight:600;border-bottom:1px solid #f0f2f5;">${student_email}</td>
             </tr>
-            <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
-            <tr>
-              <td style="padding:10px 0;font-size:14px;color:#94a3b8;">Phone Number</td>
-              <td style="padding:10px 0;font-size:14px;color:#f1f5f9;">${student_phone || 'N/A'}</td>
+            <tr class="detail-row">
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Phone Number</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;border-bottom:1px solid #f0f2f5;">${student_phone || 'N/A'}</td>
             </tr>
-            <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
-            <tr>
-              <td style="padding:10px 0;font-size:14px;color:#94a3b8;">Course</td>
-              <td style="padding:10px 0;font-size:14px;color:#a78bfa;font-weight:600;">${course_name}</td>
+            <tr class="detail-row">
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Course</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#32619A;font-weight:700;border-bottom:1px solid #f0f2f5;">${course_name}</td>
             </tr>
-            <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
-            <tr>
-              <td style="padding:10px 0;font-size:14px;color:#94a3b8;">Batch Enrolled</td>
-              <td style="padding:10px 0;font-size:14px;color:#f1f5f9;">${batch_name || 'TBA'}</td>
+            <tr class="detail-row">
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Batch Enrolled</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;border-bottom:1px solid #f0f2f5;">${batch_name || 'TBA'}</td>
             </tr>
-            <tr><td colspan="2" style="border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>
-            <tr>
-              <td style="padding:10px 0;font-size:14px;color:#94a3b8;">Time Length</td>
-              <td style="padding:10px 0;font-size:14px;color:#f1f5f9;">${course_duration || 'N/A'}</td>
+            <tr class="detail-row">
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;">Duration</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;">${course_duration || 'N/A'}</td>
             </tr>
           </table>
         </td>
       </tr>
     </table>
 
-    <!-- Action Request -->
-    <div style="margin:24px 0;padding:16px 20px;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:10px;">
-      <p style="margin:0;font-size:14px;color:#fbbf24;font-weight:700;">⚡ Action Required</p>
-      <p style="margin:8px 0 0 0;font-size:14px;color:#fde68a;line-height:1.5;">Please reply to this email with the student's PTE practice portal login credentials. Your reply will be delivered to both the Language Academy admin team and the student directly.</p>
-    </div>
+    <!-- Action Request Callout -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+      <tr>
+        <td style="background-color:#fff8e1;border-left:4px solid #f59e0b;padding:16px 20px;border-radius:0 8px 8px 0;">
+          <p style="margin:0 0 6px 0;font-size:15px;color:#b45309;font-weight:700;">Action Required</p>
+          <p style="margin:0;font-size:14px;color:#78350f;line-height:1.6;">Please reply to this email with the student's PTE practice portal login credentials. Your reply will be delivered to both the Language Academy admin team and the student directly.</p>
+        </td>
+      </tr>
+    </table>
 
-    <p style="margin:16px 0 0 0;font-size:14px;color:#64748b;">
-      Thank you for your partnership,<br/><strong style="color:#cbd5e1;">Language Academy Admin</strong>
+    <p style="margin:0;font-size:14px;color:#6c757d;">
+      Thank you for your partnership,<br/><strong style="color:#1a1a2e;">Language Academy Admin</strong>
     </p>
   `;
 
@@ -431,7 +518,7 @@ const sendPartnerAccessRequestEmail = async (studentData, adminEmail) => {
     from: `"Language Academy" <${user}>`,
     to: partnerEmail,
     replyTo: replyTo,
-    subject: `🔐 Portal Access Request — ${student_name} | Language Academy`,
+    subject: `Portal Access Request — ${student_name} | Language Academy`,
     html
   };
 
@@ -449,6 +536,7 @@ module.exports = {
   sendSMS,
   processCampaignBatch,
   parseTemplate,
+  brandedEmailWrapper,
   sendEnrollmentConfirmationEmail,
   sendPartnerAccessRequestEmail
 };

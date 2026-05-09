@@ -115,8 +115,10 @@ async function start() {
   log('STEP 5: Creating Express app and mounting routes...');
   const app = express();
   const cors = require('cors');
+  const cookieParser = require('cookie-parser');
   const { getCorsOptions } = require('./backend/config/cors.config');
   app.use(cors(getCorsOptions()));
+  app.use(cookieParser());
   app.use(express.json());
 
   // Health check endpoint (test before everything else)
@@ -268,6 +270,7 @@ async function start() {
     const PteTask = require('./backend/models/PteTask');
     const Course = require('./backend/models/Course');
     const Batch = require('./backend/models/Batch');
+    const Branch = require('./backend/models/Branch');
     const ReconciliationSession = require('./backend/models/ReconciliationSession');
     const ReconciliationLine = require('./backend/models/ReconciliationLine');
     const ReconciliationMatch = require('./backend/models/ReconciliationMatch');
@@ -293,6 +296,10 @@ async function start() {
     const Shift = require('./backend/models/Shift');
     const StaffSchedule = require('./backend/models/StaffSchedule');
     const StaffProfile = require('./backend/models/StaffProfile');
+    const StaffPayRule = require('./backend/models/StaffPayRule');
+    const TeacherSession = require('./backend/models/TeacherSession');
+    const PayrollDeduction = require('./backend/models/PayrollDeduction');
+    const PayrollBonus = require('./backend/models/PayrollBonus');
     const RbacConfig = require('./backend/models/RbacConfig');
     const SystemSetting = require('./backend/models/SystemSetting');
     const IncomeCategory = require('./backend/models/IncomeCategory');
@@ -323,19 +330,24 @@ async function start() {
     log('  ✓ Database authenticated');
 
     const models = [
-      User, ExpenseCategory, Expense, Lead, Contact, Opportunity, Activity,
+      Branch, User, ExpenseCategory, Expense, Lead, Contact, Opportunity, Activity,
       CampaignTemplate, Student, PteTask, Course, Batch, Account, BankAccount,
       BankAccountLedgerMap, Invoice, Enrollment, Transaction, JournalEntry,
       JournalLine, ReconciliationSession, ReconciliationLine,
       ReconciliationMatch, ReconciliationEvent, LiquidityMovement,
       StaffAttendance, LeaveType, LeaveRequest, LeaveBalance,
       JobPosting, Applicant, StaffDocument, PerformanceReview,
-      Shift, StaffSchedule, StaffProfile, RbacConfig, SystemSetting,
+      Shift, StaffSchedule, StaffProfile, StaffPayRule, TeacherSession, PayrollDeduction, PayrollBonus, RbacConfig, SystemSetting,
       IncomeCategory, Customer,
     ];
 
     log('  Syncing models...');
-    const syncOptions = process.env.DB_SYNC_ALTER === 'true' ? { alter: true } : {};
+    const isProduction = process.env.NODE_ENV === 'production';
+    const wantsAlter = process.env.DB_SYNC_ALTER === 'true';
+    if (isProduction && wantsAlter) {
+      log('  ⚠ DB_SYNC_ALTER=true is BLOCKED in production. Set NODE_ENV=development to enable.');
+    }
+    const syncOptions = (!isProduction && wantsAlter) ? { alter: true } : {};
     await Promise.allSettled(
       models.map(m => m.sync(syncOptions).catch(err => {
         log(`  ⚠ Sync warning ${m.name}: ${err.message.substring(0, 100)}`);

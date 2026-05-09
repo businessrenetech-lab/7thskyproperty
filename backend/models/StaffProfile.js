@@ -93,6 +93,29 @@ const StaffProfile = sequelize.define('StaffProfile', {
   department: {
     type: DataTypes.STRING,
   },
+  employment_status: {
+    type: DataTypes.ENUM('active', 'on_leave', 'notice_period', 'resigned', 'terminated', 'inactive', 'suspended'),
+    defaultValue: 'active',
+  },
+  exit_date: {
+    type: DataTypes.DATEONLY,
+  },
+  exit_reason: {
+    type: DataTypes.TEXT,
+  },
+  notice_start_date: {
+    type: DataTypes.DATEONLY,
+  },
+  notice_end_date: {
+    type: DataTypes.DATEONLY,
+  },
+  final_settlement_status: {
+    type: DataTypes.ENUM('pending', 'calculated', 'sent_to_accounting', 'paid'),
+    defaultValue: 'pending',
+  },
+  final_settlement_notes: {
+    type: DataTypes.TEXT,
+  },
 }, {
   tableName: 'staff_profiles',
   underscored: true,

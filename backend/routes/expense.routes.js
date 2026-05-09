@@ -17,6 +17,7 @@ router.get('/split', expenseController.getExpenseSplit);
 router.post('/', upload.single('receipt'), expenseController.createExpense);
 
 // Verification & Approval Layers
+router.put('/:id/payment-source', expenseController.selectPaymentSource);
 router.put('/:id/verify', expenseController.verifyExpense);
 router.put('/:id/approve', expenseController.approveExpense);
 router.put('/:id/reject', expenseController.rejectExpense);

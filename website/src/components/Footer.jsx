@@ -7,6 +7,7 @@ import NewsletterSignup from "./NewsletterSignup";
 const quickLinks = [
   { label: "Home", href: "/" },
   { label: "Courses", href: "/courses" },
+  { label: "Branches", href: "/branches" },
   { label: "About Us", href: "/about" },
   { label: "Blog & Resources", href: "/blog" },
   { label: "Contact", href: "/contact" },

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import api from '../services/api';
 
 const AuthContext = createContext();
 
@@ -12,13 +13,19 @@ const clearStoredSession = () => {
   }
 };
 
-const writeStoredSession = (userData, token) => {
+const writeStoredSession = (userData) => {
   try {
-    localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
   } catch {
     // Keep in-memory auth working even if persistence fails.
   }
+};
+
+const getBranchForUser = (userData, selectedBranch) => {
+  if (userData?.role === 'super_admin') {
+    return selectedBranch && selectedBranch !== 'all' ? parseInt(selectedBranch) : 'all';
+  }
+  return userData?.branch_id || null;
 };
 
 export const AuthProvider = ({ children }) => {
@@ -27,40 +34,80 @@ export const AuthProvider = ({ children }) => {
   const [branch, setBranch] = useState(null);
 
   useEffect(() => {
-    try {
-      const savedUser = localStorage.getItem('user');
-      const token = localStorage.getItem('token');
-      const selectedBranch = localStorage.getItem('selectedBranch');
+    let active = true;
 
-      if (savedUser && token) {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        // If super_admin, respect selectedBranch (or 'all'/null). Otherwise use user.branch_id
-        if (parsedUser.role === 'super_admin') {
-          setBranch(selectedBranch === 'all' ? 'all' : (selectedBranch ? parseInt(selectedBranch) : null));
-        } else {
-          setBranch(parsedUser.branch_id);
+    const initializeSession = async () => {
+      let cachedUser = null;
+      let selectedBranch = null;
+
+      try {
+        const savedUser = localStorage.getItem('user');
+        selectedBranch = localStorage.getItem('selectedBranch');
+
+        if (savedUser) {
+          cachedUser = JSON.parse(savedUser);
+          if (active) {
+            setUser(cachedUser);
+            setBranch(getBranchForUser(cachedUser, selectedBranch));
+          }
         }
+      } catch (err) {
+        console.warn('Clearing invalid admin session data:', err);
+        clearStoredSession();
       }
-    } catch (err) {
-      console.warn('Clearing invalid admin session data:', err);
-      clearStoredSession();
-    } finally {
-      setLoading(false);
-    }
+
+      try {
+        const response = await api.get('/auth/me');
+        const freshUser = response.data?.user;
+        if (!freshUser?.role) throw new Error('Invalid session response');
+
+        writeStoredSession(freshUser);
+        if (active) {
+          setUser(freshUser);
+          setBranch(getBranchForUser(freshUser, selectedBranch));
+        }
+      } catch (err) {
+        if ([401, 403].includes(err.response?.status)) {
+          clearStoredSession();
+          if (active) {
+            setUser(null);
+            setBranch(null);
+          }
+        } else if (!cachedUser) {
+          if (active) {
+            setUser(null);
+            setBranch(null);
+          }
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    initializeSession();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const login = (userData, token) => {
+  const login = (userData) => {
     clearStoredSession();
-    writeStoredSession(userData, token);
+    writeStoredSession(userData);
     setUser(userData);
-    setBranch(userData.branch_id);
+    setBranch(getBranchForUser(userData, null));
   };
 
-  const logout = () => {
-    clearStoredSession();
-    setUser(null);
-    setBranch(null);
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // Local logout must still work if the network is unavailable.
+    } finally {
+      clearStoredSession();
+      setUser(null);
+      setBranch(null);
+    }
   };
 
   const switchBranch = (branchId) => {

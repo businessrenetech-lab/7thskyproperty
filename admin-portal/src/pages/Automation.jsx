@@ -10,7 +10,8 @@ import {
   Mail, 
   Phone,
   Info,
-  Loader2
+  Loader2,
+  Edit3
 } from 'lucide-react';
 import api from '../services/api';
 import Card from '../components/ui/Card';
@@ -21,18 +22,16 @@ import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
 import { useToast } from '../context/ToastContext';
 
+const emptyForm = { name: '', trigger_type: 'new_lead', action_type: 'create_notification', template: '' };
+
 const Automation = () => {
   const toast = useToast();
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingRule, setEditingRule] = useState(null);
   const [runningBirthdayCheck, setRunningBirthdayCheck] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    trigger_type: 'new_lead',
-    action_type: 'create_notification',
-    template: ''
-  });
+  const [formData, setFormData] = useState({ ...emptyForm });
 
   const birthdayTemplate = 'Dear {Name}, Wish You Wonderful Year Ahead. Happy Birthday. From Language Academy Bangladesh.';
 
@@ -51,15 +50,43 @@ const Automation = () => {
     }
   };
 
-  const handleCreate = async (e) => {
+  const openCreateModal = () => {
+    setEditingRule(null);
+    setFormData({ ...emptyForm });
+    setShowModal(true);
+  };
+
+  const openEditModal = (rule) => {
+    setEditingRule(rule);
+    setFormData({
+      name: rule.name || '',
+      trigger_type: rule.trigger_type || 'new_lead',
+      action_type: rule.action_type || 'create_notification',
+      template: rule.template || ''
+    });
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingRule(null);
+    setFormData({ ...emptyForm });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/automation', formData);
-      setShowModal(false);
-      setFormData({ name: '', trigger_type: 'new_lead', action_type: 'create_notification', template: '' });
+      if (editingRule) {
+        await api.put(`/automation/${editingRule.id}`, formData);
+        toast.success('Automation rule updated');
+      } else {
+        await api.post('/automation', formData);
+        toast.success('Automation rule created');
+      }
+      closeModal();
       fetchRules();
     } catch (err) {
-      toast.error('Failed to create rule');
+      toast.error(editingRule ? 'Failed to update rule' : 'Failed to create rule');
     }
   };
 
@@ -120,7 +147,7 @@ const Automation = () => {
           <Button onClick={handleRunBirthdayCheck} style={{ opacity: runningBirthdayCheck ? 0.7 : 1 }}>
             {runningBirthdayCheck ? 'Running Birthday Check...' : 'Run Birthday Check'}
           </Button>
-          <Button icon={<Plus size={18} />} onClick={() => setShowModal(true)}>Create Workflow</Button>
+          <Button icon={<Plus size={18} />} onClick={openCreateModal}>Create Workflow</Button>
         </div>
       </div>
 
@@ -158,9 +185,22 @@ const Automation = () => {
                 <div style={{ maxWidth: '300px', fontSize: '0.75rem', color: 'var(--text-dim)', background: 'rgba(255,255,255,0.02)', padding: '0.8rem', borderRadius: '8px', fontStyle: 'italic' }}>
                    "{rule.template}"
                 </div>
-                <button onClick={() => handleDelete(rule.id)} style={{ background: 'none', border: 'none', color: 'rgba(239, 68, 68, 0.4)', cursor: 'pointer' }}>
-                  <Trash2 size={18} />
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button onClick={() => openEditModal(rule)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '4px', borderRadius: '6px', transition: 'all 0.2s' }}
+                    onMouseOver={e => e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)'}
+                    onMouseOut={e => e.currentTarget.style.background = 'none'}
+                    title="Edit rule"
+                  >
+                    <Edit3 size={16} />
+                  </button>
+                  <button onClick={() => handleDelete(rule.id)} style={{ background: 'none', border: 'none', color: 'rgba(239, 68, 68, 0.4)', cursor: 'pointer', padding: '4px', borderRadius: '6px', transition: 'all 0.2s' }}
+                    onMouseOver={e => e.currentTarget.style.color = 'rgba(239, 68, 68, 0.8)'}
+                    onMouseOut={e => e.currentTarget.style.color = 'rgba(239, 68, 68, 0.4)'}
+                    title="Delete rule"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             </div>
           </Card>
@@ -177,8 +217,8 @@ const Automation = () => {
          </div>
       </div>
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="New Automation Rule">
-        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+      <Modal isOpen={showModal} onClose={closeModal} title={editingRule ? 'Edit Automation Rule' : 'New Automation Rule'}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
           <Input 
             label="Rule Name" 
             required 
@@ -224,7 +264,9 @@ const Automation = () => {
               style={{ width: '100%', height: '120px', padding: '1rem', resize: 'none' }}
             />
           </div>
-          <Button type="submit" style={{ marginTop: '1rem', padding: '1rem' }}>Sychronize Automation</Button>
+          <Button type="submit" style={{ marginTop: '1rem', padding: '1rem' }}>
+            {editingRule ? 'Update Automation Rule' : 'Synchronize Automation'}
+          </Button>
         </form>
       </Modal>
     </div>

@@ -53,6 +53,14 @@ const initialCourseData = {
   modules: []
 };
 
+const slugify = (value) => String(value || '')
+  .trim()
+  .toLowerCase()
+  .replace(/&/g, ' and ')
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '')
+  .replace(/-{2,}/g, '-');
+
 const readableSchedule = (schedule) => {
   const toast = useToast();
   if (!schedule) return 'Not set';
@@ -885,8 +893,8 @@ const LMS = () => {
             <h4 style={{ color: 'var(--primary)', margin: 0 }}>Core Identity</h4>
           </div>
 
-          <div className="form-group" style={{ gridColumn: 'span 2' }}><label>Course Title</label><input className="glass-input" required placeholder="e.g. Master IELTS Preparation" value={courseData.title} onChange={(e) => setCourseData({ ...courseData, title: e.target.value, slug: e.target.value.toLowerCase().replace(/ /g, '-') })} /></div>
-          <div className="form-group"><label>URL Slug Identifier</label><input className="glass-input" required placeholder="e.g. master-ielts" value={courseData.slug} onChange={(e) => setCourseData({ ...courseData, slug: e.target.value })} /></div>
+          <div className="form-group" style={{ gridColumn: 'span 2' }}><label>Course Title</label><input className="glass-input" required placeholder="e.g. Master IELTS Preparation" value={courseData.title} onChange={(e) => setCourseData({ ...courseData, title: e.target.value, slug: courseData.id ? courseData.slug : slugify(e.target.value) })} /></div>
+          <div className="form-group"><label>SEO URL Slug</label><div style={{ display: 'flex', gap: '0.5rem' }}><input className="glass-input" required placeholder="e.g. pte-core-mirpur-1" value={courseData.slug} onChange={(e) => setCourseData({ ...courseData, slug: slugify(e.target.value) })} /><button type="button" className="btn-secondary" onClick={() => setCourseData({ ...courseData, slug: slugify(courseData.title) })}>Regenerate</button></div></div>
           <div className="form-group"><label>Major Category</label><input className="glass-input" required placeholder="e.g. IELTS, PTE, Spoken" value={courseData.category} onChange={(e) => setCourseData({ ...courseData, category: e.target.value })} /></div>
 
           <div style={{ gridColumn: 'span 2', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginTop: '0.5rem' }}>

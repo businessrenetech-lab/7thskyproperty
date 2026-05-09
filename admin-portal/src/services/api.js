@@ -4,7 +4,21 @@ const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
 
 const api = axios.create({
   baseURL: apiBaseUrl,
+  withCredentials: true,
 });
+
+const clearStoredSession = () => {
+  try {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('selectedBranch');
+  } catch {}
+};
+
+const isAuthValidationRequest = (config) => {
+  const url = config?.url || '';
+  return url === '/auth/me' || url.endsWith('/auth/me');
+};
 
 // Request interceptor for adding JWT token
 api.interceptors.request.use(
@@ -34,13 +48,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if ([401, 403].includes(error?.response?.status)) {
-      try {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('selectedBranch');
-      } catch {}
-
+    if ([401, 403].includes(error?.response?.status) && isAuthValidationRequest(error?.config)) {
+      clearStoredSession();
       if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin/login')) {
         window.location.replace('/admin/login');
       }

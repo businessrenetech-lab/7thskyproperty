@@ -4,7 +4,7 @@ import {
   Users, GraduationCap, BookOpen, Layers, Package, DollarSign, TrendingUp,
   Wallet, Receipt, Scale, Search, Edit3, Power, MoreVertical, Eye,
   UserPlus, ArrowUpRight, ArrowDownRight, FileText, Clock, Briefcase,
-  CheckCircle2, XCircle, AlertTriangle, BarChart3
+  CheckCircle2, XCircle, AlertTriangle, BarChart3, Upload, Image as ImageIcon
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -65,6 +65,32 @@ const TabButton = ({ active, onClick, icon: Icon, label, count }) => (
   </button>
 );
 
+const slugify = (value) => String(value || '')
+  .trim()
+  .toLowerCase()
+  .replace(/&/g, ' and ')
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '')
+  .replace(/-{2,}/g, '-');
+
+const emptyCreateForm = {
+  name: '', code: '', slug: '', address: '', phone: '', email: '',
+  admin_name: '', admin_email: '', admin_password: '',
+  public_title: '', public_description: '', seo_title: '', seo_description: '',
+  hero_image_url: '', opening_hours: '', map_url: '', coming_soon_message: ''
+};
+
+const getImagePreviewUrl = (value) => {
+  const imageUrl = String(value || '').trim();
+  if (!imageUrl) return '';
+  if (/^(https?:)?\/\//i.test(imageUrl) || imageUrl.startsWith('data:')) return imageUrl;
+  const apiBase = api.defaults.baseURL || '';
+  if (imageUrl.startsWith('/uploads') && /^https?:\/\//i.test(apiBase)) {
+    return `${apiBase.replace(/\/api\/?$/, '').replace(/\/$/, '')}${imageUrl}`;
+  }
+  return imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+};
+
 /* ─── MAIN COMPONENT ─────────────────────────────────────────── */
 const BranchManagement = () => {
   const toast = useToast();
@@ -78,8 +104,9 @@ const BranchManagement = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editBranch, setEditBranch] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [createForm, setCreateForm] = useState({ name: '', code: '', address: '', phone: '', email: '', admin_name: '', admin_email: '', admin_password: '' });
+  const [createForm, setCreateForm] = useState(emptyCreateForm);
 
   // ── Drill-down State ──
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -110,7 +137,7 @@ const BranchManagement = () => {
     try {
       await api.post('/branches', createForm);
       setShowCreateModal(false);
-      setCreateForm({ name: '', code: '', address: '', phone: '', email: '', admin_name: '', admin_email: '', admin_password: '' });
+      setCreateForm(emptyCreateForm);
       fetchBranches();
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to create branch'); }
     finally { setFormLoading(false); }
@@ -126,6 +153,24 @@ const BranchManagement = () => {
       fetchBranches();
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to update branch'); }
     finally { setFormLoading(false); }
+  };
+
+  const handleBranchImageUpload = async (file) => {
+    if (!file || !editBranch?.id) return;
+    const formData = new FormData();
+    formData.append('image', file);
+    setImageUploading(true);
+    try {
+      const res = await api.post(`/branches/${editBranch.id}/upload-image`, formData);
+      const updatedBranch = res.data.branch;
+      setEditBranch(updatedBranch);
+      setBranches(prev => prev.map(branch => branch.id === updatedBranch.id ? { ...branch, ...updatedBranch } : branch));
+      toast.success('Branch image uploaded');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to upload branch image');
+    } finally {
+      setImageUploading(false);
+    }
   };
 
   const handleToggleStatus = async (id) => {
@@ -209,6 +254,8 @@ const BranchManagement = () => {
   if (selectedBranch) {
     const stats = branchSummary?.stats || {};
     const branch = branchSummary?.branch || selectedBranch;
+    const publicSlug = branch.slug || branch.id;
+    const websiteOrigin = typeof window !== 'undefined' ? window.location.origin : '';
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -228,6 +275,17 @@ const BranchManagement = () => {
             </p>
           </div>
           <Badge color={branch.is_active ? 'var(--success)' : 'var(--danger)'}>{branch.is_active ? 'ACTIVE' : 'INACTIVE'}</Badge>
+        </div>
+
+        <div className="glass-morphism" style={{ padding: '1rem 1.2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.8rem', fontSize: '0.8rem' }}>
+          <div>
+            <p style={{ margin: '0 0 0.2rem', color: 'var(--text-dim)', fontSize: '0.7rem', textTransform: 'uppercase' }}>Public Branch Page</p>
+            <a href={`${websiteOrigin}/branches/${publicSlug}`} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 700 }}>{`/branches/${publicSlug}`}</a>
+          </div>
+          <div>
+            <p style={{ margin: '0 0 0.2rem', color: 'var(--text-dim)', fontSize: '0.7rem', textTransform: 'uppercase' }}>Kiosk Booking Link</p>
+            <a href={`${websiteOrigin}/student-booking?branch=${branch.id}&source=walk_in&channel=kiosk`} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 700 }}>{`/student-booking?branch=${branch.id}&channel=kiosk`}</a>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -346,8 +404,8 @@ const BranchManagement = () => {
                     { header: 'Email', key: 'email' },
                     { header: 'Source', render: r => <Badge>{r.source || '—'}</Badge> },
                     { header: 'Status', render: r => <Badge color={r.status === 'converted' ? 'var(--success)' : r.status === 'lost' ? 'var(--danger)' : 'var(--primary)'}>{r.status}</Badge> },
-                    { header: 'Interest', key: 'course_interest' },
-                    { header: 'Date', render: r => new Date(r.created_at).toLocaleDateString() },
+                    { header: 'Interest', key: 'batch_interest' },
+                    { header: 'Date', render: r => { const d = new Date(r.createdAt || r.created_at); return isNaN(d) ? '—' : d.toLocaleDateString(); } },
                   ]}
                   data={branchContacts.leads || []}
                 />
@@ -362,7 +420,7 @@ const BranchManagement = () => {
                     { header: 'Phone', key: 'phone' },
                     { header: 'Email', key: 'email' },
                     { header: 'Type', key: 'type' },
-                    { header: 'Date', render: r => new Date(r.created_at).toLocaleDateString() },
+                    { header: 'Date', render: r => { const d = new Date(r.createdAt || r.created_at); return isNaN(d) ? '—' : d.toLocaleDateString(); } },
                   ]}
                   data={branchContacts.contacts || []}
                 />
@@ -516,13 +574,27 @@ const BranchManagement = () => {
         <Modal title="Create New Branch" subtitle="Provision a new branch with its administrator credentials" onClose={() => setShowCreateModal(false)}>
           <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <FormField label="Branch Name" value={createForm.name} onChange={v => setCreateForm({...createForm, name: v})} placeholder="e.g. Uttara Branch" required />
+              <FormField label="Branch Name" value={createForm.name} onChange={v => setCreateForm({...createForm, name: v, slug: createForm.slug || slugify(v)})} placeholder="e.g. Uttara Branch" required />
               <FormField label="Branch Code" value={createForm.code} onChange={v => setCreateForm({...createForm, code: v})} placeholder="e.g. UTR-01" required />
             </div>
+            <FormField label="Public URL Slug" value={createForm.slug} onChange={v => setCreateForm({...createForm, slug: slugify(v)})} placeholder="e.g. uttara-branch" />
             <FormField label="Full Address" value={createForm.address} onChange={v => setCreateForm({...createForm, address: v})} placeholder="Street, Area, City" required />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <FormField label="Phone" value={createForm.phone} onChange={v => setCreateForm({...createForm, phone: v})} placeholder="+880..." required />
               <FormField label="Branch Email" value={createForm.email} onChange={v => setCreateForm({...createForm, email: v})} placeholder="branch@la.com.bd" type="email" required />
+            </div>
+            <div style={{ marginTop: '0.5rem', padding: '1.2rem', background: 'var(--glass)', borderRadius: 'var(--radius)', border: '1px dashed var(--border)' }}>
+              <h4 style={{ fontSize: '0.85rem', marginBottom: '1rem', color: 'var(--primary)' }}>Public Website Content</h4>
+              <FormField label="Public Title" value={createForm.public_title} onChange={v => setCreateForm({...createForm, public_title: v})} placeholder="Language Academy Mirpur-1" />
+              <FormField label="Public Description" value={createForm.public_description} onChange={v => setCreateForm({...createForm, public_description: v})} multiline rows={3} placeholder="Short branch-specific overview for the branch page" />
+              <FormField label="SEO Title" value={createForm.seo_title} onChange={v => setCreateForm({...createForm, seo_title: v})} placeholder="PTE Courses in Mirpur-1 - Language Academy" />
+              <FormField label="SEO Description" value={createForm.seo_description} onChange={v => setCreateForm({...createForm, seo_description: v})} multiline rows={2} placeholder="Search-friendly description for Google results" />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <FormField label="Hero Image URL" value={createForm.hero_image_url} onChange={v => setCreateForm({...createForm, hero_image_url: v})} />
+                <FormField label="Opening Hours" value={createForm.opening_hours} onChange={v => setCreateForm({...createForm, opening_hours: v})} placeholder="Sat-Thu: 9:00 AM - 8:00 PM" />
+              </div>
+              <FormField label="Map URL" value={createForm.map_url} onChange={v => setCreateForm({...createForm, map_url: v})} placeholder="Google Maps share or embed URL" />
+              <FormField label="Coming Soon Message" value={createForm.coming_soon_message} onChange={v => setCreateForm({...createForm, coming_soon_message: v})} placeholder="Admissions opening soon at this branch" />
             </div>
             <div style={{ marginTop: '0.5rem', padding: '1.2rem', background: 'var(--glass)', borderRadius: 'var(--radius)', border: '1px dashed var(--primary)' }}>
               <h4 style={{ fontSize: '0.85rem', marginBottom: '1rem', color: 'var(--primary)' }}>Branch Admin Credentials</h4>
@@ -547,10 +619,29 @@ const BranchManagement = () => {
         <Modal title="Edit Branch" subtitle={`Update details for ${editBranch.name}`} onClose={() => { setShowEditModal(false); setEditBranch(null); }}>
           <form onSubmit={handleEdit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <FormField label="Branch Name" value={editBranch.name} onChange={v => setEditBranch({...editBranch, name: v})} required />
+            <FormField label="Public URL Slug" value={editBranch.slug || ''} onChange={v => setEditBranch({...editBranch, slug: slugify(v)})} placeholder="e.g. mirpur-1" />
             <FormField label="Full Address" value={editBranch.address || ''} onChange={v => setEditBranch({...editBranch, address: v})} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <FormField label="Phone" value={editBranch.phone || ''} onChange={v => setEditBranch({...editBranch, phone: v})} />
               <FormField label="Email" value={editBranch.email || ''} onChange={v => setEditBranch({...editBranch, email: v})} type="email" />
+            </div>
+            <div style={{ padding: '1.2rem', background: 'var(--glass)', borderRadius: 'var(--radius)', border: '1px dashed var(--border)' }}>
+              <h4 style={{ fontSize: '0.85rem', marginBottom: '1rem', color: 'var(--primary)' }}>Public Website Content</h4>
+              <FormField label="Public Title" value={editBranch.public_title || ''} onChange={v => setEditBranch({...editBranch, public_title: v})} />
+              <FormField label="Public Description" value={editBranch.public_description || ''} onChange={v => setEditBranch({...editBranch, public_description: v})} multiline rows={3} />
+              <FormField label="SEO Title" value={editBranch.seo_title || ''} onChange={v => setEditBranch({...editBranch, seo_title: v})} />
+              <FormField label="SEO Description" value={editBranch.seo_description || ''} onChange={v => setEditBranch({...editBranch, seo_description: v})} multiline rows={2} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <FormField label="Hero Image URL" value={editBranch.hero_image_url || ''} onChange={v => setEditBranch({...editBranch, hero_image_url: v})} />
+                <FormField label="Opening Hours" value={editBranch.opening_hours || ''} onChange={v => setEditBranch({...editBranch, opening_hours: v})} />
+              </div>
+              <BranchImageUploadField
+                imageUrl={editBranch.hero_image_url}
+                uploading={imageUploading}
+                onUpload={handleBranchImageUpload}
+              />
+              <FormField label="Map URL" value={editBranch.map_url || ''} onChange={v => setEditBranch({...editBranch, map_url: v})} />
+              <FormField label="Coming Soon Message" value={editBranch.coming_soon_message || ''} onChange={v => setEditBranch({...editBranch, coming_soon_message: v})} />
             </div>
             <button type="submit" disabled={formLoading} className="btn-primary" style={{ marginTop: '0.5rem', padding: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem' }}>
               {formLoading ? <Loader2 className="animate-spin" size={18} /> : <><Edit3 size={16} /> Save Changes</>}
@@ -659,14 +750,63 @@ const Modal = ({ title, subtitle, onClose, children }) => (
   </div>
 );
 
-const FormField = ({ label, value, onChange, placeholder, type = 'text', required }) => (
+const BranchImageUploadField = ({ imageUrl, uploading, onUpload }) => {
+  const previewUrl = getImagePreviewUrl(imageUrl);
+
+  return (
+    <div style={{ marginTop: '1rem', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', background: 'var(--glass)' }}>
+      <div style={{ height: '180px', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        {previewUrl ? (
+          <img src={previewUrl} alt="Branch hero preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: 'var(--text-dim)', fontSize: '0.8rem' }}>
+            <ImageIcon size={28} />
+            <span>No branch image uploaded</span>
+          </div>
+        )}
+      </div>
+      <div style={{ padding: '0.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+        <div>
+          <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: 700 }}>Branch Website Image</p>
+          <p style={{ margin: '0.2rem 0 0', fontSize: '0.68rem', color: 'var(--text-dim)' }}>Shown on branch cards, branch detail hero, and social previews.</p>
+        </div>
+        <label className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.65 : 1 }}>
+          {uploading ? <Loader2 className="animate-spin" size={15} /> : <Upload size={15} />}
+          {uploading ? 'Uploading...' : 'Upload Image'}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            disabled={uploading}
+            onChange={e => {
+              const file = e.target.files?.[0];
+              e.target.value = '';
+              onUpload(file);
+            }}
+            style={{ display: 'none' }}
+          />
+        </label>
+      </div>
+    </div>
+  );
+};
+
+const FormField = ({ label, value, onChange, placeholder, type = 'text', required, multiline = false, rows = 3 }) => (
   <div>
     <label style={{ fontSize: '0.78rem', display: 'block', marginBottom: '0.4rem', fontWeight: '500' }}>{label}</label>
-    <input
-      className="glass-morphism"
-      style={{ width: '100%', padding: '0.7rem 0.9rem', border: '1px solid var(--border)', color: 'var(--text-main)', background: 'none', fontSize: '0.85rem' }}
-      value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} type={type} required={required}
-    />
+    {multiline ? (
+      <textarea
+        className="glass-morphism"
+        rows={rows}
+        style={{ width: '100%', padding: '0.7rem 0.9rem', border: '1px solid var(--border)', color: 'var(--text-main)', background: 'none', fontSize: '0.85rem', resize: 'vertical' }}
+        value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} required={required}
+      />
+    ) : (
+      <input
+        className="glass-morphism"
+        style={{ width: '100%', padding: '0.7rem 0.9rem', border: '1px solid var(--border)', color: 'var(--text-main)', background: 'none', fontSize: '0.85rem' }}
+        value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} type={type} required={required}
+      />
+    )}
   </div>
 );
 

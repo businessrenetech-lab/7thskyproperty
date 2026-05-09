@@ -16,6 +16,7 @@
     "postinstall": "cd backend && npm install && cd ../gateway && npm install && cd ../admin-portal && npm install && cd ../student-portal && npm install && cd ../teacher-portal && npm install && cd ../accounting-portal && npm install && cd ../hr-portal && npm install && cd ../crm-portal && npm install && cd ../website && npm install"
   },
   "dependencies": {
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",

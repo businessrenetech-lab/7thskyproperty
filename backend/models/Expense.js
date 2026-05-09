@@ -17,7 +17,7 @@ const Expense = sequelize.define('Expense', {
   },
   account_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     references: { model: Account, key: 'id' },
   },
   amount: {
@@ -63,6 +63,26 @@ const Expense = sequelize.define('Expense', {
   deletion_reason: {
     type: DataTypes.TEXT,
   },
+  expense_origin: {
+    type: DataTypes.STRING(50),
+    defaultValue: 'manual',
+  },
+  payroll_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  payment_source_selected: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+  },
+  payment_source_selected_by: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: User, key: 'id' },
+  },
+  payment_source_selected_at: {
+    type: DataTypes.DATE,
+  },
   deleted_by: {
     type: DataTypes.INTEGER,
     references: { model: User, key: 'id' },
@@ -80,5 +100,6 @@ Expense.belongsTo(Account, { foreignKey: 'account_id' });
 Expense.belongsTo(User, { as: 'Approver', foreignKey: 'approved_by' });
 Expense.belongsTo(User, { as: 'Verifier', foreignKey: 'verified_by' });
 Expense.belongsTo(User, { as: 'Deleter', foreignKey: 'deleted_by' });
+Expense.belongsTo(User, { as: 'PaymentSourceSelector', foreignKey: 'payment_source_selected_by' });
 
 module.exports = Expense;

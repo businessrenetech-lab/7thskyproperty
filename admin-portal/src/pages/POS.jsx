@@ -14,6 +14,11 @@ const POS = () => {
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('cash');
   const [ref, setRef] = useState('');
+  const [paymentDate, setPaymentDate] = useState(() => {
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dhaka', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+    return `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;
+  });
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
@@ -49,11 +54,16 @@ const POS = () => {
     try {
       await api.post('/pos/collect-fee', {
         enrollment_id: selectedEnrollment.id, amount, method, transaction_ref: ref,
+        paid_date: paymentDate,
         notes: `Fee collection for ${selectedEnrollment.Batch?.name}`
       });
       setSuccess(true);
       setTimeout(() => {
-        setSuccess(false); setSelectedEnrollment(null); setAmount(''); setRef(''); fetchData();
+        setSuccess(false); setSelectedEnrollment(null); setAmount(''); setRef(''); 
+        const now = new Date();
+        const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dhaka', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+        setPaymentDate(`${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`);
+        fetchData();
       }, 3000);
     } catch (err) { toast.error(err.response?.data?.error || 'Payment failed'); }
     finally { setSubmitting(false); }
@@ -178,6 +188,19 @@ const POS = () => {
                     ))}
                   </div>
                 </div>
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)', display: 'block', marginBottom: '0.5rem' }}>Payment Date</label>
+                <input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} required
+                  max={(() => { const now = new Date(); const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dhaka', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now); return `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`; })()}
+                  style={{ width: '100%', padding: '0.8rem', background: 'var(--glass)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--text)', fontSize: '0.9rem' }}
+                />
+                {paymentDate !== (() => { const now = new Date(); const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dhaka', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now); return `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`; })() && (
+                  <p style={{ fontSize: '0.75rem', color: '#f59e0b', marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <AlertCircle size={12} /> Backdated entry — will appear in reconciliation for {paymentDate}
+                  </p>
+                )}
               </div>
 
               <div style={{ marginBottom: '2rem' }}>

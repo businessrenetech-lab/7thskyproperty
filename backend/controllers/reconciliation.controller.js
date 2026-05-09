@@ -97,7 +97,7 @@ exports.createMapping = async (req, res) => {
 
 exports.updateMapping = async (req, res) => {
   try {
-    const mapping = await BankAccountLedgerMap.findByPk(req.params.id);
+    const mapping = await BankAccountLedgerMap.findOne({ where: { id: req.params.id, branch_id: getBranchId(req) } });
     if (!mapping) return res.status(404).json({ error: 'Mapping not found' });
     const old = mapping.toJSON();
     await mapping.update(req.body);
@@ -110,7 +110,7 @@ exports.updateMapping = async (req, res) => {
 
 exports.deleteMapping = async (req, res) => {
   try {
-    const mapping = await BankAccountLedgerMap.findByPk(req.params.id);
+    const mapping = await BankAccountLedgerMap.findOne({ where: { id: req.params.id, branch_id: getBranchId(req) } });
     if (!mapping) return res.status(404).json({ error: 'Mapping not found' });
     await mapping.update({ is_active: false });
     await writeAudit(req, 'BankAccountLedgerMap', mapping.id, 'deactivate', mapping.toJSON(), { is_active: false });
@@ -149,7 +149,8 @@ exports.getSessions = async (req, res) => {
 
 exports.getSessionDetail = async (req, res) => {
   try {
-    const session = await ReconciliationSession.findByPk(req.params.id, {
+    const session = await ReconciliationSession.findOne({
+      where: { id: req.params.id, branch_id: getBranchId(req) },
       include: [
         { model: User, as: 'Preparer', attributes: ['name'] },
         { model: User, as: 'Reviewer', attributes: ['name'] },
@@ -364,8 +365,8 @@ exports.getLineDetail = async (req, res) => {
     const line = await ReconciliationLine.findByPk(req.params.lineId);
     if (!line) return res.status(404).json({ error: 'Reconciliation line not found' });
 
-    const session = await ReconciliationSession.findByPk(line.session_id);
-    if (!session) return res.status(404).json({ error: 'Session not found' });
+    const session = await ReconciliationSession.findOne({ where: { id: line.session_id, branch_id: getBranchId(req) } });
+    if (!session) return res.status(404).json({ error: 'Session not found or access denied' });
 
     const reconDate = session.recon_date;
     const branchId = session.branch_id;
@@ -424,7 +425,7 @@ exports.getLineDetail = async (req, res) => {
 exports.reviewSession = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const session = await ReconciliationSession.findByPk(req.params.id);
+    const session = await ReconciliationSession.findOne({ where: { id: req.params.id, branch_id: getBranchId(req) } });
     if (!session) {
       await t.rollback();
       return res.status(404).json({ error: 'Session not found' });
@@ -451,7 +452,7 @@ exports.reviewSession = async (req, res) => {
 exports.approveSession = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const session = await ReconciliationSession.findByPk(req.params.id);
+    const session = await ReconciliationSession.findOne({ where: { id: req.params.id, branch_id: getBranchId(req) } });
     if (!session) {
       await t.rollback();
       return res.status(404).json({ error: 'Session not found' });
@@ -485,7 +486,7 @@ exports.approveSession = async (req, res) => {
 exports.reopenSession = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const session = await ReconciliationSession.findByPk(req.params.id);
+    const session = await ReconciliationSession.findOne({ where: { id: req.params.id, branch_id: getBranchId(req) } });
     if (!session) {
       await t.rollback();
       return res.status(404).json({ error: 'Session not found' });
@@ -520,7 +521,7 @@ exports.reopenSession = async (req, res) => {
 exports.lockSession = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const session = await ReconciliationSession.findByPk(req.params.id);
+    const session = await ReconciliationSession.findOne({ where: { id: req.params.id, branch_id: getBranchId(req) } });
     if (!session) {
       await t.rollback();
       return res.status(404).json({ error: 'Session not found' });
@@ -548,7 +549,7 @@ exports.updateLineNotes = async (req, res) => {
     const line = await ReconciliationLine.findByPk(req.params.lineId);
     if (!line) return res.status(404).json({ error: 'Line not found' });
 
-    const session = await ReconciliationSession.findByPk(line.session_id);
+    const session = await ReconciliationSession.findOne({ where: { id: line.session_id, branch_id: getBranchId(req) } });
     if (session?.status === 'approved' || session?.status === 'locked') {
       return res.status(403).json({ error: 'Cannot edit lines on approved/locked sessions' });
     }
@@ -643,7 +644,7 @@ exports.getStats = async (req, res) => {
 // Keep old endpoints for backward compatibility
 exports.getBankAccounts = async (req, res) => {
   try {
-    const accounts = await BankAccount.findAll();
+    const accounts = await BankAccount.findAll({ where: branchWhere(req) });
     res.json(accounts);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -661,16 +662,16 @@ const LIQUID_ACCOUNT_FILTER = {
 
 function formatDateLocal(dateObj) {
   const d = new Date(dateObj);
-  // Apply UTC+6 offset for Bangladesh Standard Time
-  const bdTime = new Date(d.getTime() + 6 * 60 * 60 * 1000);
-  return bdTime.getUTCFullYear() + '-' + String(bdTime.getUTCMonth() + 1).padStart(2, '0') + '-' + String(bdTime.getUTCDate()).padStart(2, '0');
+  // Use Intl.DateTimeFormat for proper timezone-aware formatting (handles DST if applicable)
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dhaka', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d);
+  const y = parts.find(p => p.type === 'year').value;
+  const m = parts.find(p => p.type === 'month').value;
+  const dd = parts.find(p => p.type === 'day').value;
+  return `${y}-${m}-${dd}`;
 }
 
 function getTodayLocal() {
-  // Get current time in Bangladesh (UTC+6)
-  const now = new Date();
-  const bdTime = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-  return bdTime.getUTCFullYear() + '-' + String(bdTime.getUTCMonth() + 1).padStart(2, '0') + '-' + String(bdTime.getUTCDate()).padStart(2, '0');
+  return formatDateLocal(new Date());
 }
 
 function toDateOnly(value) {
@@ -718,7 +719,7 @@ async function buildLiquidityRows(branchId, toDate) {
       order: [['paid_at', 'ASC'], ['id', 'ASC']]
     }),
     Expense.findAll({
-      where: { branch_id: branchId, account_id: { [Op.in]: accountIds }, status: { [Op.in]: ['approved', 'verified'] }, date: { [Op.lte]: toDate } },
+      where: { branch_id: branchId, account_id: { [Op.in]: accountIds }, status: 'approved', date: { [Op.lte]: toDate } },
       include: [{ model: Account, attributes: ['id', 'name', 'code', 'sub_type'] }],
       order: [['date', 'ASC'], ['id', 'ASC']]
     }),
@@ -729,8 +730,33 @@ async function buildLiquidityRows(branchId, toDate) {
     })
   ]);
 
+  // ── Double-count prevention ───────────────────────────────────────────────
+  // A closing_submission records the ACTUAL physical balance at end-of-day.
+  // It already accounts for all Transactions & Expenses on prior days.
+  // Therefore, Transaction/Expense rows from dates STRICTLY BEFORE the latest
+  // closing date are excluded (absorbed). Same-day transactions are kept so
+  // the user can see new income that arrived after the closing was submitted.
+  // The closing_submission is sorted LAST within each day so it always resets
+  // the running balance after all same-day transactions are processed.
+  const latestClosingDateByAccount = {};
+  manualMovements.forEach((movement) => {
+    if (movement.transaction_type === 'closing_submission') {
+      const accId = movement.account_id;
+      const mDate = movement.movement_date;
+      if (!latestClosingDateByAccount[accId] || mDate >= latestClosingDateByAccount[accId]) {
+        latestClosingDateByAccount[accId] = mDate;
+      }
+    }
+  });
+
   const rows = [];
   transactions.forEach((tx) => {
+    const txDate = toDateOnly(tx.paid_at);
+    const closingCutoff = latestClosingDateByAccount[tx.account_id];
+    // Skip transactions from days already closed (strictly before closing date).
+    // Same-day transactions are kept — closing sorts last to reset the balance.
+    if (closingCutoff && txDate < closingCutoff) return;
+
     const studentName = tx.Enrollment?.Student?.User?.name || 'Walk-in / Manual';
     const courseTitle = tx.Enrollment?.Batch?.Course?.title || 'General Income';
     const account = tx.Account;
@@ -738,7 +764,7 @@ async function buildLiquidityRows(branchId, toDate) {
     rows.push({
       unique_key: `tx-${tx.id}`,
       account_id: tx.account_id,
-      movement_date: toDateOnly(tx.paid_at),
+      movement_date: txDate,
       event_time: new Date(tx.paid_at || tx.created_at || Date.now()).getTime(),
       transaction_type: subType === 'bank' ? 'direct_bank_receipt' : subType === 'mfs' ? 'mobile_receipt' : 'collection',
       direction: 'inflow',
@@ -755,16 +781,21 @@ async function buildLiquidityRows(branchId, toDate) {
   });
 
   expenses.forEach((expense) => {
+    const expDate = toDateOnly(expense.date);
+    const closingCutoff = latestClosingDateByAccount[expense.account_id];
+    // Skip expenses from days already closed (strictly before closing date).
+    if (closingCutoff && expDate < closingCutoff) return;
+
     const account = expense.Account;
     rows.push({
       unique_key: `expense-${expense.id}`,
       account_id: expense.account_id,
-      movement_date: toDateOnly(expense.date),
+      movement_date: expDate,
       event_time: new Date(expense.date).getTime(),
-      transaction_type: 'expense',
+      transaction_type: expense.expense_origin === 'payroll' ? 'payroll_expense' : 'expense',
       direction: 'outflow',
       amount: Number(expense.amount || 0),
-      reference: expense.category,
+      reference: expense.expense_origin === 'payroll' ? `PAYROLL-${expense.payroll_id || expense.id}` : expense.category,
       remarks: expense.description,
       source_model: 'Expense',
       source_id: String(expense.id),
@@ -801,8 +832,14 @@ async function buildLiquidityRows(branchId, toDate) {
     });
   });
 
+  // Sort: date ASC, then closing_submission ALWAYS last within each day,
+  // then by event_time, then by unique_key as tiebreaker.
+  const isClosing = (r) => r.transaction_type === 'closing_submission' ? 1 : 0;
   rows.sort((a, b) => {
     if (a.movement_date !== b.movement_date) return a.movement_date.localeCompare(b.movement_date);
+    // Closing submissions must come after all other entries on the same day
+    const ca = isClosing(a), cb = isClosing(b);
+    if (ca !== cb) return ca - cb;
     if (a.event_time !== b.event_time) return a.event_time - b.event_time;
     return a.unique_key.localeCompare(b.unique_key);
   });
@@ -1068,10 +1105,11 @@ async function buildLiquiditySnapshot(branchId, from, to) {
   };
 }
 
-async function createManualMovement(req, payload) {
+async function createManualMovement(req, payload, precomputedSnapshot) {
   const branchId = getBranchId(req);
   const movementDate = payload.movement_date || toDateOnly(new Date());
-  const snapshot = await buildLiquiditySnapshot(branchId, movementDate, movementDate);
+  // Use pre-computed snapshot if provided, avoiding redundant DB queries
+  const snapshot = precomputedSnapshot || await buildLiquiditySnapshot(branchId, movementDate, movementDate);
   const accountSummary = snapshot.accounts.find((item) => item.account_id === Number(payload.account_id));
   const previousBalance = Number(payload.previous_balance ?? accountSummary?.expected_closing_balance ?? accountSummary?.opening_balance ?? 0);
   const signedAmount = payload.direction === 'inflow'
@@ -1158,7 +1196,7 @@ exports.recordOpeningBalance = async (req, res) => {
       reference: `OPEN-${targetDate}`,
       remarks: `Opening balance set to ${desiredOpening}`,
       reason,
-    });
+    }, snapshot);
 
     await line.update({ opening_balance: desiredOpening, notes: reason });
     await writeEvent(session.id, branchId, req.user?.id, 'opening_balance_update', reason, { opening_balance: summary.opening_balance }, { opening_balance: desiredOpening, movement_id: movement.id });
@@ -1175,9 +1213,11 @@ exports.recordCollection = async (req, res) => {
     const account = await Account.findByPk(account_id);
     if (!account) return res.status(404).json({ error: 'Account not found' });
     const type = transaction_type || (account.sub_type === 'bank' ? 'direct_bank_receipt' : account.sub_type === 'mfs' ? 'mobile_receipt' : 'collection');
+    const movementDate = toDateOnly(date);
+    const snapshot = await buildLiquiditySnapshot(getBranchId(req), movementDate, movementDate);
     const movement = await createManualMovement(req, {
       account_id: Number(account_id),
-      movement_date: toDateOnly(date),
+      movement_date: movementDate,
       transaction_type: type,
       direction: 'inflow',
       amount: Number(amount),
@@ -1185,7 +1225,7 @@ exports.recordCollection = async (req, res) => {
       remarks: remarks || source || 'Manual collection entry',
       source_model: 'ManualEntry',
       source_id: null,
-    });
+    }, snapshot);
     res.status(201).json({ message: 'Collection recorded successfully.', movement_id: movement.id });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -1203,6 +1243,8 @@ exports.recordTransfer = async (req, res) => {
     const transferDate = toDateOnly(date);
     const ref = reference || `TRF-${Date.now()}`;
     const commonRemarks = remarks || `${fromAccount.name} -> ${toAccount.name}`;
+    // Build snapshot once for both outflow and inflow movements
+    const snapshot = await buildLiquiditySnapshot(getBranchId(req), transferDate, transferDate);
 
     const outflow = await createManualMovement(req, {
       account_id: Number(from_account_id),
@@ -1215,7 +1257,7 @@ exports.recordTransfer = async (req, res) => {
       remarks: commonRemarks,
       source_model: 'LiquidityTransfer',
       source_id: ref,
-    });
+    }, snapshot);
 
     const inflow = await createManualMovement(req, {
       account_id: Number(to_account_id),
@@ -1228,7 +1270,7 @@ exports.recordTransfer = async (req, res) => {
       remarks: commonRemarks,
       source_model: 'LiquidityTransfer',
       source_id: ref,
-    });
+    }, snapshot);
 
     res.status(201).json({ message: 'Transfer recorded successfully.', outflow_id: outflow.id, inflow_id: inflow.id });
   } catch (e) {
@@ -1255,20 +1297,58 @@ exports.recordClosingBalance = async (req, res) => {
     const account = await Account.findByPk(account_id);
     const session = await ensureSessionForDate(branchId, targetDate, req.user?.id);
     const line = await ensureLineForAccount(session, account.id, account.sub_type || 'cash');
-    const movement = await createManualMovement(req, {
-      account_id: Number(account_id),
-      movement_date: targetDate,
-      transaction_type: 'closing_submission',
-      direction: 'neutral',
-      amount: 0,
-      previous_balance: expected,
-      new_balance: expected,
-      actual_balance: actual,
-      variance_amount: variance,
-      reference: `CLOSE-${targetDate}`,
-      remarks: `Closing submitted for ${account.name}`,
-      reason: reason || '',
+
+    // Idempotency: if a closing submission already exists for this account+date, update it
+    const existingClosing = await LiquidityMovement.findOne({
+      where: {
+        branch_id: branchId,
+        account_id: Number(account_id),
+        transaction_type: 'closing_submission',
+        movement_date: targetDate,
+      },
+      order: [['id', 'DESC']], // latest one if multiple exist
     });
+
+    let movement;
+    if (existingClosing) {
+      // Update the existing closing submission instead of creating a duplicate
+      await existingClosing.update({
+        previous_balance: expected,
+        new_balance: expected,
+        actual_balance: actual,
+        variance_amount: variance,
+        reason: reason || existingClosing.reason || '',
+        remarks: `Closing submitted for ${account.name}`,
+        updated_by: req.user?.id,
+      });
+      movement = existingClosing;
+      // Clean up any older duplicate closings for the same account+date
+      await LiquidityMovement.destroy({
+        where: {
+          branch_id: branchId,
+          account_id: Number(account_id),
+          transaction_type: 'closing_submission',
+          movement_date: targetDate,
+          id: { [Op.ne]: existingClosing.id },
+        },
+      });
+      await writeAudit(req, 'LiquidityMovement', movement.id, 'update', { actual_balance: existingClosing.actual_balance }, { actual_balance: actual, variance });
+    } else {
+      movement = await createManualMovement(req, {
+        account_id: Number(account_id),
+        movement_date: targetDate,
+        transaction_type: 'closing_submission',
+        direction: 'neutral',
+        amount: 0,
+        previous_balance: expected,
+        new_balance: expected,
+        actual_balance: actual,
+        variance_amount: variance,
+        reference: `CLOSE-${targetDate}`,
+        remarks: `Closing submitted for ${account.name}`,
+        reason: reason || '',
+      }, snapshot);
+    }
 
     await line.update({
       opening_balance: Number(summary.opening_balance || 0),
@@ -1281,7 +1361,10 @@ exports.recordClosingBalance = async (req, res) => {
       submitted_at: new Date(),
     });
 
-    await session.update({ total_variance: Number(session.total_variance || 0) + Math.abs(variance) });
+    // Recompute total_variance from all lines (not additive — safe for re-submissions)
+    const allLines = await ReconciliationLine.findAll({ where: { session_id: session.id }, attributes: ['discrepancy_amount'], raw: true });
+    const recomputedVariance = allLines.reduce((sum, l) => sum + Math.abs(Number(l.discrepancy_amount || 0)), 0);
+    await session.update({ total_variance: recomputedVariance });
     await writeEvent(session.id, branchId, req.user?.id, 'closing_submission', reason || 'Closing submitted', { expected }, { actual, variance, movement_id: movement.id });
     res.status(201).json({ message: 'Closing balance submitted.', variance, movement_id: movement.id });
   } catch (e) {

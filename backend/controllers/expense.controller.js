@@ -4,10 +4,30 @@ const User = require('../models/User');
 const ExpenseCategory = require('../models/ExpenseCategory');
 const JournalEntry = require('../models/JournalEntry');
 const JournalLine = require('../models/JournalLine');
+const Payroll = require('../models/Payroll');
+const PayrollDeduction = require('../models/PayrollDeduction');
+const AuditLog = require('../models/AuditLog');
 const sequelize = require('../config/db.config');
 const { fn, col, literal, Op } = require('sequelize');
 
 const AUTO_APPROVAL_THRESHOLD = 5000; // BDT
+
+const normalizeExpenseMethod = (account) => {
+  const source = account?.sub_type || 'cash';
+  const accountName = String(account?.name || '').toLowerCase();
+  if (source === 'bank') return 'bank_transfer';
+  if (source === 'mfs') return accountName.includes('nagad') ? 'nagad' : 'bkash';
+  if (['cash', 'bkash', 'nagad', 'bank_transfer', 'card'].includes(source)) return source;
+  return 'cash';
+};
+
+const isPayrollExpense = (expense) => Boolean(expense.payroll_id || expense.expense_origin === 'payroll');
+
+const ensurePayrollPaymentSourceSelected = (expense) => {
+  if (isPayrollExpense(expense) && !expense.payment_source_selected) {
+    throw new Error('Choose a cash, bank, or mobile wallet payment source before accounting action.');
+  }
+};
 
 const isReferralExpense = ({ expenseOrigin, category, description }) => {
   const explicitOrigin = String(expenseOrigin || '').trim().toLowerCase();
@@ -21,7 +41,7 @@ const isReferralExpense = ({ expenseOrigin, category, description }) => {
 const createExpenseJournalEntries = async (expense, userId, transaction) => {
   const targetBranch = expense.branch_id;
   const liquidAccount = await Account.findByPk(expense.account_id);
-  if (!liquidAccount) throw new Error('Payment source (Bank/Cash) account not found');
+  if (!liquidAccount) throw new Error('Payment source (Bank/Cash/Mobile Wallet) account not found');
 
   let expenseAccount = await Account.findOne({ where: { name: expense.category, type: 'expense', branch_id: targetBranch } });
   if (!expenseAccount) {
@@ -51,6 +71,18 @@ const createExpenseJournalEntries = async (expense, userId, transaction) => {
   ], { transaction });
 
   return entry;
+};
+
+const writePayrollExpenseAudit = (expense, userId, action, newValue, transaction) => {
+  if (!expense.payroll_id) return Promise.resolve();
+  return AuditLog.create({
+    user_id: userId,
+    branch_id: expense.branch_id,
+    action,
+    entity: 'Payroll',
+    entity_id: expense.payroll_id,
+    new_value: newValue,
+  }, { transaction });
 };
 
 // ── Helper: Create reversal journal entries for a deleted expense ──
@@ -83,7 +115,7 @@ const createReversalJournalEntries = async (expense, userId, transaction) => {
 exports.getExpenses = async (req, res) => {
   try {
     const { category, from, to, status } = req.query;
-    const where = {};
+    const where = { branch_id: req.branchId };
     if (category) where.category = category;
     if (status && status !== 'all') where.status = status;
     if (from || to) {
@@ -95,7 +127,7 @@ exports.getExpenses = async (req, res) => {
     const expenses = await Expense.findAll({
       where,
       include: [
-        { model: Account, attributes: ['name', 'code', 'type'] },
+        { model: Account, attributes: ['name', 'code', 'type', 'sub_type'] },
         { model: User, as: 'Approver', attributes: ['name'] },
         { model: User, as: 'Deleter', attributes: ['name'] }
       ],
@@ -112,7 +144,7 @@ exports.getExpenseSplit = async (req, res) => {
   try {
     const split = await Expense.findAll({
       attributes: ['category', [fn('SUM', col('amount')), 'total']],
-      where: { status: 'approved' },
+      where: { branch_id: req.branchId, status: 'approved' },
       group: ['category'],
       order: [[literal('total'), 'DESC']]
     });
@@ -158,7 +190,9 @@ exports.createExpense = async (req, res) => {
       receipt_url,
       date: date || new Date(),
       status: initialStatus,
-      approved_by: isAutoApproved ? req.user.id : null
+      expense_origin: expense_origin || 'manual',
+      approved_by: isAutoApproved ? req.user.id : null,
+      payment_source_selected: true,
     }, { transaction: t });
 
     // If auto-approved, create journal entries immediately
@@ -189,6 +223,7 @@ exports.verifyExpense = async (req, res) => {
   try {
     const expense = await Expense.findByPk(req.params.id);
     if (!expense) return res.status(404).json({ error: 'Expense not found' });
+    ensurePayrollPaymentSourceSelected(expense);
     
     await expense.update({
       status: 'verified',
@@ -207,15 +242,44 @@ exports.approveExpense = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const expense = await Expense.findByPk(req.params.id);
-    if (!expense) return res.status(404).json({ error: 'Expense not found' });
-    if (expense.status === 'approved') return res.status(400).json({ error: 'Already approved' });
+    if (!expense) {
+      await t.rollback();
+      return res.status(404).json({ error: 'Expense not found' });
+    }
+    if (expense.status === 'approved') {
+      await t.rollback();
+      return res.status(400).json({ error: 'Already approved' });
+    }
+    ensurePayrollPaymentSourceSelected(expense);
 
-    await createExpenseJournalEntries(expense, req.user.id, t);
+    const entry = await createExpenseJournalEntries(expense, req.user.id, t);
 
     await expense.update({
       status: 'approved',
       approved_by: req.user.id
     }, { transaction: t });
+
+    if (isPayrollExpense(expense)) {
+      await Payroll.update({
+        status: 'paid',
+        journal_entry_id: entry.id,
+        rejection_reason: null,
+      }, { where: { id: expense.payroll_id }, transaction: t });
+      await PayrollDeduction.update({
+        status: 'applied',
+        applied_at: new Date(),
+      }, { where: { payroll_id: expense.payroll_id, status: 'approved' }, transaction: t });
+      const PayrollBonus = require('../models/PayrollBonus');
+      await PayrollBonus.update({
+        status: 'applied',
+        applied_at: new Date(),
+      }, { where: { payroll_id: expense.payroll_id, status: 'approved' }, transaction: t });
+      await writePayrollExpenseAudit(expense, req.user.id, 'APPROVE_PAYMENT', {
+        expense_id: expense.id,
+        journal_entry_id: entry.id,
+        amount: expense.amount,
+      }, t);
+    }
 
     await t.commit();
     res.json({ message: 'Expense approved and journal entry created', expense });
@@ -228,18 +292,35 @@ exports.approveExpense = async (req, res) => {
 
 // ── PUT /expenses/:id/reject ──
 exports.rejectExpense = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
     const { rejection_reason } = req.body;
     const expense = await Expense.findByPk(req.params.id);
-    if (!expense) return res.status(404).json({ error: 'Expense not found' });
+    if (!expense) {
+      await t.rollback();
+      return res.status(404).json({ error: 'Expense not found' });
+    }
     
     await expense.update({
       status: 'rejected',
       rejection_reason
-    });
+    }, { transaction: t });
+
+    if (isPayrollExpense(expense)) {
+      await Payroll.update({
+        status: 'rejected',
+        rejection_reason: rejection_reason || 'Rejected by accounting',
+      }, { where: { id: expense.payroll_id }, transaction: t });
+      await writePayrollExpenseAudit(expense, req.user.id, 'REJECT_PAYMENT', {
+        expense_id: expense.id,
+        reason: rejection_reason || '',
+      }, t);
+    }
     
+    await t.commit();
     res.json({ message: 'Expense rejected', expense });
   } catch (error) {
+    if (t) await t.rollback();
     res.status(500).json({ error: error.message });
   }
 };
@@ -276,6 +357,17 @@ exports.deleteExpense = async (req, res) => {
       deleted_at: new Date()
     }, { transaction: t });
 
+    if (isPayrollExpense(expense)) {
+      await Payroll.update({
+        status: 'rejected',
+        rejection_reason: `Payroll expense deleted: ${deletion_reason.trim()}`,
+      }, { where: { id: expense.payroll_id }, transaction: t });
+      await writePayrollExpenseAudit(expense, req.user.id, 'DELETE_PAYMENT', {
+        expense_id: expense.id,
+        reason: deletion_reason.trim(),
+      }, t);
+    }
+
     await t.commit();
     res.json({ 
       message: expense.status === 'approved' 
@@ -285,6 +377,68 @@ exports.deleteExpense = async (req, res) => {
     });
   } catch (error) {
     console.error('Delete Expense Error:', error);
+    if (t) await t.rollback();
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.selectPaymentSource = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const { account_id } = req.body;
+    const expense = await Expense.findByPk(req.params.id);
+    if (!expense) {
+      await t.rollback();
+      return res.status(404).json({ error: 'Expense not found' });
+    }
+    if (!isPayrollExpense(expense)) {
+      await t.rollback();
+      return res.status(400).json({ error: 'Payment source selection is only for payroll requests.' });
+    }
+    if (!['pending', 'verified'].includes(expense.status)) {
+      await t.rollback();
+      return res.status(400).json({ error: 'Payment source can only be selected before approval.' });
+    }
+
+    const sourceAccount = await Account.findOne({
+      where: {
+        id: account_id,
+        branch_id: expense.branch_id,
+        type: 'asset',
+        is_active: true,
+        [Op.or]: [
+          { code: { [Op.like]: '10%' } },
+          { sub_type: { [Op.in]: ['cash', 'bank', 'mfs'] } },
+        ],
+      },
+    });
+    if (!sourceAccount) {
+      await t.rollback();
+      return res.status(400).json({ error: 'Choose a valid cash, bank, or mobile wallet account.' });
+    }
+
+    await expense.update({
+      account_id: sourceAccount.id,
+      payment_method: normalizeExpenseMethod(sourceAccount),
+      payment_source_selected: true,
+      payment_source_selected_by: req.user.id,
+      payment_source_selected_at: new Date(),
+    }, { transaction: t });
+
+    await Payroll.update({
+      status: 'pending_accounting',
+      rejection_reason: null,
+    }, { where: { id: expense.payroll_id }, transaction: t });
+
+    await writePayrollExpenseAudit(expense, req.user.id, 'SELECT_PAYMENT_SOURCE', {
+      expense_id: expense.id,
+      account_id: sourceAccount.id,
+      payment_method: normalizeExpenseMethod(sourceAccount),
+    }, t);
+
+    await t.commit();
+    res.json({ message: 'Payroll payment source selected. Accounting can now verify or approve.', expense });
+  } catch (error) {
     if (t) await t.rollback();
     res.status(500).json({ error: error.message });
   }

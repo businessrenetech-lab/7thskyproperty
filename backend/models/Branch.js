@@ -16,6 +16,11 @@ const Branch = sequelize.define('Branch', {
     allowNull: false,
     unique: true,
   },
+  slug: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true,
+  },
   type: {
     type: DataTypes.ENUM('head', 'branch'),
     defaultValue: 'branch',
@@ -28,6 +33,30 @@ const Branch = sequelize.define('Branch', {
   },
   email: {
     type: DataTypes.STRING,
+  },
+  public_title: {
+    type: DataTypes.STRING,
+  },
+  public_description: {
+    type: DataTypes.TEXT,
+  },
+  seo_title: {
+    type: DataTypes.STRING,
+  },
+  seo_description: {
+    type: DataTypes.STRING(500),
+  },
+  hero_image_url: {
+    type: DataTypes.STRING,
+  },
+  opening_hours: {
+    type: DataTypes.STRING,
+  },
+  map_url: {
+    type: DataTypes.TEXT,
+  },
+  coming_soon_message: {
+    type: DataTypes.STRING(500),
   },
   is_active: {
     type: DataTypes.BOOLEAN,

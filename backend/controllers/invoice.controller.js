@@ -241,7 +241,9 @@ exports.payCustomInvoice = async (req, res) => {
         await t.rollback();
         return res.status(404).json({ error: 'Invoice not found' });
     }
-    const { method, account_id, amount } = req.body;
+    const { method, account_id, amount, paid_date } = req.body;
+    // Resolve payment timestamp — use provided date or default to now
+    const paymentTimestamp = paid_date ? new Date(`${paid_date}T12:00:00+06:00`) : new Date();
     
     const tx = await Transaction.create({
       branch_id: req.branchId,
@@ -252,7 +254,7 @@ exports.payCustomInvoice = async (req, res) => {
       source: 'manual',
       account_id,
       status: 'success',
-      paid_at: new Date(),
+      paid_at: paymentTimestamp,
       recorded_by: req.user?.id
     }, { transaction: t });
 
@@ -275,7 +277,7 @@ exports.payCustomInvoice = async (req, res) => {
     if (liquidAcc && revenueAcc) {
       const je = await JournalEntry.create({
         branch_id: req.branchId,
-        date: new Date(),
+        date: paymentTimestamp,
         ref_no: tx.receipt_no,
         description: `Custom Income: ${invoice.IncomeCategory?.name || 'Revenue'} - ${invoice.customer_name || 'Customer'}`,
         posted_by: req.user?.id

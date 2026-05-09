@@ -566,7 +566,7 @@ exports.getSchedules = async (req, res) => {
     const schedules = await StaffSchedule.findAll({
       where,
       include: [
-        { model: User, attributes: ['id', 'name', 'role'] },
+        { model: User, attributes: ['id', 'name', 'role'], where: { branch_id: req.branchId } },
         { model: Shift },
       ],
       order: [['date', 'ASC']],
@@ -677,7 +677,10 @@ exports.getBirthdays = async (req, res) => {
   try {
     const month = new Date().getMonth() + 1;
     const profiles = await StaffProfile.findAll({
-      where: sequelize.where(sequelize.fn('MONTH', sequelize.col('date_of_birth')), month),
+      where: {
+        branch_id: req.branchId,
+        [Op.and]: [sequelize.where(sequelize.fn('MONTH', sequelize.col('date_of_birth')), month)]
+      },
       include: [{ model: User, attributes: ['id', 'name', 'email'] }],
     });
     res.json(profiles);
@@ -690,7 +693,10 @@ exports.getAnniversaries = async (req, res) => {
   try {
     const month = new Date().getMonth() + 1;
     const profiles = await StaffProfile.findAll({
-      where: sequelize.where(sequelize.fn('MONTH', sequelize.col('joining_date')), month),
+      where: {
+        branch_id: req.branchId,
+        [Op.and]: [sequelize.where(sequelize.fn('MONTH', sequelize.col('joining_date')), month)]
+      },
       include: [{ model: User, attributes: ['id', 'name', 'email'] }],
     });
     res.json(profiles);

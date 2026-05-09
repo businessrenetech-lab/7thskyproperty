@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 // Enforce globally at the system process level
@@ -35,6 +36,7 @@ if (process.env.NODE_ENV !== 'test') {
 
 // CORS
 app.use(cors(getCorsOptions()));
+app.use(cookieParser());
 
 // M1 Fix: Body size limit (prevents JSON bomb DoS)
 app.use(express.json({ limit: '1mb' }));
@@ -43,6 +45,18 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // M2 Fix: Uploads — lightweight token check (no DB query per file)
 // Only verify JWT signature, don't fetch user from DB for static files
 const jwt = require('jsonwebtoken');
+app.use('/uploads/courses', express.static(path.join(__dirname, 'uploads', 'courses'), {
+  maxAge: '1d',
+  etag: true,
+  lastModified: true,
+}));
+
+app.use('/uploads/branches', express.static(path.join(__dirname, 'uploads', 'branches'), {
+  maxAge: '1d',
+  etag: true,
+  lastModified: true,
+}));
+
 app.use('/uploads', (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '') 
     || req.query.token; // Allow ?token= for image tags
@@ -143,6 +157,7 @@ const Transaction = require('./models/Transaction');
 const JournalEntry = require('./models/JournalEntry');
 const JournalLine = require('./models/JournalLine');
 const Account = require('./models/Account');
+const Branch = require('./models/Branch');
 const BankAccount = require('./models/BankAccount');
 const BankAccountLedgerMap = require('./models/BankAccountLedgerMap');
 const Invoice = require('./models/Invoice');
@@ -161,6 +176,10 @@ const PerformanceReview = require('./models/PerformanceReview');
 const Shift = require('./models/Shift');
 const StaffSchedule = require('./models/StaffSchedule');
 const StaffProfile = require('./models/StaffProfile');
+const StaffPayRule = require('./models/StaffPayRule');
+const TeacherSession = require('./models/TeacherSession');
+const PayrollDeduction = require('./models/PayrollDeduction');
+const PayrollBonus = require('./models/PayrollBonus');
 const RbacConfig = require('./models/RbacConfig');
 const SystemSetting = require('./models/SystemSetting');
 const IncomeCategory = require('./models/IncomeCategory');
@@ -215,14 +234,14 @@ sequelize.authenticate()
     console.log('Database connected...');
     // Sync tables — errors are caught per-table so one failure doesn't block startup
     const models = [
-      User, ExpenseCategory, Expense, Lead, Contact, Opportunity, Activity,
+      Branch, User, ExpenseCategory, Expense, Lead, Contact, Opportunity, Activity,
       CampaignTemplate, Student, PteTask, Course, Batch, Account, BankAccount,
       BankAccountLedgerMap, Invoice, Enrollment, Transaction, JournalEntry,
       JournalLine, ReconciliationSession, ReconciliationLine,
       ReconciliationMatch, ReconciliationEvent, LiquidityMovement,
       StaffAttendance, LeaveType, LeaveRequest, LeaveBalance,
       JobPosting, Applicant, StaffDocument, PerformanceReview,
-      Shift, StaffSchedule, StaffProfile, RbacConfig, SystemSetting,
+      Shift, StaffSchedule, StaffProfile, StaffPayRule, TeacherSession, PayrollDeduction, PayrollBonus, RbacConfig, SystemSetting,
       IncomeCategory, Customer,
     ];
     // L2 Fix: Block ALTER sync in production — prevents accidental schema changes

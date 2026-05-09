@@ -1,8 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const dashboardController = require('../controllers/dashboard.controller');
-const { protect } = require('../middleware/auth.middleware');
+const { authMiddleware } = require('../middleware/auth.middleware');
+const { branchMiddleware } = require('../middleware/branch.middleware');
 
-router.get('/stats', protect, dashboardController.getStats);
+router.use(authMiddleware);
+router.use(branchMiddleware);
+
+router.get('/stats', dashboardController.getStats);
 
 module.exports = router;

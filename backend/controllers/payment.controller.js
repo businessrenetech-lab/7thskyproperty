@@ -7,6 +7,7 @@ const Enrollment = require('../models/Enrollment');
 const Invoice = require('../models/Invoice');
 const Course = require('../models/Course');
 const Batch = require('../models/Batch');
+const Branch = require('../models/Branch');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const fbCapi = require('../services/facebookCapi.service');
@@ -21,16 +22,22 @@ const parsePaymentMethod = (lead) => {
 const initiateCheckout = async (req, res) => {
   try {
     const { name, email, phone, course_id, batch_id, method } = req.body;
+    const branch_id = parseInt(req.body.branch_id || req.body.branch, 10);
 
-    if (!course_id || !batch_id || !name || !email) {
+    if (!branch_id || !course_id || !batch_id || !name || !email) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const course = await Course.findByPk(course_id);
-    const batch = await Batch.findByPk(batch_id);
+    const branch = await Branch.findOne({ where: { id: branch_id, is_active: true } });
+    if (!branch) {
+      return res.status(404).json({ error: 'Selected branch is not available' });
+    }
+
+    const course = await Course.findOne({ where: { id: course_id, branch_id, status: 'active' } });
+    const batch = await Batch.findOne({ where: { id: batch_id, branch_id, course_id } });
 
     if (!course || !batch) {
-      return res.status(404).json({ error: 'Course or Batch not found' });
+      return res.status(404).json({ error: 'Course or Batch not found for selected branch' });
     }
 
     if (method !== 'pay_at_branch') {
@@ -41,7 +48,7 @@ const initiateCheckout = async (req, res) => {
 
     // Create a Lead to hold the session state
     await Lead.create({
-      branch_id: 1,
+      branch_id,
       name,
       email,
       phone,
@@ -125,7 +132,7 @@ const paymentSuccess = async (req, res) => {
     await lead.update({ status: isPayAtBranch ? 'fees_pending' : 'successful' }, { transaction: dbTransaction });
 
     // 4. Create Contact if not exists
-    let contact = await Contact.findOne({ where: { email: lead.email }, transaction: dbTransaction });
+    let contact = await Contact.findOne({ where: { email: lead.email, branch_id }, transaction: dbTransaction });
     if (!contact) {
       await Contact.create({
         branch_id,

@@ -41,11 +41,9 @@ const ALL_SECTIONS = [
   {
     label: 'MANAGEMENT',
     items: [
-      { name: 'PTE Engine',       icon: <BarChart3 size={18} />,  id: 'pte' },
       { name: 'ERP Spaces',       icon: <RoomMap size={18} />,    id: 'erp' },
       { name: 'Asset Registry',   icon: <Package size={18} />,    id: 'assets' },
       { name: 'Branch Network',   icon: <Settings size={18} />,   id: 'branches' },
-      { name: 'Material Center',  icon: <Layers size={18} />,     id: 'materials' },
       { name: 'Automation',       icon: <Zap size={18} />,        id: 'automation' },
       { name: 'Website Mgt.',     icon: <Globe size={18} />,      id: 'website-management' },
       { name: 'Security / RBAC',  icon: <Shield size={18} />,     id: 'rbac' },
@@ -113,7 +111,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       {/* Logo */}
       <div style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid var(--border)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
-          <div style={{ width: '36px', height: '36px', background: 'var(--primary)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '0.9rem', color: '#fff', boxShadow: '0 4px 12px rgba(50, 97, 154, 0.4)' }}>LA</div>
+          <img src="/logo.png" alt="Language Academy" style={{ width: '40px', height: '40px', objectFit: 'contain', flexShrink: 0 }} />
           <div>
             <h2 style={{ color: 'var(--text-main)', fontSize: '1rem', fontWeight: '800', letterSpacing: '0.5px', margin: 0, fontFamily: 'var(--font-heading)' }}>LANGUAGE ACADEMY</h2>
             <p style={{ fontSize: '10px', color: 'var(--accent)', margin: 0, textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '700' }}>Executive Cloud</p>

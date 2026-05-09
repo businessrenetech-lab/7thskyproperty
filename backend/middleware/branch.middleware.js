@@ -23,6 +23,12 @@ const branchMiddleware = (req, res, next) => {
     req.scopedBranchId = user.branch_id;
   }
 
+  // Override req.branchId so controllers that use it directly (e.g. CRM)
+  // also respect the super_admin's branch selection.
+  if (req.scopedBranchId) {
+    req.branchId = req.scopedBranchId;
+  }
+
   next();
 };
 

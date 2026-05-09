@@ -51,8 +51,15 @@ const Payroll = sequelize.define('Payroll', {
     allowNull: false,
   },
   status: {
-    type: DataTypes.ENUM('draft', 'paid'),
+    type: DataTypes.ENUM('draft', 'pending_admin', 'pending_accounting', 'paid', 'rejected'),
     defaultValue: 'draft',
+  },
+  expense_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  rejection_reason: {
+    type: DataTypes.TEXT,
   },
   journal_entry_id: {
     type: DataTypes.INTEGER,

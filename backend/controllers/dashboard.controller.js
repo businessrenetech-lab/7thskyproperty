@@ -12,6 +12,7 @@ const { Op } = require('sequelize');
 
 const ACTIVE_LEAD_STATUSES = ['new', 'contacted', 'interested', 'trial', 'fees_pending', 'payment_rejected'];
 const ACTIVE_BATCH_STATUSES = ['enrolling', 'active', 'starting_soon'];
+const GLOBAL_BRANCH_VALUES = new Set(['', 'all', 'null', 'undefined']);
 
 function toNumber(value) {
   return Number(value || 0);
@@ -77,8 +78,10 @@ function mapGroupedRows(rows, keyName) {
 
 exports.getStats = async (req, res) => {
   try {
-    const { branchId, role } = req.query;
-    const whereClause = branchId && branchId !== 'all' ? { branch_id: branchId } : {};
+    const { role } = req.query;
+    // Use req.branchId from middleware (already scoped by branchMiddleware)
+    const effectiveBranchId = req.branchId;
+    const whereClause = effectiveBranchId ? { branch_id: effectiveBranchId } : {};
 
     // 1. Core shared stats
     const totalLeads = await Lead.count({ where: whereClause });

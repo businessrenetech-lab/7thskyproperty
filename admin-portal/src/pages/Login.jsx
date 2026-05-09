@@ -21,11 +21,11 @@ const LoginPage = () => {
     setError('');
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { user, token } = response.data || {};
-      if (!token || !user?.role) {
+      const { user } = response.data || {};
+      if (!user?.role) {
         throw new Error('Invalid login response');
       }
-      login(user, token);
+      login(user);
       navigate('/dashboard', { replace: true });
     } catch (err) {
       if (!err.response) {

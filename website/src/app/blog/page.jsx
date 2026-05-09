@@ -1,6 +1,8 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, Calendar, Clock, User } from "lucide-react";
 import { getApiBase } from "@/lib/api";
+import { getPublicImageUrl } from "@/lib/imageUrl";
 
 export const metadata = {
   title: "Blog & Resources — PTE & IELTS Tips from Dhaka's Best Coaches",
@@ -66,7 +68,7 @@ export default async function BlogListingPage() {
                 <div className="premium-panel overflow-hidden mb-10">
                   <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
                     <div className="aspect-[16/10] lg:aspect-auto relative overflow-hidden">
-                      <img src={featured.image_url || "/hero_banner.png"} alt={featured.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
+                      <Image src={getPublicImageUrl(featured.image_url)} alt={featured.title} fill sizes="(min-width: 1024px) 52vw, 100vw" className="object-cover transition-transform duration-500 hover:scale-105" priority unoptimized />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent lg:bg-gradient-to-r" />
                     </div>
                     <div className="p-8 md:p-10 flex flex-col justify-center">
@@ -91,7 +93,7 @@ export default async function BlogListingPage() {
                   {remaining.map((blog) => (
                     <div key={blog.id} className="premium-panel overflow-hidden flex flex-col h-full group">
                       <div className="aspect-[16/9] relative overflow-hidden">
-                        <img src={blog.image_url || "/hero_banner.png"} alt={blog.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+                        <Image src={getPublicImageUrl(blog.image_url)} alt={blog.title} fill sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-105" unoptimized />
                       </div>
                       <div className="p-6 md:p-7 flex flex-col flex-1">
                         <h3 className="text-lg font-bold text-slate-900 mb-3 group-hover:text-primary transition line-clamp-2">

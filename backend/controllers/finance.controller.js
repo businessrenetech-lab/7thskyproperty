@@ -79,8 +79,10 @@ exports.recordExpense = async (req, res) => {
 // ── Finance Stats (basic) ──
 exports.getFinanceStats = async (req, res) => {
   try {
-    const revenue = await JournalLine.sum('credit', { include: [{ model: Account, where: { type: 'revenue' } }] });
-    const expenses = await JournalLine.sum('debit', { include: [{ model: Account, where: { type: 'expense' } }] });
+    const branchId = getBranchId(req);
+    const branchFilter = branchId ? { branch_id: branchId } : {};
+    const revenue = await JournalLine.sum('credit', { include: [{ model: Account, where: { ...branchFilter, type: 'revenue' } }] });
+    const expenses = await JournalLine.sum('debit', { include: [{ model: Account, where: { ...branchFilter, type: 'expense' } }] });
     res.json({ totalRevenue: revenue || 0, totalExpenses: expenses || 0, netProfit: (revenue || 0) - (expenses || 0) });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -124,13 +126,15 @@ exports.getOverview = async (req, res) => {
 exports.getProfitLoss = async (req, res) => {
   try {
     const { from, to } = req.query;
+    const branchId = getBranchId(req);
+    const branchFilter = branchId ? { branch_id: branchId } : {};
     const dateFilter = {};
     if (from) dateFilter[Op.gte] = from;
     if (to) dateFilter[Op.lte] = to;
-    const entryWhere = Object.keys(dateFilter).length ? { date: dateFilter } : {};
+    const entryWhere = Object.keys(dateFilter).length ? { ...branchFilter, date: dateFilter } : branchFilter;
 
-    const revenueAccounts = await Account.findAll({ where: { type: 'revenue' }, attributes: ['id', 'name', 'code'] });
-    const expenseAccounts = await Account.findAll({ where: { type: 'expense' }, attributes: ['id', 'name', 'code'] });
+    const revenueAccounts = await Account.findAll({ where: { ...branchFilter, type: 'revenue' }, attributes: ['id', 'name', 'code'] });
+    const expenseAccounts = await Account.findAll({ where: { ...branchFilter, type: 'expense' }, attributes: ['id', 'name', 'code'] });
 
     const getTotal = async (accountIds, field) => {
       if (!accountIds.length) return 0;
@@ -168,7 +172,9 @@ exports.getProfitLoss = async (req, res) => {
 // ── NEW: Trial Balance ──
 exports.getTrialBalance = async (req, res) => {
   try {
-    const accounts = await Account.findAll({ where: { is_active: true }, order: [['code', 'ASC']] });
+    const branchId = getBranchId(req);
+    const branchFilter = branchId ? { branch_id: branchId } : {};
+    const accounts = await Account.findAll({ where: { ...branchFilter, is_active: true }, order: [['code', 'ASC']] });
     const summary = [];
     let totalDebits = 0, totalCredits = 0;
 
@@ -293,13 +299,15 @@ exports.getCashFlow = async (req, res) => {
 // ── NEW: Income vs Expense ──
 exports.getIncomeExpense = async (req, res) => {
   try {
-    const revenue = await JournalLine.sum('credit', { include: [{ model: Account, where: { type: 'revenue' } }] }) || 0;
-    const expenses = await JournalLine.sum('debit', { include: [{ model: Account, where: { type: 'expense' } }] }) || 0;
+    const branchId = getBranchId(req);
+    const branchFilter = branchId ? { branch_id: branchId } : {};
+    const revenue = await JournalLine.sum('credit', { include: [{ model: Account, where: { ...branchFilter, type: 'revenue' } }] }) || 0;
+    const expenses = await JournalLine.sum('debit', { include: [{ model: Account, where: { ...branchFilter, type: 'expense' } }] }) || 0;
 
     // Expense split by category
     const expenseSplit = await Expense.findAll({
       attributes: ['category', [fn('SUM', col('amount')), 'total']],
-      where: { status: { [Op.in]: ['approved', 'verified'] } },
+      where: { ...branchFilter, status: { [Op.in]: ['approved', 'verified'] } },
       group: ['category'],
       order: [[literal('total'), 'DESC']]
     });
@@ -313,9 +321,11 @@ exports.getIncomeExpense = async (req, res) => {
 // ── NEW: Student-wise Income ──
 exports.getStudentIncome = async (req, res) => {
   try {
+    const branchId = getBranchId(req);
+    const branchFilter = branchId ? { branch_id: branchId } : {};
     const students = await Transaction.findAll({
       attributes: ['enrollment_id', [fn('SUM', col('amount')), 'total_paid'], [fn('COUNT', col('Transaction.id')), 'payment_count']],
-      where: { status: 'success' },
+      where: { ...branchFilter, status: 'success' },
       include: [{ model: Enrollment, include: [{ model: Student, include: [{ model: User, attributes: ['name'] }] }] }],
       group: ['enrollment_id'],
       order: [[literal('total_paid'), 'DESC']]
@@ -345,29 +355,75 @@ exports.getLiquidAccounts = async (req, res) => {
 
     const detailedAccounts = [];
     for (const acc of accounts) {
-      const debitTotal = await JournalLine.sum('debit', { where: { account_id: acc.id } }) || 0;
-      const creditTotal = await JournalLine.sum('credit', { where: { account_id: acc.id } }) || 0;
-      const movementRows = await LiquidityMovement.findAll({
-        where: { branch_id: targetBranch, account_id: acc.id },
-        attributes: ['direction', 'amount', 'transaction_type', 'variance_amount']
+      // Find latest closing submission for this account (the most reliable balance checkpoint)
+      const latestClosing = await LiquidityMovement.findOne({
+        where: {
+          branch_id: targetBranch,
+          account_id: acc.id,
+          transaction_type: 'closing_submission',
+        },
+        order: [['movement_date', 'DESC'], ['id', 'DESC']],
+        attributes: ['actual_balance', 'movement_date'],
+        raw: true,
       });
-      const movementNet = movementRows.reduce((sum, row) => {
-        const amount = Number(row.amount || 0);
-        let net = sum;
-        if (row.direction === 'inflow') net += amount;
-        if (row.direction === 'outflow') net -= amount;
-        if (row.transaction_type === 'closing_submission') {
-            net += Number(row.variance_amount || 0);
+
+      let balance;
+      if (latestClosing) {
+        // Start from the last known physical balance
+        balance = Number(latestClosing.actual_balance || 0);
+
+        // Add any movements AFTER the closing date (inflows - outflows)
+        const subsequentMovements = await LiquidityMovement.findAll({
+          where: {
+            branch_id: targetBranch,
+            account_id: acc.id,
+            movement_date: { [Op.gt]: latestClosing.movement_date },
+            transaction_type: { [Op.ne]: 'closing_submission' },
+          },
+          attributes: ['direction', 'amount'],
+          raw: true,
+        });
+
+        for (const mv of subsequentMovements) {
+          const amt = Number(mv.amount || 0);
+          if (mv.direction === 'inflow') balance += amt;
+          if (mv.direction === 'outflow') balance -= amt;
         }
-        return net;
-      }, 0);
+
+        // Add transactions after the closing date
+        const subsequentTx = await Transaction.sum('amount', {
+          where: {
+            branch_id: targetBranch,
+            account_id: acc.id,
+            status: 'success',
+            paid_at: { [Op.gt]: `${latestClosing.movement_date} 23:59:59` },
+          },
+        }) || 0;
+        balance += subsequentTx;
+
+        // Subtract expenses after the closing date
+        const subsequentExp = await Expense.sum('amount', {
+          where: {
+            branch_id: targetBranch,
+            account_id: acc.id,
+            status: 'approved',
+            date: { [Op.gt]: latestClosing.movement_date },
+          },
+        }) || 0;
+        balance -= subsequentExp;
+      } else {
+        // No closing exists — fall back to journal-based balance + all movements
+        const debitTotal = await JournalLine.sum('debit', { where: { account_id: acc.id } }) || 0;
+        const creditTotal = await JournalLine.sum('credit', { where: { account_id: acc.id } }) || 0;
+        balance = debitTotal - creditTotal;
+      }
       
       detailedAccounts.push({
         id: acc.id,
         code: acc.code,
         name: acc.name,
         sub_type: acc.sub_type || 'cash',
-        balance: (debitTotal - creditTotal) + movementNet
+        balance
       });
     }
 
@@ -428,7 +484,7 @@ exports.getReportSuite = async (req, res) => {
     const transactionWhere = { branch_id: branchId, status: 'success' };
     if (transactionDateFilter) transactionWhere.paid_at = transactionDateFilter;
 
-    const expenseWhere = { branch_id: branchId, status: { [Op.in]: ['approved', 'verified'] } };
+    const expenseWhere = { branch_id: branchId, status: 'approved' };
     if (expenseDateFilter) expenseWhere.date = expenseDateFilter;
 
     const premiumWhere = { branch_id: branchId, plan_type: 'premium' };
@@ -564,7 +620,9 @@ exports.getReportSuite = async (req, res) => {
       amount: Number(expense.amount || 0),
       status: expense.status,
       payment_method: expense.payment_method,
-      account_name: expense.Account?.name || 'Unknown'
+      account_name: expense.Account?.name || 'Unknown',
+      expense_origin: expense.expense_origin || 'manual',
+      payroll_id: expense.payroll_id || null
     }));
     const totalExpense = expenseRows.reduce((sum, row) => sum + row.amount, 0);
     const expenseByCategory = Array.from(expenseRows.reduce((map, row) => {

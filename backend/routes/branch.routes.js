@@ -2,11 +2,13 @@ const express = require('express');
 const router = express.Router();
 const branchController = require('../controllers/branch.controller');
 const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
+const uploadBranchImage = require('../utils/uploadBranchImage');
 
 // ─── BRANCH CRUD (super_admin only for create/delete) ─────────
 router.get('/', authMiddleware, roleMiddleware(['super_admin', 'branch_admin']), branchController.getAllBranches);
 router.post('/', authMiddleware, roleMiddleware(['super_admin']), branchController.createBranch);
 router.put('/:id', authMiddleware, roleMiddleware(['super_admin', 'branch_admin']), branchController.updateBranch);
+router.post('/:id/upload-image', authMiddleware, roleMiddleware(['super_admin', 'branch_admin']), uploadBranchImage.single('image'), branchController.uploadBranchImage);
 router.patch('/:id/status', authMiddleware, roleMiddleware(['super_admin']), branchController.toggleBranchStatus);
 router.delete('/:id', authMiddleware, roleMiddleware(['super_admin']), branchController.deactivateBranch);
 

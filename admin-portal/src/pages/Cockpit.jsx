@@ -130,7 +130,9 @@ const Cockpit = () => {
         // HRMDashboard fetches its own data internally
         setData({});
       } else {
-        const res = await api.get(`/dashboard/stats?branchId=${branch}&role=${role}`);
+        const params = new URLSearchParams({ role });
+        if (branch && branch !== 'all') params.set('branchId', branch);
+        const res = await api.get(`/dashboard/stats?${params.toString()}`);
         setData(res.data);
       }
     } catch (err) {

@@ -44,6 +44,23 @@ exports.deleteRule = async (req, res) => {
   }
 };
 
+exports.updateRule = async (req, res) => {
+  try {
+    const rule = await Rule.findByPk(req.params.id);
+    if (!rule) return res.status(404).json({ error: 'Rule not found' });
+
+    const { name, trigger_type, action_type, template } = req.body;
+    if (name !== undefined) rule.name = name;
+    if (trigger_type !== undefined) rule.trigger_type = trigger_type;
+    if (action_type !== undefined) rule.action_type = action_type;
+    if (template !== undefined) rule.template = template;
+    await rule.save();
+    res.json(rule);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 exports.runBirthdayCheck = async (req, res) => {
   try {
     const result = await automationService.processBirthdayReminders();

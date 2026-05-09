@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Student = require('../models/Student');
 const { Op } = require('sequelize');
 const { injectBranchFilter } = require('../middleware/branch.middleware');
+const { uniqueSlug } = require('../utils/slug');
 
 const getEffectiveBranchId = (req) => req.scopedBranchId || req.branchId;
 
@@ -396,7 +397,11 @@ exports.getCourses = async (req, res) => {
 
 exports.createCourse = async (req, res) => {
   try {
-    const data = { ...req.body, branch_id: req.branchId };
+    const branchId = getEffectiveBranchId(req);
+    if (!branchId) return res.status(400).json({ error: 'Please select a specific branch' });
+
+    const data = { ...req.body, branch_id: branchId };
+    data.slug = await uniqueSlug(Course, req.body.slug || req.body.title, { fallback: 'course' });
     const course = await Course.create(data);
     res.status(201).json(course);
   } catch (error) {
@@ -407,10 +412,20 @@ exports.createCourse = async (req, res) => {
 exports.updateCourse = async (req, res) => {
   try {
     const { id } = req.params;
-    const course = await Course.findOne({ where: { id, branch_id: req.branchId } });
+    const branchId = getEffectiveBranchId(req);
+    if (!branchId) return res.status(400).json({ error: 'Please select a specific branch' });
+
+    const course = await Course.findOne({ where: { id, branch_id: branchId } });
     if (!course) return res.status(404).json({ error: 'Course not found' });
-    
-    await course.update(req.body);
+
+    const data = { ...req.body };
+    if (Object.prototype.hasOwnProperty.call(req.body, 'slug')) {
+      data.slug = await uniqueSlug(Course, req.body.slug || req.body.title || course.title, { fallback: 'course', excludeId: course.id });
+    } else if (!course.slug) {
+      data.slug = await uniqueSlug(Course, req.body.title || course.title, { fallback: 'course', excludeId: course.id });
+    }
+
+    await course.update(data);
     res.json(course);
   } catch (error) {
     res.status(500).json({ error: error.message });

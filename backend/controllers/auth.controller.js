@@ -6,6 +6,26 @@ const { getTableColumns, hasColumn } = require('../utils/schemaSafe');
 
 const ASSIGNABLE_ROLES = ['super_admin', 'branch_admin', 'counselor', 'trainer', 'accounts', 'hr', 'staff', 'unassigned'];
 const BRANCH_ADMIN_ROLES = ['counselor', 'trainer', 'accounts', 'hr', 'staff', 'unassigned'];
+const AUTH_COOKIE_NAME = 'la_admin_token';
+const AUTH_TOKEN_TTL = '7d';
+const AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+
+const getAuthCookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  path: '/',
+  maxAge: AUTH_COOKIE_MAX_AGE,
+});
+
+const clearAuthCookie = (res) => {
+  res.clearCookie(AUTH_COOKIE_NAME, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+  });
+};
 
 // H4 Fix: Password strength validation
 const validatePassword = (password) => {
@@ -122,8 +142,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // H3 Fix: Reduced JWT expiry from 1d to 8h
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '8h' });
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: AUTH_TOKEN_TTL });
 
     // M5 Fix: Fetch user WITHOUT password hash
     const fullUser = await User.findOne({
@@ -131,11 +150,17 @@ exports.login = async (req, res) => {
       attributes: await getSafeUserAttributes(false),
     });
 
+    res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions());
     res.json({ token, user: fullUser });
   } catch (error) {
     console.error('[Login Error]:', error.message);
     res.status(500).json({ error: 'Login failed. Please try again.' });
   }
+};
+
+exports.logout = async (req, res) => {
+  clearAuthCookie(res);
+  res.json({ message: 'Logged out successfully' });
 };
 
 exports.getMe = async (req, res) => {

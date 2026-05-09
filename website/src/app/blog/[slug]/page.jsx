@@ -1,9 +1,11 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Calendar, User, ArrowLeft, Clock, Share2, Facebook, Twitter, Linkedin } from "lucide-react";
 import JsonLd, { breadcrumbSchema } from "@/components/JsonLd";
 import { getApiBase } from "@/lib/api";
+import { getAbsolutePublicImageUrl, getPublicImageUrl } from "@/lib/imageUrl";
 
 async function getBlogDetails(slug) {
   try {
@@ -34,7 +36,7 @@ export async function generateMetadata({ params }) {
       title: blog.title,
       description: blog.excerpt || `Read ${blog.title} on Language Academy Blog.`,
       url: `https://languageacademy.com.bd/blog/${params.slug}`,
-      images: [{ url: blog.image_url || "/hero_banner.png", width: 1200, height: 630, alt: blog.title }],
+      images: [{ url: getAbsolutePublicImageUrl(blog.image_url), width: 1200, height: 630, alt: blog.title }],
       publishedTime: blog.published_at,
       authors: ["Language Academy Bangladesh"],
     },
@@ -60,7 +62,7 @@ export default async function BlogDetailPage({ params }) {
       "@type": "Article",
       "headline": blog.title,
       "description": blog.excerpt,
-      "image": blog.image_url || "https://languageacademy.com.bd/hero_banner.png",
+      "image": getAbsolutePublicImageUrl(blog.image_url),
       "datePublished": blog.published_at,
       "dateModified": blog.updated_at || blog.published_at,
       "author": { "@type": "Organization", "name": "Language Academy Bangladesh", "url": "https://languageacademy.com.bd" },
@@ -89,7 +91,7 @@ export default async function BlogDetailPage({ params }) {
           )}
 
           <div className="aspect-[21/9] w-full overflow-hidden rounded-3xl relative shadow-lg">
-            <img src={blog.image_url || "/hero_banner.png"} alt={blog.title} className="object-cover w-full h-full" />
+            <Image src={getPublicImageUrl(blog.image_url)} alt={blog.title} fill sizes="100vw" className="object-cover" priority unoptimized />
           </div>
         </header>
 
@@ -126,7 +128,7 @@ export default async function BlogDetailPage({ params }) {
               {filtered.map((b) => (
                 <div key={b.id} className="premium-panel overflow-hidden flex flex-col h-full group">
                   <div className="aspect-[16/9] relative overflow-hidden">
-                    <img src={b.image_url || "/hero_banner.png"} alt={b.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+                    <Image src={getPublicImageUrl(b.image_url)} alt={b.title} fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover transition-transform duration-500 group-hover:scale-105" unoptimized />
                   </div>
                   <div className="p-6 flex flex-col flex-1">
                     <h4 className="text-lg font-bold text-slate-900 group-hover:text-primary transition line-clamp-2">

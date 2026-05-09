@@ -9,9 +9,13 @@ const money = (v) => `BDT ${Number(v || 0).toLocaleString()}`;
 const fmtDate = (v) => (v ? new Date(v).toLocaleDateString() : '-');
 
 const formatDateLocal = (dateObj) => {
-  const toast = useToast();
   const d = new Date(dateObj);
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  // Use Asia/Dhaka timezone consistent with backend for date alignment
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dhaka', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d);
+  const y = parts.find(p => p.type === 'year').value;
+  const m = parts.find(p => p.type === 'month').value;
+  const dd = parts.find(p => p.type === 'day').value;
+  return `${y}-${m}-${dd}`;
 };
 
 const getTodayLocal = () => {
@@ -80,6 +84,7 @@ const Table = ({ columns, rows, empty = 'No records found.' }) => (
 );
 
 export default function Reconciliation() {
+  const toast = useToast();
   const [preset, setPreset] = useState('monthly');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');

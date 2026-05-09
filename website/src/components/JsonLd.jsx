@@ -1,3 +1,5 @@
+import { getAbsolutePublicImageUrl } from "@/lib/imageUrl";
+
 /**
  * Reusable JSON-LD structured data component for SEO & AI search visibility.
  * Usage: <JsonLd data={{ "@context": "https://schema.org", ... }} />
@@ -180,7 +182,7 @@ export function courseSchema(course) {
         "name": course.instructor_name
       } : undefined,
     })) || [],
-    "image": course.image_url || "https://languageacademy.com.bd/hero_banner.png",
+    "image": getAbsolutePublicImageUrl(course.image_url),
   };
 }
 
