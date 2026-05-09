@@ -5,6 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "migrate:safety-constraints:dry-run": "node scripts/add-safety-constraints.js",
+    "migrate:safety-constraints": "node scripts/add-safety-constraints.js --apply",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
