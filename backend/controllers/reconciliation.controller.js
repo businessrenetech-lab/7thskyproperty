@@ -100,7 +100,8 @@ exports.updateMapping = async (req, res) => {
     const mapping = await BankAccountLedgerMap.findOne({ where: { id: req.params.id, branch_id: getBranchId(req) } });
     if (!mapping) return res.status(404).json({ error: 'Mapping not found' });
     const old = mapping.toJSON();
-    await mapping.update(req.body);
+    const { branch_id, ...updateData } = req.body;
+    await mapping.update(updateData);
     await writeAudit(req, 'BankAccountLedgerMap', mapping.id, 'update', old, mapping.toJSON());
     res.json(mapping);
   } catch (e) {
@@ -550,6 +551,7 @@ exports.updateLineNotes = async (req, res) => {
     if (!line) return res.status(404).json({ error: 'Line not found' });
 
     const session = await ReconciliationSession.findOne({ where: { id: line.session_id, branch_id: getBranchId(req) } });
+    if (!session) return res.status(404).json({ error: 'Line not found' });
     if (session?.status === 'approved' || session?.status === 'locked') {
       return res.status(403).json({ error: 'Cannot edit lines on approved/locked sessions' });
     }
@@ -1183,7 +1185,8 @@ exports.recordOpeningBalance = async (req, res) => {
 
     if (!reason?.trim()) return res.status(400).json({ error: 'Reason is required for opening balance adjustment' });
 
-    const account = await Account.findByPk(account_id);
+    const account = await Account.findOne({ where: { id: account_id, branch_id: branchId } });
+    if (!account) return res.status(404).json({ error: 'Account not found' });
     const session = await ensureSessionForDate(branchId, targetDate, req.user?.id);
     const line = await ensureLineForAccount(session, account.id, account.sub_type || 'cash');
 
@@ -1210,7 +1213,7 @@ exports.recordCollection = async (req, res) => {
   try {
     const { account_id, date, amount, source, reference, remarks, transaction_type } = req.body;
     if (!account_id || !amount) return res.status(400).json({ error: 'account_id and amount are required' });
-    const account = await Account.findByPk(account_id);
+    const account = await Account.findOne({ where: { id: account_id, branch_id: getBranchId(req) } });
     if (!account) return res.status(404).json({ error: 'Account not found' });
     const type = transaction_type || (account.sub_type === 'bank' ? 'direct_bank_receipt' : account.sub_type === 'mfs' ? 'mobile_receipt' : 'collection');
     const movementDate = toDateOnly(date);
@@ -1237,14 +1240,18 @@ exports.recordTransfer = async (req, res) => {
     const { from_account_id, to_account_id, date, amount, reference, remarks } = req.body;
     if (!from_account_id || !to_account_id || !amount) return res.status(400).json({ error: 'from_account_id, to_account_id, and amount are required' });
     if (Number(from_account_id) === Number(to_account_id)) return res.status(400).json({ error: 'Source and destination must be different' });
-    const [fromAccount, toAccount] = await Promise.all([Account.findByPk(from_account_id), Account.findByPk(to_account_id)]);
+    const branchId = getBranchId(req);
+    const [fromAccount, toAccount] = await Promise.all([
+      Account.findOne({ where: { id: from_account_id, branch_id: branchId } }),
+      Account.findOne({ where: { id: to_account_id, branch_id: branchId } })
+    ]);
     if (!fromAccount || !toAccount) return res.status(404).json({ error: 'Transfer account not found' });
 
     const transferDate = toDateOnly(date);
     const ref = reference || `TRF-${Date.now()}`;
     const commonRemarks = remarks || `${fromAccount.name} -> ${toAccount.name}`;
     // Build snapshot once for both outflow and inflow movements
-    const snapshot = await buildLiquiditySnapshot(getBranchId(req), transferDate, transferDate);
+    const snapshot = await buildLiquiditySnapshot(branchId, transferDate, transferDate);
 
     const outflow = await createManualMovement(req, {
       account_id: Number(from_account_id),
@@ -1294,7 +1301,8 @@ exports.recordClosingBalance = async (req, res) => {
     const variance = actual - expected;
     if (Math.abs(variance) > 0.009 && !reason?.trim()) return res.status(400).json({ error: 'Explanation is required when there is a discrepancy' });
 
-    const account = await Account.findByPk(account_id);
+    const account = await Account.findOne({ where: { id: account_id, branch_id: branchId } });
+    if (!account) return res.status(404).json({ error: 'Account not found' });
     const session = await ensureSessionForDate(branchId, targetDate, req.user?.id);
     const line = await ensureLineForAccount(session, account.id, account.sub_type || 'cash');
 

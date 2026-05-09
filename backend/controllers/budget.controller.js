@@ -6,6 +6,7 @@ const { Op } = require('sequelize');
 exports.getBudgets = async (req, res) => {
   try {
     const budgets = await Budget.findAll({
+      where: { branch_id: req.branchId },
       include: [{ model: Account, attributes: ['name', 'code', 'type'] }],
       order: [['period_start', 'DESC']]
     });
@@ -18,6 +19,9 @@ exports.getBudgets = async (req, res) => {
 exports.createBudget = async (req, res) => {
   try {
     const { account_id, period, period_start, period_end, allocated } = req.body;
+    const account = await Account.findOne({ where: { id: account_id, branch_id: req.branchId } });
+    if (!account) return res.status(404).json({ error: 'Account not found' });
+
     const budget = await Budget.create({
       branch_id: req.branchId, account_id, period, period_start, period_end, allocated
     });
@@ -30,6 +34,7 @@ exports.createBudget = async (req, res) => {
 exports.getBudgetVsActual = async (req, res) => {
   try {
     const budgets = await Budget.findAll({
+      where: { branch_id: req.branchId },
       include: [{ model: Account, attributes: ['name', 'code'] }]
     });
 
@@ -37,6 +42,7 @@ exports.getBudgetVsActual = async (req, res) => {
     for (const budget of budgets) {
       const spent = await Expense.sum('amount', {
         where: {
+          branch_id: req.branchId,
           account_id: budget.account_id,
           date: { [Op.between]: [budget.period_start, budget.period_end] },
           status: 'approved'

@@ -105,6 +105,16 @@ exports.getAgingAnalysis = async (req, res) => {
 exports.createInvoice = async (req, res) => {
   try {
     const { enrollment_id, student_id, amount, due_date, notes, invoice_type, income_category_id, customer_id, customer_name, customer_phone, customer_email, customer_company, customer_address, save_customer } = req.body;
+    const [enrollment, student, incomeCategory, customer] = await Promise.all([
+      enrollment_id ? Enrollment.findOne({ where: { id: enrollment_id, branch_id: req.branchId } }) : null,
+      student_id ? Student.findOne({ where: { id: student_id, branch_id: req.branchId } }) : null,
+      income_category_id ? IncomeCategory.findOne({ where: { id: income_category_id, branch_id: { [Op.or]: [req.branchId, null] }, is_active: true } }) : null,
+      customer_id ? Customer.findOne({ where: { id: customer_id, branch_id: req.branchId, is_active: true } }) : null
+    ]);
+    if (enrollment_id && !enrollment) return res.status(404).json({ error: 'Enrollment not found' });
+    if (student_id && !student) return res.status(404).json({ error: 'Student not found' });
+    if (income_category_id && !incomeCategory) return res.status(404).json({ error: 'Income category not found' });
+    if (customer_id && !customer) return res.status(404).json({ error: 'Customer not found' });
     
     // Optionally save new customer
     let savedCustomerId = customer_id || null;
@@ -140,9 +150,10 @@ exports.createInvoice = async (req, res) => {
 
 exports.updateInvoice = async (req, res) => {
   try {
-    const invoice = await Invoice.findByPk(req.params.id);
+    const invoice = await Invoice.findOne({ where: { id: req.params.id, branch_id: req.branchId } });
     if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
-    await invoice.update(req.body);
+    const { branch_id, ...updateData } = req.body;
+    await invoice.update(updateData);
     res.json(invoice);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -178,16 +189,17 @@ exports.createIncomeCategory = async (req, res) => {
 
 exports.updateIncomeCategory = async (req, res) => {
   try {
-    const cat = await IncomeCategory.findByPk(req.params.id);
+    const cat = await IncomeCategory.findOne({ where: { id: req.params.id, branch_id: req.branchId } });
     if (!cat) return res.status(404).json({ error: 'Not found' });
-    await cat.update(req.body);
+    const { branch_id, ...updateData } = req.body;
+    await cat.update(updateData);
     res.json(cat);
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
 exports.deleteIncomeCategory = async (req, res) => {
   try {
-    const cat = await IncomeCategory.findByPk(req.params.id);
+    const cat = await IncomeCategory.findOne({ where: { id: req.params.id, branch_id: req.branchId } });
     if (!cat) return res.status(404).json({ error: 'Not found' });
     await cat.update({ is_active: false });
     res.json({ message: 'Deleted' });
@@ -214,16 +226,17 @@ exports.createCustomer = async (req, res) => {
 
 exports.updateCustomer = async (req, res) => {
   try {
-    const customer = await Customer.findByPk(req.params.id);
+    const customer = await Customer.findOne({ where: { id: req.params.id, branch_id: req.branchId } });
     if (!customer) return res.status(404).json({ error: 'Not found' });
-    await customer.update(req.body);
+    const { branch_id, ...updateData } = req.body;
+    await customer.update(updateData);
     res.json(customer);
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
 exports.deleteCustomer = async (req, res) => {
   try {
-    const customer = await Customer.findByPk(req.params.id);
+    const customer = await Customer.findOne({ where: { id: req.params.id, branch_id: req.branchId } });
     if (!customer) return res.status(404).json({ error: 'Not found' });
     await customer.update({ is_active: false });
     res.json({ message: 'Deleted' });
@@ -234,7 +247,8 @@ exports.deleteCustomer = async (req, res) => {
 exports.payCustomInvoice = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const invoice = await Invoice.findByPk(req.params.id, {
+    const invoice = await Invoice.findOne({
+      where: { id: req.params.id, branch_id: req.branchId },
       include: [{ model: IncomeCategory }]
     });
     if (!invoice) {
@@ -264,7 +278,7 @@ exports.payCustomInvoice = async (req, res) => {
       status: newPaid >= invoice.amount ? 'paid' : 'partial'
     }, { transaction: t });
 
-    const liquidAcc = await Account.findByPk(account_id);
+    const liquidAcc = await Account.findOne({ where: { id: account_id, branch_id: req.branchId } });
     const isUttara = req.branchId !== 1;
     const revenueCode = isUttara ? '4010-U' : '4010';
     let revenueAcc = await Account.findOne({ where: { is_active: true, branch_id: req.branchId, code: revenueCode } }); 
@@ -302,7 +316,7 @@ exports.updateInvoice = async (req, res) => {
     const { id } = req.params;
     const { amount, due_date, notes, income_category_id } = req.body;
     
-    const invoice = await Invoice.findByPk(id);
+    const invoice = await Invoice.findOne({ where: { id, branch_id: req.branchId } });
     if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
 
     // Ensure amount is not less than already paid

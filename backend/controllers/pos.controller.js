@@ -39,7 +39,7 @@ const upsertPendingReferralExpense = async ({
   if (!(amount > 0)) return { created: false, updated: false };
 
   const referralStudent = enrollment.student_id
-    ? await Student.findByPk(enrollment.student_id, { include: [{ model: User, attributes: ['name'] }], transaction })
+    ? await Student.findOne({ where: { id: enrollment.student_id, branch_id: branchId }, include: [{ model: User, attributes: ['name'] }], transaction })
     : null;
   const referrerName = referredBy || referralStudent?.referred_by || 'Unknown Referrer';
   const studentName = referralStudent?.User?.name || `Student ID: ${enrollment.student_id || 'N/A'}`;
@@ -146,7 +146,7 @@ exports.collectFee = async (req, res) => {
     });
 
     const resolvedEnrollmentId = linkedInvoice?.enrollment_id || enrollment_id;
-    const enrollment = await Enrollment.findByPk(resolvedEnrollmentId, { transaction: t });
+    const enrollment = await Enrollment.findOne({ where: { id: resolvedEnrollmentId, branch_id: req.branchId }, transaction: t });
     if (!enrollment) throw new Error('Enrollment not found');
 
     const paymentAmount = Number(amount || 0);
@@ -159,12 +159,12 @@ exports.collectFee = async (req, res) => {
     let debitAccount = null;
 
     if (account_id) {
-      debitAccount = await Account.findByPk(account_id);
+      debitAccount = await Account.findOne({ where: { id: account_id, branch_id: req.branchId }, transaction: t });
       if (!debitAccount) throw new Error('Selected asset account not found');
     } else {
       const cashCode = isUttara ? '1000-U' : '1000';
       const bankCode = isUttara ? '1010-U' : '1010';
-      debitAccount = await Account.findOne({ where: { code: method === 'cash' ? cashCode : bankCode } });
+      debitAccount = await Account.findOne({ where: { code: method === 'cash' ? cashCode : bankCode, branch_id: req.branchId }, transaction: t });
       
       if (!debitAccount) {
         debitAccount = await Account.create({ code: method === 'cash' ? cashCode : bankCode, name: method === 'cash' ? (isUttara ? 'Cash in Hand - Uttara' : 'Cash in Hand') : (isUttara ? 'Cash at Bank - Uttara' : 'Cash at Bank'), type: 'asset', branch_id: req.branchId, balance: 0 }, { transaction: t });
@@ -172,7 +172,7 @@ exports.collectFee = async (req, res) => {
     }
 
     const revenueCode = isUttara ? '4000-U' : '4000';
-    let creditAccount = await Account.findOne({ where: { code: revenueCode } });
+    let creditAccount = await Account.findOne({ where: { code: revenueCode, branch_id: req.branchId }, transaction: t });
 
     if (!creditAccount) {
       creditAccount = await Account.create({ code: revenueCode, name: isUttara ? 'Tuition Revenue - Uttara' : 'Tuition Revenue', type: 'revenue', branch_id: req.branchId, balance: 0 }, { transaction: t });
@@ -296,7 +296,7 @@ exports.collectFee = async (req, res) => {
       }
 
       if (enrollment.batch_id) {
-        await Batch.increment('enrolled', { by: 1, where: { id: enrollment.batch_id }, transaction: t });
+        await Batch.increment('enrolled', { by: 1, where: { id: enrollment.batch_id, branch_id: req.branchId }, transaction: t });
       }
     } else if (crmInvoice && enrollment.student_id && !crmInvoice.student_id) {
       await crmInvoice.update({ student_id: enrollment.student_id }, { transaction: t });
@@ -370,7 +370,8 @@ exports.collectCustomIncome = async (req, res) => {
 
     if (!invoice_id) throw new Error('Invoice ID is required for custom income collection');
 
-    const invoice = await Invoice.findByPk(invoice_id, {
+    const invoice = await Invoice.findOne({
+      where: { id: invoice_id, branch_id: req.branchId },
       include: [{ model: IncomeCategory, required: false }, { model: Customer, required: false }],
       transaction: t
     });
@@ -386,12 +387,12 @@ exports.collectCustomIncome = async (req, res) => {
     let debitAccount = null;
 
     if (account_id) {
-      debitAccount = await Account.findByPk(account_id);
+      debitAccount = await Account.findOne({ where: { id: account_id, branch_id: req.branchId }, transaction: t });
       if (!debitAccount) throw new Error('Selected asset account not found');
     } else {
       const cashCode = isUttara ? '1000-U' : '1000';
       const bankCode = isUttara ? '1010-U' : '1010';
-      debitAccount = await Account.findOne({ where: { code: method === 'cash' ? cashCode : bankCode } });
+      debitAccount = await Account.findOne({ where: { code: method === 'cash' ? cashCode : bankCode, branch_id: req.branchId }, transaction: t });
       if (!debitAccount) {
         debitAccount = await Account.create({
           code: method === 'cash' ? cashCode : bankCode,
@@ -403,7 +404,7 @@ exports.collectCustomIncome = async (req, res) => {
 
     // 2. Resolve Credit Account (Revenue)
     const revenueCode = isUttara ? '4010-U' : '4010'; // 4010 is for Custom Income, 4000 is for Tuition
-    let creditAccount = await Account.findOne({ where: { code: revenueCode } });
+    let creditAccount = await Account.findOne({ where: { code: revenueCode, branch_id: req.branchId }, transaction: t });
     if (!creditAccount) {
       creditAccount = await Account.create({
         code: revenueCode, name: isUttara ? 'Custom Income Revenue - Uttara' : 'Custom Income Revenue',
@@ -491,8 +492,8 @@ exports.rejectPendingInvoice = async (req, res) => {
     const noteBlock = `[Fee Rejected ${new Date().toISOString()} by ${req.user?.name || `User ${req.user?.id || ''}`}] ${String(rejection_note).trim()} | Student: ${studentName}`;
     const nextNotes = invoice.notes ? `${invoice.notes}\n${noteBlock}` : noteBlock;
 
-    const enrollment = invoice.Enrollment || (invoice.enrollment_id ? await Enrollment.findByPk(invoice.enrollment_id, { transaction: t }) : null);
-    const student = invoice.Student || invoice.Enrollment?.Student || (invoice.student_id ? await Student.findByPk(invoice.student_id, { transaction: t }) : null);
+    const enrollment = invoice.Enrollment || (invoice.enrollment_id ? await Enrollment.findOne({ where: { id: invoice.enrollment_id, branch_id: req.branchId }, transaction: t }) : null);
+    const student = invoice.Student || invoice.Enrollment?.Student || (invoice.student_id ? await Student.findOne({ where: { id: invoice.student_id, branch_id: req.branchId }, transaction: t }) : null);
     const resolvedStudentId = student?.id || enrollment?.student_id || invoice.student_id || null;
 
     if (enrollment) {
@@ -504,7 +505,7 @@ exports.rejectPendingInvoice = async (req, res) => {
     }
 
     if (enrollment?.batch_id) {
-      const batch = await Batch.findByPk(enrollment.batch_id, { transaction: t });
+      const batch = await Batch.findOne({ where: { id: enrollment.batch_id, branch_id: req.branchId }, transaction: t });
       if (batch && Number(batch.enrolled || 0) > 0) {
         await batch.decrement('enrolled', { by: 1, transaction: t });
       }

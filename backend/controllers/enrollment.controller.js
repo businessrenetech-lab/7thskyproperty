@@ -6,6 +6,12 @@ const { injectBranchFilter } = require('../middleware/branch.middleware');
 exports.createEnrollment = async (req, res) => {
   try {
     const { student_id, batch_id, total_fee, discount } = req.body;
+    const [student, batch] = await Promise.all([
+      Student.findOne({ where: { id: student_id, branch_id: req.branchId } }),
+      Batch.findOne({ where: { id: batch_id, branch_id: req.branchId } })
+    ]);
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+    if (!batch) return res.status(404).json({ error: 'Batch not found' });
     
     const enrollment = await Enrollment.create({
       branch_id: req.branchId,

@@ -42,7 +42,7 @@ exports.recordExpense = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { account_id, amount, payment_method, notes, date } = req.body;
-    const expenseAccount = await Account.findByPk(account_id);
+    const expenseAccount = await Account.findOne({ where: { id: account_id, branch_id: req.branchId } });
     if (!expenseAccount || expenseAccount.type !== 'expense') throw new Error('Invalid expense account');
 
     const cashCode = '1000';

@@ -82,7 +82,8 @@ exports.updateAsset = async (req, res) => {
     });
     if (!asset) return res.status(404).json({ error: 'Asset not found' });
     
-    await asset.update(req.body);
+    const { branch_id, ...updateData } = req.body;
+    await asset.update(updateData);
     res.json(asset);
   } catch (error) {
     res.status(500).json({ error: error.message });

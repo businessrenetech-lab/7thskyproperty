@@ -210,7 +210,10 @@ exports.updateStaffProfile = async (req, res) => {
       employment_type, salary_mode, work_shift, pay_type, class_rate, hourly_rate, student_rate,
       festival_bonus, conveyance_fee, other_allowance, deduction, is_payroll_active
     } = req.body;
-    let profile = await StaffProfile.findOne({ where: { user_id } });
+    const staff = await User.findOne({ where: { id: user_id, branch_id: req.branchId, role: { [Op.not]: 'student' } } });
+    if (!staff) return res.status(404).json({ error: 'Staff not found.' });
+
+    let profile = await StaffProfile.findOne({ where: { user_id, branch_id: req.branchId } });
 
     if (profile) {
       await profile.update({ 
@@ -252,7 +255,7 @@ exports.updateStaffProfile = async (req, res) => {
       is_payroll_active: is_payroll_active !== false,
     };
 
-    const existingRule = await StaffPayRule.findOne({ where: { user_id } });
+    const existingRule = await StaffPayRule.findOne({ where: { user_id, branch_id: req.branchId } });
     if (existingRule) {
       await existingRule.update(payRulePayload);
     } else {
@@ -280,7 +283,7 @@ exports.updateStaffStatus = async (req, res) => {
     await staff.update({ status: userStatus });
 
     const [profile] = await StaffProfile.findOrCreate({
-      where: { user_id: staff.id },
+      where: { user_id: staff.id, branch_id: req.branchId },
       defaults: {
         user_id: staff.id,
         branch_id: req.branchId,
@@ -329,8 +332,8 @@ exports.getPayrollHistory = async (req, res) => {
     const enrichedPayrolls = await Promise.all(payrolls.map(async (payroll) => {
       const item = payroll.toJSON();
       const [payRule, expense, sessions, deductions, bonuses] = await Promise.all([
-        StaffPayRule.findOne({ where: { user_id: item.staff_id } }),
-        item.expense_id ? Expense.findByPk(item.expense_id) : Expense.findOne({ where: { payroll_id: item.id } }),
+        StaffPayRule.findOne({ where: { user_id: item.staff_id, branch_id: item.branch_id } }),
+        item.expense_id ? Expense.findOne({ where: { id: item.expense_id, branch_id: item.branch_id } }) : Expense.findOne({ where: { payroll_id: item.id, branch_id: item.branch_id } }),
         getApprovedSessions(item.staff_id, item.branch_id, month, year),
         PayrollDeduction.findAll({ where: { staff_id: item.staff_id, branch_id: item.branch_id, month: item.month, year: item.year } }),
         PayrollBonus.findAll({ where: { staff_id: item.staff_id, branch_id: item.branch_id, month: item.month, year: item.year } }),
@@ -382,6 +385,9 @@ exports.getDeductions = async (req, res) => {
 
 exports.createDeduction = async (req, res) => {
   try {
+    const staff = await User.findOne({ where: { id: req.body.staff_id, branch_id: req.branchId, role: { [Op.not]: 'student' } } });
+    if (!staff) return res.status(404).json({ error: 'Staff not found.' });
+
     const deduction = await PayrollDeduction.create({
       staff_id: req.body.staff_id,
       branch_id: req.branchId,
@@ -415,6 +421,7 @@ exports.updateDeduction = async (req, res) => {
     if (!deduction) return res.status(404).json({ error: 'Deduction not found.' });
 
     const nextData = { ...req.body };
+    delete nextData.branch_id;
     if (nextData.amount !== undefined) nextData.amount = money(nextData.amount);
     if (nextData.status === 'approved' && deduction.status !== 'approved') nextData.approved_by = req.user?.id;
     await deduction.update(nextData);
@@ -457,6 +464,9 @@ exports.getBonuses = async (req, res) => {
 
 exports.createBonus = async (req, res) => {
   try {
+    const staff = await User.findOne({ where: { id: req.body.staff_id, branch_id: req.branchId, role: { [Op.not]: 'student' } } });
+    if (!staff) return res.status(404).json({ error: 'Staff not found.' });
+
     const bonus = await PayrollBonus.create({
       staff_id: req.body.staff_id,
       branch_id: req.branchId,
@@ -490,6 +500,7 @@ exports.updateBonus = async (req, res) => {
     if (!bonus) return res.status(404).json({ error: 'Bonus not found.' });
 
     const nextData = { ...req.body };
+    delete nextData.branch_id;
     if (nextData.amount !== undefined) nextData.amount = money(nextData.amount);
     if (nextData.status === 'approved' && bonus.status !== 'approved') nextData.approved_by = req.user?.id;
     await bonus.update(nextData);
@@ -538,7 +549,10 @@ exports.getTeacherSessions = async (req, res) => {
 
 exports.createTeacherSession = async (req, res) => {
   try {
-    const payRule = req.body.teacher_id ? await StaffPayRule.findOne({ where: { user_id: req.body.teacher_id } }) : null;
+    const teacher = req.body.teacher_id ? await User.findOne({ where: { id: req.body.teacher_id, branch_id: req.branchId } }) : null;
+    if (req.body.teacher_id && !teacher) return res.status(404).json({ error: 'Teacher not found.' });
+
+    const payRule = req.body.teacher_id ? await StaffPayRule.findOne({ where: { user_id: req.body.teacher_id, branch_id: req.branchId } }) : null;
     const payBasis = req.body.pay_basis || (normalizeSalaryMode(payRule?.salary_mode || payRule?.pay_type) === 'hourly' ? 'per_hour' : 'per_class');
     const fallbackRate = payBasis === 'per_hour' ? payRule?.hourly_rate : payRule?.class_rate;
     const payload = {
@@ -565,6 +579,7 @@ exports.updateTeacherSession = async (req, res) => {
     if (!session) return res.status(404).json({ error: 'Teacher session not found.' });
 
     const nextData = { ...req.body };
+    delete nextData.branch_id;
     nextData.amount = calculateSessionAmount({ ...session.toJSON(), ...nextData });
     if (nextData.status === 'approved' && session.status !== 'approved') {
       nextData.approved_by = req.user.id;
@@ -688,10 +703,10 @@ exports.generateDraftPayroll = async (req, res) => {
       }
 
       if (deductionIds.length) {
-        await PayrollDeduction.update({ payroll_id: payroll.id }, { where: { id: { [Op.in]: deductionIds } } });
+        await PayrollDeduction.update({ payroll_id: payroll.id }, { where: { id: { [Op.in]: deductionIds }, branch_id: branchId } });
       }
       if (bonusIds.length) {
-        await PayrollBonus.update({ payroll_id: payroll.id }, { where: { id: { [Op.in]: bonusIds } } });
+        await PayrollBonus.update({ payroll_id: payroll.id }, { where: { id: { [Op.in]: bonusIds }, branch_id: branchId } });
       }
       writtenPayrolls.push(payroll);
     }
@@ -714,7 +729,8 @@ exports.processPayment = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const payroll = await Payroll.findByPk(id, {
+    const payroll = await Payroll.findOne({
+      where: { id, branch_id: req.branchId },
       include: [{ model: User, as: 'Staff' }]
     });
 
@@ -723,7 +739,7 @@ exports.processPayment = async (req, res) => {
     }
 
     if (payroll.expense_id) {
-      const existingExpense = await Expense.findByPk(payroll.expense_id);
+      const existingExpense = await Expense.findOne({ where: { id: payroll.expense_id, branch_id: req.branchId } });
       if (existingExpense && !['rejected', 'deleted'].includes(existingExpense.status)) {
         throw new Error('This payroll is already waiting for accounting action.');
       }

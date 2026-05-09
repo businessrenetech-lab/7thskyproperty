@@ -2,6 +2,7 @@ const Room = require('../models/Room');
 const RoomBooking = require('../models/RoomBooking');
 const Batch = require('../models/Batch');
 const { injectBranchFilter } = require('../middleware/branch.middleware');
+const { Op } = require('sequelize');
 
 exports.getRooms = async (req, res) => {
   try {
@@ -51,17 +52,25 @@ exports.bookRoom = async (req, res) => {
   try {
     const { room_id, batch_id, date, start_time, end_time } = req.body;
 
+    const [room, batch] = await Promise.all([
+      Room.findOne({ where: { id: room_id, branch_id: req.branchId } }),
+      Batch.findOne({ where: { id: batch_id, branch_id: req.branchId } })
+    ]);
+    if (!room) return res.status(404).json({ error: 'Room not found' });
+    if (!batch) return res.status(404).json({ error: 'Batch not found' });
+
     // Basic conflict check
     const conflict = await RoomBooking.findOne({
       where: {
+        branch_id: req.branchId,
         room_id,
         date,
-        [require('sequelize').Op.or]: [
+        [Op.or]: [
           {
-            start_time: { [require('sequelize').Op.between]: [start_time, end_time] }
+            start_time: { [Op.between]: [start_time, end_time] }
           },
           {
-            end_time: { [require('sequelize').Op.between]: [start_time, end_time] }
+            end_time: { [Op.between]: [start_time, end_time] }
           }
         ]
       }
