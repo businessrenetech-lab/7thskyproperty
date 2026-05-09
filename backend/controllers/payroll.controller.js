@@ -731,18 +731,26 @@ exports.processPayment = async (req, res) => {
 
     const payroll = await Payroll.findOne({
       where: { id, branch_id: req.branchId },
-      include: [{ model: User, as: 'Staff' }]
+      include: [{ model: User, as: 'Staff' }],
+      transaction: t,
+      lock: true
     });
 
     if (!payroll || ['paid', 'pending_accounting', 'pending_admin'].includes(payroll.status)) {
       throw new Error('Invalid payroll record or payroll request already submitted.');
     }
 
-    if (payroll.expense_id) {
-      const existingExpense = await Expense.findOne({ where: { id: payroll.expense_id, branch_id: req.branchId } });
-      if (existingExpense && !['rejected', 'deleted'].includes(existingExpense.status)) {
-        throw new Error('This payroll is already waiting for accounting action.');
-      }
+    const existingExpense = await Expense.findOne({
+      where: {
+        branch_id: req.branchId,
+        payroll_id: payroll.id,
+        status: { [Op.notIn]: ['rejected', 'deleted'] },
+      },
+      transaction: t,
+      lock: true,
+    });
+    if (existingExpense) {
+      throw new Error('This payroll is already waiting for accounting action.');
     }
 
     const expense = await Expense.create({
