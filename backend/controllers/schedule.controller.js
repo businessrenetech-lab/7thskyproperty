@@ -2,11 +2,10 @@ const RoomBooking = require('../models/RoomBooking');
 const Room = require('../models/Room');
 const Batch = require('../models/Batch');
 const Student = require('../models/Student');
-const { Op } = require('sequelize');
 
 exports.getSchedule = async (req, res) => {
   try {
-    const student = await Student.findOne({ where: { user_id: req.user.id } });
+    const student = await Student.findOne({ where: { user_id: req.user.id, branch_id: req.branchId } });
     if (!student) {
       return res.status(404).json({ error: 'Student profile not found.' });
     }
@@ -17,6 +16,7 @@ exports.getSchedule = async (req, res) => {
 
     const bookings = await RoomBooking.findAll({
       where: {
+        branch_id: req.branchId,
         batch_id: student.batch_id,
         // Optional: you can filter by date >= today
         // date: { [Op.gte]: new Date() }

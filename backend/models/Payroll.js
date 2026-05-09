@@ -71,6 +71,7 @@ const Payroll = sequelize.define('Payroll', {
 }, {
   tableName: 'payrolls',
   underscored: true,
+  indexes: [{ unique: true, fields: ['branch_id', 'staff_id', 'month', 'year'], name: 'ux_payrolls_branch_staff_month_year' }],
 });
 
 Payroll.belongsTo(User, { foreignKey: 'staff_id', as: 'Staff' });

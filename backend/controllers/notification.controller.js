@@ -1,4 +1,5 @@
 const Notification = require('../models/Notification');
+const User = require('../models/User');
 
 exports.getNotifications = async (req, res) => {
   try {
@@ -36,15 +37,21 @@ exports.markAsRead = async (req, res) => {
 exports.createNotification = async (req, res) => {
   try {
     const { user_id, title, message, type } = req.body;
+    const branchId = req.branchId;
     
     // Minimal validation
     if (!user_id || !title || !message) {
       return res.status(400).json({ error: 'user_id, title, and message are required' });
     }
 
+    const targetUser = await User.findOne({ where: { id: user_id, branch_id: branchId } });
+    if (!targetUser) {
+      return res.status(404).json({ error: 'Target user not found in this branch' });
+    }
+
     const notification = await Notification.create({
       user_id,
-      branch_id: req.branchId || null,
+      branch_id: branchId,
       title,
       message,
       type: type || 'info'

@@ -66,6 +66,7 @@ const ReconciliationSession = sequelize.define('ReconciliationSession', {
 }, {
   tableName: 'reconciliation_sessions',
   underscored: true,
+  indexes: [{ unique: true, fields: ['branch_id', 'recon_date'], name: 'ux_reconciliation_sessions_branch_date' }],
 });
 
 ReconciliationSession.belongsTo(Branch, { foreignKey: 'branch_id' });
