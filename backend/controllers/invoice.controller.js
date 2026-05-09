@@ -12,6 +12,7 @@ const JournalEntry = require('../models/JournalEntry');
 const JournalLine = require('../models/JournalLine');
 const sequelize = require('../config/db.config');
 const { Op, fn, col } = require('sequelize');
+const { createInvoiceWithGeneratedNo } = require('../utils/invoiceNumber');
 
 const requestError = (message, statusCode = 400) => {
   const error = new Error(message);
@@ -132,10 +133,8 @@ exports.createInvoice = async (req, res) => {
       savedCustomerId = newCustomer.id;
     }
 
-    const invCount = await Invoice.count({ where: { branch_id: req.branchId } });
-    const invoice = await Invoice.create({
+    const invoice = await createInvoiceWithGeneratedNo({
       branch_id: req.branchId,
-      invoice_no: `INV-${new Date().getFullYear()}-${String(invCount + 1).padStart(4, '0')}`,
       enrollment_id: enrollment_id || null,
       student_id: student_id || null,
       amount,

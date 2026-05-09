@@ -8,6 +8,7 @@ const Activity = require('../models/Activity');
 const bcrypt = require('bcryptjs');
 const sequelize = require('../config/db.config');
 const { Op } = require('sequelize');
+const { createInvoiceWithGeneratedNo } = require('../utils/invoiceNumber');
 const { sendPartnerAccessRequestEmail } = require('../services/communication.service');
 
 const getEffectiveBranchId = (req) => (
@@ -340,9 +341,8 @@ exports.createStudent = async (req, res) => {
           status: 'pending'
         }, { transaction: t });
 
-        invoice = await Invoice.create({
+        invoice = await createInvoiceWithGeneratedNo({
           branch_id: branchId,
-          invoice_no: `INV-${Date.now()}-${student.id}`,
           enrollment_id: enrollment.id,
           student_id: student.id,
           amount: course.base_fee,

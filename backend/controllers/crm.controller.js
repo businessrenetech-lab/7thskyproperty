@@ -18,6 +18,7 @@ const bcrypt = require('bcryptjs');
 const automationService = require('../services/automation.service');
 const communicationService = require('../services/communication.service');
 const fbCapi = require('../services/facebookCapi.service');
+const { createInvoiceWithGeneratedNo } = require('../utils/invoiceNumber');
 
 const normalizeEducationDetails = (value) => {
   if (Array.isArray(value)) return value;
@@ -509,11 +510,8 @@ exports.enrollLead = async (req, res) => {
     }
 
     // 2. Create pending invoice linked to enrollment
-    const invCount = await Invoice.count({ where: { branch_id: req.branchId } });
-    const invoiceNo = `CRM-INV-${req.branchId}-${String(invCount + 1).padStart(4, '0')}`;
-    const invoice = await Invoice.create({
+    const invoice = await createInvoiceWithGeneratedNo({
       branch_id: req.branchId,
-      invoice_no: invoiceNo,
       enrollment_id: enrollment.id,
       student_id: student.id,
       amount: course.base_fee,
@@ -521,7 +519,7 @@ exports.enrollLead = async (req, res) => {
       status: 'pending',
       due_date: new Date(Date.now() + 14 * 86400000),
       notes: `CRM Lead ID: ${lead.id} | CRM Lead: ${lead.name} — ${course.title}. Pending fee collection via POS.`,
-    }, { transaction: t });
+    }, { transaction: t }, { prefix: 'CRM-INV' });
 
     // 3. Create contact
     let contact = null;
@@ -565,7 +563,7 @@ exports.enrollLead = async (req, res) => {
     await t.commit();
 
     res.status(201).json({
-      message: `Student, enrollment, and invoice created for ${course.title}. Invoice ${invoiceNo} is ready for POS collection.`,
+      message: `Student, enrollment, and invoice created for ${course.title}. Invoice ${invoice.invoice_no} is ready for POS collection.`,
       student, enrollment, invoice, opportunity, contact,
       temporary_password: generatedPassword,
     });
@@ -596,17 +594,13 @@ exports.markSuccessful = async (req, res) => {
     const opp = await Opportunity.findOne({ where: { lead_id: lead.id, branch_id: req.branchId } });
     if (opp && opp.stage !== 'won') {
       // Create invoice
-      const count = await Invoice.count({ where: { branch_id: req.branchId } });
-      const invoiceNo = `CRM-INV-${req.branchId}-${String(count + 1).padStart(4, '0')}`;
-
-      const invoice = await Invoice.create({
+      const invoice = await createInvoiceWithGeneratedNo({
         branch_id: req.branchId,
-        invoice_no: invoiceNo,
         amount: opp.value, paid: opp.value,
         status: 'paid',
         due_date: new Date(),
         notes: `CRM Deal: ${opp.title} (fees collected)`,
-      }, { transaction: t });
+      }, { transaction: t }, { prefix: 'CRM-INV' });
 
       // Journal entry
       let arAccount = await Account.findOne({ where: { name: 'Accounts Receivable', branch_id: req.branchId } });
@@ -909,15 +903,12 @@ exports.winOpportunity = async (req, res) => {
     if (!opp) return res.status(404).json({ error: 'Opportunity not found' });
     if (opp.stage === 'won') return res.status(400).json({ error: 'Already marked as won' });
 
-    const count = await Invoice.count({ where: { branch_id: req.branchId } });
-    const invoiceNo = `CRM-INV-${req.branchId}-${String(count + 1).padStart(4, '0')}`;
-
-    const invoice = await Invoice.create({
-      branch_id: req.branchId, invoice_no: invoiceNo,
+    const invoice = await createInvoiceWithGeneratedNo({
+      branch_id: req.branchId,
       amount: opp.value, paid: 0, status: 'pending',
       due_date: new Date(Date.now() + 7 * 86400000),
       notes: `CRM Deal: ${opp.title}`,
-    }, { transaction: t });
+    }, { transaction: t }, { prefix: 'CRM-INV' });
 
     let arAccount = await Account.findOne({ where: { name: 'Accounts Receivable', branch_id: req.branchId } });
     let revenueAccount = await Account.findOne({ where: { type: 'revenue', branch_id: req.branchId } });

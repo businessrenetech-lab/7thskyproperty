@@ -13,6 +13,7 @@ const { v4: uuidv4 } = require('uuid');
 const fbCapi = require('../services/facebookCapi.service');
 const { sendEnrollmentConfirmationEmail } = require('../services/communication.service');
 const sequelize = require('../config/db.config');
+const { createInvoiceWithGeneratedNo } = require('../utils/invoiceNumber');
 
 const parsePaymentMethod = (lead) => {
   if (!lead.notes || !lead.notes.includes('Payment Method Initiated:')) return 'card_brac';
@@ -154,9 +155,8 @@ const paymentSuccess = async (req, res) => {
     }, { transaction: dbTransaction });
 
     // 6. Create Invoice
-    const invoice = await Invoice.create({
+    const invoice = await createInvoiceWithGeneratedNo({
       branch_id,
-      invoice_no: `INV-${Date.now()}`,
       enrollment_id: enrollment.id,
       student_id: student.id,
       amount: lead.deal_value,
