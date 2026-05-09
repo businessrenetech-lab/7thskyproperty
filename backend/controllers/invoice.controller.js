@@ -1,4 +1,5 @@
 const Invoice = require('../models/Invoice');
+const Branch = require('../models/Branch');
 const Student = require('../models/Student');
 const User = require('../models/User');
 const Enrollment = require('../models/Enrollment');
@@ -30,6 +31,7 @@ exports.getInvoices = async (req, res) => {
     const invoices = await Invoice.findAll({
       where,
       include: [
+        { model: Branch, attributes: ['id', 'name'] },
         { model: Student, include: [{ model: User, attributes: ['name', 'email'] }] },
         { model: Enrollment, include: [{ model: Batch, attributes: ['name'], include: [{ model: Course, attributes: ['title'] }] }] },
         { model: IncomeCategory, attributes: ['name'] },

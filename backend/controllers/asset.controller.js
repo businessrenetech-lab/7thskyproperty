@@ -1,9 +1,44 @@
 const Asset = require('../models/Asset');
 const { Op } = require('sequelize');
+const { ensureAssetSchema } = require('../utils/assetSchema');
+
+const OPTIONAL_STRING_FIELDS = ['asset_tag', 'category', 'serial_no', 'location', 'image_url', 'condition_notes', 'notes'];
+const OPTIONAL_DATE_FIELDS = ['purchase_date', 'warranty_expiry', 'last_maintained'];
+const NUMERIC_FIELDS = ['cost', 'book_value', 'depreciation_rate'];
+const EDITABLE_FIELDS = [
+  'asset_tag', 'name', 'type', 'category', 'serial_no', 'location', 'image_url',
+  'purchase_date', 'cost', 'book_value', 'depreciation_rate', 'warranty_expiry',
+  'status', 'condition_notes', 'last_maintained', 'notes'
+];
+
+const getBranchFilter = (req) => {
+  if (req.scopedBranchId === null) return {};
+  return { branch_id: req.scopedBranchId || req.branchId };
+};
+
+const sanitizeAssetPayload = (body) => {
+  const payload = {};
+  EDITABLE_FIELDS.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(body, field)) payload[field] = body[field];
+  });
+
+  [...OPTIONAL_STRING_FIELDS, ...OPTIONAL_DATE_FIELDS].forEach((field) => {
+    if (payload[field] === '') payload[field] = null;
+  });
+
+  NUMERIC_FIELDS.forEach((field) => {
+    if (payload[field] === '') payload[field] = null;
+  });
+
+  return payload;
+};
+
+const getAssetImageUrl = (req) => req.file ? `/uploads/assets/${req.file.filename}` : undefined;
 
 exports.getAssets = async (req, res) => {
   try {
-    const where = { branch_id: req.branchId };
+    await ensureAssetSchema();
+    const where = getBranchFilter(req);
     
     // Optional filters
     if (req.query.status) where.status = req.query.status;
@@ -28,7 +63,8 @@ exports.getAssets = async (req, res) => {
 
 exports.getAssetStats = async (req, res) => {
   try {
-    const where = { branch_id: req.branchId };
+    await ensureAssetSchema();
+    const where = getBranchFilter(req);
     const allAssets = await Asset.findAll({ where });
 
     const total = allAssets.length;
@@ -53,21 +89,27 @@ exports.getAssetStats = async (req, res) => {
 
 exports.createAsset = async (req, res) => {
   try {
+    await ensureAssetSchema();
+    const payload = sanitizeAssetPayload(req.body);
+    const imageUrl = getAssetImageUrl(req);
+    const branchId = req.scopedBranchId || req.branchId;
+
     // Auto-generate asset_tag if not provided
-    let assetTag = req.body.asset_tag;
+    let assetTag = payload.asset_tag;
     if (!assetTag) {
-      const count = await Asset.count({ where: { branch_id: req.branchId } });
+      const count = await Asset.count({ where: { branch_id: branchId } });
       assetTag = `AST-${String(count + 1).padStart(3, '0')}`;
     }
 
     // Calculate initial book_value if not provided
-    const bookValue = req.body.book_value || req.body.cost || 0;
+    const bookValue = payload.book_value ?? payload.cost ?? 0;
 
     const asset = await Asset.create({
-      ...req.body,
+      ...payload,
       asset_tag: assetTag,
+      ...(imageUrl ? { image_url: imageUrl } : {}),
       book_value: bookValue,
-      branch_id: req.branchId
+      branch_id: branchId
     });
     res.status(201).json(asset);
   } catch (error) {
@@ -77,12 +119,15 @@ exports.createAsset = async (req, res) => {
 
 exports.updateAsset = async (req, res) => {
   try {
-    const asset = await Asset.findOne({ 
-      where: { id: req.params.id, branch_id: req.branchId } 
+    await ensureAssetSchema();
+    const asset = await Asset.findOne({
+      where: { id: req.params.id, ...getBranchFilter(req) }
     });
     if (!asset) return res.status(404).json({ error: 'Asset not found' });
     
-    const { branch_id, ...updateData } = req.body;
+    const { branch_id, ...updateData } = sanitizeAssetPayload(req.body);
+    const imageUrl = getAssetImageUrl(req);
+    if (imageUrl) updateData.image_url = imageUrl;
     await asset.update(updateData);
     res.json(asset);
   } catch (error) {
@@ -92,8 +137,9 @@ exports.updateAsset = async (req, res) => {
 
 exports.deleteAsset = async (req, res) => {
   try {
-    const asset = await Asset.findOne({ 
-      where: { id: req.params.id, branch_id: req.branchId } 
+    await ensureAssetSchema();
+    const asset = await Asset.findOne({
+      where: { id: req.params.id, ...getBranchFilter(req) }
     });
     if (!asset) return res.status(404).json({ error: 'Asset not found' });
     

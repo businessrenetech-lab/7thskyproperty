@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import PayrollView from './PayrollView';
+import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
 import { useToast } from '../context/ToastContext';
@@ -17,6 +18,7 @@ const parseEntryLines = (value) => String(value || '')
 
 const Payroll = () => {
   const toast = useToast();
+  const { user } = useAuth();
   const [staff, setStaff] = useState([]);
   const [payrollHistory, setPayrollHistory] = useState([]);
   const [liquidAccounts, setLiquidAccounts] = useState([]);
@@ -189,6 +191,17 @@ const Payroll = () => {
     }
   };
 
+  const handleReopenPayroll = async () => {
+    if (!window.confirm("Are you sure you want to reopen this month's payroll? All pending salary requests will be reverted to draft.")) return;
+    try {
+      const res = await api.post('/payroll/reopen', { month, year });
+      fetchData();
+      toast.success(res.data?.message || 'Payroll reopened successfully');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to reopen payroll');
+    }
+  };
+
   const openStatusModal = (member) => {
     const sp = member.StaffProfile || {};
     setStatusTarget(member);
@@ -266,14 +279,18 @@ const Payroll = () => {
   const handleCreateTeacherSession = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/payroll/teacher-sessions', sessionForm);
+      const res = await api.post('/payroll/teacher-sessions', sessionForm);
       setSessionForm({
         teacher_id: '', session_date: new Date().toISOString().split('T')[0],
         pay_basis: 'per_class', session_type: 'regular', duration_hours: '1',
         student_count: '0', rate: '', amount: '', notes: '', status: 'approved'
       });
       fetchData();
-      toast.success('Teacher session added to payroll sheet');
+      if (res.data?.payrollWarning) {
+        toast.warning(res.data.payrollWarning);
+      } else {
+        toast.success('Teacher session added to payroll sheet');
+      }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to add teacher session');
     }
@@ -354,6 +371,8 @@ const Payroll = () => {
         handleDeleteDeduction={handleDeleteDeduction}
         handleCreateBonus={handleCreateBonus}
         handleDeleteBonus={handleDeleteBonus}
+        handleReopenPayroll={handleReopenPayroll}
+        isSuperAdmin={user?.role === 'super_admin'}
       />
 
       {/* Salary Profile Modal */}

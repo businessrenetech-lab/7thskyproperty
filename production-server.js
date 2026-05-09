@@ -85,7 +85,7 @@ log(`  website dir exists: ${fs.existsSync(websiteDir)}`);
 log(`  .next dir exists: ${fs.existsSync(nextDir)}`);
 log(`  .next/BUILD_ID exists: ${fs.existsSync(path.join(nextDir, 'BUILD_ID'))}`);
 try {
-  next = require('next');
+  next = require(path.join(websiteDir, 'node_modules', 'next'));
   nextApp = next({
     dev: false,
     dir: websiteDir,

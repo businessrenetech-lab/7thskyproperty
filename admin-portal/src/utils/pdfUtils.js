@@ -58,15 +58,88 @@ export const buildPdfHeaderHtml = async (reportTitle, periodText) => {
   const info = getInstitutionInfo();
   const logo = await getLogoBase64();
   return `
-    <div style="text-align:center; margin-bottom:24px; padding-bottom:18px; border-bottom:3px solid #275fa7;">
-      ${logo ? `<img src="${logo}" style="height:60px; margin-bottom:8px;" />` : ''}
-      <div style="font-size:20px; font-weight:700; color:#275fa7; margin-bottom:2px; font-family:'Outfit',sans-serif;">${info.name}</div>
-      <div style="font-size:11px; color:#64748b;">${info.address}</div>
-      <div style="font-size:11px; color:#64748b;">Phone: ${info.phone} | Email: ${info.email}</div>
-      <div style="font-size:11px; color:#64748b;">Web: ${info.website}</div>
-      ${reportTitle ? `<div style="font-size:16px; font-weight:600; color:#0f172a; margin-top:14px;">${reportTitle}</div>` : ''}
-      ${periodText ? `<div style="font-size:12px; color:#64748b; margin-top:4px;">${periodText}</div>` : ''}
+    <div style="margin-bottom:0; padding:0;">
+      <!-- Top Accent Bar -->
+      <div style="height:5px; background:linear-gradient(90deg, #275fa7, #7bc62e); border-radius:3px 3px 0 0;"></div>
+      
+      <!-- Header Row -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 24px 14px; background:#fafbfc; border-bottom:1px solid #e2e8f0;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          ${logo ? `<img src="${logo}" style="height:44px;" />` : ''}
+          <div>
+            <div style="font-size:17px; font-weight:800; color:#275fa7; letter-spacing:0.5px; font-family:'Outfit','Inter',sans-serif;">LANGUAGE ACADEMY</div>
+            <div style="font-size:9px; color:#64748b; margin-top:2px;">${info.address}</div>
+            <div style="font-size:9px; color:#64748b;">Phone: ${info.phone} | ${info.email} | ${info.website}</div>
+          </div>
+        </div>
+        ${reportTitle ? `
+        <div style="text-align:right;">
+          <div style="font-size:15px; font-weight:700; color:#275fa7; border:2px solid #275fa7; padding:5px 18px; border-radius:6px; letter-spacing:1px; text-transform:uppercase;">${reportTitle}</div>
+          ${periodText ? `<div style="font-size:10px; color:#64748b; margin-top:6px;">${periodText}</div>` : ''}
+        </div>
+        ` : ''}
+      </div>
     </div>
+  `;
+};
+
+// ── Build a branded report table HTML for PDF export ──
+export const buildReportTableHtml = (columns, rows, formatCell, reportTitle, periodText) => {
+  const money = (v) => `BDT ${Number(v || 0).toLocaleString()}`;
+  const dateF = (v) => (v ? new Date(v).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-');
+  const sumKeys = ['amount', 'due', 'debit', 'credit', 'balance'];
+
+  const defaultFormat = (key, val) => {
+    if (['amount', 'due', 'debit', 'credit', 'balance'].includes(key)) return money(val);
+    if (['date', 'due_date', 'start_date', 'expiry_date', 'enrollment_date'].includes(key)) return dateF(val);
+    return val || '-';
+  };
+  const fmt = formatCell || defaultFormat;
+
+  // Calculate totals
+  const totals = {};
+  columns.forEach((key) => {
+    if (sumKeys.includes(key)) {
+      totals[key] = rows.reduce((sum, row) => sum + Number(row[key] || 0), 0);
+    }
+  });
+  const hasTotals = rows.length > 0 && Object.keys(totals).length > 0;
+
+  const thStyle = `padding:10px 12px; font-size:10px; font-weight:700; color:#fff; text-align:left; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #1e4d8a; white-space:nowrap;`;
+  const thStyleRight = `padding:10px 12px; font-size:10px; font-weight:700; color:#fff; text-align:right; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #1e4d8a; white-space:nowrap;`;
+  
+  const headerCells = columns.map(key => {
+    const align = sumKeys.includes(key) ? thStyleRight : thStyle;
+    return `<th style="${align}">${key.replace(/_/g, ' ')}</th>`;
+  }).join('');
+
+  const bodyRows = rows.map((row, i) => {
+    const bg = i % 2 === 0 ? '#ffffff' : '#f8fafc';
+    const cells = columns.map(key => {
+      const isNum = sumKeys.includes(key);
+      return `<td style="padding:9px 12px; font-size:11px; color:#334155; border-bottom:1px solid #eef2f6; ${isNum ? 'text-align:right; font-weight:600; font-variant-numeric:tabular-nums;' : ''} white-space:nowrap;">${fmt(key, row[key])}</td>`;
+    }).join('');
+    return `<tr style="background:${bg};">${cells}</tr>`;
+  }).join('');
+
+  let footerRow = '';
+  if (hasTotals) {
+    const footCells = columns.map((key, i) => {
+      if (i === 0) return `<td style="padding:10px 12px; font-size:12px; font-weight:800; color:#1e293b; border-top:2px solid #275fa7; background:#f0f7ff;">Total (${rows.length} records)</td>`;
+      if (sumKeys.includes(key)) return `<td style="padding:10px 12px; font-size:12px; font-weight:800; color:#275fa7; text-align:right; border-top:2px solid #275fa7; background:#f0f7ff; font-variant-numeric:tabular-nums;">${money(totals[key])}</td>`;
+      return `<td style="padding:10px 12px; border-top:2px solid #275fa7; background:#f0f7ff;"></td>`;
+    }).join('');
+    footerRow = `<tr>${footCells}</tr>`;
+  }
+
+  return `
+    <table style="width:100%; border-collapse:collapse; margin-top:0; border:1px solid #e2e8f0; border-radius:6px;">
+      <thead>
+        <tr style="background:linear-gradient(135deg, #275fa7 0%, #1e4d8a 100%);">${headerCells}</tr>
+      </thead>
+      <tbody>${bodyRows}</tbody>
+      ${footerRow ? `<tfoot>${footerRow}</tfoot>` : ''}
+    </table>
   `;
 };
 
@@ -108,7 +181,7 @@ export const generateReceiptHtml = async (tx) => {
   const receiptNo = tx.receipt_no || `RCP-${tx.id}-${Date.now().toString().slice(-4)}`;
   const paidAt = tx.paid_at ? new Date(tx.paid_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
   const method = (tx.method || 'cash').toUpperCase();
-  const branch = tx.branch_name || 'Dhanmondi';
+  const branch = tx.Branch?.name || tx.branch_name || 'Head Office';
 
   // Detect if this is a custom income or enrollment receipt
   const isCustom = tx.source === 'manual' || (!tx.enrollment_id && tx.invoice_id) || tx.Invoice?.invoice_type === 'custom';
@@ -389,7 +462,7 @@ export const generateVoucherHtml = async (expense) => {
   const amountWords = numberToWords(Math.floor(amount));
   const voucherNo = `VCH-${expense.id}-${Date.now().toString().slice(-4)}`;
   const expDate = expense.date ? new Date(expense.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  const branch = expense.branch_name || 'Dhanmondi';
+  const branch = expense.Branch?.name || expense.branch_name || 'Head Office';
   const payee = expense.category || 'Office Expense';
   const method = (expense.payment_method || 'cash').replace(/_/g, ' ').toUpperCase();
   const reason = expense.description || 'Office Expense';
@@ -495,69 +568,77 @@ export const downloadVoucherPdf = async (expense) => {
 
 export const downloadExpenseListPdf = async (expenses, dateRange) => {
   const info = getInstitutionInfo();
-  const logo = await getLogoBase64();
   const periodText = dateRange?.from && dateRange?.to
     ? `Period: ${dateRange.from} to ${dateRange.to}`
     : `Generated: ${new Date().toLocaleDateString('en-GB', { dateStyle: 'medium' })}`;
 
   const header = await buildPdfHeaderHtml('Expense Report', periodText);
-
   const totalAmount = expenses.reduce((s, e) => s + (e.status === 'deleted' ? 0 : parseFloat(e.amount || 0)), 0);
+
+  const thStyle = `padding:10px 12px; font-size:10px; font-weight:700; color:#fff; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #1e4d8a; white-space:nowrap;`;
 
   const tableRows = expenses.map((e, i) => {
     const isDeleted = e.status === 'deleted';
     const dec = isDeleted ? 'line-through' : 'none';
-    const col = isDeleted ? '#94a3b8' : '#1e293b';
-    const amtCol = isDeleted ? '#94a3b8' : '#1e293b';
+    const col = isDeleted ? '#94a3b8' : '#334155';
+    const bg = i % 2 === 0 ? '#ffffff' : '#f8fafc';
     
     return `
-    <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8fafc'}; color:${col};">
-      <td style="padding:8px 10px; border:1px solid #e2e8f0; font-size:11px;">${e.date ? new Date(e.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '-'}</td>
-      <td style="padding:8px 10px; border:1px solid #e2e8f0; font-size:11px;">
+    <tr style="background:${bg};">
+      <td style="padding:9px 12px; border-bottom:1px solid #eef2f6; font-size:11px; color:${col}; white-space:nowrap;">${e.date ? new Date(e.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}</td>
+      <td style="padding:9px 12px; border-bottom:1px solid #eef2f6; font-size:11px; color:${col};">
         <span style="text-decoration:${dec}">${e.description || '-'}</span>
-        ${isDeleted ? `<div style="font-size:9px; color:#ef4444; margin-top:2px;">Reason: ${e.deletion_reason || 'N/A'}</div>` : ''}
+        ${isDeleted ? `<div style="font-size:9px; color:#ef4444; margin-top:2px;">Reversed: ${e.deletion_reason || 'N/A'}</div>` : ''}
       </td>
-      <td style="padding:8px 10px; border:1px solid #e2e8f0; font-size:11px;">${e.category || '-'}</td>
-      <td style="padding:8px 10px; border:1px solid #e2e8f0; font-size:11px; text-align:right; font-weight:600; text-decoration:${dec}; color:${amtCol};">৳${parseFloat(e.amount).toLocaleString()}</td>
-      <td style="padding:8px 10px; border:1px solid #e2e8f0; font-size:11px;">${(e.payment_method || '').replace(/_/g, ' ')}</td>
-      <td style="padding:8px 10px; border:1px solid #e2e8f0; font-size:11px; text-transform:uppercase;">${isDeleted ? 'REVERSED' : e.status}</td>
-    </tr>
-  `}).join('');
+      <td style="padding:9px 12px; border-bottom:1px solid #eef2f6; font-size:11px; color:${col};">${e.category || '-'}</td>
+      <td style="padding:9px 12px; border-bottom:1px solid #eef2f6; font-size:11px; text-align:right; font-weight:600; text-decoration:${dec}; color:${col}; font-variant-numeric:tabular-nums;">৳${parseFloat(e.amount).toLocaleString()}</td>
+      <td style="padding:9px 12px; border-bottom:1px solid #eef2f6; font-size:11px; color:${col}; text-transform:capitalize;">${(e.payment_method || '').replace(/_/g, ' ')}</td>
+      <td style="padding:9px 12px; border-bottom:1px solid #eef2f6; font-size:11px; color:${isDeleted ? '#ef4444' : '#10b981'}; font-weight:600; text-transform:uppercase;">${isDeleted ? 'REVERSED' : e.status}</td>
+    </tr>`;
+  }).join('');
 
   const html = `
-    <div style="font-family:'Inter','Segoe UI',sans-serif; padding:20px; background:#fff; color:#1e293b;">
+    <div style="font-family:'Inter','Segoe UI',sans-serif; background:#fff; color:#1e293b; padding:0;">
       ${header}
-      <table style="width:100%; border-collapse:collapse; margin-top:16px;">
-        <thead>
-          <tr style="background:#275fa7;">
-            <th style="padding:10px; border:1px solid #1e4d8a; font-size:10px; font-weight:700; color:#fff; text-align:left; text-transform:uppercase; letter-spacing:0.5px;">Date</th>
-            <th style="padding:10px; border:1px solid #1e4d8a; font-size:10px; font-weight:700; color:#fff; text-align:left; text-transform:uppercase; letter-spacing:0.5px;">Description</th>
-            <th style="padding:10px; border:1px solid #1e4d8a; font-size:10px; font-weight:700; color:#fff; text-align:left; text-transform:uppercase; letter-spacing:0.5px;">Category</th>
-            <th style="padding:10px; border:1px solid #1e4d8a; font-size:10px; font-weight:700; color:#fff; text-align:right; text-transform:uppercase; letter-spacing:0.5px;">Amount</th>
-            <th style="padding:10px; border:1px solid #1e4d8a; font-size:10px; font-weight:700; color:#fff; text-align:left; text-transform:uppercase; letter-spacing:0.5px;">Method</th>
-            <th style="padding:10px; border:1px solid #1e4d8a; font-size:10px; font-weight:700; color:#fff; text-align:left; text-transform:uppercase; letter-spacing:0.5px;">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${tableRows}
-          <tr style="background:#f0f9ff; font-weight:700;">
-            <td colspan="3" style="padding:10px; border:1px solid #e2e8f0; font-size:12px; text-align:right;">TOTAL</td>
-            <td style="padding:10px; border:1px solid #e2e8f0; font-size:14px; text-align:right; color:#275fa7;">৳${totalAmount.toLocaleString()}</td>
-            <td colspan="2" style="border:1px solid #e2e8f0;"></td>
-          </tr>
-        </tbody>
-      </table>
-      <div style="margin-top:32px; text-align:center; font-size:10px; color:#94a3b8; border-top:1px solid #e2e8f0; padding-top:8px;">
-        Generated on ${new Date().toLocaleString()} | ${info.name} Finance System
+      <div style="padding:18px 24px 24px;">
+        <table style="width:100%; border-collapse:collapse; border:1px solid #e2e8f0;">
+          <thead>
+            <tr style="background:linear-gradient(135deg, #275fa7 0%, #1e4d8a 100%);">
+              <th style="${thStyle} text-align:left;">Date</th>
+              <th style="${thStyle} text-align:left;">Description</th>
+              <th style="${thStyle} text-align:left;">Category</th>
+              <th style="${thStyle} text-align:right;">Amount</th>
+              <th style="${thStyle} text-align:left;">Method</th>
+              <th style="${thStyle} text-align:left;">Status</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" style="padding:10px 12px; font-size:12px; font-weight:800; color:#1e293b; text-align:right; border-top:2px solid #275fa7; background:#f0f7ff;">Total (${expenses.filter(e => e.status !== 'deleted').length} active records)</td>
+              <td style="padding:10px 12px; font-size:13px; font-weight:800; color:#275fa7; text-align:right; border-top:2px solid #275fa7; background:#f0f7ff; font-variant-numeric:tabular-nums;">৳${totalAmount.toLocaleString()}</td>
+              <td colspan="2" style="border-top:2px solid #275fa7; background:#f0f7ff;"></td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <!-- Footer -->
+        <div style="margin-top:28px; padding-top:10px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-size:9px; color:#94a3b8;">Generated on ${new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</div>
+          <div style="font-size:9px; color:#94a3b8;">${info.name} Finance System · ${info.website}</div>
+        </div>
       </div>
+      <!-- Bottom Accent Bar -->
+      <div style="height:4px; background:linear-gradient(90deg, #7bc62e, #275fa7); border-radius:0 0 3px 3px;"></div>
     </div>
   `;
 
   const container = document.createElement('div');
   container.innerHTML = html;
+  container.style.background = 'white';
 
   const opt = {
-    margin: [10, 10, 10, 10],
+    margin: [8, 8, 8, 8],
     filename: `Expense-Report-${new Date().toISOString().split('T')[0]}.pdf`,
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },

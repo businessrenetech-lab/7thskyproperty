@@ -5,6 +5,11 @@ import Modal from '../components/Modal';
 import '../styles/GlobalStyles.css';
 import { useToast } from '../context/ToastContext';
 
+const formatDateLocal = (dateObj) => {
+  const d = new Date(dateObj);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+};
+
 const Journal = () => {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
@@ -20,7 +25,7 @@ const Journal = () => {
   // Modal State
   const [showEntryModal, setShowEntryModal] = useState(false);
   const [newEntry, setNewEntry] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: formatDateLocal(new Date()),
     ref_no: '',
     description: '',
     lines: [
@@ -47,19 +52,18 @@ const Journal = () => {
       const params = { search, type: typeFilter, account_id: accountFilter };
       
       const today = new Date();
+      const todayLocal = formatDateLocal(today);
       if (datePreset === 'daily') {
-        params.from = today.toISOString().split('T')[0];
-        params.to = today.toISOString().split('T')[0];
+        params.from = todayLocal;
+        params.to = todayLocal;
       } else if (datePreset === 'weekly') {
         const lastWeek = new Date(today);
-        lastWeek.setDate(today.getDate() - 7);
-        params.from = lastWeek.toISOString().split('T')[0];
-        params.to = today.toISOString().split('T')[0];
+        lastWeek.setDate(today.getDate() - 6);
+        params.from = formatDateLocal(lastWeek);
+        params.to = todayLocal;
       } else if (datePreset === 'monthly') {
-        const lastMonth = new Date(today);
-        lastMonth.setMonth(today.getMonth() - 1);
-        params.from = lastMonth.toISOString().split('T')[0];
-        params.to = today.toISOString().split('T')[0];
+        params.from = formatDateLocal(new Date(today.getFullYear(), today.getMonth(), 1));
+        params.to = todayLocal;
       } else if (datePreset === 'custom') {
         if (dateFrom) params.from = dateFrom;
         if (dateTo) params.to = dateTo;
@@ -107,7 +111,7 @@ const Journal = () => {
       await api.post('/accounting/journal-entries', newEntry);
       setShowEntryModal(false);
       setNewEntry({
-        date: new Date().toISOString().split('T')[0],
+        date: formatDateLocal(new Date()),
         ref_no: '', description: '',
         lines: [{ account_id: '', debit: '', credit: '', notes: '' }, { account_id: '', debit: '', credit: '', notes: '' }]
       });

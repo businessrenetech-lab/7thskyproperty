@@ -38,6 +38,15 @@ const POSFees = () => {
     return acc.sub_type === 'card' ? 'card' : 'cash';
   };
 
+  const getPreferredAccountForMethod = (method) => {
+    if (method === 'bkash') {
+      return liquidAccounts.find(acc => (acc.name || '').toLowerCase().includes('bkash'))
+        || liquidAccounts.find(acc => acc.sub_type === 'mfs')
+        || liquidAccounts[0];
+    }
+    return liquidAccounts[0];
+  };
+
   const getInvoiceStudentName = (invoice) => {
     if (invoice?.invoice_type === 'custom') {
       return invoice?.customer_name ? `${invoice.customer_name} (Customer)` : 'Custom Invoice';
@@ -188,15 +197,33 @@ const POSFees = () => {
                         <tr key={inv.id}>
                           <td className="td-mono">{inv.invoice_no}</td>
                           <td className="td-name">{getInvoiceStudentName(inv)}</td>
-                          <td style={{ fontSize: '11px', color: 'var(--text-dim)' }}>{inv.invoice_type === 'custom' ? (inv.IncomeCategory?.name || 'Manual Invoice') : (inv.Enrollment?.Batch?.Course?.title || 'Tuition Fee')}{inv.invoice_type === 'custom' ? <span className="sb2" style={{ marginLeft: 6, fontSize: 9, background: 'rgba(6,182,212,0.1)', color: '#06b6d4', borderColor: 'rgba(6,182,212,0.3)' }}>Custom</span> : ''}</td>
+                          <td style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                            <div>{inv.invoice_type === 'custom' ? (inv.IncomeCategory?.name || 'Manual Invoice') : (inv.Enrollment?.Batch?.Course?.title || 'Tuition Fee')}{inv.invoice_type === 'custom' ? <span className="sb2" style={{ marginLeft: 6, fontSize: 9, background: 'rgba(6,182,212,0.1)', color: '#06b6d4', borderColor: 'rgba(6,182,212,0.3)' }}>Custom</span> : ''}</div>
+                            {inv.website_payment?.method === 'bkash_manual' && (
+                              <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                <span className="sb2" style={{ width: 'fit-content', background: '#e2136e15', color: '#e2136e', borderColor: '#e2136e30' }}>bKash submitted</span>
+                                <span><strong>bKash No:</strong> {inv.website_payment.bkash_number || 'N/A'}</span>
+                                <span><strong>TrxID:</strong> {inv.website_payment.bkash_transaction_id || 'N/A'}</span>
+                              </div>
+                            )}
+                          </td>
                           <td style={{ fontWeight: 700, color: '#275fa7' }}>৳{due.toLocaleString()}</td>
                           <td><span className="sb2 sb2-amber" style={{ background: 'rgba(39,95,167,0.1)', color: '#275fa7', borderColor: 'rgba(39,95,167,0.3)' }}>{inv.status}</span></td>
                           <td>
                             <div style={{ display: 'flex', gap: '4px' }}>
                               <button onClick={() => {
                                 const referral = getInvoiceReferralInfo(inv);
+                                const isBkashSubmitted = inv.website_payment?.method === 'bkash_manual';
+                                const preferredAccount = isBkashSubmitted ? getPreferredAccountForMethod('bkash') : getPreferredAccountForMethod();
                                 setSelectedInvoice(inv);
-                                setPaymentData((prev) => ({ ...prev, amount: due, referral_amount: referral.amount }));
+                                setPaymentData((prev) => ({
+                                  ...prev,
+                                  amount: due,
+                                  account_id: preferredAccount?.id || prev.account_id,
+                                  method: isBkashSubmitted ? 'bkash' : mapAccountToMethod(preferredAccount),
+                                  transaction_ref: isBkashSubmitted ? (inv.website_payment?.bkash_transaction_id || '') : prev.transaction_ref,
+                                  referral_amount: referral.amount
+                                }));
                                 setShowCollectModal(true);
                               }} className="btn-stitch" style={{ padding: '4px 10px', fontSize: '11px', background: '#7bc62e' }}>Collect</button>
                               <button onClick={() => { setSelectedInvoice(inv); setRejectNote(''); setShowRejectModal(true); }} className="btn-ghost" style={{ padding: '4px 10px', fontSize: '11px', borderColor: 'rgba(71,85,105,0.3)', color: '#475569' }}>Reject</button>
@@ -275,6 +302,14 @@ const POSFees = () => {
             <p style={{ margin: 0, fontSize: '13px' }}>{selectedInvoice?.invoice_type === 'custom' ? 'Customer' : 'Student'}: <strong>{getInvoiceStudentName(selectedInvoice)}</strong></p>
             <p style={{ margin: '6px 0 0 0', fontSize: '13px' }}>Invoice: {selectedInvoice?.invoice_no} {selectedInvoice?.invoice_type === 'custom' && <span style={{ color: '#06b6d4', fontSize: '11px' }}>(Custom Income)</span>}</p>
             <p style={{ margin: '6px 0 0 0', fontSize: '13px' }}>Due: <strong style={{color: '#FFB347'}}>৳{parseFloat(selectedInvoice?.amount) - parseFloat(selectedInvoice?.paid)}</strong></p>
+            {selectedInvoice?.website_payment?.method === 'bkash_manual' && (
+              <div style={{ marginTop: '10px', padding: '10px', borderRadius: '8px', background: '#e2136e12', border: '1px solid #e2136e30', color: '#e2136e', fontSize: '12px' }}>
+                <div style={{ fontWeight: 800, marginBottom: 4 }}>Student submitted bKash payment</div>
+                <div>Student bKash Number: <strong>{selectedInvoice.website_payment.bkash_number || 'N/A'}</strong></div>
+                <div>Transaction ID: <strong>{selectedInvoice.website_payment.bkash_transaction_id || 'N/A'}</strong></div>
+                <div>Merchant Number: <strong>{selectedInvoice.website_payment.merchant_no || 'N/A'}</strong></div>
+              </div>
+            )}
             {selectedInvoice?.invoice_type !== 'custom' && selectedInvoice?.enrollment_id && selectedReferral.amount > 0 && (
               <>
                 <p style={{ margin: '6px 0 0 0', fontSize: '13px' }}>Referrer: <strong style={{ color: '#f59e0b' }}>{selectedReferral.referredBy || 'Not set'}</strong></p>
@@ -312,7 +347,7 @@ const POSFees = () => {
           </div>
 
           <div className="fgroup" style={{ gridColumn: 'span 2' }}>
-            <label className="flabel">Transaction Ref (if Online/Card/Bank)</label>
+            <label className="flabel">Transaction Ref / bKash TrxID</label>
             <input className="glass-input" value={paymentData.transaction_ref} onChange={e => setPaymentData({...paymentData, transaction_ref: e.target.value})} placeholder="TrxID / Cheque No" />
           </div>
 

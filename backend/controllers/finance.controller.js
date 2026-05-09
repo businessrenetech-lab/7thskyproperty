@@ -17,16 +17,19 @@ const PREMIUM_PLAN_PRICE = 2500;
 
 const getBranchId = (req) => req.scopedBranchId || req.branchId;
 
-const createDateRangeFilter = (from, to) => {
+const isDateOnlyValue = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+const createDateTimeRangeFilter = (from, to) => {
+  const dateFilter = {};
+  if (from) dateFilter[Op.gte] = isDateOnlyValue(from) ? `${from} 00:00:00` : from;
+  if (to) dateFilter[Op.lte] = isDateOnlyValue(to) ? `${to} 23:59:59` : to;
+  return (from || to) ? dateFilter : null;
+};
+
+const createDateOnlyRangeFilter = (from, to) => {
   const dateFilter = {};
   if (from) dateFilter[Op.gte] = from;
-  if (to) {
-    let toVal = to;
-    if (typeof toVal === 'string' && toVal.length === 10) {
-      toVal = `${toVal} 23:59:59`;
-    }
-    dateFilter[Op.lte] = toVal;
-  }
+  if (to) dateFilter[Op.lte] = to;
   return (from || to) ? dateFilter : null;
 };
 
@@ -128,10 +131,8 @@ exports.getProfitLoss = async (req, res) => {
     const { from, to } = req.query;
     const branchId = getBranchId(req);
     const branchFilter = branchId ? { branch_id: branchId } : {};
-    const dateFilter = {};
-    if (from) dateFilter[Op.gte] = from;
-    if (to) dateFilter[Op.lte] = to;
-    const entryWhere = Object.keys(dateFilter).length ? { ...branchFilter, date: dateFilter } : branchFilter;
+    const dateFilter = createDateOnlyRangeFilter(from, to);
+    const entryWhere = dateFilter ? { ...branchFilter, date: dateFilter } : branchFilter;
 
     const revenueAccounts = await Account.findAll({ where: { ...branchFilter, type: 'revenue' }, attributes: ['id', 'name', 'code'] });
     const expenseAccounts = await Account.findAll({ where: { ...branchFilter, type: 'expense' }, attributes: ['id', 'name', 'code'] });
@@ -202,8 +203,10 @@ exports.getCashFlow = async (req, res) => {
     const { from, to } = req.query;
     const txWhere = { branch_id: branchId, status: 'success' };
     const expWhere = { branch_id: branchId, status: { [Op.in]: ['approved', 'verified'] } };
-    if (from) { txWhere.paid_at = { ...(txWhere.paid_at || {}), [Op.gte]: `${from} 00:00:00` }; expWhere.date = { ...(expWhere.date || {}), [Op.gte]: from }; }
-    if (to) { txWhere.paid_at = { ...(txWhere.paid_at || {}), [Op.lte]: `${to} 23:59:59` }; expWhere.date = { ...(expWhere.date || {}), [Op.lte]: to }; }
+    const transactionDateFilter = createDateTimeRangeFilter(from, to);
+    const expenseDateFilter = createDateOnlyRangeFilter(from, to);
+    if (transactionDateFilter) txWhere.paid_at = transactionDateFilter;
+    if (expenseDateFilter) expWhere.date = expenseDateFilter;
 
     const [transactions, expenses] = await Promise.all([
       Transaction.findAll({
@@ -300,14 +303,26 @@ exports.getCashFlow = async (req, res) => {
 exports.getIncomeExpense = async (req, res) => {
   try {
     const branchId = getBranchId(req);
+    const { from, to } = req.query;
     const branchFilter = branchId ? { branch_id: branchId } : {};
-    const revenue = await JournalLine.sum('credit', { include: [{ model: Account, where: { ...branchFilter, type: 'revenue' } }] }) || 0;
-    const expenses = await JournalLine.sum('debit', { include: [{ model: Account, where: { ...branchFilter, type: 'expense' } }] }) || 0;
+    const journalDateFilter = createDateOnlyRangeFilter(from, to);
+    const journalInclude = [{ model: Account, where: { ...branchFilter, type: 'revenue' } }];
+    const expenseJournalInclude = [{ model: Account, where: { ...branchFilter, type: 'expense' } }];
+    if (journalDateFilter) {
+      journalInclude.push({ model: JournalEntry, where: { ...branchFilter, date: journalDateFilter }, attributes: [] });
+      expenseJournalInclude.push({ model: JournalEntry, where: { ...branchFilter, date: journalDateFilter }, attributes: [] });
+    }
+    const revenue = await JournalLine.sum('credit', { include: journalInclude }) || 0;
+    const expenses = await JournalLine.sum('debit', { include: expenseJournalInclude }) || 0;
+
+    const expenseWhere = { ...branchFilter, status: { [Op.in]: ['approved', 'verified'] } };
+    const expenseDateFilter = createDateOnlyRangeFilter(from, to);
+    if (expenseDateFilter) expenseWhere.date = expenseDateFilter;
 
     // Expense split by category
     const expenseSplit = await Expense.findAll({
       attributes: ['category', [fn('SUM', col('amount')), 'total']],
-      where: { ...branchFilter, status: { [Op.in]: ['approved', 'verified'] } },
+      where: expenseWhere,
       group: ['category'],
       order: [[literal('total'), 'DESC']]
     });
@@ -322,10 +337,14 @@ exports.getIncomeExpense = async (req, res) => {
 exports.getStudentIncome = async (req, res) => {
   try {
     const branchId = getBranchId(req);
+    const { from, to } = req.query;
     const branchFilter = branchId ? { branch_id: branchId } : {};
+    const where = { ...branchFilter, status: 'success' };
+    const dateFilter = createDateTimeRangeFilter(from, to);
+    if (dateFilter) where.paid_at = dateFilter;
     const students = await Transaction.findAll({
       attributes: ['enrollment_id', [fn('SUM', col('amount')), 'total_paid'], [fn('COUNT', col('Transaction.id')), 'payment_count']],
-      where: { ...branchFilter, status: 'success' },
+      where,
       include: [{ model: Enrollment, include: [{ model: Student, include: [{ model: User, attributes: ['name'] }] }] }],
       group: ['enrollment_id'],
       order: [[literal('total_paid'), 'DESC']]
@@ -475,11 +494,11 @@ exports.getReportSuite = async (req, res) => {
   try {
     const branchId = getBranchId(req);
     const { from, to } = req.query;
-    const transactionDateFilter = createDateRangeFilter(from, to);
-    const expenseDateFilter = createDateRangeFilter(from, to);
-    const journalDateFilter = createDateRangeFilter(from, to);
-    const premiumDateFilter = createDateRangeFilter(from, to);
-    const dueDateFilter = createDateRangeFilter(from, to);
+    const transactionDateFilter = createDateTimeRangeFilter(from, to);
+    const expenseDateFilter = createDateOnlyRangeFilter(from, to);
+    const journalDateFilter = createDateOnlyRangeFilter(from, to);
+    const premiumDateFilter = createDateTimeRangeFilter(from, to);
+    const dueDateFilter = createDateOnlyRangeFilter(from, to);
 
     const transactionWhere = { branch_id: branchId, status: 'success' };
     if (transactionDateFilter) transactionWhere.paid_at = transactionDateFilter;
@@ -494,7 +513,8 @@ exports.getReportSuite = async (req, res) => {
     if (dueDateFilter) invoiceWhere.due_date = dueDateFilter;
 
     const referralWhere = { branch_id: branchId, referral_amount: { [Op.gt]: 0 } };
-    if (createDateRangeFilter(from, to)) referralWhere.updatedAt = createDateRangeFilter(from, to);
+    const referralDateFilter = createDateTimeRangeFilter(from, to);
+    if (referralDateFilter) referralWhere.updatedAt = referralDateFilter;
 
     const [transactions, expenses, premiumStudents, liquidAccounts, invoices, referralStudents] = await Promise.all([
       Transaction.findAll({

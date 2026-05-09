@@ -44,6 +44,11 @@ const Asset = sequelize.define('Asset', {
     allowNull: true,
     comment: 'Physical location e.g. Room 201, Admin Office, Hall A'
   },
+  image_url: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Uploaded asset image URL'
+  },
   purchase_date: {
     type: DataTypes.DATEONLY,
     allowNull: true

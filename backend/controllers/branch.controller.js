@@ -7,6 +7,7 @@ const Batch = require('../models/Batch');
 const Contact = require('../models/Contact');
 const Lead = require('../models/Lead');
 const Asset = require('../models/Asset');
+const { ensureAssetSchema } = require('../utils/assetSchema');
 const Account = require('../models/Account');
 const Expense = require('../models/Expense');
 const Invoice = require('../models/Invoice');
@@ -336,6 +337,7 @@ exports.getBranchContacts = async (req, res) => {
 // ─── BRANCH ASSETS ─────────────────────────────────────────────
 exports.getBranchAssets = async (req, res) => {
   try {
+    await ensureAssetSchema();
     const assets = await Asset.findAll({
       where: { branch_id: req.params.id },
       order: [['created_at', 'DESC']]

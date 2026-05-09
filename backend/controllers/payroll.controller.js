@@ -567,7 +567,25 @@ exports.createTeacherSession = async (req, res) => {
       payload.approved_at = new Date();
     }
     const session = await TeacherSession.create(payload);
-    res.status(201).json(session);
+
+    // ── Check if payroll for this session's month is already finalized ──
+    let payrollWarning = null;
+    if (payload.session_date) {
+      const sessionDate = new Date(payload.session_date);
+      const sessionMonth = sessionDate.getMonth() + 1;
+      const sessionYear = sessionDate.getFullYear();
+      const existingPayrolls = await Payroll.findAll({
+        where: { branch_id: req.branchId, staff_id: payload.teacher_id, month: sessionMonth, year: sessionYear }
+      });
+      if (existingPayrolls.length > 0) {
+        const allFinalized = existingPayrolls.every(p => ['paid', 'pending_accounting', 'pending_admin'].includes(p.status));
+        if (allFinalized) {
+          payrollWarning = `⚠️ ${new Date(0, sessionMonth - 1).toLocaleString('default', { month: 'long' })} ${sessionYear} payroll is already finalized. This session won't be included unless a super admin reopens the payroll.`;
+        }
+      }
+    }
+
+    res.status(201).json({ ...session.toJSON(), payrollWarning });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -780,6 +798,80 @@ exports.processPayment = async (req, res) => {
 
     await t.commit();
     res.json({ message: 'Salary request sent to Expense Manager for admin payment source selection.', expense });
+  } catch (error) {
+    await t.rollback();
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ── Reopen Finalized Payroll (super_admin only) ──────────────────────────────
+exports.reopenPayroll = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    if (req.user.role !== 'super_admin') {
+      return res.status(403).json({ error: 'Only super admins can reopen finalized payroll.' });
+    }
+
+    const { month, year } = req.body;
+    if (!month || !year) return res.status(400).json({ error: 'Month and year are required.' });
+
+    const payrolls = await Payroll.findAll({
+      where: { branch_id: req.branchId, month, year },
+      transaction: t,
+      lock: true,
+    });
+
+    if (payrolls.length === 0) {
+      await t.rollback();
+      return res.status(404).json({ error: 'No payroll records found for this period.' });
+    }
+
+    // Only allow reopening if none are already paid out via accounting
+    const alreadyPaid = payrolls.filter(p => p.status === 'paid');
+    if (alreadyPaid.length > 0) {
+      await t.rollback();
+      return res.status(400).json({
+        error: `${alreadyPaid.length} record(s) are already paid and disbursed. Cannot reopen after final payment.`,
+      });
+    }
+
+    let reopenedCount = 0;
+    for (const payroll of payrolls) {
+      if (['pending_accounting', 'pending_admin'].includes(payroll.status)) {
+        // Delete the linked pending expense so it doesn't linger
+        if (payroll.expense_id) {
+          await Expense.update(
+            { status: 'deleted', deletion_reason: 'Payroll reopened by super admin' },
+            { where: { id: payroll.expense_id, branch_id: req.branchId, status: { [Op.notIn]: ['approved', 'paid'] } }, transaction: t }
+          );
+        }
+        await payroll.update({ status: 'draft', expense_id: null, rejection_reason: null }, { transaction: t });
+        reopenedCount++;
+      } else if (payroll.status === 'draft' || payroll.status === 'rejected') {
+        reopenedCount++; // Already in editable state
+      }
+    }
+
+    // Unlink deductions & bonuses so they can be re-applied on next generate
+    await PayrollDeduction.update(
+      { payroll_id: null, status: 'approved' },
+      { where: { branch_id: req.branchId, month, year, status: 'applied' }, transaction: t }
+    );
+    await PayrollBonus.update(
+      { payroll_id: null, status: 'approved' },
+      { where: { branch_id: req.branchId, month, year, status: 'applied' }, transaction: t }
+    );
+
+    await AuditLog.create({
+      user_id: req.user.id,
+      branch_id: req.branchId,
+      action: 'REOPEN',
+      entity: 'Payroll',
+      new_value: { month, year, reopened: reopenedCount },
+    }, { transaction: t });
+
+    await t.commit();
+    res.json({ message: `Payroll for ${month}/${year} reopened. ${reopenedCount} record(s) reverted to draft. You can now re-run payroll.` });
   } catch (error) {
     await t.rollback();
     res.status(500).json({ error: error.message });

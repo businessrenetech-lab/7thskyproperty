@@ -1,4 +1,5 @@
 const Expense = require('../models/Expense');
+const Branch = require('../models/Branch');
 const Account = require('../models/Account');
 const User = require('../models/User');
 const ExpenseCategory = require('../models/ExpenseCategory');
@@ -11,6 +12,10 @@ const sequelize = require('../config/db.config');
 const { fn, col, literal, Op } = require('sequelize');
 
 const AUTO_APPROVAL_THRESHOLD = 5000; // BDT
+
+const categoryBranchWhere = (branchId) => ({
+  [Op.or]: [{ branch_id: branchId }, { branch_id: null }],
+});
 
 const normalizeExpenseMethod = (account) => {
   const source = account?.sub_type || 'cash';
@@ -35,6 +40,13 @@ const isReferralExpense = ({ expenseOrigin, category, description }) => {
 
   const text = `${category || ''} ${description || ''}`.toLowerCase();
   return text.includes('referral expense') || text.includes('referral fee payout') || text.includes('[ref:') || text.includes('referral');
+};
+
+const buildDateOnlyFilter = (from, to) => {
+  const dateFilter = {};
+  if (from) dateFilter[Op.gte] = from;
+  if (to) dateFilter[Op.lte] = to;
+  return (from || to) ? dateFilter : null;
 };
 
 // ── Helper: Create journal entries for an approved expense ──
@@ -118,15 +130,13 @@ exports.getExpenses = async (req, res) => {
     const where = { branch_id: req.branchId };
     if (category) where.category = category;
     if (status && status !== 'all') where.status = status;
-    if (from || to) {
-      where.date = {};
-      if (from) where.date[Op.gte] = from;
-      if (to) where.date[Op.lte] = to;
-    }
+    const dateFilter = buildDateOnlyFilter(from, to);
+    if (dateFilter) where.date = dateFilter;
 
     const expenses = await Expense.findAll({
       where,
       include: [
+        { model: Branch, attributes: ['id', 'name'] },
         { model: Account, attributes: ['name', 'code', 'type', 'sub_type'] },
         { model: User, as: 'Approver', attributes: ['name'] },
         { model: User, as: 'Deleter', attributes: ['name'] }
@@ -142,9 +152,14 @@ exports.getExpenses = async (req, res) => {
 // ── GET /expenses/split ──
 exports.getExpenseSplit = async (req, res) => {
   try {
+    const { from, to } = req.query;
+    const where = { branch_id: req.branchId, status: 'approved' };
+    const dateFilter = buildDateOnlyFilter(from, to);
+    if (dateFilter) where.date = dateFilter;
+
     const split = await Expense.findAll({
       attributes: ['category', [fn('SUM', col('amount')), 'total']],
-      where: { branch_id: req.branchId, status: 'approved' },
+      where,
       group: ['category'],
       order: [[literal('total'), 'DESC']]
     });
@@ -464,8 +479,13 @@ exports.selectPaymentSource = async (req, res) => {
 exports.getExpenseCategories = async (req, res) => {
   try {
     const categories = await ExpenseCategory.findAll({
-      where: { parent_id: null, is_active: true },
-      include: [{ model: ExpenseCategory, as: 'Children', where: { is_active: true }, required: false }],
+      where: { parent_id: null, is_active: true, ...categoryBranchWhere(req.branchId) },
+      include: [{
+        model: ExpenseCategory,
+        as: 'Children',
+        where: { is_active: true, ...categoryBranchWhere(req.branchId) },
+        required: false,
+      }],
       order: [['name', 'ASC'], [{ model: ExpenseCategory, as: 'Children' }, 'name', 'ASC']]
     });
     res.json(categories);
@@ -478,7 +498,7 @@ exports.getExpenseCategories = async (req, res) => {
 exports.getAllCategoriesFlat = async (req, res) => {
   try {
     const categories = await ExpenseCategory.findAll({
-      where: { is_active: true },
+      where: { is_active: true, ...categoryBranchWhere(req.branchId) },
       include: [{ model: ExpenseCategory, as: 'Parent', attributes: ['name'] }],
       order: [['type', 'ASC'], ['name', 'ASC']]
     });
@@ -495,7 +515,9 @@ exports.createExpenseCategory = async (req, res) => {
     const type = cleanParentId ? 'sub' : 'head';
 
     if (cleanParentId && !isNaN(cleanParentId)) {
-      const parent = await ExpenseCategory.findByPk(cleanParentId);
+      const parent = await ExpenseCategory.findOne({
+        where: { id: cleanParentId, is_active: true, ...categoryBranchWhere(req.branchId) },
+      });
       if (!parent) return res.status(404).json({ error: 'Parent category not found' });
     }
     
@@ -517,9 +539,19 @@ exports.createExpenseCategory = async (req, res) => {
 
 exports.updateExpenseCategory = async (req, res) => {
   try {
-    const cat = await ExpenseCategory.findByPk(req.params.id);
+    const cat = await ExpenseCategory.findOne({ where: { id: req.params.id, branch_id: req.branchId } });
     if (!cat) return res.status(404).json({ error: 'Category not found' });
-    await cat.update(req.body);
+
+    const nextParentId = req.body.parent_id ? parseInt(req.body.parent_id, 10) : null;
+    if (nextParentId && nextParentId !== cat.parent_id) {
+      const parent = await ExpenseCategory.findOne({
+        where: { id: nextParentId, is_active: true, ...categoryBranchWhere(req.branchId) },
+      });
+      if (!parent) return res.status(404).json({ error: 'Parent category not found' });
+    }
+
+    const { branch_id, ...updates } = req.body;
+    await cat.update(updates);
     res.json(cat);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -528,11 +560,11 @@ exports.updateExpenseCategory = async (req, res) => {
 
 exports.deleteExpenseCategory = async (req, res) => {
   try {
-    const cat = await ExpenseCategory.findByPk(req.params.id);
+    const cat = await ExpenseCategory.findOne({ where: { id: req.params.id, branch_id: req.branchId } });
     if (!cat) return res.status(404).json({ error: 'Category not found' });
     await cat.update({ is_active: false });
     // Also deactivate children
-    await ExpenseCategory.update({ is_active: false }, { where: { parent_id: cat.id } });
+    await ExpenseCategory.update({ is_active: false }, { where: { parent_id: cat.id, branch_id: req.branchId } });
     res.json({ message: 'Category deactivated' });
   } catch (error) {
     res.status(500).json({ error: error.message });

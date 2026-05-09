@@ -26,5 +26,6 @@ router.patch('/teacher-sessions/:id', payrollController.updateTeacherSession);
 router.delete('/teacher-sessions/:id', payrollController.deleteTeacherSession);
 router.post('/generate', payrollController.generateDraftPayroll);
 router.post('/pay/:id', payrollController.processPayment);
+router.post('/reopen', payrollController.reopenPayroll);
 
 module.exports = router;

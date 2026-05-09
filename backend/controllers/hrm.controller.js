@@ -25,6 +25,9 @@ exports.markStaffAttendance = async (req, res) => {
 
     // attendance_data: [{ user_id, status, check_in, check_out, notes, latitude, longitude }]
     const records = await Promise.all(attendance_data.map(async (record) => {
+      const staff = await User.findOne({ where: { id: record.user_id, branch_id: req.branchId } });
+      if (!staff) throw new Error(`Staff member ${record.user_id} not found in this branch`);
+
       const [att, created] = await StaffAttendance.findOrCreate({
         where: { user_id: record.user_id, date },
         defaults: {
@@ -214,7 +217,7 @@ exports.createLeaveRequest = async (req, res) => {
 
 exports.approveLeave = async (req, res) => {
   try {
-    const request = await LeaveRequest.findByPk(req.params.id);
+    const request = await LeaveRequest.findOne({ where: { id: req.params.id, branch_id: req.branchId } });
     if (!request) return res.status(404).json({ error: 'Request not found' });
 
     await request.update({
@@ -238,7 +241,7 @@ exports.approveLeave = async (req, res) => {
 
 exports.rejectLeave = async (req, res) => {
   try {
-    const request = await LeaveRequest.findByPk(req.params.id);
+    const request = await LeaveRequest.findOne({ where: { id: req.params.id, branch_id: req.branchId } });
     if (!request) return res.status(404).json({ error: 'Request not found' });
 
     await request.update({
@@ -270,7 +273,10 @@ exports.getLeaveBalance = async (req, res) => {
     const { user_id, year } = req.query;
     const balances = await LeaveBalance.findAll({
       where: { user_id: user_id || req.user.id, year: year || new Date().getFullYear() },
-      include: [{ model: LeaveType }],
+      include: [
+        { model: LeaveType },
+        { model: User, attributes: [], where: { branch_id: req.branchId } },
+      ],
     });
     res.json(balances);
   } catch (error) {
@@ -310,9 +316,11 @@ exports.createJobPosting = async (req, res) => {
 
 exports.updateJobPosting = async (req, res) => {
   try {
-    const posting = await JobPosting.findByPk(req.params.id);
+    const posting = await JobPosting.findOne({ where: { id: req.params.id, branch_id: req.branchId } });
     if (!posting) return res.status(404).json({ error: 'Posting not found' });
-    await posting.update(req.body);
+
+    const { branch_id, posted_by, ...updates } = req.body;
+    await posting.update(updates);
     res.json(posting);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -321,7 +329,8 @@ exports.updateJobPosting = async (req, res) => {
 
 exports.deleteJobPosting = async (req, res) => {
   try {
-    await JobPosting.destroy({ where: { id: req.params.id } });
+    const deleted = await JobPosting.destroy({ where: { id: req.params.id, branch_id: req.branchId } });
+    if (!deleted) return res.status(404).json({ error: 'Posting not found' });
     res.json({ message: 'Job posting deleted.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -334,7 +343,7 @@ exports.getApplicants = async (req, res) => {
     if (req.query.job_id) where.job_posting_id = req.query.job_id;
     const applicants = await Applicant.findAll({
       where,
-      include: [{ model: JobPosting }],
+      include: [{ model: JobPosting, where: { branch_id: req.branchId }, required: true }],
       order: [['created_at', 'DESC']],
     });
     res.json(applicants);
@@ -345,6 +354,9 @@ exports.getApplicants = async (req, res) => {
 
 exports.createApplicant = async (req, res) => {
   try {
+    const posting = await JobPosting.findOne({ where: { id: req.body.job_posting_id, branch_id: req.branchId } });
+    if (!posting) return res.status(404).json({ error: 'Posting not found' });
+
     const applicant = await Applicant.create(req.body);
     res.status(201).json(applicant);
   } catch (error) {
@@ -354,9 +366,18 @@ exports.createApplicant = async (req, res) => {
 
 exports.updateApplicant = async (req, res) => {
   try {
-    const applicant = await Applicant.findByPk(req.params.id);
+    const applicant = await Applicant.findByPk(req.params.id, {
+      include: [{ model: JobPosting, where: { branch_id: req.branchId }, required: true }],
+    });
     if (!applicant) return res.status(404).json({ error: 'Applicant not found' });
-    await applicant.update(req.body);
+
+    if (req.body.job_posting_id && req.body.job_posting_id !== applicant.job_posting_id) {
+      const posting = await JobPosting.findOne({ where: { id: req.body.job_posting_id, branch_id: req.branchId } });
+      if (!posting) return res.status(404).json({ error: 'Posting not found' });
+    }
+
+    const { id, ...updates } = req.body;
+    await applicant.update(updates);
     res.json(applicant);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -366,7 +387,7 @@ exports.updateApplicant = async (req, res) => {
 exports.hireApplicant = async (req, res) => {
   try {
     const applicant = await Applicant.findByPk(req.params.id, {
-      include: [{ model: JobPosting }],
+      include: [{ model: JobPosting, where: { branch_id: req.branchId }, required: true }],
     });
     if (!applicant) return res.status(404).json({ error: 'Applicant not found' });
 
@@ -487,6 +508,9 @@ exports.getReviews = async (req, res) => {
 
 exports.createReview = async (req, res) => {
   try {
+    const staff = await User.findOne({ where: { id: req.body.user_id, branch_id: req.branchId } });
+    if (!staff) return res.status(404).json({ error: 'Staff member not found' });
+
     const review = await PerformanceReview.create({
       ...req.body,
       reviewer_id: req.user.id,
@@ -500,9 +524,16 @@ exports.createReview = async (req, res) => {
 
 exports.updateReview = async (req, res) => {
   try {
-    const review = await PerformanceReview.findByPk(req.params.id);
+    const review = await PerformanceReview.findOne({ where: { id: req.params.id, branch_id: req.branchId } });
     if (!review) return res.status(404).json({ error: 'Review not found' });
-    await review.update(req.body);
+
+    if (req.body.user_id && req.body.user_id !== review.user_id) {
+      const staff = await User.findOne({ where: { id: req.body.user_id, branch_id: req.branchId } });
+      if (!staff) return res.status(404).json({ error: 'Staff member not found' });
+    }
+
+    const { branch_id, reviewer_id, ...updates } = req.body;
+    await review.update(updates);
     res.json(review);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -546,9 +577,11 @@ exports.createShift = async (req, res) => {
 
 exports.updateShift = async (req, res) => {
   try {
-    const shift = await Shift.findByPk(req.params.id);
+    const shift = await Shift.findOne({ where: { id: req.params.id, branch_id: req.branchId } });
     if (!shift) return res.status(404).json({ error: 'Shift not found' });
-    await shift.update(req.body);
+
+    const { branch_id, ...updates } = req.body;
+    await shift.update(updates);
     res.json(shift);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -579,7 +612,18 @@ exports.getSchedules = async (req, res) => {
 
 exports.createSchedule = async (req, res) => {
   try {
-    const schedule = await StaffSchedule.create(req.body);
+    const staff = await User.findOne({ where: { id: req.body.user_id, branch_id: req.branchId } });
+    if (!staff) return res.status(404).json({ error: 'Staff member not found' });
+
+    const shift = await Shift.findOne({ where: { id: req.body.shift_id, branch_id: req.branchId } });
+    if (!shift) return res.status(404).json({ error: 'Shift not found' });
+
+    const schedule = await StaffSchedule.create({
+      user_id: req.body.user_id,
+      shift_id: req.body.shift_id,
+      date: req.body.date,
+      notes: req.body.notes,
+    });
     res.status(201).json(schedule);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -588,7 +632,12 @@ exports.createSchedule = async (req, res) => {
 
 exports.deleteSchedule = async (req, res) => {
   try {
-    await StaffSchedule.destroy({ where: { id: req.params.id } });
+    const schedule = await StaffSchedule.findByPk(req.params.id, {
+      include: [{ model: User, attributes: ['id'], where: { branch_id: req.branchId }, required: true }],
+    });
+    if (!schedule) return res.status(404).json({ error: 'Schedule not found' });
+
+    await schedule.destroy();
     res.json({ message: 'Schedule removed.' });
   } catch (error) {
     res.status(500).json({ error: error.message });

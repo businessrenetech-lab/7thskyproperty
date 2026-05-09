@@ -134,7 +134,7 @@ const AdminLiquidAccounts = () => {
                   ৳{parseFloat(acc.balance).toLocaleString()}
                 </td>
                 <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                  <button className="btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }} onClick={() => { setSelectedAcc(acc); setShowReconcileModal(true); }}>
+                  <button className="btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', display: 'none' }} onClick={() => { setSelectedAcc(acc); setShowReconcileModal(true); }}>
                     Reconcile
                   </button>
                 </td>

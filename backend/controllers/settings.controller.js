@@ -69,6 +69,9 @@ const DEFAULT_SETTINGS = [
   { setting_key: 'SSLCOMMERZ_STORE_ID', setting_value: '', description: 'SSLCommerz Store ID', is_secret: false, category: 'integrations' },
   { setting_key: 'SSLCOMMERZ_STORE_PASS', setting_value: '', description: 'SSLCommerz Store Password', is_secret: true, category: 'integrations' },
   { setting_key: 'SSLCOMMERZ_IS_LIVE', setting_value: 'false', description: 'SSLCommerz Live Mode (true/false)', is_secret: false, category: 'integrations' },
+
+  // ── Payment Settings ─────────────────────────────────────
+  { setting_key: 'BKASH_MERCHANT_NO', setting_value: '01913-373581', description: 'bKash Merchant Number', is_secret: false, category: 'payment' },
 ];
 
 // Ensure defaults exist upon first load

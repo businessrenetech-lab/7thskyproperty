@@ -3,7 +3,7 @@ import { PieChart, TrendingUp, TrendingDown, Building2, ClipboardList, Users, Sc
 import api from '../services/api';
 import '../styles/GlobalStyles.css';
 import html2pdf from 'html2pdf.js';
-import { buildPdfHeaderHtml, getInstitutionInfo } from '../utils/pdfUtils';
+import { buildPdfHeaderHtml, buildReportTableHtml, getInstitutionInfo } from '../utils/pdfUtils';
 import { useToast } from '../context/ToastContext';
 
 const money = (v) => `BDT ${Number(v || 0).toLocaleString()}`;
@@ -28,7 +28,6 @@ const cols = {
 };
 
 const formatDateLocal = (dateObj) => {
-  const toast = useToast();
   const d = new Date(dateObj);
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 };
@@ -149,6 +148,7 @@ const Table = ({ tab, rows }) => {
 };
 
 export default function AdminReportsHub() {
+  const toast = useToast();
   const [preset, setPreset] = useState('monthly');
   const [from, setFrom] = useState(() => rangeFor('monthly').from);
   const [to, setTo] = useState(() => rangeFor('monthly').to);
@@ -170,6 +170,12 @@ export default function AdminReportsHub() {
 
   useEffect(() => {
     if (!from || !to) return;
+    if (from > to) {
+      setReport(null);
+      setLoading(false);
+      setError('Start date cannot be after end date.');
+      return;
+    }
     const load = async () => {
       setLoading(true);
       setError('');
@@ -194,69 +200,57 @@ export default function AdminReportsHub() {
   }, [from, to]);
 
   const exportPdf = async () => {
-    const printContent = printContentRef.current;
-    if (!printContent) {
-      console.error('No content to export');
+    const rows = pickRows(report, tab);
+    if (!rows || rows.length === 0) {
+      toast.error('No data to export');
       return;
     }
 
     const info = getInstitutionInfo();
-
-    // Find current tab label
     const currentTab = tabs.find(t => t[0] === tab);
     const reportName = currentTab ? currentTab[1] : 'Finance Report';
     const periodText = `Period: ${from} to ${to}`;
 
-    // Build branded header with logo
+    // Build branded header
     const headerHtml = await buildPdfHeaderHtml(reportName, periodText);
 
-    // Create a temporary container with the full report content
-    const tempDiv = document.createElement('div');
-    tempDiv.style.width = '100%';
-    tempDiv.style.padding = '20px';
-    tempDiv.style.background = 'white';
-    tempDiv.style.fontFamily = "'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+    // Build branded report table
+    const columns = cols[tab];
+    const tableHtml = buildReportTableHtml(columns, rows, (key, val) => cell(key, { [key]: val }));
 
-    // Add branded header
-    tempDiv.innerHTML = headerHtml;
+    // Compose full PDF HTML
+    const html = `
+      <div style="font-family:'Inter','Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#ffffff; color:#1e293b; padding:0;">
+        ${headerHtml}
+        <div style="padding:18px 24px 24px;">
+          ${tableHtml}
 
-    // Clone the print content and append
-    const contentClone = printContent.cloneNode(true);
-    tempDiv.appendChild(contentClone);
+          <!-- Footer -->
+          <div style="margin-top:28px; padding-top:10px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:9px; color:#94a3b8;">Generated on ${new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</div>
+            <div style="font-size:9px; color:#94a3b8;">${info.name} Finance System · ${info.website}</div>
+          </div>
+        </div>
+        <!-- Bottom Accent Bar -->
+        <div style="height:4px; background:linear-gradient(90deg, #7bc62e, #275fa7); border-radius:0 0 3px 3px;"></div>
+      </div>
+    `;
 
-    // Add footer
-    const footer = document.createElement('div');
-    footer.style.textAlign = 'center';
-    footer.style.fontSize = '0.7rem';
-    footer.style.color = '#94a3b8';
-    footer.style.borderTop = '1px solid #e2e8f0';
-    footer.style.paddingTop = '10px';
-    footer.style.marginTop = '24px';
-    footer.innerHTML = `Generated on ${new Date().toLocaleString()} | ${info.name} Finance System`;
-    tempDiv.appendChild(footer);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    container.style.background = 'white';
 
-    // PDF options
     const opt = {
-      margin: [10, 10, 10, 10],
-      filename: `finance-report-${from}-to-${to}.pdf`,
+      margin: [8, 8, 8, 8],
+      filename: `${reportName.replace(/\s+/g, '-')}-Report-${from}-to-${to}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        letterRendering: true,
-        backgroundColor: '#ffffff'
-      },
-      jsPDF: {
-        unit: 'mm',
-        format: 'a4',
-        orientation: 'landscape'
-      }
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: rows.length > 0 && columns.length > 5 ? 'landscape' : 'portrait' }
     };
 
-    // Generate PDF
     html2pdf()
       .set(opt)
-      .from(tempDiv)
+      .from(container)
       .toPdf()
       .get('pdf')
       .then((pdf) => {

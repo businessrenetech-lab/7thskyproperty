@@ -3,7 +3,7 @@ import {
   Package, Plus, Search, Filter, Trash2, Edit3, Wrench, 
   AlertTriangle, Calendar, DollarSign, Tag, Download,
   MapPin, Shield, ChevronDown, Eye, X, CheckCircle,
-  Clock, TrendingDown, BarChart3, FileText
+  Clock, TrendingDown, BarChart3, FileText, Upload, Image as ImageIcon
 } from 'lucide-react';
 import api from '../services/api';
 import Modal from '../components/Modal';
@@ -38,7 +38,6 @@ const STATUS_BADGE = {
 
 /* ─── Format currency ─── */
 const fmt = (v) => {
-  const toast = useToast();
   const num = parseFloat(v) || 0;
   return '৳' + num.toLocaleString('en-IN');
 };
@@ -49,10 +48,30 @@ const fmtDate = (d) => {
   return dt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 };
 
+const getImagePreviewUrl = (value) => {
+  const imageUrl = String(value || '').trim();
+  if (!imageUrl) return '';
+  if (/^(https?:)?\/\//i.test(imageUrl) || imageUrl.startsWith('data:')) return imageUrl;
+
+  const apiBase = api.defaults.baseURL || '';
+  const base = /^https?:\/\//i.test(apiBase) ? apiBase.replace(/\/api\/?$/, '').replace(/\/$/, '') : '';
+  const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+
+  if (path.startsWith('/uploads')) {
+    let token = '';
+    try { token = localStorage.getItem('token') || ''; } catch {}
+    const tokenParam = token ? `${path.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}` : '';
+    return `${base}${path}${tokenParam}`;
+  }
+
+  return `${base}${path}`;
+};
+
 /* ════════════════════════════════════════════
    ASSET REGISTRY PAGE
    ════════════════════════════════════════════ */
 const AssetRegistry = () => {
+  const toast = useToast();
   const [assets, setAssets] = useState([]);
   const [stats, setStats] = useState({ total: 0, good: 0, needsService: 0, disposed: 0, totalBookValue: 0, totalCost: 0 });
   const [loading, setLoading] = useState(true);
@@ -63,10 +82,12 @@ const AssetRegistry = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [editMode, setEditMode] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState('');
 
   const [formData, setFormData] = useState({
     name: '', type: 'hardware', category: '', serial_no: '',
-    location: '', purchase_date: '', cost: '', book_value: '',
+    location: '', image_url: '', purchase_date: '', cost: '', book_value: '',
     depreciation_rate: '20', warranty_expiry: '', status: 'active',
     condition_notes: '', notes: ''
   });
@@ -97,15 +118,24 @@ const AssetRegistry = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const payload = selectedImage ? new FormData() : formData;
+      if (selectedImage) {
+        Object.entries(formData).forEach(([key, value]) => payload.append(key, value ?? ''));
+        payload.append('image', selectedImage);
+      }
+
       if (editMode && selectedAsset) {
-        await api.put(`/assets/${selectedAsset.id}`, formData);
+        await api.put(`/assets/${selectedAsset.id}`, payload);
       } else {
-        await api.post('/assets', formData);
+        await api.post('/assets', payload);
       }
       setShowAddModal(false);
       setEditMode(false);
+      setSelectedImage(null);
+      setImagePreviewUrl('');
       resetForm();
-      fetchAssets();
+      await fetchAssets();
+      toast.success(editMode ? 'Asset updated successfully' : 'Asset registered successfully');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to save asset');
     }
@@ -125,23 +155,27 @@ const AssetRegistry = () => {
   const resetForm = () => {
     setFormData({
       name: '', type: 'hardware', category: '', serial_no: '',
-      location: '', purchase_date: '', cost: '', book_value: '',
+      location: '', image_url: '', purchase_date: '', cost: '', book_value: '',
       depreciation_rate: '20', warranty_expiry: '', status: 'active',
       condition_notes: '', notes: ''
     });
     setSelectedAsset(null);
+    setSelectedImage(null);
+    setImagePreviewUrl('');
   };
 
   const openEdit = (asset) => {
     setFormData({
       name: asset.name || '', type: asset.type || 'hardware',
       category: asset.category || '', serial_no: asset.serial_no || '',
-      location: asset.location || '', purchase_date: asset.purchase_date || '',
+      location: asset.location || '', image_url: asset.image_url || '', purchase_date: asset.purchase_date || '',
       cost: asset.cost || '', book_value: asset.book_value || '',
       depreciation_rate: asset.depreciation_rate || '20',
       warranty_expiry: asset.warranty_expiry || '', status: asset.status || 'active',
       condition_notes: asset.condition_notes || '', notes: asset.notes || ''
     });
+    setSelectedImage(null);
+    setImagePreviewUrl(getImagePreviewUrl(asset.image_url));
     setSelectedAsset(asset);
     setEditMode(true);
     setShowAddModal(true);
@@ -150,6 +184,11 @@ const AssetRegistry = () => {
   const openDetail = (asset) => {
     setSelectedAsset(asset);
     setShowDetailModal(true);
+  };
+
+  const handleImageSelect = (file) => {
+    setSelectedImage(file || null);
+    setImagePreviewUrl(file ? URL.createObjectURL(file) : getImagePreviewUrl(formData.image_url));
   };
 
   /* ── Good condition percentage ── */
@@ -434,6 +473,34 @@ const AssetRegistry = () => {
             </div>
           </div>
 
+          <div className="fgroup">
+            <label className="flabel">Asset Image</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '12px', alignItems: 'center' }}>
+              <div style={{
+                width: '120px', height: '90px', borderRadius: '12px', border: '1px solid var(--border)',
+                background: 'var(--glass)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)'
+              }}>
+                {imagePreviewUrl ? (
+                  <img src={imagePreviewUrl} alt="Asset preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <ImageIcon size={28} />
+                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <input
+                  className="glass-input"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleImageSelect(e.target.files?.[0])}
+                  style={{ padding: '8px' }}
+                />
+                <div style={{ fontSize: '11px', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Upload size={12} /> JPG, PNG, WEBP, or GIF up to 5MB. New uploads replace the current asset image.
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="fgrid2">
             {/* Serial */}
             <div className="fgroup">
@@ -531,10 +598,16 @@ const AssetRegistry = () => {
           const a = selectedAsset;
           const cat = CATEGORY_MAP[a.type] || CATEGORY_MAP.other;
           const statusBadge = STATUS_BADGE[a.status] || STATUS_BADGE.active;
+          const assetImageUrl = getImagePreviewUrl(a.image_url);
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: assetImageUrl ? '140px 1fr' : '1fr', gap: '16px', alignItems: 'flex-start' }}>
+                {assetImageUrl && (
+                  <div style={{ width: '140px', height: '110px', borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--glass)' }}>
+                    <img src={assetImageUrl} alt={a.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                )}
                 <div>
                   <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginBottom: 4 }}>{a.asset_tag || `AST-${String(a.id).padStart(3, '0')}`}</div>
                   <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-main)' }}>{a.name}</div>

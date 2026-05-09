@@ -3,7 +3,9 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Clock3, Loader2, ShieldCheck, Star, Users } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock3, Loader2, ShieldCheck, Star, Users, X } from "lucide-react";
+
+const BKASH_LOGO_URL = "https://static.vecteezy.com/system/resources/thumbnails/068/842/080/small_2x/bkash-logo-horizontal-mobile-banking-app-icon-emblem-transparent-background-free-png.png";
 
 function CheckoutForm() {
   const searchParams = useSearchParams();
@@ -23,11 +25,15 @@ function CheckoutForm() {
     phone: "",
     dob: "",
     method: "pay_at_branch",
+    payer_bkash_number: "",
+    bkash_transaction_id: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(searchParams.get("error"));
   const [simulating, setSimulating] = useState(false);
   const [step, setStep] = useState(1);
+  const [showBkashModal, setShowBkashModal] = useState(false);
+  const [bkashMerchantNo, setBkashMerchantNo] = useState("01913-373581");
 
   const formatSchedule = (scheduleStr) => {
     if (!scheduleStr) return "TBA";
@@ -55,6 +61,15 @@ function CheckoutForm() {
       })
       .catch((err) => console.error("Failed to load branches", err));
   }, [initialBranchId]);
+
+  useEffect(() => {
+    fetch("/api/payment/config")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.bkash_merchant_no) setBkashMerchantNo(data.bkash_merchant_no);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!formData.branch_id) {
@@ -109,8 +124,7 @@ function CheckoutForm() {
     });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const submitCheckout = async () => {
     setLoading(true);
     setError("");
     let payloadCourseId = formData.course_id;
@@ -131,6 +145,16 @@ function CheckoutForm() {
       setLoading(false);
       setSimulating(false);
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (formData.method === "bkash_manual" && (!formData.payer_bkash_number.trim() || !formData.bkash_transaction_id.trim())) {
+      setError("");
+      setShowBkashModal(true);
+      return;
+    }
+    await submitCheckout();
   };
 
   if (simulating) {
@@ -238,21 +262,22 @@ function CheckoutForm() {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Payment Method</label>
-                      <select name="method" value={formData.method} onChange={(e) => { handleChange(e); setStep(3); }} required className="form-input-premium">
+                      <select name="method" value={formData.method} onChange={(e) => { handleChange(e); setStep(3); if (e.target.value === "bkash_manual") setShowBkashModal(true); }} required className="form-input-premium">
                         <option value="pay_at_branch">Pay at Branch (Cash/Counter)</option>
+                        <option value="bkash_manual">bKash Payment</option>
                       </select>
                     </div>
                   </div>
                 </div>
 
                 <button type="submit" disabled={loading} className="accent-btn w-full py-4 text-base">
-                  {loading ? <Loader2 className="animate-spin" size={20} /> : "Proceed to Checkout"}
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : formData.method === "bkash_manual" ? "Submit Payment for Verification" : "Reserve Seat"}
                   {!loading && <ArrowRight size={20} />}
                 </button>
 
                 <div className="flex justify-center items-center gap-2 text-xs text-slate-400 font-medium">
                   <ShieldCheck size={14} className="text-accent" />
-                  <span>Your seat is reserved first. Complete payment at the branch counter.</span>
+                  <span>{formData.method === "bkash_manual" ? "Your bKash payment will be verified by admin before access is activated." : "Your seat is reserved first. Complete payment at the branch counter."}</span>
                 </div>
               </form>
             </div>
@@ -312,6 +337,72 @@ function CheckoutForm() {
           </div>
         </div>
       </section>
+
+      {showBkashModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm">
+          <div className="relative w-full max-w-lg overflow-hidden rounded-[28px] bg-white shadow-2xl">
+            <div className="bg-[#e2136e] px-6 py-5 text-white">
+              <button type="button" onClick={() => setShowBkashModal(false)} className="absolute right-4 top-4 rounded-full bg-white/15 p-2 text-white transition hover:bg-white/25" aria-label="Close bKash payment modal">
+                <X size={18} />
+              </button>
+              <div className="flex items-center gap-4 pr-10">
+                <div className="flex h-14 w-28 items-center justify-center rounded-2xl bg-white p-2">
+                  <img src={BKASH_LOGO_URL} alt="bKash" className="max-h-10 object-contain" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/75">Manual bKash Payment</p>
+                  <h3 className="text-xl font-extrabold">Pay Language Academy</h3>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={async (e) => { e.preventDefault(); setShowBkashModal(false); await submitCheckout(); }} className="space-y-5 bg-[#f3f3f3] p-6">
+              <div className="rounded-2xl border border-[#e2136e]/15 bg-white p-5">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Merchant Number</p>
+                <p className="mt-2 text-3xl font-black tracking-tight text-[#e2136e]">{bkashMerchantNo}</p>
+                <p className="mt-3 text-sm font-medium text-slate-600">Send the course fee to this Language Academy bKash merchant number, then enter your bKash number and transaction ID below.</p>
+              </div>
+
+              <div className="grid gap-4">
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-slate-800">Your bKash Number</label>
+                  <input
+                    type="tel"
+                    required
+                    value={formData.payer_bkash_number}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, payer_bkash_number: e.target.value }))}
+                    placeholder="01XXXXXXXXX"
+                    className="form-input-premium bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-slate-800">Transaction ID</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.bkash_transaction_id}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, bkash_transaction_id: e.target.value.trim() }))}
+                    placeholder="Enter bKash TrxID"
+                    className="form-input-premium bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-white p-4 text-sm text-slate-600">
+                <p className="font-bold text-slate-900">Guidelines</p>
+                <p className="mt-2">1. Open bKash and pay to the merchant number above.</p>
+                <p>2. Enter your own bKash number first.</p>
+                <p>3. Enter the transaction ID from your bKash confirmation SMS.</p>
+                <p>4. Admin will verify the payment from pending bills.</p>
+              </div>
+
+              <button type="submit" disabled={loading || !formData.payer_bkash_number.trim() || !formData.bkash_transaction_id.trim()} className="w-full rounded-2xl bg-[#e2136e] px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-[#e2136e]/25 transition hover:bg-[#c80f60] disabled:cursor-not-allowed disabled:opacity-60">
+                {loading ? "Submitting..." : "Submit bKash Details"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

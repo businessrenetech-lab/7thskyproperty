@@ -5,7 +5,6 @@ import '../styles/GlobalStyles.css';
 import { useToast } from '../context/ToastContext';
 
 const typeBadge = (type) => {
-  const toast = useToast();
   const colors = { asset: '#3b82f6', liability: '#f59e0b', equity: '#8b5cf6', revenue: '#10b981', expense: '#ef4444' };
   return (
     <span style={{ padding: '2px 10px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: '700', textTransform: 'capitalize', background: `${colors[type] || '#666'}20`, color: colors[type] || '#666' }}>{type}</span>
@@ -13,6 +12,7 @@ const typeBadge = (type) => {
 };
 
 const Ledger = () => {
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState([]);
   const [trialBalance, setTrialBalance] = useState({ totalDebits: 0, totalCredits: 0, difference: 0, isBalanced: true });

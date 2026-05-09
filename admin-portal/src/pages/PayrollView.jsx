@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Users, History, Plus, CheckCircle2, Loader2, TrendingUp, Settings2,
-  Download, Building2, Calendar, Wallet, Search, Trash2
+  Download, Building2, Calendar, Wallet, Search, Trash2, RotateCcw
 } from 'lucide-react';
 import Modal from '../components/Modal';
 
@@ -50,7 +50,8 @@ const PayrollView = ({
   openPayModal, handleConfirmPay, handleGeneratePayroll, exportPDF,
   setShowAddStaffModal, setSelectedStaff, setProfileData, setShowProfileModal, openStatusModal,
   sessionForm, setSessionForm, handleCreateTeacherSession, handleDeleteTeacherSession,
-  handleCreateDeduction, handleDeleteDeduction, handleCreateBonus, handleDeleteBonus
+  handleCreateDeduction, handleDeleteDeduction, handleCreateBonus, handleDeleteBonus,
+  handleReopenPayroll, isSuperAdmin
 }) => {
   const filteredStaff = staff.filter(m =>
     !searchTerm || m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -98,6 +99,17 @@ const PayrollView = ({
           >
             {allCompleted ? <CheckCircle2 size={18} /> : <TrendingUp size={18} />} {runPayrollLabel}
           </button>
+          {isSuperAdmin && allCompleted && (
+            <button
+              className="btn-secondary"
+              onClick={paidCount > 0 ? () => {} : handleReopenPayroll}
+              disabled={paidCount > 0}
+              title={paidCount > 0 ? `Cannot reopen — ${paidCount} salary(s) already paid & disbursed.` : "Reopen this month's payroll to recalculate with new sessions/deductions"}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', color: paidCount > 0 ? 'var(--text-dim)' : '#ff9800', borderColor: paidCount > 0 ? 'var(--border)' : '#ff9800', opacity: paidCount > 0 ? 0.55 : 1, cursor: paidCount > 0 ? 'not-allowed' : 'pointer' }}
+            >
+              <RotateCcw size={16} /> Reopen Payroll
+            </button>
+          )}
         </div>
       </div>
 

@@ -4,6 +4,7 @@ const paymentController = require('../controllers/payment.controller');
 const { authMiddleware } = require('../middleware/auth.middleware');
 
 // Public endpoints
+router.get('/config', paymentController.getPaymentConfig);
 router.post('/initiate', paymentController.initiateCheckout);
 router.post('/success', paymentController.paymentSuccess);
 router.post('/fail', paymentController.paymentFail);

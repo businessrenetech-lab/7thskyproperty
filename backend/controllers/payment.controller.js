@@ -8,6 +8,7 @@ const Invoice = require('../models/Invoice');
 const Course = require('../models/Course');
 const Batch = require('../models/Batch');
 const Branch = require('../models/Branch');
+const SystemSetting = require('../models/SystemSetting');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const fbCapi = require('../services/facebookCapi.service');
@@ -15,14 +16,64 @@ const { sendEnrollmentConfirmationEmail } = require('../services/communication.s
 const sequelize = require('../config/db.config');
 const { createInvoiceWithGeneratedNo } = require('../utils/invoiceNumber');
 
+const DEFAULT_BKASH_MERCHANT_NO = '01913-373581';
+
+const getBkashMerchantNo = async () => {
+  const setting = await SystemSetting.findOne({ where: { setting_key: 'BKASH_MERCHANT_NO' } }).catch(() => null);
+  return setting?.setting_value || process.env.BKASH_MERCHANT_NO || DEFAULT_BKASH_MERCHANT_NO;
+};
+
+const getPaymentConfig = async (req, res) => {
+  try {
+    const bkashMerchantNo = await getBkashMerchantNo();
+    res.status(200).json({ bkash_merchant_no: bkashMerchantNo });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load payment configuration' });
+  }
+};
+
+const pickNoteValue = (notes, label) => {
+  const match = String(notes || '').match(new RegExp(`${label}:\\s*([^\\r\\n]+)`, 'i'));
+  return match ? match[1].trim() : '';
+};
+
+const parseCheckoutMetadata = (lead) => {
+  const notes = lead?.notes || '';
+  return {
+    method: pickNoteValue(notes, 'Payment Method Initiated') || 'card_brac',
+    bkash_merchant_no: pickNoteValue(notes, 'bKash Merchant No'),
+    payer_bkash_number: pickNoteValue(notes, 'Student bKash Number'),
+    bkash_transaction_id: pickNoteValue(notes, 'bKash Transaction ID'),
+  };
+};
+
+const buildCheckoutNotes = ({ method, bkashMerchantNo, payerBkashNumber, bkashTransactionId }) => {
+  const lines = [`Payment Method Initiated: ${method}`];
+  if (method === 'bkash_manual') {
+    lines.push(`bKash Merchant No: ${bkashMerchantNo}`);
+    lines.push(`Student bKash Number: ${payerBkashNumber}`);
+    lines.push(`bKash Transaction ID: ${bkashTransactionId}`);
+  }
+  return lines.join('\n');
+};
+
+const normalizeCheckoutMethod = (value) => {
+  const method = String(value || 'pay_at_branch').trim().toLowerCase();
+  if (['bkash', 'bkash_manual', 'bkash_online', 'bkash_payment'].includes(method)) return 'bkash_manual';
+  if (['cash', 'branch', 'pay_branch', 'pay_at_branch'].includes(method)) return 'pay_at_branch';
+  return method;
+};
+
 const parsePaymentMethod = (lead) => {
-  if (!lead.notes || !lead.notes.includes('Payment Method Initiated:')) return 'card_brac';
-  return lead.notes.replace('Payment Method Initiated:', '').trim();
+  return normalizeCheckoutMethod(parseCheckoutMetadata(lead).method);
 };
 
 const initiateCheckout = async (req, res) => {
   try {
-    const { name, email, phone, course_id, batch_id, method } = req.body;
+    const { name, email, phone, course_id, batch_id } = req.body;
+    const method = normalizeCheckoutMethod(req.body.method);
+    const payerBkashNumber = String(req.body.payer_bkash_number || '').trim();
+    const bkashTransactionId = String(req.body.bkash_transaction_id || '').trim();
     const branch_id = parseInt(req.body.branch_id || req.body.branch, 10);
 
     if (!branch_id || !course_id || !batch_id || !name || !email) {
@@ -41,11 +92,16 @@ const initiateCheckout = async (req, res) => {
       return res.status(404).json({ error: 'Course or Batch not found for selected branch' });
     }
 
-    if (method !== 'pay_at_branch') {
-      return res.status(501).json({ error: 'Online payment is not configured yet. Please choose pay at branch.' });
+    if (!['pay_at_branch', 'bkash_manual'].includes(method)) {
+      return res.status(501).json({ error: 'Online payment is not configured yet. Please choose Pay at Branch or bKash Payment.' });
+    }
+
+    if (method === 'bkash_manual' && (!payerBkashNumber || !bkashTransactionId)) {
+      return res.status(400).json({ error: 'Student bKash number and transaction ID are required.' });
     }
 
     const payment_ref = `PAY-${uuidv4().substring(0, 8).toUpperCase()}`;
+    const bkashMerchantNo = await getBkashMerchantNo();
 
     // Create a Lead to hold the session state
     await Lead.create({
@@ -60,7 +116,7 @@ const initiateCheckout = async (req, res) => {
       batch_id,
       payment_ref,
       deal_value: batch.fee || course.base_fee,
-      notes: `Payment Method Initiated: ${method}`,
+      notes: buildCheckoutNotes({ method, bkashMerchantNo, payerBkashNumber, bkashTransactionId }),
     });
 
     res.status(200).json({
@@ -90,10 +146,13 @@ const paymentSuccess = async (req, res) => {
 
     const branch_id = lead.branch_id || 1;
     
-    const method = parsePaymentMethod(lead);
+    const paymentMeta = parseCheckoutMetadata(lead);
+    const method = normalizeCheckoutMethod(paymentMeta.method);
     const isPayAtBranch = method === 'pay_at_branch';
+    const isManualBkash = method === 'bkash_manual';
+    const isPendingManualPayment = isPayAtBranch || isManualBkash;
 
-    if (!isPayAtBranch) {
+    if (!isPendingManualPayment) {
       return res.status(409).json({
         error: 'Online payment has not been verified by the payment provider.',
         status: lead.status
@@ -130,7 +189,7 @@ const paymentSuccess = async (req, res) => {
     }
 
     // 3. Update Lead
-    await lead.update({ status: isPayAtBranch ? 'fees_pending' : 'successful' }, { transaction: dbTransaction });
+    await lead.update({ status: isPendingManualPayment ? 'fees_pending' : 'successful' }, { transaction: dbTransaction });
 
     // 4. Create Contact if not exists
     let contact = await Contact.findOne({ where: { email: lead.email, branch_id }, transaction: dbTransaction });
@@ -150,8 +209,8 @@ const paymentSuccess = async (req, res) => {
       student_id: student.id,
       batch_id: lead.batch_id,
       total_fee: lead.deal_value,
-      paid_amount: isPayAtBranch ? 0 : lead.deal_value,
-      status: isPayAtBranch ? 'pending' : 'paid'
+      paid_amount: isPendingManualPayment ? 0 : lead.deal_value,
+      status: isPendingManualPayment ? 'pending' : 'paid'
     }, { transaction: dbTransaction });
 
     // 6. Create Invoice
@@ -160,9 +219,15 @@ const paymentSuccess = async (req, res) => {
       enrollment_id: enrollment.id,
       student_id: student.id,
       amount: lead.deal_value,
-      paid: isPayAtBranch ? 0 : lead.deal_value,
-      status: isPayAtBranch ? 'pending' : 'paid',
+      paid: isPendingManualPayment ? 0 : lead.deal_value,
+      status: isPendingManualPayment ? 'pending' : 'paid',
       due_date: new Date(),
+      notes: buildCheckoutNotes({
+        method,
+        bkashMerchantNo: paymentMeta.bkash_merchant_no,
+        payerBkashNumber: paymentMeta.payer_bkash_number,
+        bkashTransactionId: paymentMeta.bkash_transaction_id,
+      }),
     }, { transaction: dbTransaction });
 
     await dbTransaction.commit();
@@ -172,7 +237,7 @@ const paymentSuccess = async (req, res) => {
     let transaction = null;
     let payment_ref_to_use = payment_ref;
 
-    if (!isPayAtBranch) {
+    if (!isPendingManualPayment) {
       const Account = require('../models/Account');
       const JournalEntry = require('../models/JournalEntry');
       const JournalLine = require('../models/JournalLine');
@@ -234,8 +299,8 @@ const paymentSuccess = async (req, res) => {
       transaction_id: transaction?.id || null,
       invoice_no: invoice.invoice_no,
       payment_ref: payment_ref_to_use,
-      portal_access: 'after_branch_payment',
-      order: {
+        portal_access: isPendingManualPayment ? 'after_payment_verification' : 'immediate',
+        order: {
         student_name: lead.name,
         email: lead.email,
         phone: lead.phone,
@@ -247,12 +312,15 @@ const paymentSuccess = async (req, res) => {
         batch_start_date: batch?.start_date || null,
         amount: lead.deal_value,
         currency: 'BDT',
-        payment_method: isPayAtBranch ? 'Pay at branch' : transaction?.method,
+        payment_method: isPayAtBranch ? 'Pay at branch' : isManualBkash ? 'bKash manual' : transaction?.method,
+        bkash_merchant_no: paymentMeta.bkash_merchant_no || null,
+        payer_bkash_number: paymentMeta.payer_bkash_number || null,
+        bkash_transaction_id: paymentMeta.bkash_transaction_id || null,
         paid_at: transaction?.paid_at || new Date(),
       }
     });
 
-    if (!isPayAtBranch) {
+    if (!isPendingManualPayment) {
       // Fire Facebook CAPI 'Purchase' event (non-blocking)
       fbCapi.sendEvent(
         'Purchase',
@@ -380,6 +448,7 @@ const simulatePayment = async (req, res) => {
 };
 
 module.exports = {
+  getPaymentConfig,
   initiateCheckout,
   paymentSuccess,
   paymentFail,

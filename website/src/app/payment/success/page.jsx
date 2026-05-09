@@ -94,7 +94,8 @@ function SuccessContent() {
           setOrder(data.order || null);
 
           // Fire client-side Purchase pixel event for deduplication
-          if (!hasFiredPixel.current && typeof window !== "undefined" && window.fbq && data.order) {
+          const isVerifiedPayment = data.order && !['Pay at branch', 'bKash manual'].includes(data.order.payment_method);
+          if (!hasFiredPixel.current && typeof window !== "undefined" && window.fbq && isVerifiedPayment) {
             window.fbq("track", "Purchase", {
               currency: data.order.currency || "BDT",
               value: data.order.amount || 0,
@@ -170,26 +171,30 @@ function SuccessContent() {
     : null;
 
   const isPayAtBranch = order?.payment_method === 'Pay at branch';
+  const isManualBkash = order?.payment_method === 'bKash manual';
+  const isPendingManual = isPayAtBranch || isManualBkash;
 
   return (
     <div className="animate-fade-in-up">
       {/* ── Success Hero ─────────────────────────────────────── */}
       <section className="text-center mb-10 relative">
-        {!isPayAtBranch && <CelebrationDots />}
+        {!isPendingManual && <CelebrationDots />}
 
         {/* Animated icon */}
         <div className="relative inline-flex mb-6">
-          <div className={`absolute inset-0 rounded-full ${isPayAtBranch ? 'bg-amber-400/15' : 'bg-primary/15'} animate-ping`} style={{ animationDuration: "2s" }} />
-          <div className={`relative flex h-24 w-24 items-center justify-center rounded-full shadow-xl ${isPayAtBranch ? 'bg-gradient-to-br from-amber-500 to-amber-400 shadow-amber-500/25' : 'bg-gradient-to-br from-primary to-primary/80 shadow-primary/25'}`}>
-            {isPayAtBranch ? <Clock3 size={48} className="text-white" strokeWidth={2.5} /> : <CheckCircle2 size={48} className="text-white" strokeWidth={2.5} />}
+          <div className={`absolute inset-0 rounded-full ${isManualBkash ? 'bg-[#e2136e]/15' : isPayAtBranch ? 'bg-amber-400/15' : 'bg-primary/15'} animate-ping`} style={{ animationDuration: "2s" }} />
+          <div className={`relative flex h-24 w-24 items-center justify-center rounded-full shadow-xl ${isManualBkash ? 'bg-gradient-to-br from-[#e2136e] to-[#f14a91] shadow-[#e2136e]/25' : isPayAtBranch ? 'bg-gradient-to-br from-amber-500 to-amber-400 shadow-amber-500/25' : 'bg-gradient-to-br from-primary to-primary/80 shadow-primary/25'}`}>
+            {isPendingManual ? <Clock3 size={48} className="text-white" strokeWidth={2.5} /> : <CheckCircle2 size={48} className="text-white" strokeWidth={2.5} />}
           </div>
         </div>
 
         <h1 className="text-3xl font-extrabold text-slate-900 md:text-5xl tracking-tight">
-          {isPayAtBranch ? 'Enrollment Reserved!' : 'Enrollment Confirmed!'}
+          {isManualBkash ? 'Payment Submitted!' : isPayAtBranch ? 'Enrollment Reserved!' : 'Enrollment Confirmed!'}
         </h1>
         <p className="mt-4 text-lg text-slate-500 max-w-xl mx-auto leading-relaxed">
-          {isPayAtBranch ? (
+          {isManualBkash ? (
+            <>Your bKash payment details were received. Admin will verify the transaction before activating portal access.</>
+          ) : isPayAtBranch ? (
             <>Welcome to <span className="font-bold text-primary">Language Academy</span>. Your seat is reserved. Please visit our branch to complete the fee payment.</>
           ) : (
             <>Welcome to <span className="font-bold text-primary">Language Academy</span>. Your payment has been received and your batch seat is secured.</>
@@ -201,10 +206,10 @@ function SuccessContent() {
       <div className="max-w-3xl mx-auto">
         <div className="premium-panel overflow-hidden mb-8">
           {/* Banner */}
-          <div className={`px-8 py-5 flex items-center justify-between ${isPayAtBranch ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-primary to-primary/90'}`}>
+          <div className={`px-8 py-5 flex items-center justify-between ${isManualBkash ? 'bg-gradient-to-r from-[#e2136e] to-[#f14a91]' : isPayAtBranch ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-primary to-primary/90'}`}>
             <div className="flex items-center gap-3">
               <Receipt size={20} className="text-white/80" />
-              <span className="text-white font-bold text-sm uppercase tracking-wider">{isPayAtBranch ? 'Reservation Confirmation' : 'Order Confirmation'}</span>
+              <span className="text-white font-bold text-sm uppercase tracking-wider">{isManualBkash ? 'Payment Verification Pending' : isPayAtBranch ? 'Reservation Confirmation' : 'Order Confirmation'}</span>
             </div>
             <span className="text-white/70 text-sm font-medium">{formattedDate}</span>
           </div>
@@ -315,7 +320,23 @@ function SuccessContent() {
                   <span className="text-slate-500">Payment Method</span>
                   <span className="font-medium text-slate-700 capitalize">{order?.payment_method || "Card"}</span>
                 </div>
-                {!isPayAtBranch && (
+                {isManualBkash && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Student bKash Number</span>
+                      <span className="font-medium text-slate-700">{order?.payer_bkash_number || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">bKash Transaction ID</span>
+                      <span className="font-mono font-medium text-slate-700">{order?.bkash_transaction_id || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Merchant Number</span>
+                      <span className="font-medium text-[#e2136e]">{order?.bkash_merchant_no || 'N/A'}</span>
+                    </div>
+                  </>
+                )}
+                {!isPendingManual && (
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-500">Transaction Time</span>
                     <span className="font-medium text-slate-700">{formattedTime}</span>
@@ -329,13 +350,13 @@ function SuccessContent() {
                 )}
                 <hr className="border-slate-100" />
                 <div className="flex justify-between items-center pt-1">
-                  <span className="font-bold text-slate-900">{isPayAtBranch ? 'Amount Due' : 'Total Paid'}</span>
-                  <span className={`text-2xl font-extrabold ${isPayAtBranch ? 'text-amber-500' : 'text-primary'}`}>
+                  <span className="font-bold text-slate-900">{isManualBkash ? 'Pending Verification' : isPayAtBranch ? 'Amount Due' : 'Total Paid'}</span>
+                  <span className={`text-2xl font-extrabold ${isManualBkash ? 'text-[#e2136e]' : isPayAtBranch ? 'text-amber-500' : 'text-primary'}`}>
                     {'\u09F3'}{Number(order?.amount || 0).toLocaleString()}
                   </span>
                 </div>
-                <div className={`flex items-center justify-end gap-2 text-xs font-semibold ${isPayAtBranch ? 'text-amber-500' : 'text-primary'}`}>
-                  {isPayAtBranch ? <><Clock3 size={14} /> Payment Pending &mdash; Pay at Branch</> : <><CheckCircle2 size={14} /> Payment Confirmed</>}
+                <div className={`flex items-center justify-end gap-2 text-xs font-semibold ${isManualBkash ? 'text-[#e2136e]' : isPayAtBranch ? 'text-amber-500' : 'text-primary'}`}>
+                  {isManualBkash ? <><Clock3 size={14} /> Payment Pending &mdash; bKash Verification</> : isPayAtBranch ? <><Clock3 size={14} /> Payment Pending &mdash; Pay at Branch</> : <><CheckCircle2 size={14} /> Payment Confirmed</>}
                 </div>
               </div>
             </div>
@@ -346,7 +367,12 @@ function SuccessContent() {
                 <Sparkles size={18} className="text-accent" /> What Happens Next?
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {(isPayAtBranch ? [
+                {(isManualBkash ? [
+                  { icon: CreditCard, text: "Admin verifies your submitted bKash TrxID" },
+                  { icon: BookOpen, text: "Student portal access after verification" },
+                  { icon: Calendar, text: "Batch schedule notification coming soon" },
+                  { icon: Phone, text: "Our team will reach out if anything needs correction" },
+                ] : isPayAtBranch ? [
                   { icon: CreditCard, text: "Visit our branch to complete fee payment" },
                   { icon: BookOpen, text: "Student portal access after payment" },
                   { icon: Calendar, text: "Batch schedule notification coming soon" },
@@ -371,7 +397,7 @@ function SuccessContent() {
 
         {/* ── Action Buttons ──────────────────────────────── */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-4">
-          {isPayAtBranch ? (
+          {isPendingManual ? (
             <Link href="/courses" className="accent-btn py-4 px-8 text-base shadow-xl shadow-accent/20">
               <BookOpen size={20} /> Browse More Courses
             </Link>

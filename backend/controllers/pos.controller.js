@@ -1,4 +1,5 @@
 const Transaction = require('../models/Transaction');
+const Branch = require('../models/Branch');
 const Enrollment = require('../models/Enrollment');
 const JournalEntry = require('../models/JournalEntry');
 const JournalLine = require('../models/JournalLine');
@@ -28,6 +29,22 @@ const requestError = (message, statusCode = 400) => {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
+};
+
+const pickNoteValue = (notes, label) => {
+  const match = String(notes || '').match(new RegExp(`${label}:\\s*([^\\r\\n]+)`, 'i'));
+  return match ? match[1].trim() : '';
+};
+
+const parseWebsitePaymentDetails = (notes) => {
+  const method = pickNoteValue(notes, 'Payment Method Initiated');
+  if (!method) return null;
+  return {
+    method,
+    merchant_no: pickNoteValue(notes, 'bKash Merchant No'),
+    bkash_number: pickNoteValue(notes, 'Student bKash Number'),
+    bkash_transaction_id: pickNoteValue(notes, 'bKash Transaction ID'),
+  };
 };
 
 const buildReferralExpenseRef = (enrollmentId, invoiceId) => `[REF:${enrollmentId}:${invoiceId || 0}]`;
@@ -99,6 +116,7 @@ exports.getTransactions = async (req, res) => {
     const transactions = await Transaction.findAll({
       where: { branch_id: req.branchId },
       include: [
+        { model: Branch, attributes: ['id', 'name'] },
         { model: Enrollment, required: false, include: [{ model: Student, include: [User] }, { model: Batch, include: [Course] }] },
         { model: Invoice, required: false, include: [{ model: Customer, required: false }, { model: IncomeCategory, required: false }] }
       ],
@@ -126,7 +144,15 @@ exports.getPendingInvoices = async (req, res) => {
         { model: IncomeCategory, required: false }
       ]
     });
-    res.json(invoices.filter((invoice) => calculateDue(invoice) > 0));
+    const pendingInvoices = invoices
+      .filter((invoice) => calculateDue(invoice) > 0)
+      .map((invoice) => {
+        const plain = invoice.get({ plain: true });
+        plain.website_payment = parseWebsitePaymentDetails(plain.notes);
+        return plain;
+      });
+
+    res.json(pendingInvoices);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

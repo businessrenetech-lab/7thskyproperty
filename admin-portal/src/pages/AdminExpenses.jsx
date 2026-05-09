@@ -79,7 +79,7 @@ const ExpenseManager = () => {
       const [expRes, liquidRes, splitRes, catRes, flatRes] = await Promise.all([
         api.get(`/expenses${qStr}`).catch(() => ({ data: [] })),
         api.get('/finance/accounts/liquid').catch(() => ({ data: [] })),
-        api.get('/expenses/split').catch(() => ({ data: { split: [], grandTotal: 0 } })),
+        api.get(`/expenses/split${qStr}`).catch(() => ({ data: { split: [], grandTotal: 0 } })),
         api.get('/expenses/categories').catch(() => ({ data: [] })),
         api.get('/expenses/categories/flat').catch(() => ({ data: [] }))
       ]);

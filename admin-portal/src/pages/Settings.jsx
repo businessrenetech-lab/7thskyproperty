@@ -31,6 +31,7 @@ const CATEGORIES = [
   { id: 'email',        label: 'Email Configuration',         icon: <Mail size={20} />,      color: '#FFB347', desc: 'SMTP server credentials for transactional emails' },
   { id: 'sms',          label: 'SMS Gateway',                 icon: <MessageSquare size={20}/>, color: '#00FF94', desc: 'SMS API keys and sender configuration' },
   { id: 'integrations', label: 'Third-party Integrations',    icon: <Link2 size={20} />,     color: '#FF4D6D', desc: 'SSLCommerz, Tawk.to, and other platform integrations' },
+  { id: 'payment',      label: 'Payment Settings',            icon: <CreditCard size={20} />, color: '#e2136e', desc: 'Merchant numbers and manual payment instructions' },
 ];
 
 /* ─── Input Component ──────────────────────────────────────── */
@@ -137,6 +138,7 @@ const CategorySection = ({ category, settings, getValue, onChange, isActive, onT
     if (category.id === 'contact' && s.key.startsWith('CONTACT_')) return true;
     if (category.id === 'branding' && s.key.startsWith('BRAND_')) return true;
     if (category.id === 'integrations' && (s.key.startsWith('TAWK_') || s.key.startsWith('SSLCOMMERZ_'))) return true;
+    if (category.id === 'payment' && (s.key.startsWith('BKASH_') || s.key.startsWith('PAYMENT_'))) return true;
     return false;
   });
 
