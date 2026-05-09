@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const erpController = require('../controllers/erp.controller');
-const { authMiddleware } = require('../middleware/auth.middleware');
+const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
 const { branchMiddleware } = require('../middleware/branch.middleware');
 
 router.use(authMiddleware);
+router.use(roleMiddleware(['super_admin', 'branch_admin']));
 router.use(branchMiddleware);
 
 router.get('/rooms', erpController.getRooms);

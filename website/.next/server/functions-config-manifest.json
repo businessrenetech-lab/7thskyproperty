@@ -1,1 +1,1 @@
-{"version":1,"functions":{"/blog":{},"/about":{},"/branches":{},"/courses":{},"/materials":{},"/branches/[slug]":{},"/enroll/success":{},"/":{},"/courses/[slug]":{}}}
+{"version":1,"functions":{"/branches":{},"/blog":{},"/about":{},"/courses":{},"/enroll/success":{},"/materials":{},"/":{},"/branches/[slug]":{},"/courses/[slug]":{}}}

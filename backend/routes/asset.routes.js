@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const assetController = require('../controllers/asset.controller');
-const { protect } = require('../middleware/auth.middleware');
-const { injectBranchFilter } = require('../middleware/branch.middleware');
+const { protect, authorize } = require('../middleware/auth.middleware');
+const { branchMiddleware } = require('../middleware/branch.middleware');
 
 router.use(protect);
-router.use(injectBranchFilter);
+router.use(authorize(['super_admin', 'branch_admin']));
+router.use(branchMiddleware);
 
 router.get('/stats', assetController.getAssetStats);
 router.get('/', assetController.getAssets);
