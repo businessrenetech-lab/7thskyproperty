@@ -1,8 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Calendar, Clock, User } from "lucide-react";
-import { getApiBase } from "@/lib/api";
 import { getPublicImageUrl } from "@/lib/imageUrl";
+import { fetchPublicJson } from "@/lib/serverApi";
 import LearningHubClient from "@/components/blog/LearningHubClient";
 
 export const dynamic = "force-dynamic";
@@ -21,25 +21,11 @@ export const metadata = {
 };
 
 async function getBlogs() {
-  try {
-    const res = await fetch(`${getApiBase()}/api/public/blog`, { cache: "no-store" });
-    if (!res.ok) return [];
-    return res.json();
-  } catch (error) {
-    console.error("Error fetching blogs:", error);
-    return [];
-  }
+  return fetchPublicJson("/api/public/blog", { fallback: [], requireNonEmptyArray: true });
 }
 
 async function getResources() {
-  try {
-    const res = await fetch(`${getApiBase()}/api/public/resources`, { cache: "no-store" });
-    if (!res.ok) return [];
-    return res.json();
-  } catch (error) {
-    console.error("Error fetching resources:", error);
-    return [];
-  }
+  return fetchPublicJson("/api/public/resources", { fallback: [] });
 }
 
 export default async function LearningHubPage() {

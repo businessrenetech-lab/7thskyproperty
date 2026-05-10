@@ -4,8 +4,8 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Calendar, ArrowLeft, Clock, BookOpen, ChevronRight } from "lucide-react";
 import JsonLd, { breadcrumbSchema } from "@/components/JsonLd";
-import { getApiBase } from "@/lib/api";
 import { getAbsolutePublicImageUrl, getPublicImageUrl } from "@/lib/imageUrl";
+import { fetchPublicJson } from "@/lib/serverApi";
 import TableOfContents from "@/components/blog/TableOfContents";
 import BlogCard from "@/components/blog/BlogCard";
 import ShareButtons from "@/components/blog/ShareButtons";
@@ -13,20 +13,12 @@ import ShareButtons from "@/components/blog/ShareButtons";
 export const dynamic = "force-dynamic";
 
 async function getBlogDetails(slug) {
-  try {
-    const res = await fetch(`${getApiBase()}/api/public/blog/${slug}`, { cache: "no-store" });
-    if (!res.ok) { if (res.status === 404) return null; throw new Error("Failed"); }
-    return res.json();
-  } catch (error) { console.error("Error:", error); return null; }
+  return fetchPublicJson(`/api/public/blog/${slug}`, { fallback: null });
 }
 
 async function getRelatedBlogs(currentSlug) {
-  try {
-    const res = await fetch(`${getApiBase()}/api/public/blog`, { cache: "no-store" });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.filter(b => b.slug !== currentSlug).slice(0, 3);
-  } catch { return []; }
+  const data = await fetchPublicJson("/api/public/blog", { fallback: [], requireNonEmptyArray: true });
+  return data.filter(b => b.slug !== currentSlug).slice(0, 3);
 }
 
 export async function generateMetadata({ params }) {
