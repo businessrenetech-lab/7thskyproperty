@@ -3,6 +3,7 @@ const Course = require('../models/Course');
 const { injectBranchFilter } = require('../middleware/branch.middleware');
 
 const getEffectiveBranchId = (req) => req.scopedBranchId || req.branchId;
+const scopedById = (req, id) => injectBranchFilter(req, { where: { id } });
 
 // --- BLOG POSTS ---
 
@@ -56,9 +57,7 @@ exports.createBlogPost = async (req, res) => {
 exports.updateBlogPost = async (req, res) => {
   try {
     const { id } = req.params;
-    const branchWhere = injectBranchFilter(req, { id });
-
-    const post = await BlogPost.findOne({ where: branchWhere });
+    const post = await BlogPost.findOne(scopedById(req, id));
     if (!post) return res.status(404).json({ error: 'Blog post not found' });
 
     const { title, slug, excerpt, content, image_url, is_published, category, tags, course_relation, reading_time, seo_title, seo_description, is_featured } = req.body;
@@ -80,9 +79,7 @@ exports.updateBlogPost = async (req, res) => {
 exports.deleteBlogPost = async (req, res) => {
   try {
     const { id } = req.params;
-    const branchWhere = injectBranchFilter(req, { id });
-
-    const post = await BlogPost.findOne({ where: branchWhere });
+    const post = await BlogPost.findOne(scopedById(req, id));
     if (!post) return res.status(404).json({ error: 'Blog post not found' });
 
     await post.destroy();
@@ -108,9 +105,7 @@ exports.getWebsiteCourses = async (req, res) => {
 exports.updateWebsiteCourse = async (req, res) => {
   try {
     const { id } = req.params;
-    const branchWhere = injectBranchFilter(req, { id });
-
-    const course = await Course.findOne({ where: branchWhere });
+    const course = await Course.findOne(scopedById(req, id));
     if (!course) return res.status(404).json({ error: 'Course not found' });
 
     const allowedFields = ['is_published', 'image_url', 'short_description'];
@@ -193,10 +188,9 @@ exports.createResource = async (req, res) => {
 exports.updateResource = async (req, res) => {
   try {
     const { id } = req.params;
-    const branchWhere = injectBranchFilter(req, { id });
     const ResourceModel = require('../models/Resource');
 
-    const resource = await ResourceModel.findOne({ where: branchWhere });
+    const resource = await ResourceModel.findOne(scopedById(req, id));
     if (!resource) return res.status(404).json({ error: 'Resource not found' });
 
     const { title, slug, description, type, category, level, file_url, external_url, thumbnail_url, is_free, status } = req.body;
@@ -214,10 +208,9 @@ exports.updateResource = async (req, res) => {
 exports.deleteResource = async (req, res) => {
   try {
     const { id } = req.params;
-    const branchWhere = injectBranchFilter(req, { id });
     const ResourceModel = require('../models/Resource');
 
-    const resource = await ResourceModel.findOne({ where: branchWhere });
+    const resource = await ResourceModel.findOne(scopedById(req, id));
     if (!resource) return res.status(404).json({ error: 'Resource not found' });
 
     await resource.destroy();

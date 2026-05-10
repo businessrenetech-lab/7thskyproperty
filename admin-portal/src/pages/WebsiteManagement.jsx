@@ -58,13 +58,30 @@ const WebsiteManagement = () => {
     }
   };
 
+  const buildBlogPayload = () => {
+    const allowedFields = ['title', 'slug', 'excerpt', 'content', 'image_url', 'category', 'tags', 'course_relation', 'reading_time', 'seo_title', 'seo_description', 'is_featured', 'is_published'];
+    const payload = {};
+    allowedFields.forEach((field) => {
+      payload[field] = formData[field];
+    });
+    if (typeof payload.tags === 'string') {
+      payload.tags = payload.tags.split(',').map(t => t.trim()).filter(Boolean);
+    }
+    if (!Number.isInteger(payload.reading_time)) {
+      payload.reading_time = null;
+    }
+    return payload;
+  };
+
+  const resetBlogForm = () => {
+    setEditingBlog(null);
+    setFormData({ title: '', slug: '', excerpt: '', content: '', image_url: '', category: '', tags: '', course_relation: '', seo_title: '', seo_description: '', is_featured: false, is_published: true });
+  };
+
   const handleBlogSubmit = async (e) => {
     e.preventDefault();
     try {
-      const submissionData = { ...formData };
-      if (typeof submissionData.tags === 'string') {
-        submissionData.tags = submissionData.tags.split(',').map(t => t.trim()).filter(Boolean);
-      }
+      const submissionData = buildBlogPayload();
 
       if (editingBlog) {
         await api.put(`/website/blogs/${editingBlog.id}`, submissionData);
@@ -72,8 +89,7 @@ const WebsiteManagement = () => {
         await api.post('/website/blogs', submissionData);
       }
       setShowBlogForm(false);
-      setEditingBlog(null);
-      setFormData({ title: '', slug: '', excerpt: '', content: '', image_url: '', category: '', tags: '', course_relation: '', seo_title: '', seo_description: '', is_featured: false, is_published: true });
+      resetBlogForm();
       fetchData();
     } catch (err) {
       toast.error(`Error saving blog: ${err.response?.data?.error || err.message}`);
@@ -82,8 +98,13 @@ const WebsiteManagement = () => {
 
   const deleteBlog = async (id) => {
     if (window.confirm('Are you sure you want to delete this blog post?')) {
-      await api.delete(`/website/blogs/${id}`);
-      fetchData();
+      try {
+        await api.delete(`/website/blogs/${id}`);
+        toast.success('Article deleted');
+        fetchData();
+      } catch (err) {
+        toast.error(`Error deleting blog: ${err.response?.data?.error || err.message}`);
+      }
     }
   };
 
@@ -411,7 +432,7 @@ const WebsiteManagement = () => {
                         </td>
                         <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                           <div style={{ display: 'inline-flex', gap: '0.5rem' }}>
-                            <button className="icon-btn hover-primary" title="Edit Article" onClick={() => { setEditingBlog(blog); setFormData(blog); setShowBlogForm(true); }}><Edit size={18} /></button>
+                            <button className="icon-btn hover-primary" title="Edit Article" onClick={() => { setEditingBlog(blog); setFormData({ title: blog.title || '', slug: blog.slug || '', excerpt: blog.excerpt || '', content: blog.content || '', image_url: blog.image_url || '', category: blog.category || '', tags: Array.isArray(blog.tags) ? blog.tags.join(', ') : (blog.tags || ''), course_relation: blog.course_relation || '', reading_time: blog.reading_time || '', seo_title: blog.seo_title || '', seo_description: blog.seo_description || '', is_featured: !!blog.is_featured, is_published: !!blog.is_published }); setShowBlogForm(true); }}><Edit size={18} /></button>
                             <button className="icon-btn hover-danger" title="Delete Article" style={{ color: '#ef4444' }} onClick={() => deleteBlog(blog.id)}><Trash2 size={18} /></button>
                           </div>
                         </td>
