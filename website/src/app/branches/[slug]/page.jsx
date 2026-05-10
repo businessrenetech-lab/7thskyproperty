@@ -3,20 +3,13 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ArrowRight, BookOpen, Calendar, Clock3, MapPin, Phone, Star, Users } from "lucide-react";
 import JsonLd, { breadcrumbSchema } from "@/components/JsonLd";
-import { getApiBase } from "@/lib/api";
 import { getPublicImageUrl } from "@/lib/imageUrl";
+import { fetchPublicJson } from "@/lib/serverApi";
 
 export const dynamic = "force-dynamic";
 
 async function fetchJson(path, fallback) {
-  try {
-    const res = await fetch(`${getApiBase()}${path}`, { cache: "no-store" });
-    if (!res.ok) return fallback;
-    return res.json();
-  } catch (error) {
-    console.error(`Error fetching ${path}:`, error);
-    return fallback;
-  }
+  return fetchPublicJson(path, { fallback, requireNonEmptyArray: Array.isArray(fallback) });
 }
 
 async function getBranch(slug) {

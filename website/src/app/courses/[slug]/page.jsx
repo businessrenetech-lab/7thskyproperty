@@ -4,24 +4,17 @@ import { notFound } from "next/navigation";
 import { ArrowRight, Award, Calendar, CheckCircle2, Clock3, Globe2, MapPin, Phone, ShieldCheck, Sparkles, Star, TrendingUp, Users, Zap } from "lucide-react";
 import BookingModalTrigger from "@/components/BookingModalTrigger";
 import JsonLd, { courseSchema, breadcrumbSchema } from "@/components/JsonLd";
-import { getApiBase } from "@/lib/api";
 import { getFallbackCourse } from "@/lib/courseFallbacks";
 import { getAbsolutePublicImageUrl, getPublicImageUrl } from "@/lib/imageUrl";
+import { fetchPublicJson } from "@/lib/serverApi";
 
 // Force SSR — prevent Next.js from static-generating this page at build time
 // (the API isn't available during build, so fetch would fail → 404)
 export const dynamic = "force-dynamic";
 
 async function getCourseDetails(slug) {
-  try {
-    const res = await fetch(`${getApiBase()}/api/public/courses/${slug}`, { cache: "no-store" });
-    if (!res.ok) return getFallbackCourse(slug);
-    const course = await res.json();
-    return course?.id ? course : getFallbackCourse(slug);
-  } catch (error) {
-    console.error("Error fetching course details:", error);
-    return getFallbackCourse(slug);
-  }
+  const course = await fetchPublicJson(`/api/public/courses/${slug}`, { fallback: getFallbackCourse(slug) });
+  return course?.id ? course : getFallbackCourse(slug);
 }
 
 function safeParse(value, fallback) {

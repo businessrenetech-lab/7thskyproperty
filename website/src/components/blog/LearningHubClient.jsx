@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, Calendar, Clock, BookOpen, Search, Filter, ArrowUpRight } from 'lucide-react';
-import { getPublicImageUrl } from '@/lib/imageUrl';
+import { getBlogImageFallback, getPublicImageUrl } from '@/lib/imageUrl';
 import BlogCard from './BlogCard';
 import ResourceCard from './ResourceCard';
 
@@ -200,7 +200,7 @@ export default function LearningHubClient({ blogs = [], resources = [] }) {
                   {/* Image Side */}
                   <div className="relative aspect-[16/11] lg:aspect-auto overflow-hidden">
                     <Image
-                      src={getPublicImageUrl(topFeatured.image_url)}
+                      src={getPublicImageUrl(topFeatured.image_url, getBlogImageFallback(topFeatured.category))}
                       alt={topFeatured.title}
                       fill
                       sizes="(min-width: 1024px) 55vw, 100vw"

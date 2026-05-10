@@ -23,3 +23,11 @@ export function getAbsolutePublicImageUrl(value, fallback = 'https://languageaca
   if (/^(https?:)?\/\//i.test(imageUrl) || imageUrl.startsWith('data:')) return imageUrl;
   return `https://languageacademy.com.bd${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
 }
+
+export function getBlogImageFallback(category) {
+  const normalizedCategory = String(category || '').toLowerCase();
+  if (normalizedCategory.includes('ielts')) return '/ielts_course.png';
+  if (normalizedCategory.includes('pte')) return '/pte_course.png';
+  if (normalizedCategory.includes('study')) return '/hero_student.jpg';
+  return '/blog_resources.png';
+}

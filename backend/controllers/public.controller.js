@@ -5,6 +5,8 @@ const Lead = require('../models/Lead');
 const Contact = require('../models/Contact');
 const Opportunity = require('../models/Opportunity');
 const Branch = require('../models/Branch');
+const fs = require('fs');
+const path = require('path');
 const { Op } = require('sequelize');
 const sequelize = require('../config/db.config');
 const fbCapi = require('../services/facebookCapi.service');
@@ -109,6 +111,15 @@ const PUBLIC_COURSE_FALLBACKS = [
   },
 ];
 
+const getExistingUploadUrl = (value) => {
+  const uploadUrl = String(value || '').trim();
+  if (!uploadUrl || !uploadUrl.startsWith('/uploads/')) return uploadUrl || null;
+
+  const relativePath = uploadUrl.replace(/^\/uploads\//, '');
+  const filePath = path.join(__dirname, '..', 'uploads', relativePath);
+  return fs.existsSync(filePath) ? uploadUrl : null;
+};
+
 const isDatabaseUnavailableError = (error) => {
   const code = error?.original?.code || error?.parent?.code || error?.code;
   const message = error?.message || '';
@@ -179,8 +190,16 @@ const mapPublicCourse = (course) => {
     level: item.level || 'beginner',
     base_fee: item.base_fee || 0,
     duration_weeks: item.duration_weeks || null,
-    image_url: item.image_url || null,
+    image_url: getExistingUploadUrl(item.image_url),
     short_description: item.short_description || item.description || '',
+  };
+};
+
+const mapPublicBlog = (blog) => {
+  const item = blog.toJSON ? blog.toJSON() : blog;
+  return {
+    ...item,
+    image_url: getExistingUploadUrl(item.image_url),
   };
 };
 
@@ -301,7 +320,7 @@ exports.getPublishedBlogs = async (req, res) => {
       order: hasColumn(columns, 'published_at') ? [['published_at', 'DESC']] : [['id', 'DESC']],
       attributes: pickExisting(columns, PUBLIC_BLOG_FIELDS)
     });
-    res.json(blogs);
+    res.json(blogs.map(mapPublicBlog));
   } catch (err) {
     console.error('Error fetching blogs:', err);
     if (isDatabaseUnavailableError(err)) return res.json([]);
@@ -327,7 +346,7 @@ exports.getBlogDetails = async (req, res) => {
       return res.status(404).json({ message: 'Blog post not found' });
     }
 
-    res.json(blog);
+    res.json(mapPublicBlog(blog));
   } catch (err) {
     console.error('Error fetching blog details:', err);
     if (isDatabaseUnavailableError(err)) return res.status(404).json({ message: 'Blog post not found' });
@@ -447,7 +466,7 @@ exports.getPublicBranchBlogs = async (req, res) => {
       order: hasColumn(columns, 'published_at') ? [['published_at', 'DESC']] : [['id', 'DESC']],
     });
 
-    res.json(blogs);
+    res.json(blogs.map(mapPublicBlog));
   } catch (err) {
     console.error('Error fetching branch blogs:', err);
     if (isDatabaseUnavailableError(err)) return res.json([]);

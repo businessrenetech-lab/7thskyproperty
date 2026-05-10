@@ -4,7 +4,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Calendar, ArrowLeft, Clock, BookOpen, ChevronRight } from "lucide-react";
 import JsonLd, { breadcrumbSchema } from "@/components/JsonLd";
-import { getAbsolutePublicImageUrl, getPublicImageUrl } from "@/lib/imageUrl";
+import { getAbsolutePublicImageUrl, getBlogImageFallback, getPublicImageUrl } from "@/lib/imageUrl";
 import { fetchPublicJson } from "@/lib/serverApi";
 import TableOfContents from "@/components/blog/TableOfContents";
 import BlogCard from "@/components/blog/BlogCard";
@@ -33,7 +33,7 @@ export async function generateMetadata({ params }) {
       title: blog.seo_title || blog.title,
       description: blog.seo_description || blog.excerpt,
       url: `https://languageacademy.com.bd/blog/${params.slug}`,
-      images: [{ url: getAbsolutePublicImageUrl(blog.image_url), width: 1200, height: 630, alt: blog.title }],
+      images: [{ url: getAbsolutePublicImageUrl(blog.image_url, getBlogImageFallback(blog.category)), width: 1200, height: 630, alt: blog.title }],
       publishedTime: blog.published_at,
       authors: ["Language Academy Bangladesh"],
     },
@@ -73,7 +73,7 @@ export default async function BlogDetailPage({ params }) {
         "@type": "Article",
         "headline": blog.title,
         "description": blog.excerpt,
-        "image": getAbsolutePublicImageUrl(blog.image_url),
+        "image": getAbsolutePublicImageUrl(blog.image_url, getBlogImageFallback(blog.category)),
         "datePublished": blog.published_at,
         "dateModified": blog.updated_at || blog.published_at,
         "author": { "@type": "Organization", "name": "Language Academy Bangladesh", "url": "https://languageacademy.com.bd" },
@@ -177,7 +177,7 @@ export default async function BlogDetailPage({ params }) {
           <div className="container-shell max-w-6xl pb-8 md:pb-12">
             <div className="aspect-[2/1] sm:aspect-[2.2/1] w-full overflow-hidden rounded-2xl md:rounded-3xl relative shadow-xl shadow-slate-200/50 ring-1 ring-slate-200/50">
               <Image
-                src={getPublicImageUrl(blog.image_url)}
+                src={getPublicImageUrl(blog.image_url, getBlogImageFallback(blog.category))}
                 alt={blog.title}
                 fill
                 sizes="(max-width: 768px) 100vw, 1152px"

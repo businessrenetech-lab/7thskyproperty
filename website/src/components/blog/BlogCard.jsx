@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Calendar, Clock, ArrowRight, BookOpen } from 'lucide-react';
-import { getPublicImageUrl } from '@/lib/imageUrl';
+import { getBlogImageFallback, getPublicImageUrl } from '@/lib/imageUrl';
 
 export default function BlogCard({ blog, priority = false }) {
   const {
@@ -29,7 +29,7 @@ export default function BlogCard({ blog, priority = false }) {
       <Link href={`/blog/${slug}`} className="block relative aspect-[3/2] overflow-hidden bg-slate-100">
         {image_url ? (
           <Image
-            src={getPublicImageUrl(image_url)}
+            src={getPublicImageUrl(image_url, getBlogImageFallback(category))}
             alt={title}
             fill
             sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"

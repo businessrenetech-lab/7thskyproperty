@@ -2,8 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Clock3, MapPin, Phone, Sparkles } from "lucide-react";
 import JsonLd, { breadcrumbSchema } from "@/components/JsonLd";
-import { getApiBase } from "@/lib/api";
 import { getPublicImageUrl } from "@/lib/imageUrl";
+import { fetchPublicJson } from "@/lib/serverApi";
 
 export const dynamic = "force-dynamic";
 
@@ -14,15 +14,8 @@ export const metadata = {
 };
 
 async function getBranches() {
-  try {
-    const res = await fetch(`${getApiBase()}/api/public/branches`, { cache: "no-store" });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error("Error fetching branches:", error);
-    return [];
-  }
+  const data = await fetchPublicJson("/api/public/branches", { fallback: [], requireNonEmptyArray: true });
+  return Array.isArray(data) ? data : [];
 }
 
 function BranchCard({ branch }) {
