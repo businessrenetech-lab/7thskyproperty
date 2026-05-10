@@ -189,7 +189,7 @@ exports.getStaff = async (req, res) => {
     const staff = await User.findAll({
       where: { 
         branch_id: branchId,
-        role: { [Op.not]: 'student' }
+        role: { [Op.notIn]: ['student', 'guardian'] }
       },
       include: [{ model: StaffProfile }, { model: StaffPayRule }],
       attributes: ['id', 'name', 'email', 'role', 'status']

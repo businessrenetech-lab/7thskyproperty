@@ -39,6 +39,25 @@ const FEATURE_EXTRA_ROUTES = {
   payroll: ['hrm-dashboard', 'staff-attendance', 'leave-management', 'recruitment', 'staff-documents', 'performance', 'shifts', 'org-chart'],
 };
 
+const ROLE_PERMISSION_FALLBACKS = {
+  accounts: ['accounts', 'accounting'],
+  trainer: ['trainer', 'teacher'],
+  counselor: ['counselor', 'crm'],
+  hr: ['hr', 'hrm'],
+};
+
+const getPermissionRoleKey = (role, permissions) => {
+  if (!permissions) return role;
+  const candidates = ROLE_PERMISSION_FALLBACKS[role] || [role];
+  return candidates.find((candidate) => permissions[candidate]) || role;
+};
+
+const getFeatureKeyForRoute = (routeId) => {
+  if (ROUTE_FEATURE_MAP[routeId]) return ROUTE_FEATURE_MAP[routeId];
+  const parentRoute = String(routeId || '').split('/')[0];
+  return ROUTE_FEATURE_MAP[parentRoute];
+};
+
 /* Reverse map: route → feature key */
 const ROUTE_FEATURE_MAP = {};
 Object.entries(FEATURE_ROUTE_MAP).forEach(([feat, route]) => {
@@ -93,34 +112,33 @@ export const PermissionProvider = ({ children }) => {
 
   /**
    * Check if the current user's role has a specific admin feature enabled.
-   * Returns true if:
-   *  - permissions haven't been loaded yet (graceful loading)
-   *  - the user is super_admin or branch_admin (always full access)
-   *  - the RBAC matrix says the feature is enabled for the user's role in admin portal
+   * Returns true only when the role is explicitly allowed by the RBAC matrix.
+   * Super admins retain full access, and dashboard is always available.
    */
   const canAccess = useCallback((routeId) => {
     if (!user) return false;
     const role = user.role;
 
-    // Super/branch admins always have full access
-    if (['super_admin', 'branch_admin'].includes(role)) return true;
+    // Super admins always have full access
+    if (role === 'super_admin') return true;
 
     // Dashboard is always accessible for any authenticated user
     if (routeId === 'dashboard') return true;
 
-    // If RBAC config hasn't been saved yet, fall back to open access
-    if (!permissions) return true;
+    // If RBAC config hasn't been saved yet, deny non-admin module access.
+    if (!permissions) return false;
+
+    const roleKey = getPermissionRoleKey(role, permissions);
 
     // Map the route to a feature key
-    const featureKey = ROUTE_FEATURE_MAP[routeId];
-    if (!featureKey) return true; // Unknown route → allow (safer for custom pages)
+    const featureKey = getFeatureKeyForRoute(routeId);
+    if (!featureKey) return false;
 
     // Check the admin portal permission for this role
-    const adminConfig = permissions[role]?.admin;
+    const adminConfig = permissions[roleKey]?.admin;
     
-    // If the role has no config entry at all in the matrix, allow access
-    // (the admin hasn't configured this role yet — graceful default)
-    if (!permissions[role]) return true;
+    // If the role has no config entry at all in the matrix, deny access.
+    if (!permissions[roleKey]) return false;
     
     if (!adminConfig) return false; // Role exists in matrix but admin portal disabled
     if (!adminConfig.enabled) return false; // Admin portal explicitly disabled
@@ -134,8 +152,7 @@ export const PermissionProvider = ({ children }) => {
   const filterItems = useCallback((items) => {
     if (!user) return [];
     const role = user.role;
-    if (['super_admin', 'branch_admin'].includes(role)) return items;
-    if (!permissions) return items; // No config → show all (graceful default)
+    if (role === 'super_admin') return items;
 
     return items.filter(item => canAccess(item.id));
   }, [user, permissions, canAccess]);

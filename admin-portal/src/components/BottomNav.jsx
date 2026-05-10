@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, UserCheck, GraduationCap, MoreHorizontal, Clock, CheckCircle2, Loader2, Landmark, Banknote, ArrowLeftRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../context/PermissionContext';
 import api from '../services/api';
 import '../styles/GlobalStyles.css';
 
@@ -9,6 +10,7 @@ const BottomNav = ({ onMoreClick }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { canAccess } = usePermissions();
   const [checkingIn, setCheckingIn] = useState(false);
   const [checkInResult, setCheckInResult] = useState(null);
 
@@ -62,6 +64,21 @@ const BottomNav = ({ onMoreClick }) => {
   ];
 
   const tabs = isReconciliation ? reconTabs : defaultTabs;
+  const canUseCheckIn = user && !['student', 'guardian'].includes(user.role);
+
+  const getRouteId = (tab) => {
+    if (tab.routeId) return tab.routeId;
+    if (!tab.path) return null;
+    return tab.path.replace(/^\/+/, '') || 'dashboard';
+  };
+
+  const visibleTabs = tabs.filter((tab) => {
+    if (tab.isMore) return true;
+    if (tab.isAction) return canUseCheckIn;
+    if (tab.modalAction) return canAccess('reconciliation');
+    const routeId = getRouteId(tab);
+    return routeId ? canAccess(routeId) : false;
+  });
 
   const isActive = (path) => {
     if (!path) return false;
@@ -105,7 +122,7 @@ const BottomNav = ({ onMoreClick }) => {
       )}
 
       <nav className="bottom-nav" aria-label="Primary mobile navigation">
-        {tabs.map((tab) => {
+        {visibleTabs.map((tab) => {
           const Icon = tab.icon;
           const active = isActive(tab.path);
 

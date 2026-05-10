@@ -15,6 +15,7 @@ router.get('/split', expenseController.getExpenseSplit);
 
 // Handle multipart/form-data for receipt uploads
 router.post('/', upload.single('receipt'), expenseController.createExpense);
+router.put('/:id', upload.single('receipt'), expenseController.updateExpense);
 
 // Verification & Approval Layers
 router.put('/:id/payment-source', expenseController.selectPaymentSource);

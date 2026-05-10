@@ -26,21 +26,15 @@ const QuickCheckIn = () => {
       }
 
       const payload = {
-        date: new Date().toISOString().split('T')[0],
-        attendance_data: [{ 
-          user_id: userObj.id, 
-          status: 'present', 
-          check_in: type === 'in' ? time : null, 
-          check_out: type === 'out' ? time : null,
-          latitude,
-          longitude
-        }]
+        action: type,
+        latitude,
+        longitude,
       };
 
-      await api.post('/hrm/attendance/mark', payload);
+      await api.post('/hrm/attendance/self-checkin', payload);
       toast.success(`Successfully punched ${type === 'in' ? 'in' : 'out'} at ${time}`);
     } catch(e) {
-      toast.error(`Failed to punch ${type}!`);
+      toast.error(e.response?.data?.error || `Failed to punch ${type}!`);
     }
   };
 

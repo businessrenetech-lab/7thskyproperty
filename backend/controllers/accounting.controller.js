@@ -23,9 +23,31 @@ exports.createJournalEntry = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { ref_no, description, date, lines } = req.body;
+    if (!Array.isArray(lines) || lines.length < 2) {
+      await t.rollback();
+      return res.status(400).json({ error: 'At least two journal lines are required' });
+    }
+
+    const accountIds = [...new Set(lines.map(line => line.account_id).filter(Boolean))];
+    if (!accountIds.length || lines.some(line => !line.account_id)) {
+      await t.rollback();
+      return res.status(400).json({ error: 'Every journal line must include an account' });
+    }
+
+    const validAccountCount = await Account.count({
+      where: { id: { [Op.in]: accountIds }, branch_id: req.branchId, is_active: true }
+    });
+    if (validAccountCount !== accountIds.length) {
+      await t.rollback();
+      return res.status(400).json({ error: 'Journal lines must use active accounts from the selected branch' });
+    }
+
     const totalDebit = lines.reduce((sum, l) => sum + parseFloat(l.debit || 0), 0);
     const totalCredit = lines.reduce((sum, l) => sum + parseFloat(l.credit || 0), 0);
-    if (Math.abs(totalDebit - totalCredit) > 0.01) throw new Error('Journal entry is not balanced');
+    if (Math.abs(totalDebit - totalCredit) > 0.01) {
+      await t.rollback();
+      return res.status(400).json({ error: 'Journal entry is not balanced' });
+    }
 
     const entry = await JournalEntry.create({
       branch_id: req.branchId, ref_no, description, date: date || new Date(), posted_by: req.user.id
@@ -78,22 +100,20 @@ exports.getJournal = async (req, res) => {
       entryWhere.date = { [Op.lte]: endDate };
     }
 
+    const accountInclude = { model: Account, attributes: ['name', 'code', 'type'] };
+    if (type && type !== 'all') accountInclude.where = { type };
+
     const lines = await JournalLine.findAll({
       where: lineWhere,
       include: [
         { model: JournalEntry, where: entryWhere, include: [{ model: User, as: 'Poster', attributes: ['name'] }] },
-        { model: Account, attributes: ['name', 'code', 'type'] }
+        accountInclude
       ],
       order: [[JournalEntry, 'date', 'DESC'], ['id', 'DESC']],
       limit: 200
     });
 
-    // Filter by account type if needed
-    const filtered = type && type !== 'all'
-      ? lines.filter(l => l.Account?.type === type)
-      : lines;
-
-    res.json(filtered);
+    res.json(lines);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

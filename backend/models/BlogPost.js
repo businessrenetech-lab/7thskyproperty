@@ -43,7 +43,29 @@ const BlogPost = sequelize.define('BlogPost', {
   image_url: {
     type: DataTypes.STRING,
   },
+  category: {
+    type: DataTypes.STRING,
+  },
+  tags: {
+    type: DataTypes.JSON,
+  },
+  course_relation: {
+    type: DataTypes.STRING,
+  },
+  reading_time: {
+    type: DataTypes.INTEGER,
+  },
+  seo_title: {
+    type: DataTypes.STRING,
+  },
+  seo_description: {
+    type: DataTypes.STRING,
+  },
   is_published: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  is_featured: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
   },

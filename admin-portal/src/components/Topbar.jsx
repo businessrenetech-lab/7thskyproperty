@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Search, Globe, Sun, Moon, Building2, MapPin, Menu } from 'lucide-react';
+import { Search, Globe, Sun, Moon, Building2, MapPin, Menu } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../services/api';
@@ -122,13 +122,6 @@ const Topbar = ({ title, onMenuClick }) => {
             onClick={toggleTheme}
           >
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-          </div>
-          <div className="glass-morphism topbar-icon-btn" style={{ padding: '0.5rem', borderRadius: '50%', cursor: 'pointer', position: 'relative' }}>
-            <Bell size={16} />
-            <span style={{ 
-              position: 'absolute', top: '0', right: '0',
-              width: '7px', height: '7px', background: 'var(--danger)', borderRadius: '50%' 
-            }}></span>
           </div>
         </div>
       </div>

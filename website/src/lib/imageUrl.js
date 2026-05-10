@@ -1,4 +1,12 @@
-const PUBLIC_ASSET_BASE = process.env.NEXT_PUBLIC_UPLOADS_BASE_URL || process.env.NEXT_PUBLIC_API_URL || '';
+const normalizeAssetBase = (value) => {
+  const base = String(value || '').trim().replace(/\/$/, '');
+  if (!base) return '';
+  return base.replace(/\/api$/i, '');
+};
+
+const PUBLIC_ASSET_BASE = normalizeAssetBase(
+  process.env.NEXT_PUBLIC_UPLOADS_BASE_URL || process.env.NEXT_PUBLIC_API_URL || ''
+);
 
 export function getPublicImageUrl(value, fallback = '/hero_banner.png') {
   const imageUrl = String(value || '').trim();

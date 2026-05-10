@@ -15,6 +15,9 @@ router.get('/courses/:slug/batches', publicController.getCourseBatches);
 router.get('/blog', publicController.getPublishedBlogs);
 router.get('/blog/:slug', publicController.getBlogDetails);
 
+router.get('/resources', publicController.getPublishedResources);
+router.get('/resources/:slug', publicController.getResourceDetails);
+
 router.post('/contact', publicController.submitContactForm);
 router.post('/enquiries', publicController.submitCourseEnquiry);
 router.post('/student-bookings', publicController.submitStudentBooking);

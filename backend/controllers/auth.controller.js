@@ -2,10 +2,17 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Branch = require('../models/Branch');
+const RbacConfig = require('../models/RbacConfig');
 const { getTableColumns, hasColumn } = require('../utils/schemaSafe');
 
 const ASSIGNABLE_ROLES = ['super_admin', 'branch_admin', 'counselor', 'trainer', 'accounts', 'hr', 'staff', 'unassigned'];
 const BRANCH_ADMIN_ROLES = ['counselor', 'trainer', 'accounts', 'hr', 'staff', 'unassigned'];
+const LEGACY_ROLE_ALIASES = {
+  accounting: 'accounts',
+  teacher: 'trainer',
+  crm: 'counselor',
+  hrm: 'hr',
+};
 const AUTH_COOKIE_NAME = 'la_admin_token';
 const AUTH_TOKEN_TTL = '7d';
 const AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
@@ -52,10 +59,28 @@ const getSafeUserAttributes = async (includePassword = false) => {
   return attributes;
 };
 
-const canAssignRole = (actor, role) => {
-  if (!ASSIGNABLE_ROLES.includes(role)) return false;
+const isHeadSuperAdmin = (user) => user?.role === 'super_admin' && user?.Branch?.type === 'head';
+
+const getManageableUserWhere = (actor, userId = null) => {
+  const where = {};
+  if (userId) where.id = userId;
+  if (!isHeadSuperAdmin(actor)) where.branch_id = actor.branch_id;
+  return where;
+};
+
+const normalizeRole = (role) => LEGACY_ROLE_ALIASES[role] || role;
+
+const getCustomRoleKeys = async () => {
+  const config = await RbacConfig.findOne({ order: [['id', 'DESC']] });
+  if (!Array.isArray(config?.custom_roles_json)) return [];
+  return config.custom_roles_json.map((role) => role?.key).filter(Boolean);
+};
+
+const canAssignRole = async (actor, role) => {
+  const customRoleKeys = await getCustomRoleKeys();
+  if (![...ASSIGNABLE_ROLES, ...customRoleKeys].includes(role)) return false;
   if (actor.role === 'super_admin') return true;
-  return BRANCH_ADMIN_ROLES.includes(role);
+  return BRANCH_ADMIN_ROLES.includes(role) || customRoleKeys.includes(role);
 };
 
 exports.register = async (req, res) => {
@@ -73,9 +98,9 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: 'Name or email exceeds maximum length.' });
     }
 
-    const requestedRole = role || 'unassigned';
+    const requestedRole = normalizeRole(role || 'unassigned');
 
-    if (!canAssignRole(req.user, requestedRole)) {
+    if (!(await canAssignRole(req.user, requestedRole))) {
       return res.status(403).json({ error: 'You cannot assign that role.' });
     }
 
@@ -172,14 +197,18 @@ exports.getMe = async (req, res) => {
 
 exports.getStaff = async (req, res) => {
   try {
-    const staff = await User.findAll({
-      where: {
-        role: {
-          [require('sequelize').Op.notIn]: ['student', 'guardian']
-        },
-        branch_id: req.branchId
+    const where = {
+      ...getManageableUserWhere(req.user),
+      role: {
+        [require('sequelize').Op.notIn]: ['student', 'guardian']
       },
-      attributes: ['id', 'name', 'email', 'role', 'status'] // Never include password
+    };
+
+    const staff = await User.findAll({
+      where,
+      attributes: ['id', 'name', 'email', 'role', 'status', 'branch_id'], // Never include password
+      include: [{ model: Branch, attributes: ['id', 'name', 'code', 'type'] }],
+      order: [['branch_id', 'ASC'], ['name', 'ASC']],
     });
     res.json(staff);
   } catch (error) {
@@ -191,20 +220,21 @@ exports.getStaff = async (req, res) => {
 exports.updateRole = async (req, res) => {
   try {
     const { userId, role } = req.body;
+    const requestedRole = normalizeRole(role);
 
     // H2 Fix: Input validation
     if (!userId || !role) {
       return res.status(400).json({ error: 'userId and role are required.' });
     }
 
-    if (!canAssignRole(req.user, role)) {
+    if (!(await canAssignRole(req.user, requestedRole))) {
       return res.status(403).json({ error: 'You cannot assign that role.' });
     }
 
-    const user = await User.findOne({ where: { id: userId, branch_id: req.branchId } });
+    const user = await User.findOne({ where: getManageableUserWhere(req.user, userId) });
     if (!user) return res.status(404).json({ error: 'User not found or you do not have permission.' });
 
-    user.role = role;
+    user.role = requestedRole;
     await user.save();
 
     res.json({ message: 'User role updated successfully.', user: { id: user.id, name: user.name, role: user.role } });
@@ -224,7 +254,7 @@ exports.setStaffPassword = async (req, res) => {
       return res.status(400).json({ error: pwError });
     }
 
-    const user = await User.findOne({ where: { id: userId, branch_id: req.branchId } });
+    const user = await User.findOne({ where: getManageableUserWhere(req.user, userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
     
     user.password = await bcrypt.hash(newPassword, 12); // Increased from 10 to 12 rounds

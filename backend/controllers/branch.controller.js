@@ -33,6 +33,21 @@ const applyBranchFields = (branch, body) => {
   });
 };
 
+const STAFF_EXCLUDED_ROLES = ['student', 'guardian'];
+
+const getRequestedBranchId = (req, res) => {
+  const branchId = parseInt(req.params.id, 10);
+  if (!Number.isInteger(branchId)) {
+    res.status(400).json({ error: 'Invalid branch id' });
+    return null;
+  }
+  if (req.user.role === 'branch_admin' && Number(req.user.branch_id) !== branchId) {
+    res.status(403).json({ error: 'Access denied' });
+    return null;
+  }
+  return branchId;
+};
+
 // ─── GET ALL BRANCHES ──────────────────────────────────────────
 exports.getAllBranches = async (req, res) => {
   try {
@@ -56,7 +71,7 @@ exports.getAllBranches = async (req, res) => {
       const bid = branch.id;
       const [studentCount, staffCount, courseCount, leadCount] = await Promise.all([
         Student.count({ where: { branch_id: bid } }),
-        StaffProfile.count({ where: { branch_id: bid } }),
+        User.count({ where: { branch_id: bid, role: { [Op.notIn]: STAFF_EXCLUDED_ROLES } } }),
         Course.count({ where: { branch_id: bid } }),
         Lead.count({ where: { branch_id: bid } }),
       ]);
@@ -204,13 +219,14 @@ exports.toggleBranchStatus = async (req, res) => {
 // ─── BRANCH SUMMARY (AGGREGATE STATS) ────────────────────────
 exports.getBranchSummary = async (req, res) => {
   try {
-    const { id } = req.params;
-    const branch = await Branch.findByPk(id, {
+    const bid = getRequestedBranchId(req, res);
+    if (!bid) return;
+
+    const branch = await Branch.findByPk(bid, {
       include: [{ model: User, as: 'Manager', attributes: ['id', 'name', 'email'] }]
     });
     if (!branch) return res.status(404).json({ error: 'Branch not found' });
 
-    const bid = parseInt(id);
     const w = { branch_id: bid };
 
     const [
@@ -219,7 +235,7 @@ exports.getBranchSummary = async (req, res) => {
     ] = await Promise.all([
       Student.count({ where: w }),
       Student.count({ where: { ...w, status: 'active' } }),
-      StaffProfile.count({ where: w }),
+      User.count({ where: { ...w, role: { [Op.notIn]: STAFF_EXCLUDED_ROLES } } }),
       Course.count({ where: w }),
       Batch.count({ where: w }),
       Lead.count({ where: w }),
@@ -267,8 +283,11 @@ exports.getBranchSummary = async (req, res) => {
 // ─── BRANCH STUDENTS ──────────────────────────────────────────
 exports.getBranchStudents = async (req, res) => {
   try {
+    const bid = getRequestedBranchId(req, res);
+    if (!bid) return;
+
     const students = await Student.findAll({
-      where: { branch_id: req.params.id },
+      where: { branch_id: bid },
       include: [
         { model: User, attributes: ['id', 'name', 'email', 'status'] },
         { model: Batch, attributes: ['id', 'name', 'start_date'] }
@@ -285,10 +304,29 @@ exports.getBranchStudents = async (req, res) => {
 // ─── BRANCH STAFF ──────────────────────────────────────────────
 exports.getBranchStaff = async (req, res) => {
   try {
-    const staff = await StaffProfile.findAll({
-      where: { branch_id: req.params.id },
-      include: [{ model: User, attributes: ['id', 'name', 'email', 'role', 'status'] }],
+    const bid = getRequestedBranchId(req, res);
+    if (!bid) return;
+
+    const staffUsers = await User.findAll({
+      where: { branch_id: bid, role: { [Op.notIn]: STAFF_EXCLUDED_ROLES } },
+      attributes: ['id', 'name', 'email', 'role', 'status'],
+      include: [{ model: StaffProfile, required: false }],
       order: [['created_at', 'DESC']]
+    });
+    const staff = staffUsers.map((user) => {
+      const profile = user.StaffProfile?.toJSON() || {};
+      return {
+        id: profile.id || `user-${user.id}`,
+        user_id: user.id,
+        branch_id: bid,
+        designation: profile.designation || user.role || 'Staff',
+        phone: profile.phone || profile.contact_details || null,
+        base_salary: profile.base_salary || 0,
+        joining_date: profile.joining_date || null,
+        employment_status: profile.employment_status || user.status || 'active',
+        ...profile,
+        User: user.toJSON(),
+      };
     });
     res.json(staff);
   } catch (error) {
@@ -300,8 +338,11 @@ exports.getBranchStaff = async (req, res) => {
 // ─── BRANCH COURSES + BATCHES ──────────────────────────────────
 exports.getBranchCourses = async (req, res) => {
   try {
+    const bid = getRequestedBranchId(req, res);
+    if (!bid) return;
+
     const courses = await Course.findAll({
-      where: { branch_id: req.params.id },
+      where: { branch_id: bid },
       include: [{ model: Batch, attributes: ['id', 'name', 'start_date', 'status'] }],
       order: [['created_at', 'DESC']]
     });
@@ -315,14 +356,17 @@ exports.getBranchCourses = async (req, res) => {
 // ─── BRANCH CONTACTS / LEADS ──────────────────────────────────
 exports.getBranchContacts = async (req, res) => {
   try {
+    const bid = getRequestedBranchId(req, res);
+    if (!bid) return;
+
     const [contacts, leads] = await Promise.all([
       Contact.findAll({
-        where: { branch_id: req.params.id },
+        where: { branch_id: bid },
         order: [['created_at', 'DESC']],
         limit: 200
       }),
       Lead.findAll({
-        where: { branch_id: req.params.id },
+        where: { branch_id: bid },
         order: [['created_at', 'DESC']],
         limit: 200
       })
@@ -337,9 +381,12 @@ exports.getBranchContacts = async (req, res) => {
 // ─── BRANCH ASSETS ─────────────────────────────────────────────
 exports.getBranchAssets = async (req, res) => {
   try {
+    const bid = getRequestedBranchId(req, res);
+    if (!bid) return;
+
     await ensureAssetSchema();
     const assets = await Asset.findAll({
-      where: { branch_id: req.params.id },
+      where: { branch_id: bid },
       order: [['created_at', 'DESC']]
     });
     res.json(assets);
@@ -352,7 +399,8 @@ exports.getBranchAssets = async (req, res) => {
 // ─── BRANCH ACCOUNTING ────────────────────────────────────────
 exports.getBranchAccounting = async (req, res) => {
   try {
-    const bid = parseInt(req.params.id);
+    const bid = getRequestedBranchId(req, res);
+    if (!bid) return;
     const w = { branch_id: bid };
 
     const [accounts, expenses, invoices, journals] = await Promise.all([

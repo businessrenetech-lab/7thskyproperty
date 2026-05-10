@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, ChevronRight, Trash2, Download, FileText, Filter, Calendar, AlertTriangle, CheckCircle, Clock, XCircle, FolderOpen } from 'lucide-react';
+import { Loader2, ChevronRight, Trash2, Download, FileText, Filter, Calendar, AlertTriangle, CheckCircle, Clock, XCircle, FolderOpen, Edit2 } from 'lucide-react';
 import api from '../services/api';
 import Modal from '../components/Modal';
 import { downloadVoucherPdf, downloadExpenseListPdf, numberToWords } from '../utils/pdfUtils';
 import '../styles/GlobalStyles.css';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 
 const AUTO_THRESHOLD = 5000;
 
@@ -27,6 +28,7 @@ const getTodayLocal = () => formatDateLocal(new Date());
 
 const ExpenseManager = () => {
   const toast = useToast();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState([]);
   const [liquidAccounts, setLiquidAccounts] = useState([]);
@@ -44,6 +46,9 @@ const ExpenseManager = () => {
   const [rejectionModal, setRejectionModal] = useState({ isOpen: false, id: null, reason: '' });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, reason: '', status: '' });
   const [sourceModal, setSourceModal] = useState({ isOpen: false, id: null, account_id: '' });
+  const [editModal, setEditModal] = useState({ isOpen: false, id: null, existingReceipt: '' });
+  const [editForm, setEditForm] = useState({ account_id: '', amount: '', description: '', category: '', payment_method: 'cash', date: '' });
+  const [editSelectedFile, setEditSelectedFile] = useState(null);
 
   // Date filter state
   const [dateFrom, setDateFrom] = useState('');
@@ -140,6 +145,42 @@ const ExpenseManager = () => {
   const handleApprove = async (id) => {
     try { await api.put(`/expenses/${id}/approve`); fetchData(); }
     catch (err) { toast.error(err.response?.data?.error || 'Approval failed'); }
+  };
+
+  const openEditModal = (expense) => {
+    setEditModal({ isOpen: true, id: expense.id, existingReceipt: expense.receipt_url || '' });
+    setEditForm({
+      account_id: expense.account_id || liquidAccounts[0]?.id || '',
+      amount: expense.amount || '',
+      description: expense.description || '',
+      category: expense.category || '',
+      payment_method: expense.payment_method || 'cash',
+      date: expense.date || '',
+    });
+    setEditSelectedFile(null);
+  };
+
+  const closeEditModal = () => {
+    setEditModal({ isOpen: false, id: null, existingReceipt: '' });
+    setEditSelectedFile(null);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const formData = new FormData();
+      Object.keys(editForm).forEach(key => formData.append(key, editForm[key]));
+      if (editSelectedFile) formData.append('receipt', editSelectedFile);
+
+      await api.put(`/expenses/${editModal.id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      closeEditModal();
+      toast.success('Expense updated. If it was verified, it was sent back to pending for review.');
+      fetchData();
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to update expense'); }
+    finally { setSubmitting(false); }
   };
 
   const handleReject = async () => {
@@ -328,6 +369,8 @@ const ExpenseManager = () => {
                       const sc = statusConfig[exp.status] || statusConfig.pending;
                       const isPayroll = exp.expense_origin === 'payroll';
                       const sourceSelected = !isPayroll || exp.payment_source_selected;
+                      const canEditBeforeApproval = ['pending', 'verified'].includes(exp.status) && !isPayroll;
+                      const canApproveExpense = !(user?.role === 'accounts' && needsApproval);
                       return (
                         <tr key={exp.id}>
                           <td>
@@ -370,6 +413,7 @@ const ExpenseManager = () => {
                             <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                               {exp.status === 'pending' && (
                                 <>
+                                  {canEditBeforeApproval && <button onClick={() => openEditModal(exp)} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(245,158,11,0.3)', color: '#FFB347' }}><Edit2 size={10} /> Edit</button>}
                                   {isPayroll && !sourceSelected && <button onClick={() => openSourceModal(exp)} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(155,109,255,0.3)', color: '#B896FF' }}>Choose Source</button>}
                                   {sourceSelected && <button onClick={() => handleVerify(exp.id)} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(0,212,255,0.3)', color: '#38E8FF' }}>Verify</button>}
                                   <button onClick={() => setRejectionModal({ isOpen: true, id: exp.id, reason: '' })} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(255,77,109,0.3)', color: '#FF7088' }}>Reject</button>
@@ -377,8 +421,10 @@ const ExpenseManager = () => {
                               )}
                               {exp.status === 'verified' && (
                                 <>
+                                  {canEditBeforeApproval && <button onClick={() => openEditModal(exp)} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(245,158,11,0.3)', color: '#FFB347' }}><Edit2 size={10} /> Edit</button>}
                                   {isPayroll && !sourceSelected && <button onClick={() => openSourceModal(exp)} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(155,109,255,0.3)', color: '#B896FF' }}>Choose Source</button>}
-                                  {sourceSelected && <button onClick={() => handleApprove(exp.id)} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(0,255,148,0.3)', color: '#4DFFA8' }}>Approve</button>}
+                                  {sourceSelected && canApproveExpense && <button onClick={() => handleApprove(exp.id)} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(0,255,148,0.3)', color: '#4DFFA8' }}>Approve</button>}
+                                  {sourceSelected && !canApproveExpense && <span className="sb2 sb2-amber" style={{ fontSize: '9px' }}>Admin approval required</span>}
                                   <button onClick={() => setRejectionModal({ isOpen: true, id: exp.id, reason: '' })} className="btn-ghost" style={{ padding: '3px 8px', fontSize: '10px', borderColor: 'rgba(255,77,109,0.3)', color: '#FF7088' }}>Reject</button>
                                 </>
                               )}
@@ -582,6 +628,80 @@ const ExpenseManager = () => {
           <button type="submit" className="btn-stitch" disabled={submitting} style={{ padding: '12px', justifyContent: 'center', fontSize: '14px' }}>
             {submitting ? 'Processing...' : parseFloat(form.amount) >= AUTO_THRESHOLD ? 'Submit for Approval' : 'Record & Auto-Approve'}
           </button>
+        </form>
+      </Modal>
+
+      {/* ═══ EDIT EXPENSE MODAL ═══ */}
+      <Modal isOpen={editModal.isOpen} onClose={closeEditModal} title="Edit Expense Before Approval">
+        <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{
+            background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
+            borderRadius: '10px', padding: '10px 14px', fontSize: '11px', color: '#FFB347'
+          }}>
+            <AlertTriangle size={12} style={{ verticalAlign: 'middle', marginRight: '6px' }} />
+            Edits are allowed only before approval. Verified expenses return to pending if key details change.
+          </div>
+
+          <div className="fgroup">
+            <label className="flabel">Expense Category / Head</label>
+            <select required value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})} className="glass-input">
+              <option value="">Select Expense Category</option>
+              {flatCategories.map(cat => (
+                <option key={cat.id} value={cat.name}>
+                  {cat.Parent ? `${cat.Parent.name} > ${cat.name}` : cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="fgroup">
+            <label className="flabel">Paid From (Bank/Cash Ledger)</label>
+            <select required value={editForm.account_id} onChange={e => {
+              const acc = liquidAccounts.find(a => a.id.toString() === e.target.value);
+              setEditForm({...editForm, account_id: e.target.value, payment_method: acc?.sub_type || 'cash'});
+            }} className="glass-input">
+              {liquidAccounts.map(acc => (
+                <option key={acc.id} value={acc.id}>{acc.name} ({String(acc.sub_type || 'cash').toUpperCase()})</option>
+              ))}
+              {liquidAccounts.length === 0 && <option value="">No Accounts Found</option>}
+            </select>
+          </div>
+
+          <div className="fgroup">
+            <label className="flabel">Amount (BDT)</label>
+            <input required type="number" step="0.01" value={editForm.amount} onChange={e => setEditForm({...editForm, amount: e.target.value})} className="glass-input" />
+            {parseFloat(editForm.amount) >= AUTO_THRESHOLD && (
+              <div style={{ fontSize: '10px', color: '#FFB347', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <AlertTriangle size={11} /> BDT 5,000+: Receipt required. Branch/super admin approval required.
+              </div>
+            )}
+          </div>
+
+          <div className="fgroup">
+            <label className="flabel">
+              Receipt Upload (PDF/Image)
+              {parseFloat(editForm.amount) >= AUTO_THRESHOLD && !editModal.existingReceipt && <span style={{ color: '#FF7088', marginLeft: '4px' }}>* Required</span>}
+            </label>
+            {editModal.existingReceipt && <div style={{ fontSize: '10px', color: '#7bc62e', marginBottom: '6px' }}>Existing receipt attached. Upload a new file only if replacing it.</div>}
+            <input type="file" accept="image/*,.pdf" onChange={e => setEditSelectedFile(e.target.files[0])} className="glass-input" style={{ padding: '8px' }} />
+          </div>
+
+          <div className="fgroup">
+            <label className="flabel">Description / Payee Notes</label>
+            <textarea value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} className="glass-input" style={{ height: '70px', resize: 'vertical' }} />
+          </div>
+
+          <div className="fgroup">
+            <label className="flabel">Date</label>
+            <input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="glass-input" />
+          </div>
+
+          <div className="row" style={{ gap: '8px' }}>
+            <button type="button" className="btn-ghost" onClick={closeEditModal} style={{ flex: 1, justifyContent: 'center' }}>Cancel</button>
+            <button type="submit" className="btn-stitch" disabled={submitting} style={{ flex: 1, justifyContent: 'center', background: '#FFB347' }}>
+              {submitting ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
         </form>
       </Modal>
 

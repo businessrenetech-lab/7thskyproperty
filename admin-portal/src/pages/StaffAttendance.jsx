@@ -175,8 +175,8 @@ const StaffAttendancePage = () => {
                           <td key={key} style={{ textAlign: 'center', padding: '0.5rem' }}>
                             <div onClick={() => setStatus(member.id, key)} style={{
                               cursor: 'pointer', display: 'inline-flex',
-                              color: attendance[member.id]?.status === key ? cfg.color : 'rgba(255,255,255,0.1)',
-                              opacity: attendance[member.id]?.status === key ? 1 : 0.4,
+                              color: attendance[member.id]?.status === key ? cfg.color : 'var(--text-dim)',
+                              opacity: attendance[member.id]?.status === key ? 1 : 0.45,
                               transition: 'all 0.15s',
                               transform: attendance[member.id]?.status === key ? 'scale(1.15)' : 'scale(1)'
                             }}>
@@ -185,11 +185,11 @@ const StaffAttendancePage = () => {
                           </td>
                         ))}
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                          <input type="time" className="glass-input" style={{ width: '100px', fontSize: '0.75rem', padding: '0.3rem', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                          <input type="time" className="glass-input" style={{ width: '100px', fontSize: '0.75rem', padding: '0.3rem', background: 'var(--glass)', color: 'var(--text-main)' }}
                             value={attendance[member.id]?.check_in || ''} onChange={e => setAttendance(prev => ({ ...prev, [member.id]: { ...prev[member.id], check_in: e.target.value } }))} />
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                          <input type="time" className="glass-input" style={{ width: '100px', fontSize: '0.75rem', padding: '0.3rem', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                          <input type="time" className="glass-input" style={{ width: '100px', fontSize: '0.75rem', padding: '0.3rem', background: 'var(--glass)', color: 'var(--text-main)' }}
                             value={attendance[member.id]?.check_out || ''} onChange={e => setAttendance(prev => ({ ...prev, [member.id]: { ...prev[member.id], check_out: e.target.value } }))} />
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
@@ -210,7 +210,7 @@ const StaffAttendancePage = () => {
                           </div>
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                          <input type="text" placeholder="Reason (e.g. forgot punch out)" className="glass-input" style={{ width: '160px', fontSize: '0.75rem', padding: '0.4rem', background: 'rgba(255,255,255,0.05)', color: 'white' }}
+                          <input type="text" placeholder="Reason (e.g. forgot punch out)" className="glass-input" style={{ width: '160px', fontSize: '0.75rem', padding: '0.4rem', background: 'var(--glass)', color: 'var(--text-main)' }}
                             value={attendance[member.id]?.notes || ''} onChange={e => setAttendance(prev => ({ ...prev, [member.id]: { ...prev[member.id], notes: e.target.value } }))} />
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'center' }}>

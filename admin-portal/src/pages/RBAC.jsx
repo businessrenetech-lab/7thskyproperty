@@ -93,17 +93,32 @@ const FEATURES = {
 const INITIAL_SYSTEM_ROLES = [
   { key: 'super_admin',  label: 'Super Admin',     badge: 'Full Access',     color: '#00D4FF', protected: true },
   { key: 'branch_admin', label: 'Branch Admin',    badge: 'Branch Level',    color: '#00FF94', protected: true },
-  { key: 'accounting',   label: 'Accountant',      badge: 'Finance Only',    color: '#9B6DFF', protected: true },
-  { key: 'teacher',      label: 'Teacher',         badge: 'Teaching',        color: '#FFB347', protected: true },
-  { key: 'crm',          label: 'Counselor/CRM',   badge: 'CRM + Students',  color: '#38E8FF', protected: true },
-  { key: 'hrm',          label: 'HR Manager',      badge: 'Staff Only',      color: '#FF4D6D', protected: true },
+  { key: 'accounts',     label: 'Accountant',      badge: 'Finance Only',    color: '#9B6DFF', protected: true },
+  { key: 'trainer',      label: 'Teacher',         badge: 'Teaching',        color: '#FFB347', protected: true },
+  { key: 'counselor',    label: 'Counselor/CRM',   badge: 'CRM + Students',  color: '#38E8FF', protected: true },
+  { key: 'hr',           label: 'HR Manager',      badge: 'Staff Only',      color: '#FF4D6D', protected: true },
   { key: 'staff',        label: 'Support Staff',   badge: 'Basic Support',   color: '#00D4FF', protected: true },
   { key: 'unassigned',   label: 'Unassigned',      badge: 'No Access',       color: '#777777', protected: true }
 ];
 
+const LEGACY_ROLE_KEYS = {
+  accounting: 'accounts',
+  teacher: 'trainer',
+  crm: 'counselor',
+  hrm: 'hr',
+};
+
+const migratePermissionKeys = (source = {}) => {
+  const next = { ...source };
+  Object.entries(LEGACY_ROLE_KEYS).forEach(([legacyKey, currentKey]) => {
+    if (next[legacyKey] && !next[currentKey]) next[currentKey] = next[legacyKey];
+    delete next[legacyKey];
+  });
+  return next;
+};
+
 /* ─── BASELINE PERMISSION GENERATOR ──────────────────────── */
 const getBaselineConfig = (roleKey, portalKey, featuresList) => {
-  const toast = useToast();
   let enabled = false;
   let features = {};
 
@@ -112,18 +127,24 @@ const getBaselineConfig = (roleKey, portalKey, featuresList) => {
   if (roleKey === 'super_admin' || roleKey === 'branch_admin') {
     enabled = true;
     featuresList.forEach(f => features[f.key] = true);
-  } else if (roleKey === 'accounting') {
+  } else if (roleKey === 'accounts') {
     if (['accounting', 'hrm', 'student'].includes(portalKey)) {
       enabled = true;
       featuresList.forEach(f => features[f.key] = true);
     } else if (portalKey === 'admin') {
       enabled = true;
       features.students = true;
-      features.finance = true;
+      features.lms = true;
       features.pos = true;
+      features.finance = true;
+      features.invoices = true;
+      features.expenses = true;
+      features.reconciliation = true;
       features.ledger = true;
+      features.journal = true;
+      features.cashflow = true;
     }
-  } else if (roleKey === 'hrm') {
+  } else if (roleKey === 'hr') {
     if (portalKey === 'hrm') {
       enabled = true;
       featuresList.forEach(f => features[f.key] = true);
@@ -133,12 +154,12 @@ const getBaselineConfig = (roleKey, portalKey, featuresList) => {
       features.payroll = true;
       features.attendance = true;
     }
-  } else if (roleKey === 'teacher') {
+  } else if (roleKey === 'trainer') {
     if (['teacher', 'student'].includes(portalKey)) {
       enabled = true;
       featuresList.forEach(f => features[f.key] = true);
     }
-  } else if (roleKey === 'crm') {
+  } else if (roleKey === 'counselor') {
     if (portalKey === 'admin') {
       enabled = true;
       features.crm = true;
@@ -176,6 +197,7 @@ const Toggle = ({ active, onChange, disabled }) => (
 
 /* ─── MAIN RBAC PAGE ──────────────────────────────────────── */
 const RBAC = () => {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('portals');
   const [expandedPortal, setExpandedPortal] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -214,7 +236,7 @@ const RBAC = () => {
       try {
         const res = await api.get('/rbac/config');
         if (res.data.permissions) {
-          setPermissions(res.data.permissions);
+          setPermissions(migratePermissionKeys(res.data.permissions));
           if (res.data.customRoles && res.data.customRoles.length > 0) {
             setSystemRoles([...INITIAL_SYSTEM_ROLES, ...res.data.customRoles]);
           }
@@ -555,13 +577,14 @@ const RBAC = () => {
         <div style={{ overflowX: 'auto' }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'minmax(200px, 1.5fr) minmax(200px, 1.2fr) minmax(180px, 1fr) minmax(120px, 0.8fr) minmax(100px, auto)',
-            gap: '0.5rem', minWidth: '800px',
+            gridTemplateColumns: 'minmax(200px, 1.5fr) minmax(200px, 1.2fr) minmax(140px, 0.9fr) minmax(180px, 1fr) minmax(120px, 0.8fr) minmax(100px, auto)',
+            gap: '0.5rem', minWidth: '960px',
             padding: '0.8rem 0', borderBottom: '1px solid var(--border)',
             fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '1px'
           }}>
             <span>NAME</span>
             <span>EMAIL</span>
+            <span>BRANCH</span>
             <span>ASSIGN SYSTEM ROLE</span>
             <span>PORTALS</span>
             <span>SECURITY</span>
@@ -572,7 +595,7 @@ const RBAC = () => {
             return (
               <div key={i} style={{
                 display: 'grid',
-                gridTemplateColumns: 'minmax(200px, 1.5fr) minmax(200px, 1.2fr) minmax(180px, 1fr) minmax(120px, 0.8fr) minmax(100px, auto)',
+                gridTemplateColumns: 'minmax(200px, 1.5fr) minmax(200px, 1.2fr) minmax(140px, 0.9fr) minmax(180px, 1fr) minmax(120px, 0.8fr) minmax(100px, auto)',
                 gap: '0.5rem', padding: '1rem 0',
                 borderBottom: '1px solid var(--border)',
                 alignItems: 'center', fontSize: '0.85rem'
@@ -589,6 +612,9 @@ const RBAC = () => {
                   <span style={{ fontWeight: '600', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{member.name}</span>
                 </div>
                 <span style={{ color: 'var(--text-dim)', fontSize: '0.8rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{member.email}</span>
+                <span style={{ color: 'var(--text-dim)', fontSize: '0.78rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                  {member.Branch?.name || `Branch #${member.branch_id || 'N/A'}`}
+                </span>
                 
                 {/* Editable Role Dropdown */}
                 <select

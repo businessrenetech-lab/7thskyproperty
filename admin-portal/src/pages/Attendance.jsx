@@ -109,7 +109,7 @@ const Attendance = () => {
               background: 'var(--glass)', 
               border: '1px solid var(--border)', 
               borderRadius: '8px', 
-              color: 'white' 
+              color: 'var(--text-main)' 
             }}
           />
           <select 
@@ -119,7 +119,7 @@ const Attendance = () => {
               background: 'var(--glass)', 
               border: '1px solid var(--border)', 
               borderRadius: '8px', 
-              color: 'white' 
+              color: 'var(--text-main)' 
             }}
           >
             <option value="">Select Batch...</option>
@@ -165,8 +165,8 @@ const Attendance = () => {
                       onClick={() => setStatus(student.id, 'present')}
                       style={{ 
                         cursor: 'pointer', 
-                        color: attendance[student.id] === 'present' ? 'var(--success)' : 'var(--glass)',
-                        opacity: attendance[student.id] === 'present' ? 1 : 0.3
+                        color: attendance[student.id] === 'present' ? 'var(--success)' : 'var(--text-dim)',
+                        opacity: attendance[student.id] === 'present' ? 1 : 0.45
                       }} 
                     />
                   </td>
@@ -176,8 +176,8 @@ const Attendance = () => {
                       onClick={() => setStatus(student.id, 'absent')}
                       style={{ 
                         cursor: 'pointer', 
-                        color: attendance[student.id] === 'absent' ? 'var(--danger)' : 'var(--glass)',
-                        opacity: attendance[student.id] === 'absent' ? 1 : 0.3
+                        color: attendance[student.id] === 'absent' ? 'var(--danger)' : 'var(--text-dim)',
+                        opacity: attendance[student.id] === 'absent' ? 1 : 0.45
                       }} 
                     />
                   </td>
@@ -187,8 +187,8 @@ const Attendance = () => {
                       onClick={() => setStatus(student.id, 'late')}
                       style={{ 
                         cursor: 'pointer', 
-                        color: attendance[student.id] === 'late' ? 'var(--warning)' : 'var(--glass)',
-                        opacity: attendance[student.id] === 'late' ? 1 : 0.3
+                        color: attendance[student.id] === 'late' ? 'var(--warning)' : 'var(--text-dim)',
+                        opacity: attendance[student.id] === 'late' ? 1 : 0.45
                       }} 
                     />
                   </td>
@@ -198,8 +198,8 @@ const Attendance = () => {
                       onClick={() => setStatus(student.id, 'leave')}
                       style={{ 
                         cursor: 'pointer', 
-                        color: attendance[student.id] === 'leave' ? 'var(--primary)' : 'var(--glass)',
-                        opacity: attendance[student.id] === 'leave' ? 1 : 0.3
+                        color: attendance[student.id] === 'leave' ? 'var(--primary)' : 'var(--text-dim)',
+                        opacity: attendance[student.id] === 'leave' ? 1 : 0.45
                       }} 
                     />
                   </td>

@@ -8,9 +8,8 @@ const getEffectiveBranchId = (req) => req.scopedBranchId || req.branchId;
 
 exports.getAllBlogPosts = async (req, res) => {
   try {
-    const branchWhere = injectBranchFilter(req, {});
+    // Bypass branch filtering so admin can see all blogs
     const posts = await BlogPost.findAll({
-      where: branchWhere,
       order: [['created_at', 'DESC']],
       include: [
         { model: require('../models/User'), as: 'author', attributes: ['id', 'name'] }
@@ -24,7 +23,7 @@ exports.getAllBlogPosts = async (req, res) => {
 
 exports.createBlogPost = async (req, res) => {
   try {
-    const { title, slug, excerpt, content, image_url, is_published } = req.body;
+    const { title, slug, excerpt, content, image_url, is_published, category, tags, course_relation, reading_time, seo_title, seo_description, is_featured } = req.body;
     const branch_id = getEffectiveBranchId(req);
     if (!branch_id) return res.status(400).json({ error: 'Please select a specific branch' });
     const author_id = req.user.id;
@@ -37,6 +36,13 @@ exports.createBlogPost = async (req, res) => {
       excerpt,
       content,
       image_url,
+      category,
+      tags,
+      course_relation,
+      reading_time,
+      seo_title,
+      seo_description,
+      is_featured,
       is_published,
       published_at: is_published ? new Date() : null
     });
@@ -55,9 +61,9 @@ exports.updateBlogPost = async (req, res) => {
     const post = await BlogPost.findOne({ where: branchWhere });
     if (!post) return res.status(404).json({ error: 'Blog post not found' });
 
-    const { title, slug, excerpt, content, image_url, is_published } = req.body;
+    const { title, slug, excerpt, content, image_url, is_published, category, tags, course_relation, reading_time, seo_title, seo_description, is_featured } = req.body;
     
-    const updateData = { title, slug, excerpt, content, image_url, is_published };
+    const updateData = { title, slug, excerpt, content, image_url, category, tags, course_relation, reading_time, seo_title, seo_description, is_featured, is_published };
     if (is_published && !post.is_published) {
       updateData.published_at = new Date();
     } else if (!is_published) {
@@ -90,9 +96,7 @@ exports.deleteBlogPost = async (req, res) => {
 
 exports.getWebsiteCourses = async (req, res) => {
   try {
-    const branchWhere = injectBranchFilter(req, {});
     const courses = await Course.findAll({
-      where: branchWhere,
       order: [['created_at', 'DESC']]
     });
     res.json(courses);
@@ -129,6 +133,104 @@ exports.uploadCourseImage = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No image file provided' });
     res.json({ url: `/uploads/courses/${req.file.filename}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.uploadBlogImage = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No image file provided' });
+    res.json({ url: `/uploads/blogs/${req.file.filename}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// --- RESOURCES ---
+
+exports.getAllResources = async (req, res) => {
+  try {
+    const ResourceModel = require('../models/Resource');
+    const resources = await ResourceModel.findAll({
+      order: [['created_at', 'DESC']]
+    });
+    res.json(resources);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.createResource = async (req, res) => {
+  try {
+    const { title, slug, description, type, category, level, file_url, external_url, thumbnail_url, is_free, status } = req.body;
+    const branch_id = getEffectiveBranchId(req);
+    const ResourceModel = require('../models/Resource');
+    
+    if (!branch_id) return res.status(400).json({ error: 'Please select a specific branch' });
+
+    const resource = await ResourceModel.create({
+      branch_id,
+      title,
+      slug,
+      description,
+      type,
+      category,
+      level,
+      file_url,
+      external_url,
+      thumbnail_url,
+      is_free,
+      status
+    });
+
+    res.status(201).json(resource);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.updateResource = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const branchWhere = injectBranchFilter(req, { id });
+    const ResourceModel = require('../models/Resource');
+
+    const resource = await ResourceModel.findOne({ where: branchWhere });
+    if (!resource) return res.status(404).json({ error: 'Resource not found' });
+
+    const { title, slug, description, type, category, level, file_url, external_url, thumbnail_url, is_free, status } = req.body;
+    
+    await resource.update({
+      title, slug, description, type, category, level, file_url, external_url, thumbnail_url, is_free, status
+    });
+    
+    res.json(resource);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.deleteResource = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const branchWhere = injectBranchFilter(req, { id });
+    const ResourceModel = require('../models/Resource');
+
+    const resource = await ResourceModel.findOne({ where: branchWhere });
+    if (!resource) return res.status(404).json({ error: 'Resource not found' });
+
+    await resource.destroy();
+    res.json({ message: 'Resource deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.uploadResourceFile = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file provided' });
+    res.json({ url: `/uploads/resources/${req.file.filename}` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

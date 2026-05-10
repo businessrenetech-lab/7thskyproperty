@@ -27,6 +27,17 @@ exports.getInvoices = async (req, res) => {
     const where = { branch_id: req.branchId };
     if (status && status !== 'all') where.status = status;
     if (type && type !== 'all') where.invoice_type = type;
+    const searchTerm = String(search || '').trim();
+    if (searchTerm) {
+      where[Op.or] = [
+        { invoice_no: { [Op.like]: `%${searchTerm}%` } },
+        { customer_name: { [Op.like]: `%${searchTerm}%` } },
+        { customer_phone: { [Op.like]: `%${searchTerm}%` } },
+        { customer_email: { [Op.like]: `%${searchTerm}%` } },
+        { customer_company: { [Op.like]: `%${searchTerm}%` } },
+        { notes: { [Op.like]: `%${searchTerm}%` } }
+      ];
+    }
 
     const invoices = await Invoice.findAll({
       where,
@@ -151,18 +162,6 @@ exports.createInvoice = async (req, res) => {
     res.status(201).json(invoice);
   } catch (error) {
     console.error('[Create Invoice Error]', error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.updateInvoice = async (req, res) => {
-  try {
-    const invoice = await Invoice.findOne({ where: { id: req.params.id, branch_id: req.branchId } });
-    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
-    const { branch_id, ...updateData } = req.body;
-    await invoice.update(updateData);
-    res.json(invoice);
-  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
@@ -349,22 +348,30 @@ exports.updateInvoice = async (req, res) => {
     const invoice = await Invoice.findOne({ where: { id, branch_id: req.branchId } });
     if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
 
+    const nextAmount = amount !== undefined ? Number(amount) : Number(invoice.amount || 0);
+    if (!Number.isFinite(nextAmount) || nextAmount <= 0) {
+      return res.status(400).json({ error: 'Valid invoice amount is required' });
+    }
+
     // Ensure amount is not less than already paid
-    if (amount < invoice.paid) {
+    if (nextAmount < Number(invoice.paid || 0)) {
       return res.status(400).json({ error: 'Amount cannot be less than already paid amount' });
     }
 
     let status = invoice.status;
-    if (invoice.paid >= amount) {
+    if (Number(invoice.paid || 0) >= nextAmount) {
       status = 'paid';
-    } else if (invoice.paid > 0) {
+    } else if (Number(invoice.paid || 0) > 0) {
       status = 'partial';
     } else {
-      status = new Date(due_date) < new Date() ? 'overdue' : 'pending';
+      const nextDueDate = due_date || invoice.due_date;
+      status = nextDueDate && new Date(nextDueDate) < new Date() ? 'overdue' : 'pending';
     }
 
-    const updateData = { amount, due_date, notes, status };
-    if (income_category_id) updateData.income_category_id = income_category_id;
+    const updateData = { amount: nextAmount, status };
+    if (due_date !== undefined) updateData.due_date = due_date;
+    if (notes !== undefined) updateData.notes = notes;
+    if (income_category_id !== undefined) updateData.income_category_id = income_category_id || null;
 
     await invoice.update(updateData);
     

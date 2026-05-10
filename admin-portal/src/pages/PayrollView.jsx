@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Users, History, Plus, CheckCircle2, Loader2, TrendingUp, Settings2,
   Download, Building2, Calendar, Wallet, Search, Trash2, RotateCcw
@@ -43,16 +43,18 @@ const lifecycleStyle = (status) => ({
 }[status] || { bg: 'rgba(76,175,80,0.12)', color: '#4caf50' });
 
 const PayrollView = ({
-  staff, payrollHistory, teacherSessions, teacherOptions, deductions, deductionForm, setDeductionForm,
+  staff, payrollHistory, liquidAccounts, teacherSessions, teacherOptions, deductions, deductionForm, setDeductionForm,
   bonuses, bonusForm, setBonusForm,
   month, setMonth, year, setYear, activeTab, setActiveTab, searchTerm, setSearchTerm,
   showPayModal, setShowPayModal, payTarget,
-  openPayModal, handleConfirmPay, handleGeneratePayroll, exportPDF,
+  openPayModal, handleConfirmPay, handleSelectPayrollSource, handleGeneratePayroll, exportPDF,
   setShowAddStaffModal, setSelectedStaff, setProfileData, setShowProfileModal, openStatusModal,
   sessionForm, setSessionForm, handleCreateTeacherSession, handleDeleteTeacherSession,
   handleCreateDeduction, handleDeleteDeduction, handleCreateBonus, handleDeleteBonus,
   handleReopenPayroll, isSuperAdmin
 }) => {
+  const [sourceByExpense, setSourceByExpense] = useState({});
+
   const filteredStaff = staff.filter(m =>
     !searchTerm || m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (m.StaffProfile?.designation || '').toLowerCase().includes(searchTerm.toLowerCase())
@@ -280,6 +282,8 @@ const PayrollView = ({
                         const sessions = item.session_summary || {};
                         const sessionPay = parseFloat(sessions.amount || 0);
                         const oneTimeBonus = parseFloat(item.bonuses_summary?.approved || 0) + parseFloat(item.bonuses_summary?.applied || 0);
+                        const expenseId = item.accounting_expense?.id || item.expense_id;
+                        const selectedSource = sourceByExpense[expenseId] || item.accounting_expense?.account_id || liquidAccounts?.[0]?.id || '';
                         return <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.75rem 0.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -304,7 +308,31 @@ const PayrollView = ({
                           </td>
                           <td style={{ padding: '0.75rem 0.5rem' }}>
                             {['draft', 'rejected'].includes(item.status) && <button onClick={() => openPayModal(item)} className="btn-primary" style={{ padding: '0.35rem 0.8rem', fontSize: '0.75rem' }}><Wallet size={13} /> Submit</button>}
-                            {item.status === 'pending_admin' && <span style={{ color: '#9B6DFF', fontSize: '0.72rem' }}>Expense Manager</span>}
+                            {item.status === 'pending_admin' && expenseId && (
+                              <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', minWidth: '210px' }}>
+                                <select
+                                  className="glass-input"
+                                  value={selectedSource}
+                                  onChange={(e) => setSourceByExpense(prev => ({ ...prev, [expenseId]: e.target.value }))}
+                                  style={{ height: '30px', padding: '0.25rem 0.45rem', fontSize: '0.7rem' }}
+                                >
+                                  {!liquidAccounts?.length && <option value="">No source</option>}
+                                  {liquidAccounts?.map(account => (
+                                    <option key={account.id} value={account.id}>{account.name}</option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="button"
+                                  className="btn-secondary"
+                                  disabled={!selectedSource}
+                                  onClick={() => handleSelectPayrollSource(expenseId, selectedSource)}
+                                  style={{ padding: '0.32rem 0.55rem', fontSize: '0.68rem', whiteSpace: 'nowrap' }}
+                                >
+                                  Set source
+                                </button>
+                              </div>
+                            )}
+                            {item.status === 'pending_admin' && !expenseId && <span style={{ color: '#9B6DFF', fontSize: '0.72rem' }}>Expense source needed</span>}
                             {item.status === 'pending_accounting' && <span style={{ color: 'var(--text-dim)', fontSize: '0.72rem' }}>Awaiting accounting</span>}
                              {item.status === 'paid' && <CheckCircle2 color="var(--success)" size={18} />}
                           </td>
@@ -425,7 +453,7 @@ const PayrollView = ({
             <span style={{ fontWeight: '800', fontSize: '1.1rem', color: 'var(--primary)' }}>৳{payTarget ? parseFloat(payTarget.net_salary).toLocaleString() : 0}</span>
           </div>
           <div style={{ background: 'rgba(155,109,255,0.08)', border: '1px solid rgba(155,109,255,0.22)', borderRadius: 'var(--radius)', padding: '0.9rem', color: 'var(--text-dim)', fontSize: '0.8rem' }}>
-            HR submits only the payroll amount. Admin will choose cash, bank, or mobile wallet from the pending payroll row in Expense Manager.
+            HR submits the payroll amount first. Then choose the cash, bank, or mobile wallet source directly from the pending payroll row, or from Expense Manager.
           </div>
           <button onClick={handleConfirmPay} className="btn-primary" style={{ padding: '0.9rem', marginTop: '0.5rem', fontSize: '0.9rem' }}>
             <CheckCircle2 size={18} /> Submit Request to Expense Manager

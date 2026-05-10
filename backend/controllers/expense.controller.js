@@ -12,6 +12,7 @@ const sequelize = require('../config/db.config');
 const { fn, col, literal, Op } = require('sequelize');
 
 const AUTO_APPROVAL_THRESHOLD = 5000; // BDT
+const HIGH_VALUE_APPROVER_ROLES = ['super_admin', 'branch_admin'];
 
 const categoryBranchWhere = (branchId) => ({
   [Op.or]: [{ branch_id: branchId }, { branch_id: null }],
@@ -27,6 +28,8 @@ const normalizeExpenseMethod = (account) => {
 };
 
 const isPayrollExpense = (expense) => Boolean(expense.payroll_id || expense.expense_origin === 'payroll');
+
+const isHighValueExpense = (amount) => Number(amount || 0) >= AUTO_APPROVAL_THRESHOLD;
 
 const ensurePayrollPaymentSourceSelected = (expense) => {
   if (isPayrollExpense(expense) && !expense.payment_source_selected) {
@@ -233,6 +236,87 @@ exports.createExpense = async (req, res) => {
   }
 };
 
+exports.updateExpense = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const expense = await Expense.findOne({ where: { id: req.params.id, branch_id: req.branchId }, transaction: t, lock: true });
+    if (!expense) {
+      await t.rollback();
+      return res.status(404).json({ error: 'Expense not found' });
+    }
+
+    if (!['pending', 'verified'].includes(expense.status)) {
+      await t.rollback();
+      return res.status(400).json({ error: 'Expense can only be edited before approval.' });
+    }
+
+    if (isPayrollExpense(expense)) {
+      await t.rollback();
+      return res.status(400).json({ error: 'Payroll expenses must be edited from payroll workflow.' });
+    }
+
+    const { account_id, amount, description, category, payment_method, date } = req.body;
+    const nextAmount = amount !== undefined && amount !== '' ? Number(amount) : Number(expense.amount || 0);
+    if (!Number.isFinite(nextAmount) || nextAmount <= 0) {
+      await t.rollback();
+      return res.status(400).json({ error: 'Valid expense amount is required.' });
+    }
+
+    const receiptUrl = req.file ? `/uploads/expenses/${req.file.filename}` : expense.receipt_url;
+    if (isHighValueExpense(nextAmount) && !receiptUrl) {
+      await t.rollback();
+      return res.status(400).json({ error: `Expenses of BDT ${AUTO_APPROVAL_THRESHOLD.toLocaleString()} or above require a receipt upload for branch admin approval.` });
+    }
+
+    let nextAccount = null;
+    if (account_id !== undefined && account_id !== '') {
+      nextAccount = await Account.findOne({
+        where: { id: account_id, branch_id: expense.branch_id, type: 'asset', is_active: true },
+        transaction: t,
+        lock: true,
+      });
+      if (!nextAccount) {
+        await t.rollback();
+        return res.status(400).json({ error: 'Choose a valid payment source for this branch.' });
+      }
+    }
+
+    const criticalFieldsChanged = [
+      amount !== undefined && Number(expense.amount || 0) !== nextAmount,
+      account_id !== undefined && String(expense.account_id || '') !== String(account_id || ''),
+      payment_method !== undefined && String(expense.payment_method || '') !== String(payment_method || ''),
+      category !== undefined && String(expense.category || '') !== String(category || ''),
+      description !== undefined && String(expense.description || '') !== String(description || ''),
+      date !== undefined && String(expense.date || '') !== String(date || ''),
+      Boolean(req.file),
+    ].some(Boolean);
+
+    const updateData = {
+      amount: nextAmount,
+      ...(description !== undefined ? { description } : {}),
+      ...(category !== undefined ? { category } : {}),
+      ...(payment_method !== undefined ? { payment_method } : {}),
+      ...(date !== undefined ? { date } : {}),
+      ...(nextAccount ? { account_id: nextAccount.id, payment_method: normalizeExpenseMethod(nextAccount), payment_source_selected: true } : {}),
+      ...(req.file ? { receipt_url: receiptUrl } : {}),
+    };
+
+    if (expense.status === 'verified' && criticalFieldsChanged) {
+      updateData.status = 'pending';
+      updateData.verified_by = null;
+      updateData.verification_date = null;
+    }
+
+    await expense.update(updateData, { transaction: t });
+    await t.commit();
+    res.json({ message: 'Expense updated successfully.', expense });
+  } catch (error) {
+    if (t) await t.rollback();
+    console.error('Update Expense Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // ── PUT /expenses/:id/verify ──
 exports.verifyExpense = async (req, res) => {
   try {
@@ -264,6 +348,10 @@ exports.approveExpense = async (req, res) => {
     if (['approved', 'deleted', 'rejected'].includes(expense.status)) {
       await t.rollback();
       return res.status(400).json({ error: `Expense is already ${expense.status}` });
+    }
+    if (isHighValueExpense(expense.amount) && !HIGH_VALUE_APPROVER_ROLES.includes(req.user.role)) {
+      await t.rollback();
+      return res.status(403).json({ error: 'Expenses of BDT 5,000 or above require branch admin or super admin approval.' });
     }
     ensurePayrollPaymentSourceSelected(expense);
 

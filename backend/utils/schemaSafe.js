@@ -35,7 +35,10 @@ const getTableColumns = async (tableName) => {
   }
 };
 
-const hasColumn = (columns, columnName) => Boolean(columns && columns.has(columnName));
+const hasColumn = (columns, columnName) => {
+  if (!columns) return true; // Fail open if schema check fails on live server
+  return columns.has(columnName);
+};
 
 const pickExisting = (columns, attributes) => {
   if (!columns) return attributes;

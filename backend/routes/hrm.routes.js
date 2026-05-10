@@ -13,14 +13,33 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+const getDhakaDate = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Dhaka', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === 'year').value;
+  const month = parts.find((part) => part.type === 'month').value;
+  const day = parts.find((part) => part.type === 'day').value;
+  return `${year}-${month}-${day}`;
+};
+
+const getDhakaTime = () => new Date().toLocaleTimeString('en-GB', {
+  hour12: false,
+  timeZone: 'Asia/Dhaka',
+});
+
 router.use(authMiddleware);
 
 // ─── Self-service Check-In (any authenticated user) ─────────
 router.post('/attendance/self-checkin', branchMiddleware, async (req, res) => {
   try {
-    const { latitude, longitude } = req.body;
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date().toLocaleTimeString('en-GB', { hour12: false, timeZone: 'Asia/Dhaka' });
+    const { latitude, longitude, action } = req.body;
+    if (['student', 'guardian'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Only staff users can check in or out.' });
+    }
+
+    const today = getDhakaDate();
+    const now = getDhakaTime();
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
 
     // Check if already checked in today
@@ -28,9 +47,20 @@ router.post('/attendance/self-checkin', branchMiddleware, async (req, res) => {
       where: { user_id: req.user.id, date: today }
     });
 
+    if (action === 'in' && existing?.check_in) {
+      return res.status(400).json({ error: existing.check_out ? 'Already checked in and out for today.' : 'Already checked in today.' });
+    }
+
+    if (action === 'out') {
+      if (!existing?.check_in) return res.status(400).json({ error: 'Check in first before checking out.' });
+      if (existing.check_out) return res.status(400).json({ error: 'Already checked out for today.' });
+      await existing.update({ check_out: now, ip_address: ip, branch_id: req.branchId });
+      return res.json({ message: 'Checked out successfully!', type: 'checkout', record: existing });
+    }
+
     if (existing && existing.check_in && !existing.check_out) {
       // Already checked in — this is a check-out
-      await existing.update({ check_out: now, ip_address: ip });
+      await existing.update({ check_out: now, ip_address: ip, branch_id: req.branchId });
       return res.json({ message: 'Checked out successfully!', type: 'checkout', record: existing });
     }
 

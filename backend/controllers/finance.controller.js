@@ -15,7 +15,9 @@ const { Op, fn, col, literal } = require('sequelize');
 
 const PREMIUM_PLAN_PRICE = 2500;
 
-const getBranchId = (req) => req.scopedBranchId || req.branchId;
+const hasScopedBranch = (req) => Object.prototype.hasOwnProperty.call(req, 'scopedBranchId');
+const getBranchId = (req) => hasScopedBranch(req) ? req.scopedBranchId : req.branchId;
+const getBranchFilter = (branchId) => branchId ? { branch_id: branchId } : {};
 
 const isDateOnlyValue = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
 
@@ -44,17 +46,23 @@ const buildSourceLabel = (transaction) => {
 exports.recordExpense = async (req, res) => {
   const t = await sequelize.transaction();
   try {
+    const branchId = getBranchId(req);
+    if (!branchId) {
+      await t.rollback();
+      return res.status(400).json({ error: 'Select a specific branch before recording an expense' });
+    }
+
     const { account_id, amount, payment_method, notes, date } = req.body;
-    const expenseAccount = await Account.findOne({ where: { id: account_id, branch_id: req.branchId } });
+    const expenseAccount = await Account.findOne({ where: { id: account_id, branch_id: branchId } });
     if (!expenseAccount || expenseAccount.type !== 'expense') throw new Error('Invalid expense account');
 
     const cashCode = '1000';
     const bankCode = '1010';
-    const creditAccount = await Account.findOne({ where: { code: payment_method === 'cash' ? cashCode : bankCode, branch_id: req.branchId } });
+    const creditAccount = await Account.findOne({ where: { code: payment_method === 'cash' ? cashCode : bankCode, branch_id: branchId } });
     if (!creditAccount) throw new Error('Payment account not found');
 
     const entry = await JournalEntry.create({
-      branch_id: req.branchId,
+      branch_id: branchId,
       ref_no: `EXP-${Date.now()}`,
       description: notes || `Expense: ${expenseAccount.name}`,
       date: date || new Date(),
@@ -67,7 +75,7 @@ exports.recordExpense = async (req, res) => {
     ], { transaction: t });
 
     await Expense.create({
-      branch_id: req.branchId, account_id, amount, description: notes, category: expenseAccount.name,
+      branch_id: branchId, account_id, amount, description: notes, category: expenseAccount.name,
       payment_method, date: date || new Date(), approved_by: req.user.id, status: 'approved'
     }, { transaction: t });
 
@@ -95,8 +103,8 @@ exports.getFinanceStats = async (req, res) => {
 // ── NEW: Accounts Overview Dashboard ──
 exports.getOverview = async (req, res) => {
   try {
-    const branchId = req.scopedBranchId;
-    const branchFilter = branchId ? { branch_id: branchId } : {};
+    const branchId = getBranchId(req);
+    const branchFilter = getBranchFilter(branchId);
     const revenue = await JournalLine.sum('credit', { include: [{ model: Account, where: { ...branchFilter, type: 'revenue' } }] }) || 0;
     const expenses = await JournalLine.sum('debit', { include: [{ model: Account, where: { ...branchFilter, type: 'expense' } }] }) || 0;
     const totalInvoices = await Invoice.count({ where: branchFilter });
@@ -201,8 +209,9 @@ exports.getCashFlow = async (req, res) => {
   try {
     const branchId = getBranchId(req);
     const { from, to } = req.query;
-    const txWhere = { branch_id: branchId, status: 'success' };
-    const expWhere = { branch_id: branchId, status: { [Op.in]: ['approved', 'verified'] } };
+    const branchFilter = getBranchFilter(branchId);
+    const txWhere = { ...branchFilter, status: 'success' };
+    const expWhere = { ...branchFilter, status: { [Op.in]: ['approved', 'verified'] } };
     const transactionDateFilter = createDateTimeRangeFilter(from, to);
     const expenseDateFilter = createDateOnlyRangeFilter(from, to);
     if (transactionDateFilter) txWhere.paid_at = transactionDateFilter;
@@ -358,10 +367,11 @@ exports.getStudentIncome = async (req, res) => {
 // ── NEW: Liquid Accounts (Bank, Cash, MFS) ──
 exports.getLiquidAccounts = async (req, res) => {
   try {
-    const targetBranch = getBranchId(req) || req.branchId || 1;
+    const branchId = getBranchId(req);
+    const branchFilter = getBranchFilter(branchId);
     const accounts = await Account.findAll({
       where: {
-        branch_id: targetBranch,
+        ...branchFilter,
         type: 'asset',
         is_active: true,
         [Op.or]: [
@@ -374,10 +384,11 @@ exports.getLiquidAccounts = async (req, res) => {
 
     const detailedAccounts = [];
     for (const acc of accounts) {
+      const accountBranchId = acc.branch_id;
       // Find latest closing submission for this account (the most reliable balance checkpoint)
       const latestClosing = await LiquidityMovement.findOne({
         where: {
-          branch_id: targetBranch,
+          branch_id: accountBranchId,
           account_id: acc.id,
           transaction_type: 'closing_submission',
         },
@@ -394,7 +405,7 @@ exports.getLiquidAccounts = async (req, res) => {
         // Add any movements AFTER the closing date (inflows - outflows)
         const subsequentMovements = await LiquidityMovement.findAll({
           where: {
-            branch_id: targetBranch,
+            branch_id: accountBranchId,
             account_id: acc.id,
             movement_date: { [Op.gt]: latestClosing.movement_date },
             transaction_type: { [Op.ne]: 'closing_submission' },
@@ -412,7 +423,7 @@ exports.getLiquidAccounts = async (req, res) => {
         // Add transactions after the closing date
         const subsequentTx = await Transaction.sum('amount', {
           where: {
-            branch_id: targetBranch,
+            branch_id: accountBranchId,
             account_id: acc.id,
             status: 'success',
             paid_at: { [Op.gt]: `${latestClosing.movement_date} 23:59:59` },
@@ -423,7 +434,7 @@ exports.getLiquidAccounts = async (req, res) => {
         // Subtract expenses after the closing date
         const subsequentExp = await Expense.sum('amount', {
           where: {
-            branch_id: targetBranch,
+            branch_id: accountBranchId,
             account_id: acc.id,
             status: 'approved',
             date: { [Op.gt]: latestClosing.movement_date },
@@ -455,7 +466,8 @@ exports.getLiquidAccounts = async (req, res) => {
 exports.createLiquidAccount = async (req, res) => {
   try {
     const { name, sub_type } = req.body;
-    const targetBranch = getBranchId(req) || req.branchId || 1;
+    const targetBranch = getBranchId(req);
+    if (!targetBranch) return res.status(400).json({ error: 'Select a specific branch before creating an account' });
     
     // Find highest existing code starting with '10'
     const existingAccounts = await Account.findAll({
@@ -493,6 +505,7 @@ exports.createLiquidAccount = async (req, res) => {
 exports.getReportSuite = async (req, res) => {
   try {
     const branchId = getBranchId(req);
+    const branchFilter = getBranchFilter(branchId);
     const { from, to } = req.query;
     const transactionDateFilter = createDateTimeRangeFilter(from, to);
     const expenseDateFilter = createDateOnlyRangeFilter(from, to);
@@ -500,19 +513,19 @@ exports.getReportSuite = async (req, res) => {
     const premiumDateFilter = createDateTimeRangeFilter(from, to);
     const dueDateFilter = createDateOnlyRangeFilter(from, to);
 
-    const transactionWhere = { branch_id: branchId, status: 'success' };
+    const transactionWhere = { ...branchFilter, status: 'success' };
     if (transactionDateFilter) transactionWhere.paid_at = transactionDateFilter;
 
-    const expenseWhere = { branch_id: branchId, status: 'approved' };
+    const expenseWhere = { ...branchFilter, status: 'approved' };
     if (expenseDateFilter) expenseWhere.date = expenseDateFilter;
 
-    const premiumWhere = { branch_id: branchId, plan_type: 'premium' };
+    const premiumWhere = { ...branchFilter, plan_type: 'premium' };
     if (premiumDateFilter) premiumWhere.premium_start_date = premiumDateFilter;
 
-    const invoiceWhere = { branch_id: branchId };
+    const invoiceWhere = { ...branchFilter };
     if (dueDateFilter) invoiceWhere.due_date = dueDateFilter;
 
-    const referralWhere = { branch_id: branchId, referral_amount: { [Op.gt]: 0 } };
+    const referralWhere = { ...branchFilter, referral_amount: { [Op.gt]: 0 } };
     const referralDateFilter = createDateTimeRangeFilter(from, to);
     if (referralDateFilter) referralWhere.updatedAt = referralDateFilter;
 
@@ -554,7 +567,7 @@ exports.getReportSuite = async (req, res) => {
         order: [['premium_start_date', 'DESC']]
       }),
       Account.findAll({
-        where: { branch_id: branchId, type: 'asset', code: { [Op.like]: '10%' }, is_active: true },
+        where: { ...branchFilter, type: 'asset', code: { [Op.like]: '10%' }, is_active: true },
         attributes: ['id', 'name', 'code', 'sub_type'],
         order: [['code', 'ASC']]
       }),
@@ -585,7 +598,7 @@ exports.getReportSuite = async (req, res) => {
     ]);
 
     const liquidAccountIds = liquidAccounts.map((account) => account.id);
-    const journalEntryWhere = { branch_id: branchId };
+    const journalEntryWhere = { ...branchFilter };
     if (journalDateFilter) journalEntryWhere.date = journalDateFilter;
 
     const bankStatementLines = liquidAccountIds.length > 0 ? await JournalLine.findAll({
@@ -713,7 +726,7 @@ exports.getReportSuite = async (req, res) => {
     }));
 
     const trialBalanceAccounts = await Account.findAll({
-      where: { branch_id: branchId, is_active: true },
+      where: { ...branchFilter, is_active: true },
       order: [['code', 'ASC']]
     });
     const trialBalance = [];

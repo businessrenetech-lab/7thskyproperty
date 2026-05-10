@@ -57,7 +57,10 @@ const PUBLIC_COURSE_FIELDS = [
   'instructor_name', 'updated_at'
 ];
 
-const PUBLIC_BLOG_FIELDS = ['id', 'branch_id', 'title', 'slug', 'excerpt', 'image_url', 'published_at', 'updated_at'];
+const PUBLIC_BLOG_FIELDS = [
+  'id', 'branch_id', 'title', 'slug', 'excerpt', 'image_url', 'category',
+  'reading_time', 'is_featured', 'published_at', 'created_at', 'updated_at'
+];
 
 const PUBLIC_COURSE_FALLBACKS = [
   {
@@ -141,7 +144,6 @@ const normalizeBranchPayload = (branch) => {
 
 const findPublicBranchBySlug = async (slug, { activeOnly = true } = {}) => {
   const columns = await getTableColumns('branches');
-  if (!columns) return null;
   const isId = /^\d+$/.test(String(slug || ''));
   const orConditions = [];
   if (hasColumn(columns, 'slug')) orConditions.push({ slug });
@@ -161,7 +163,6 @@ const findPublicBranchBySlug = async (slug, { activeOnly = true } = {}) => {
 
 const buildPublishedCourseWhere = async (branchId, options = {}) => {
   const columns = await getTableColumns('courses');
-  if (!columns) return null;
   const where = {};
   if (!options.includeUnpublished && hasColumn(columns, 'is_published')) where.is_published = true;
   if (hasColumn(columns, 'status')) where.status = 'active';
@@ -244,10 +245,6 @@ exports.getCourseDetails = async (req, res) => {
     const branchId = parseBranchId(req) || await getMainBranchId();
     const isId = /^\d+$/.test(slug);
     const columns = await getTableColumns('courses');
-    if (!columns) {
-      const fallback = PUBLIC_COURSE_FALLBACKS.find((course) => course.slug === slug || String(course.id) === slug);
-      return fallback ? res.json({ ...fallback, Batches: [] }) : res.status(404).json({ message: 'Course not found' });
-    }
 
     const where = {};
     const orConditions = [];
@@ -295,12 +292,10 @@ exports.getCourseDetails = async (req, res) => {
 exports.getPublishedBlogs = async (req, res) => {
   try {
     const requestedBranchId = parseBranchId(req);
-    const branchId = requestedBranchId || await getMainBranchId();
     const columns = await getTableColumns('blog_posts');
-    if (!columns) return res.json([]);
     const where = {};
     if (hasColumn(columns, 'is_published')) where.is_published = true;
-    if (branchId && hasColumn(columns, 'branch_id')) where.branch_id = branchId;
+    if (requestedBranchId && hasColumn(columns, 'branch_id')) where.branch_id = requestedBranchId;
     const blogs = await BlogPost.findAll({
       where,
       order: hasColumn(columns, 'published_at') ? [['published_at', 'DESC']] : [['id', 'DESC']],
@@ -317,15 +312,15 @@ exports.getPublishedBlogs = async (req, res) => {
 exports.getBlogDetails = async (req, res) => {
   try {
     const { slug } = req.params;
-    const branchId = parseBranchId(req) || await getMainBranchId();
+    const requestedBranchId = parseBranchId(req);
     const columns = await getTableColumns('blog_posts');
-    if (!columns) return res.status(404).json({ message: 'Blog post not found' });
     const where = { slug };
     if (hasColumn(columns, 'is_published')) where.is_published = true;
-    if (branchId && hasColumn(columns, 'branch_id')) where.branch_id = branchId;
+    if (requestedBranchId && hasColumn(columns, 'branch_id')) where.branch_id = requestedBranchId;
     const blog = await BlogPost.findOne({
       where,
-      attributes: pickExisting(columns, PUBLIC_BLOG_FIELDS.concat(['content']))
+      attributes: pickExisting(columns, PUBLIC_BLOG_FIELDS.concat(['content', 'tags', 'course_relation', 'seo_title', 'seo_description'])),
+      order: hasColumn(columns, 'published_at') ? [['published_at', 'DESC']] : [['id', 'DESC']],
     });
 
     if (!blog) {
@@ -340,10 +335,52 @@ exports.getBlogDetails = async (req, res) => {
   }
 };
 
+exports.getPublishedResources = async (req, res) => {
+  try {
+    const requestedBranchId = parseBranchId(req);
+    const Resource = require('../models/Resource');
+    
+    const where = { status: 'published' };
+    if (requestedBranchId) where.branch_id = requestedBranchId;
+
+    const resources = await Resource.findAll({
+      where,
+      order: [['created_at', 'DESC']]
+    });
+    res.json(resources);
+  } catch (err) {
+    console.error('Error fetching resources:', err);
+    res.status(500).json({ message: 'Error fetching resources' });
+  }
+};
+
+exports.getResourceDetails = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const requestedBranchId = parseBranchId(req);
+    const Resource = require('../models/Resource');
+    
+    const where = { slug, status: 'published' };
+    if (requestedBranchId) where.branch_id = requestedBranchId;
+
+    const resource = await Resource.findOne({ where });
+
+    if (!resource) {
+      return res.status(404).json({ message: 'Resource not found' });
+    }
+
+    // Optionally increment view/download count if requested?
+    // We can do this in a separate endpoint if needed.
+    res.json(resource);
+  } catch (err) {
+    console.error('Error fetching resource details:', err);
+    res.status(500).json({ message: 'Error fetching resource details' });
+  }
+};
+
 exports.getPublicBranches = async (_req, res) => {
   try {
     const columns = await getTableColumns('branches');
-    if (!columns) return res.json([]);
 
     const branches = await Branch.findAll({
       attributes: pickExisting(columns, PUBLIC_BRANCH_FIELDS),
@@ -400,7 +437,6 @@ exports.getPublicBranchBlogs = async (req, res) => {
     if (!branch) return res.status(404).json({ message: 'Branch not found' });
 
     const columns = await getTableColumns('blog_posts');
-    if (!columns) return res.json([]);
     const where = {};
     if (hasColumn(columns, 'is_published')) where.is_published = true;
     if (hasColumn(columns, 'branch_id')) where.branch_id = branch.id;
@@ -481,7 +517,6 @@ exports.getCourseBatches = async (req, res) => {
     const isId = /^\d+$/.test(slug);
     const branchId = parseBranchId(req) || await getMainBranchId();
     const courseColumns = await getTableColumns('courses');
-    if (!courseColumns) return res.status(404).json({ message: 'Course not found' });
     const orConditions = [];
     if (hasColumn(courseColumns, 'slug')) orConditions.push({ slug });
     if (isId) orConditions.push({ id: parseInt(slug, 10) });
@@ -508,7 +543,6 @@ exports.getCourseBatches = async (req, res) => {
     }
     
     const batchColumns = await getTableColumns('batches');
-    if (!batchColumns) return res.json([]);
     const batchWhere = { course_id: course.id };
     if (hasColumn(batchColumns, 'status')) batchWhere.status = { [Op.in]: ['enrolling', 'starting_soon'] };
     // Look for batches in the requested branch first, then fall back to course's own branch

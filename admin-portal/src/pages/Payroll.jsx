@@ -18,7 +18,7 @@ const parseEntryLines = (value) => String(value || '')
 
 const Payroll = () => {
   const toast = useToast();
-  const { user } = useAuth();
+  const { user, branch } = useAuth();
   const [staff, setStaff] = useState([]);
   const [payrollHistory, setPayrollHistory] = useState([]);
   const [liquidAccounts, setLiquidAccounts] = useState([]);
@@ -126,11 +126,21 @@ const Payroll = () => {
     setLoading(true);
     try {
       // 1. Create User Account
+      const targetBranchId = user?.role === 'super_admin'
+        ? (branch && branch !== 'all' ? branch : null)
+        : user?.branch_id;
+
+      if (!targetBranchId) {
+        toast.error('Select a specific branch before creating staff.');
+        setLoading(false);
+        return;
+      }
+
       const authRes = await api.post('/auth/register', {
         name: newStaffData.name,
         email: newStaffData.email,
         role: newStaffData.role,
-        branch_id: 1 // Managed by superadmin logic or current branch context
+        branch_id: targetBranchId
       });
       
       const newUserId = authRes.data.user.id;
@@ -326,6 +336,21 @@ const Payroll = () => {
     }
   };
 
+  const handleSelectPayrollSource = async (expenseId, accountId) => {
+    if (!expenseId || !accountId) {
+      toast.error('Choose a cash, bank, or mobile wallet account');
+      return;
+    }
+
+    try {
+      await api.put(`/expenses/${expenseId}/payment-source`, { account_id: parseInt(accountId, 10) });
+      fetchData();
+      toast.success('Payroll payment source selected. Accounting can now approve it.');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to select payment source');
+    }
+  };
+
   const exportPDF = async () => {
     try {
       const html2pdf = (await import('html2pdf.js')).default;
@@ -360,6 +385,7 @@ const Payroll = () => {
         fundingSource={fundingSource} setFundingSource={setFundingSource}
         selectedAccountId={selectedAccountId} setSelectedAccountId={setSelectedAccountId}
         openPayModal={openPayModal} handleConfirmPay={handleConfirmPay}
+        handleSelectPayrollSource={handleSelectPayrollSource}
         handleGeneratePayroll={handleGeneratePayroll} exportPDF={exportPDF}
         setShowAddStaffModal={setShowAddStaffModal} setSelectedStaff={setSelectedStaff}
         setProfileData={setProfileData} setShowProfileModal={setShowProfileModal}

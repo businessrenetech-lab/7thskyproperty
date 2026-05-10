@@ -57,6 +57,18 @@ app.use('/uploads/branches', express.static(path.join(__dirname, 'uploads', 'bra
   lastModified: true,
 }));
 
+app.use('/uploads/resources', express.static(path.join(__dirname, 'uploads', 'resources'), {
+  maxAge: '1d',
+  etag: true,
+  lastModified: true,
+}));
+
+app.use('/uploads/blogs', express.static(path.join(__dirname, 'uploads', 'blogs'), {
+  maxAge: '1d',
+  etag: true,
+  lastModified: true,
+}));
+
 app.use('/uploads', (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '') 
     || req.query.token; // Allow ?token= for image tags
@@ -138,6 +150,9 @@ const Student = require('./models/Student');
 const PteTask = require('./models/PteTask');
 const Course = require('./models/Course');
 const Batch = require('./models/Batch');
+const BlogPost = require('./models/BlogPost');
+const Resource = require('./models/Resource');
+const BlogResource = require('./models/BlogResource');
 
 // Set up Course↔Batch association (avoiding circular dependency in model files)
 Course.hasMany(Batch, { foreignKey: 'course_id' });
@@ -235,7 +250,7 @@ sequelize.authenticate()
     // Sync tables — errors are caught per-table so one failure doesn't block startup
     const models = [
       Branch, User, ExpenseCategory, Expense, Lead, Contact, Opportunity, Activity,
-      CampaignTemplate, Student, PteTask, Course, Batch, Account, BankAccount,
+      CampaignTemplate, Student, PteTask, Course, Batch, BlogPost, Resource, BlogResource, Account, BankAccount,
       BankAccountLedgerMap, Invoice, Enrollment, Transaction, JournalEntry,
       JournalLine, ReconciliationSession, ReconciliationLine,
       ReconciliationMatch, ReconciliationEvent, LiquidityMovement,
