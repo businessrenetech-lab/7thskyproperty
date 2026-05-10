@@ -1,18 +1,14 @@
-import { headers } from "next/headers";
 import { getApiBase } from "./api";
 
-function getRequestApiBase() {
-  const requestHeaders = headers();
-  const host = requestHeaders.get("x-forwarded-host") || requestHeaders.get("host");
-  if (!host) return "";
-
-  const protocol = requestHeaders.get("x-forwarded-proto") || (host.includes("localhost") || host.startsWith("127.") ? "http" : "https");
-  return `${protocol}://${host}`;
-}
+const PUBLIC_API_FALLBACK =
+  process.env.NEXT_PUBLIC_API_URL
+  || process.env.NEXT_PUBLIC_SITE_URL
+  || process.env.PUBLIC_SITE_URL
+  || "https://darkslateblue-cormorant-104679.hostingersite.com";
 
 export async function fetchPublicJson(path, options = {}) {
   const { fallback = null, requireNonEmptyArray = false } = options;
-  const bases = [getApiBase(), getRequestApiBase()].filter(Boolean);
+  const bases = [getApiBase(), PUBLIC_API_FALLBACK].filter(Boolean);
   const uniqueBases = [...new Set(bases.map((base) => base.replace(/\/$/, "")))];
 
   for (const base of uniqueBases) {
