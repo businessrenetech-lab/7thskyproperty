@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, Calendar, Clock, BookOpen, Search, Filter, ArrowUpRight } from 'lucide-react';
@@ -8,26 +8,58 @@ import { getPublicImageUrl } from '@/lib/imageUrl';
 import BlogCard from './BlogCard';
 import ResourceCard from './ResourceCard';
 
-export default function LearningHubClient({ blogs, resources }) {
+export default function LearningHubClient({ blogs = [], resources = [] }) {
+  const [blogItems, setBlogItems] = useState(Array.isArray(blogs) ? blogs : []);
+  const [resourceItems, setResourceItems] = useState(Array.isArray(resources) ? resources : []);
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
 
+  const hasInitialContent = blogItems.length > 0 || resourceItems.length > 0;
+
+  useEffect(() => {
+    if (hasInitialContent) return undefined;
+
+    let cancelled = false;
+    const refreshContent = async () => {
+      try {
+        const [blogRes, resourceRes] = await Promise.all([
+          fetch('/api/public/blog', { cache: 'no-store' }),
+          fetch('/api/public/resources', { cache: 'no-store' }),
+        ]);
+
+        const [nextBlogs, nextResources] = await Promise.all([
+          blogRes.ok ? blogRes.json() : [],
+          resourceRes.ok ? resourceRes.json() : [],
+        ]);
+
+        if (cancelled) return;
+        if (Array.isArray(nextBlogs) && nextBlogs.length > 0) setBlogItems(nextBlogs);
+        if (Array.isArray(nextResources)) setResourceItems(nextResources);
+      } catch (error) {
+        console.error('Error refreshing learning hub content:', error);
+      }
+    };
+
+    refreshContent();
+    return () => { cancelled = true; };
+  }, [hasInitialContent]);
+
   const categories = useMemo(() => {
     const cats = new Set();
-    blogs.forEach(b => b.category && cats.add(b.category));
-    resources.forEach(r => r.category && cats.add(r.category));
+    blogItems.forEach(b => b.category && cats.add(b.category));
+    resourceItems.forEach(r => r.category && cats.add(r.category));
     return Array.from(cats);
-  }, [blogs, resources]);
+  }, [blogItems, resourceItems]);
 
   const filteredItems = useMemo(() => {
     let items = [];
 
     if (activeTab === 'all' || activeTab === 'blog') {
-      items = [...items, ...blogs.map(b => ({ ...b, itemType: 'blog' }))];
+      items = [...items, ...blogItems.map(b => ({ ...b, itemType: 'blog' }))];
     }
     if (activeTab === 'all' || activeTab === 'resources') {
-      items = [...items, ...resources.map(r => ({ ...r, itemType: 'resource' }))];
+      items = [...items, ...resourceItems.map(r => ({ ...r, itemType: 'resource' }))];
     }
 
     items.sort((a, b) => {
@@ -50,11 +82,11 @@ export default function LearningHubClient({ blogs, resources }) {
     }
 
     return items;
-  }, [blogs, resources, activeTab, activeCategory, searchQuery]);
+  }, [blogItems, resourceItems, activeTab, activeCategory, searchQuery]);
 
   const showFeatured = activeTab === 'all' && activeCategory === 'All' && !searchQuery;
-  const featuredBlogs = blogs.filter(b => b.is_featured);
-  const topFeatured = featuredBlogs.length > 0 ? featuredBlogs[0] : (blogs.length > 0 ? blogs[0] : null);
+  const featuredBlogs = blogItems.filter(b => b.is_featured);
+  const topFeatured = featuredBlogs.length > 0 ? featuredBlogs[0] : (blogItems.length > 0 ? blogItems[0] : null);
 
   const gridItems = showFeatured && topFeatured
     ? filteredItems.filter(item => item.id !== topFeatured.id || item.itemType !== 'blog')
