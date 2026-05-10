@@ -10,9 +10,11 @@ import TableOfContents from "@/components/blog/TableOfContents";
 import BlogCard from "@/components/blog/BlogCard";
 import ShareButtons from "@/components/blog/ShareButtons";
 
+export const dynamic = "force-dynamic";
+
 async function getBlogDetails(slug) {
   try {
-    const res = await fetch(`${getApiBase()}/api/public/blog/${slug}`, { next: { revalidate: 60 } });
+    const res = await fetch(`${getApiBase()}/api/public/blog/${slug}`, { cache: "no-store" });
     if (!res.ok) { if (res.status === 404) return null; throw new Error("Failed"); }
     return res.json();
   } catch (error) { console.error("Error:", error); return null; }
@@ -20,7 +22,7 @@ async function getBlogDetails(slug) {
 
 async function getRelatedBlogs(currentSlug) {
   try {
-    const res = await fetch(`${getApiBase()}/api/public/blog`, { next: { revalidate: 60 } });
+    const res = await fetch(`${getApiBase()}/api/public/blog`, { cache: "no-store" });
     if (!res.ok) return [];
     const data = await res.json();
     return data.filter(b => b.slug !== currentSlug).slice(0, 3);

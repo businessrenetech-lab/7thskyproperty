@@ -5,6 +5,8 @@ import { getApiBase } from "@/lib/api";
 import { getPublicImageUrl } from "@/lib/imageUrl";
 import LearningHubClient from "@/components/blog/LearningHubClient";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Learning Hub — PTE & IELTS Tips, Resources & Guides",
   description:
@@ -20,7 +22,7 @@ export const metadata = {
 
 async function getBlogs() {
   try {
-    const res = await fetch(`${getApiBase()}/api/public/blog`, { next: { revalidate: 60 } });
+    const res = await fetch(`${getApiBase()}/api/public/blog`, { cache: "no-store" });
     if (!res.ok) return [];
     return res.json();
   } catch (error) {
@@ -31,7 +33,7 @@ async function getBlogs() {
 
 async function getResources() {
   try {
-    const res = await fetch(`${getApiBase()}/api/public/resources`, { next: { revalidate: 60 } });
+    const res = await fetch(`${getApiBase()}/api/public/resources`, { cache: "no-store" });
     if (!res.ok) return [];
     return res.json();
   } catch (error) {

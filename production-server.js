@@ -175,6 +175,18 @@ async function start() {
   // Static files
   app.use('/uploads', express.static(path.join(__dirname, 'backend', 'uploads')));
 
+  const websitePublicDir = path.join(__dirname, 'website', 'public');
+  const sendMissingUploadFallback = (fallbackFile) => (req, res, next) => {
+    const fallbackPath = path.join(websitePublicDir, fallbackFile);
+    if (!fs.existsSync(fallbackPath)) return next();
+    res.set('Cache-Control', 'no-store');
+    return res.sendFile(fallbackPath);
+  };
+
+  app.get('/uploads/blogs/{*splat}', sendMissingUploadFallback('blog_resources.png'));
+  app.get('/uploads/courses/{*splat}', sendMissingUploadFallback('pte_course.png'));
+  app.get('/uploads/branches/{*splat}', sendMissingUploadFallback('hero_banner.png'));
+
   const sendSpaIndex = (indexFile) => (req, res) => {
     if (path.extname(req.path)) {
       return res.status(404).type('text/plain').send('Asset not found');
