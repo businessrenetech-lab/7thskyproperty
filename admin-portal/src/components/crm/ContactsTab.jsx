@@ -11,6 +11,7 @@ const ContactsTab = ({ contacts, onRefresh }) => {
   const [form, setForm] = useState({ name: '', phone: '', email: '', company: '', source: 'Walk-in', notes: '' });
   const [saving, setSaving] = useState(false);
   const [statusSavingId, setStatusSavingId] = useState(null);
+  const [sourceSavingId, setSourceSavingId] = useState(null);
   
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
@@ -26,6 +27,7 @@ const ContactsTab = ({ contacts, onRefresh }) => {
 
   const leadStages = ['new', 'contacted', 'interested', 'trial', 'enrolled', 'fees_pending', 'payment_rejected', 'successful', 'lost'];
   const sources = [...new Set(contacts.map(c => c.source).filter(Boolean))];
+  const sourceOptions = [...new Set(['Walk-in', 'Facebook', 'Instagram', 'WhatsApp', 'Referral', 'Website Enquiry', 'Website Purchase', 'Trial Class Booking', 'Other', ...sources])];
 
   const filtered = contacts.filter(c => {
     if (search && !c.name?.toLowerCase().includes(search.toLowerCase()) && !c.email?.toLowerCase().includes(search.toLowerCase()) && !c.phone?.includes(search)) return false;
@@ -80,6 +82,22 @@ const ContactsTab = ({ contacts, onRefresh }) => {
       toast.error('Failed to update pipeline position');
     } finally {
       setStatusSavingId(null);
+    }
+  };
+
+  const updateLeadSource = async (contact, source) => {
+    if ((contact.source || '') === source && (contact.CurrentLead?.source || source) === source) return;
+    setSourceSavingId(contact.id);
+    try {
+      await api.put(`/crm/contacts/${contact.id}`, { source });
+      if (contact.CurrentLead?.id) {
+        await api.put(`/crm/leads/${contact.CurrentLead.id}`, { source });
+      }
+      onRefresh();
+    } catch {
+      toast.error('Failed to update lead source');
+    } finally {
+      setSourceSavingId(null);
     }
   };
 
@@ -256,7 +274,7 @@ const ContactsTab = ({ contacts, onRefresh }) => {
             <input placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={inputStyle} />
             <input placeholder="Company / Institution" value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} style={inputStyle} />
             <select value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))} style={inputStyle}>
-              {['Walk-in', 'Facebook', 'Instagram', 'WhatsApp', 'Referral', 'Website Enquiry', 'Website Purchase', 'Other'].map(s => <option key={s}>{s}</option>)}
+              {sourceOptions.map(s => <option key={s}>{s}</option>)}
             </select>
             <input placeholder="Notes" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} style={inputStyle} />
             <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -295,7 +313,20 @@ const ContactsTab = ({ contacts, onRefresh }) => {
             </div>
             <span style={{ color: 'var(--text-dim)' }}>{c.phone || '—'}</span>
             <span style={{ color: 'var(--text-dim)', fontSize: '0.78rem' }}>{c.email || '—'}</span>
-            <span style={{ fontSize: '0.62rem', padding: '2px 8px', background: 'var(--glass)', borderRadius: '8px', width: 'fit-content', fontWeight: '600' }}>{c.source || '—'}</span>
+            <select
+              value={c.source || ''}
+              onChange={(e) => updateLeadSource(c, e.target.value)}
+              disabled={sourceSavingId === c.id}
+              style={{
+                ...inputStyle,
+                padding: '0.38rem 0.55rem',
+                fontSize: '0.72rem',
+                background: 'var(--glass)'
+              }}
+            >
+              <option value="">No source</option>
+              {sourceOptions.map((source) => <option key={source} value={source}>{source}</option>)}
+            </select>
             <span style={{ color: 'var(--text-dim)', fontSize: '0.78rem' }}>{c.company || '—'}</span>
             <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>Since {new Date(c.createdAt || c.created_at).toLocaleDateString()}</span>
             <div>
@@ -354,7 +385,15 @@ const ContactsTab = ({ contacts, onRefresh }) => {
                 <div style={{ minWidth: 0 }}>
                   <p style={{ fontSize: '0.92rem', fontWeight: 800, marginBottom: '0.25rem' }}>{c.name}</p>
                   <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.62rem', padding: '2px 7px', background: 'var(--glass)', borderRadius: '999px', fontWeight: 700 }}>{c.source || 'No source'}</span>
+                    <select
+                      value={c.source || ''}
+                      onChange={(e) => updateLeadSource(c, e.target.value)}
+                      disabled={sourceSavingId === c.id}
+                      style={{ ...inputStyle, width: '150px', padding: '0.45rem 0.55rem', fontSize: '0.72rem', background: 'var(--glass)' }}
+                    >
+                      <option value="">No source</option>
+                      {sourceOptions.map((source) => <option key={source} value={source}>{source}</option>)}
+                    </select>
                     {c.company && <span style={{ fontSize: '0.68rem', color: 'var(--text-dim)' }}>{c.company}</span>}
                   </div>
                 </div>

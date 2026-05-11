@@ -2,9 +2,9 @@
 
 import Script from "next/script";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
-const FB_PIXEL_ID = process.env.NEXT_PUBLIC_FB_PIXEL_ID;
+const FALLBACK_FB_PIXEL_ID = process.env.NEXT_PUBLIC_FB_PIXEL_ID || "";
 
 /**
  * Facebook Pixel (Client-Side) + fbc/fbp cookie forwarding for CAPI deduplication.
@@ -47,16 +47,39 @@ export function getFbHeaders() {
 // ─── Pixel Component ─────────────────────────────────────────
 export default function FacebookPixel() {
   const pathname = usePathname();
+  const [pixelId, setPixelId] = useState(null);
+  const initialPath = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/public/tracking-config", { cache: "no-store" })
+      .then((res) => res.ok ? res.json() : null)
+      .then((config) => {
+        if (cancelled) return;
+        const runtimePixelId = config?.facebook?.pixel_id || FALLBACK_FB_PIXEL_ID;
+        setPixelId(runtimePixelId || "");
+      })
+      .catch(() => {
+        if (!cancelled) setPixelId(FALLBACK_FB_PIXEL_ID);
+      });
+
+    return () => { cancelled = true; };
+  }, []);
 
   // Fire PageView on every client-side route change
   useEffect(() => {
-    if (!FB_PIXEL_ID || typeof window === "undefined") return;
+    if (!pixelId || typeof window === "undefined") return;
+    if (initialPath.current === null) {
+      initialPath.current = pathname;
+      return;
+    }
     if (window.fbq) {
       window.fbq("track", "PageView");
     }
-  }, [pathname]);
+  }, [pathname, pixelId]);
 
-  if (!FB_PIXEL_ID) return null;
+  if (!pixelId) return null;
 
   return (
     <>
@@ -73,7 +96,7 @@ export default function FacebookPixel() {
             t.src=v;s=b.getElementsByTagName(e)[0];
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '${FB_PIXEL_ID}');
+            fbq('init', '${pixelId}');
             fbq('track', 'PageView');
           `,
         }}
@@ -84,7 +107,7 @@ export default function FacebookPixel() {
           height="1"
           width="1"
           style={{ display: "none" }}
-          src={`https://www.facebook.com/tr?id=${FB_PIXEL_ID}&ev=PageView&noscript=1`}
+          src={`https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1`}
           alt=""
         />
       </noscript>

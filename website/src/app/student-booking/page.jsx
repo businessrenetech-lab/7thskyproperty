@@ -3,6 +3,7 @@
 import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, Plus, Trash2 } from "lucide-react";
+import { getFbHeaders } from "@/components/FacebookPixel";
 
 const emptyEducation = { exam_name: "", institution_name: "", passing_year: "", result: "" };
 
@@ -135,7 +136,7 @@ function StudentBookingForm() {
       const name = `${formData.first_name} ${formData.last_name}`.trim();
       const response = await fetch("/api/public/student-bookings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getFbHeaders() },
         body: JSON.stringify({
           ...formData,
           name,

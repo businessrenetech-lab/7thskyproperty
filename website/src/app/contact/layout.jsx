@@ -38,7 +38,7 @@ export default function ContactLayout({ children }) {
           "@type": "LocalBusiness",
           "name": "Language Academy Bangladesh",
           "telephone": "+880-1913-373581",
-          "email": "hello@languageacademy.com.bd",
+          "email": "info@languageacademy.com.bd",
           "address": {
             "@type": "PostalAddress",
             "streetAddress": "SEL SUFI SQUARE, Unit: 1104, Level: 11, Plot: 58, Road: 16 (New) / 27 (Old), Dhanmondi R/A",

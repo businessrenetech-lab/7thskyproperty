@@ -27,7 +27,7 @@ export function localBusinessSchema() {
     "logo": "https://languageacademy.com.bd/logo.webp",
     "image": "https://languageacademy.com.bd/hero_banner.webp",
     "telephone": "+880-1913-373581",
-    "email": "hello@languageacademy.com.bd",
+    "email": "info@languageacademy.com.bd",
     "priceRange": "৳৳",
     "currenciesAccepted": "BDT",
     "paymentAccepted": "Cash, Card, bKash, Nagad",

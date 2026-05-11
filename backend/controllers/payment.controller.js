@@ -305,6 +305,7 @@ const paymentSuccess = async (req, res) => {
         email: lead.email,
         phone: lead.phone,
         course_name: course?.title || 'Course Enrollment',
+        course_id: lead.course_id || null,
         course_category: course?.category || '',
         course_duration: course?.duration_weeks ? `${course.duration_weeks} weeks` : '',
         batch_name: batch?.name || '',
@@ -322,30 +323,18 @@ const paymentSuccess = async (req, res) => {
 
     if (!isPendingManualPayment) {
       // Fire Facebook CAPI 'Purchase' event (non-blocking)
-      fbCapi.sendEvent(
-        'Purchase',
-        {
-          em: lead.email,
-          ph: lead.phone,
-          fn: lead.name?.split(' ')[0],
-          ln: lead.name?.split(' ').slice(1).join(' '),
-          client_ip_address: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress,
-          client_user_agent: req.headers['user-agent'],
-          fbc: req.headers['x-fbc'] || null,
-          fbp: req.headers['x-fbp'] || null,
-          external_id: String(student.id),
-        },
-        {
-          currency: 'BDT',
-          value: lead.deal_value || 0,
-          content_name: course?.title || 'Course Enrollment',
-          content_type: 'product',
-          content_ids: [String(lead.course_id)],
-          num_items: 1,
-        },
-        req.headers['referer'] || req.headers['origin'] || 'https://languageacademy.com.bd/payment/success',
-        req.headers['x-event-id'] || null
-      ).catch(() => {});
+      fbCapi.sendPurchaseEvent(req, {
+        name: lead.name,
+        email: lead.email,
+        phone: lead.phone,
+        courseName: course?.title || 'Course Enrollment',
+        courseId: lead.course_id,
+        value: lead.deal_value || 0,
+        orderId: payment_ref,
+        paymentMethod: transaction?.method,
+        branchId: branch_id,
+        externalId: student.id,
+      }).catch(() => {});
 
       // Send branded enrollment confirmation email (non-blocking)
       sendEnrollmentConfirmationEmail({

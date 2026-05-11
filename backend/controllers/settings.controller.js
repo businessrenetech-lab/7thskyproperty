@@ -20,6 +20,7 @@ const DEFAULT_SETTINGS = [
   // ── Facebook Pixel & CAPI ───────────────────────────────
   { setting_key: 'FB_PIXEL_ID', setting_value: '', description: 'Facebook Pixel ID', is_secret: false, category: 'facebook' },
   { setting_key: 'FB_CAPI_TOKEN', setting_value: '', description: 'Conversions API Access Token', is_secret: true, category: 'facebook' },
+  { setting_key: 'FB_GRAPH_API_VERSION', setting_value: 'v19.0', description: 'Graph API Version', is_secret: false, category: 'facebook' },
   { setting_key: 'FB_TEST_EVENT_CODE', setting_value: '', description: 'Test Event Code (optional, for debugging)', is_secret: false, category: 'facebook' },
 
   // ── TikTok Pixel & Events API ───────────────────────────
@@ -93,7 +94,7 @@ exports.initializeDefaults = async () => {
 exports.getSettings = async (req, res) => {
   try {
     const settings = await SystemSetting.findAll({ order: [['id', 'ASC']] });
-    
+
     const formattedSettings = settings.map(setting => {
       let val = setting.setting_value;
       if (setting.is_secret && val) {
@@ -118,7 +119,7 @@ exports.getSettings = async (req, res) => {
 exports.updateSettings = async (req, res) => {
   try {
     const updates = req.body; // Array of { key, value }
-    
+
     if (!Array.isArray(updates)) {
       return res.status(400).json({ error: 'Expected an array of settings to update.' });
     }

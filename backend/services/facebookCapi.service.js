@@ -1,9 +1,20 @@
 const axios = require('axios');
 const crypto = require('crypto');
+const SystemSetting = require('../models/SystemSetting');
+const { decrypt } = require('../utils/encryption');
 
-const PIXEL_ID = process.env.FB_PIXEL_ID;
-const ACCESS_TOKEN = process.env.FB_CAPI_TOKEN;
-const API_VERSION = 'v19.0';
+const getSettingValue = async (key, fallback = '') => {
+  const setting = await SystemSetting.findOne({ where: { setting_key: key } }).catch(() => null);
+  const rawValue = setting?.setting_value || fallback;
+  if (!rawValue) return '';
+  return setting?.is_secret ? decrypt(rawValue) : rawValue;
+};
+
+const getFacebookConfig = async () => ({
+  pixelId: await getSettingValue('FB_PIXEL_ID', process.env.FB_PIXEL_ID),
+  accessToken: await getSettingValue('FB_CAPI_TOKEN', process.env.FB_CAPI_TOKEN),
+  apiVersion: await getSettingValue('FB_GRAPH_API_VERSION', process.env.FB_GRAPH_API_VERSION || 'v19.0'),
+});
 
 /**
  * SHA-256 hash a value (required by Facebook CAPI for PII fields).
@@ -61,6 +72,23 @@ const generateEventId = () => {
   return `evt_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
 };
 
+const getClientIp = (req) => req?.ip || req?.headers?.['x-forwarded-for'] || req?.connection?.remoteAddress;
+
+const getEventUrl = (req, fallback = 'https://languageacademy.com.bd') => (
+  req?.headers?.referer || req?.headers?.origin || fallback
+);
+
+const getRequestTrackingData = (req) => ({
+  client_ip_address: getClientIp(req),
+  client_user_agent: req?.headers?.['user-agent'],
+  fbc: req?.headers?.['x-fbc'] || req?.cookies?.['_fbc'] || null,
+  fbp: req?.headers?.['x-fbp'] || req?.cookies?.['_fbp'] || null,
+});
+
+const compactObject = (object) => Object.fromEntries(
+  Object.entries(object).filter(([, value]) => value !== undefined && value !== null && value !== '')
+);
+
 /**
  * Send an event to Facebook Conversions API (CAPI).
  * This replaces the need for Stape.io or any third-party server-side proxy.
@@ -74,7 +102,9 @@ const generateEventId = () => {
  * @returns {object|null} Response data from Facebook, or null on failure
  */
 exports.sendEvent = async (eventName, userData, customData = {}, eventUrl = '', eventId = null) => {
-  if (!PIXEL_ID || !ACCESS_TOKEN || PIXEL_ID === 'YOUR_PIXEL_ID_HERE') {
+  const { pixelId, accessToken, apiVersion } = await getFacebookConfig();
+
+  if (!pixelId || !accessToken || pixelId === 'YOUR_PIXEL_ID_HERE') {
     console.warn('[FB CAPI] Not configured. Skipping event:', eventName);
     return null;
   }
@@ -97,7 +127,7 @@ exports.sendEvent = async (eventName, userData, customData = {}, eventUrl = '', 
 
   try {
     const response = await axios.post(
-      `https://graph.facebook.com/${API_VERSION}/${PIXEL_ID}/events?access_token=${ACCESS_TOKEN}`,
+      `https://graph.facebook.com/${apiVersion}/${pixelId}/events?access_token=${accessToken}`,
       payload,
       { headers: { 'Content-Type': 'application/json' }, timeout: 10000 }
     );
@@ -126,18 +156,15 @@ exports.sendLeadEvent = async (req, { name, email, phone, courseName, value }) =
       ph: phone,
       fn: nameParts[0],
       ln: nameParts.slice(1).join(' '),
-      client_ip_address: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress,
-      client_user_agent: req.headers['user-agent'],
-      fbc: req.headers['x-fbc'] || req.cookies?.['_fbc'] || null,
-      fbp: req.headers['x-fbp'] || req.cookies?.['_fbp'] || null,
+      ...getRequestTrackingData(req),
     },
     {
       content_name: courseName || 'General Enquiry',
       currency: 'BDT',
       value: value || 0,
     },
-    req.headers['referer'] || req.headers['origin'] || 'https://languageacademy.com.bd',
-    req.headers['x-event-id'] || null
+    getEventUrl(req),
+    req?.headers?.['x-event-id'] || null
   );
 };
 
@@ -154,10 +181,7 @@ exports.sendRegistrationEvent = async (req, { name, email, phone, courseName, va
       ph: phone,
       fn: nameParts[0],
       ln: nameParts.slice(1).join(' '),
-      client_ip_address: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress,
-      client_user_agent: req.headers['user-agent'],
-      fbc: req.headers['x-fbc'] || req.cookies?.['_fbc'] || null,
-      fbp: req.headers['x-fbp'] || req.cookies?.['_fbp'] || null,
+      ...getRequestTrackingData(req),
     },
     {
       content_name: courseName || 'Course Enrollment',
@@ -165,7 +189,53 @@ exports.sendRegistrationEvent = async (req, { name, email, phone, courseName, va
       value: value || 0,
       status: 'enrolled',
     },
-    req.headers['referer'] || req.headers['origin'] || 'https://languageacademy.com.bd'
+    getEventUrl(req)
+  );
+};
+
+/**
+ * Send a Purchase event only after money is verified or collected.
+ */
+exports.sendPurchaseEvent = async (req, {
+  name,
+  email,
+  phone,
+  courseName,
+  courseId,
+  value,
+  orderId,
+  paymentMethod,
+  branchId,
+  externalId,
+  eventId,
+  eventUrl,
+}) => {
+  const nameParts = (name || '').trim().split(/\s+/);
+  const customData = compactObject({
+    currency: 'BDT',
+    value: Number(value || 0),
+    content_name: courseName || 'Course Enrollment',
+    content_type: 'product',
+    content_ids: courseId ? [String(courseId)] : undefined,
+    num_items: 1,
+    order_id: orderId ? String(orderId) : undefined,
+    payment_method: paymentMethod,
+    branch_id: branchId ? String(branchId) : undefined,
+  });
+
+  return exports.sendEvent(
+    'Purchase',
+    {
+      em: email,
+      ph: phone,
+      fn: nameParts[0],
+      ln: nameParts.slice(1).join(' '),
+      external_id: externalId ? String(externalId) : undefined,
+      ...getRequestTrackingData(req),
+    },
+    customData,
+    eventUrl || getEventUrl(req, 'https://languageacademy.com.bd/payment/success'),
+    eventId || req?.headers?.['x-event-id'] || null
   );
 };
 
@@ -182,16 +252,14 @@ exports.sendContactEvent = async (req, { name, email, phone }) => {
       ph: phone,
       fn: nameParts[0],
       ln: nameParts.slice(1).join(' '),
-      client_ip_address: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress,
-      client_user_agent: req.headers['user-agent'],
-      fbc: req.headers['x-fbc'] || req.cookies?.['_fbc'] || null,
-      fbp: req.headers['x-fbp'] || req.cookies?.['_fbp'] || null,
+      ...getRequestTrackingData(req),
     },
     {},
-    req.headers['referer'] || req.headers['origin'] || 'https://languageacademy.com.bd'
+    getEventUrl(req)
   );
 };
 
 // Re-export utility for external use
 exports.generateEventId = generateEventId;
 exports.hashSHA256 = hashSHA256;
+exports.getFacebookConfig = getFacebookConfig;

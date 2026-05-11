@@ -319,7 +319,10 @@ exports.enrollLead = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const lead = await Lead.findOne({ where: { id: req.params.id, branch_id: req.branchId } });
-    if (!lead) return res.status(404).json({ error: 'Lead not found' });
+    if (!lead) {
+      await t.rollback();
+      return res.status(404).json({ error: 'Lead not found' });
+    }
 
     const {
       batch_id,
@@ -583,9 +586,13 @@ exports.enrollLead = async (req, res) => {
 // Mark lead as successful (after fees collected by accounting)
 exports.markSuccessful = async (req, res) => {
   const t = await sequelize.transaction();
+  let purchaseEventPayload = null;
   try {
     const lead = await Lead.findOne({ where: { id: req.params.id, branch_id: req.branchId } });
-    if (!lead) return res.status(404).json({ error: 'Lead not found' });
+    if (!lead) {
+      await t.rollback();
+      return res.status(404).json({ error: 'Lead not found' });
+    }
 
     // Mark lead successful
     await lead.update({ status: 'successful', last_activity_at: new Date() }, { transaction: t });
@@ -601,6 +608,23 @@ exports.markSuccessful = async (req, res) => {
         due_date: new Date(),
         notes: `CRM Deal: ${opp.title} (fees collected)`,
       }, { transaction: t }, { prefix: 'CRM-INV' });
+
+      const course = lead.course_id
+        ? await Course.findByPk(lead.course_id, { attributes: ['id', 'title'], transaction: t })
+        : null;
+
+      purchaseEventPayload = {
+        name: lead.name,
+        email: lead.email,
+        phone: lead.phone,
+        courseName: course?.title || opp.course_interest || lead.batch_interest || 'CRM Sale',
+        courseId: course?.id || lead.course_id,
+        value: opp.value || lead.deal_value || 0,
+        orderId: invoice.invoice_no || invoice.id,
+        paymentMethod: 'crm',
+        branchId: req.branchId,
+        externalId: lead.id,
+      };
 
       // Journal entry
       let arAccount = await Account.findOne({ where: { name: 'Accounts Receivable', branch_id: req.branchId } });
@@ -623,6 +647,10 @@ exports.markSuccessful = async (req, res) => {
 
     await t.commit();
     res.json({ message: 'Sale marked successful! Revenue recorded.' });
+
+    if (purchaseEventPayload) {
+      fbCapi.sendPurchaseEvent(req, purchaseEventPayload).catch(() => {});
+    }
   } catch (error) {
     await t.rollback();
     res.status(500).json({ error: error.message });
@@ -687,7 +715,7 @@ exports.getContacts = async (req, res) => {
       const leads = leadIds.length > 0
         ? await Lead.findAll({
           where: { branch_id: req.branchId, id: { [Op.in]: leadIds } },
-          attributes: ['id', 'status', 'course_id', 'batch_interest', 'updated_at']
+          attributes: ['id', 'status', 'source', 'course_id', 'batch_interest', 'updated_at']
         })
         : [];
 
@@ -698,6 +726,7 @@ exports.getContacts = async (req, res) => {
           contactLeadMap.set(opportunity.contact_id, {
             id: lead.id,
             status: lead.status,
+            source: lead.source,
             course_id: lead.course_id,
             batch_interest: lead.batch_interest,
             updated_at: lead.updated_at

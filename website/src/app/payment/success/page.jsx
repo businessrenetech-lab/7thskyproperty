@@ -78,11 +78,12 @@ function SuccessContent() {
 
     const processPayment = async () => {
       const fbHeaders = getFbHeaders();
+      const purchaseEventId = `purchase_${paymentRef}`;
 
       try {
         const res = await fetch("/api/payment/success", {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...fbHeaders },
+          headers: { "Content-Type": "application/json", ...fbHeaders, "x-event-id": purchaseEventId },
           body: JSON.stringify({ payment_ref: paymentRef }),
         });
 
@@ -103,7 +104,7 @@ function SuccessContent() {
               content_type: "product",
               content_ids: [String(data.order.course_id || "")],
               num_items: 1,
-            });
+            }, { eventID: purchaseEventId });
             hasFiredPixel.current = true;
           }
         } else {

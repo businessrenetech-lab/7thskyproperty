@@ -5,6 +5,7 @@ const Lead = require('../models/Lead');
 const Contact = require('../models/Contact');
 const Opportunity = require('../models/Opportunity');
 const Branch = require('../models/Branch');
+const SystemSetting = require('../models/SystemSetting');
 const fs = require('fs');
 const path = require('path');
 const { Op } = require('sequelize');
@@ -230,6 +231,22 @@ const normalizeText = (value) => {
   if (value === undefined || value === null) return null;
   const normalized = String(value).trim();
   return normalized || null;
+};
+
+const getPublicSetting = async (key, fallback = '') => {
+  const setting = await SystemSetting.findOne({ where: { setting_key: key } }).catch(() => null);
+  return normalizeText(setting?.setting_value) || normalizeText(fallback) || '';
+};
+
+exports.getPublicTrackingConfig = async (req, res) => {
+  try {
+    const pixelId = await getPublicSetting('FB_PIXEL_ID', process.env.FB_PIXEL_ID || process.env.NEXT_PUBLIC_FB_PIXEL_ID);
+    res.set('Cache-Control', 'no-store');
+    res.json({ facebook: { pixel_id: pixelId } });
+  } catch (err) {
+    console.error('Error fetching public tracking config:', err);
+    res.status(500).json({ facebook: { pixel_id: '' } });
+  }
 };
 
 exports.getPublishedCourses = async (req, res) => {
@@ -477,52 +494,101 @@ exports.getPublicBranchBlogs = async (req, res) => {
 exports.submitContactForm = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { name, email, phone, subject, message, course_interest, destination_country } = req.body;
+    const {
+      name,
+      email,
+      phone,
+      subject,
+      message,
+      course_interest,
+      course_id,
+      destination_country,
+      source,
+      channel,
+      lead_type,
+    } = req.body;
+
+    const requestedBranchId = parseBranchId(req);
+    const selectedBranchId = requestedBranchId || await getMainBranchId();
+    const branch = await Branch.findOne({ where: { id: selectedBranchId, is_active: true }, transaction: t });
+    if (!branch) {
+      await t.rollback();
+      return res.status(400).json({ message: 'Selected branch is not available' });
+    }
+
+    const isTrialBooking = lead_type === 'trial_class' || String(subject || '').toLowerCase().includes('trial');
+    let course = null;
+    if (course_id) {
+      course = await Course.findOne({ where: { id: course_id, branch_id: selectedBranchId, status: 'active' }, transaction: t });
+      if (!course) {
+        await t.rollback();
+        return res.status(400).json({ message: 'Selected course is not available for this branch' });
+      }
+    }
+
+    const leadSource = source || (isTrialBooking ? 'Trial Class Booking' : 'Website Enquiry');
+    const courseInterest = course?.title || course_interest || subject || '';
+    const notes = [
+      subject ? `Subject: ${subject}` : '',
+      isTrialBooking ? 'Request type: Trial class booking' : '',
+      courseInterest ? `Interested course: ${courseInterest}` : '',
+      destination_country ? `Interested country: ${destination_country}` : '',
+      channel ? `Channel: ${channel}` : '',
+      message ? `Message: ${message}` : '',
+    ].filter(Boolean).join('\n');
 
     // Calculate a basic score: +20 for phone, +15 for email, +15 for course interest
-    let score = 20;
+    let score = isTrialBooking ? 55 : 20;
     if (phone) score += 20;
     if (email) score += 15;
-    if (course_interest || subject) score += 15;
+    if (courseInterest) score += 15;
 
     const lead = await Lead.create({
-      branch_id: 1, // default HQ branch — website leads go to branch 1
+      branch_id: selectedBranchId,
       name,
       email,
       phone,
       destination_country,
-      source: 'Website Enquiry',
-      status: 'new',
-      priority: 'medium',
+      source: leadSource,
+      status: isTrialBooking ? 'trial' : 'new',
+      priority: isTrialBooking ? 'high' : 'medium',
       score,
-      batch_interest: course_interest || subject || '',
-      notes: `Subject: ${subject}\nMessage: ${message}`,
+      course_id: course?.id || null,
+      batch_interest: courseInterest,
+      tags: isTrialBooking ? { booking_type: 'trial_class', booking_channel: channel || 'website', branch_id: selectedBranchId } : undefined,
+      notes,
       last_activity_at: new Date(),
     }, { transaction: t });
 
     let contact = null;
-    if (email) contact = await Contact.findOne({ where: { email, branch_id: 1 }, transaction: t });
-    if (!contact && phone) contact = await Contact.findOne({ where: { phone, branch_id: 1 }, transaction: t });
+    if (email) contact = await Contact.findOne({ where: { email, branch_id: selectedBranchId }, transaction: t });
+    if (!contact && phone) contact = await Contact.findOne({ where: { phone, branch_id: selectedBranchId }, transaction: t });
     if (!contact) {
       contact = await Contact.create({
-        branch_id: 1, name, phone, email, source: 'Website Enquiry', notes: `Subject: ${subject}\nMessage: ${message}`
+        branch_id: selectedBranchId, name, phone, email, source: leadSource, notes
       }, { transaction: t });
     }
 
     await Opportunity.create({
-      branch_id: 1,
-      title: `${lead.name} – Website Enquiry`,
+      branch_id: selectedBranchId,
+      title: `${lead.name} – ${isTrialBooking ? 'Trial Class Booking' : 'Website Enquiry'}`,
       contact_id: contact.id, lead_id: lead.id,
-      value: 0,
+      value: course?.base_fee || 0,
       stage: 'qualification',
-      course_interest: course_interest || subject || '',
+      course_interest: courseInterest,
     }, { transaction: t });
 
     await t.commit();
     res.status(201).json({ message: 'Enquiry submitted successfully! We will contact you shortly.', leadId: lead.id });
 
-    // Fire Facebook CAPI 'Contact' event (non-blocking)
-    fbCapi.sendContactEvent(req, { name, email, phone }).catch(() => {});
+    // Fire standard Lead for contact, WhatsApp, and trial class submissions.
+    fbCapi.sendLeadEvent(req, {
+      name,
+      email,
+      phone,
+      courseName: courseInterest || (isTrialBooking ? 'Trial Class Booking' : 'Website Enquiry'),
+      value: course?.base_fee || 0,
+    }).catch(() => {});
   } catch (err) {
     await t.rollback();
     console.error('Error submitting contact form:', err);

@@ -15,6 +15,7 @@ const Customer = require('../models/Customer');
 const IncomeCategory = require('../models/IncomeCategory');
 const Expense = require('../models/Expense');
 const sequelize = require('../config/db.config');
+const fbCapi = require('../services/facebookCapi.service');
 const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
@@ -189,6 +190,9 @@ exports.collectFee = async (req, res) => {
     }
 
     const dueAmount = linkedInvoice ? calculateDue(linkedInvoice) : Math.max(Number(enrollment.total_fee || 0) - Number(enrollment.paid_amount || 0), 0);
+    const totalFee = Number(enrollment.total_fee || 0);
+    const previouslyPaidAmount = Number(enrollment.paid_amount || 0);
+    const wasFullyPaid = totalFee > 0 && previouslyPaidAmount >= totalFee;
     if (dueAmount <= 0) throw requestError('Invoice or enrollment is already fully paid');
     if (paymentAmount > dueAmount) {
       throw requestError(`Payment amount exceeds outstanding due (${dueAmount})`);
@@ -245,7 +249,7 @@ exports.collectFee = async (req, res) => {
     }, { transaction: t });
 
     // 3. Update Enrollment paid_amount
-    const newPaidAmount = Number(enrollment.paid_amount || 0) + paymentAmount;
+    const newPaidAmount = previouslyPaidAmount + paymentAmount;
     enrollment.paid_amount = newPaidAmount;
     
     if (newPaidAmount >= parseFloat(enrollment.total_fee)) {
@@ -365,6 +369,29 @@ exports.collectFee = async (req, res) => {
     }
     // ── END CRM INTEGRATION ─────────────────────────────────
 
+    let purchaseEventPayload = null;
+    if (!wasFullyPaid && totalFee > 0 && newPaidAmount >= totalFee) {
+      const batch = enrollment.batch_id
+        ? await Batch.findOne({ where: { id: enrollment.batch_id, branch_id: req.branchId }, include: [Course], transaction: t })
+        : null;
+      const student = enrollment.student_id
+        ? await Student.findOne({ where: { id: enrollment.student_id, branch_id: req.branchId }, include: [User], transaction: t })
+        : null;
+
+      purchaseEventPayload = {
+        name: lead?.name || student?.User?.name || student?.first_name || 'Student',
+        email: lead?.email || student?.User?.email,
+        phone: lead?.phone || student?.mobile_no,
+        courseName: batch?.Course?.title || linkedOpp?.course_interest || 'Course Enrollment',
+        courseId: batch?.Course?.id,
+        value: totalFee,
+        orderId: transaction_ref || txn.id,
+        paymentMethod: method,
+        branchId: req.branchId,
+        externalId: enrollment.student_id,
+      };
+    }
+
     // 4. Double-Entry Journal
     const entry = await JournalEntry.create({
       branch_id: req.branchId,
@@ -398,6 +425,10 @@ exports.collectFee = async (req, res) => {
       ? 'Fee collected successfully. Referral payout moved to pending expense approval.'
       : 'Fee collected successfully';
     res.status(201).json({ message, transaction: txn, referral_expense: referralExpenseResult, temporary_password: generatedPassword });
+
+    if (purchaseEventPayload) {
+      fbCapi.sendPurchaseEvent(req, purchaseEventPayload).catch(() => {});
+    }
   } catch (error) {
     await t.rollback();
     console.error('[CollectFee Error]:', error);

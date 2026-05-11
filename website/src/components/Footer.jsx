@@ -121,7 +121,7 @@ export default function Footer() {
               </div>
               <div className="flex items-center gap-3">
                 <Mail size={16} className="text-accent shrink-0" />
-                <span>hello@languageacademy.com.bd</span>
+                <span>info@languageacademy.com.bd</span>
               </div>
               <div className="flex items-start gap-3">
                 <Clock size={16} className="mt-1 text-accent shrink-0" />

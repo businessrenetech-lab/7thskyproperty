@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Mail, Phone, MapPin, Send, Loader2, CheckCircle2, Clock, MessageCircle, ChevronDown, ArrowRight, AlertTriangle } from "lucide-react";
+import { getFbHeaders } from "@/components/FacebookPixel";
 
 const faqs = [
   ["How quickly will you respond?", "Our team typically responds within 2-4 hours during business hours. For urgent queries, call us directly or message us on WhatsApp."],
@@ -11,13 +12,74 @@ const faqs = [
   ["What documents do I need for enrollment?", "Just a valid ID (NID or passport), a recent photo, and your previous test scores (if any). We will guide you through everything."],
 ];
 
+const destinationOptions = ["Australia", "United Kingdom", "USA", "Canada", "New Zealand", "Europe", "Others"];
+
 export default function ContactPage() {
+  const [formMode, setFormMode] = useState("message");
   const [formData, setFormData] = useState({ name: "", email: "", phone: "", subject: "", message: "" });
+  const [trialData, setTrialData] = useState({ name: "", email: "", phone: "", branch_id: "", course_id: "", destination_country: "", channel: "website" });
+  const [branches, setBranches] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [loadingBranches, setLoadingBranches] = useState(true);
+  const [loadingCourses, setLoadingCourses] = useState(false);
   const [status, setStatus] = useState("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [openFaq, setOpenFaq] = useState(0);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleTrialChange = (e) => {
+    const { name, value } = e.target;
+    setTrialData((prev) => ({ ...prev, [name]: value, ...(name === "branch_id" ? { course_id: "" } : {}) }));
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const params = new URLSearchParams(window.location.search);
+    const presetBranch = params.get("branch") || params.get("branch_id") || "";
+    const channel = params.get("channel") === "kiosk" ? "kiosk" : "website";
+    setTrialData((prev) => ({ ...prev, channel }));
+
+    fetch("/api/public/branches")
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const activeBranches = Array.isArray(data) ? data.filter((branch) => branch.is_active !== false) : [];
+        const defaultBranch = activeBranches.find((branch) => String(branch.id) === String(presetBranch))
+          || activeBranches.find((branch) => String(branch.id) === "1")
+          || activeBranches[0];
+        setBranches(activeBranches);
+        setTrialData((prev) => ({ ...prev, branch_id: prev.branch_id || (defaultBranch ? String(defaultBranch.id) : "") }));
+      })
+      .catch(() => setBranches([]))
+      .finally(() => {
+        if (!cancelled) setLoadingBranches(false);
+      });
+
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!trialData.branch_id) {
+      setCourses([]);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingCourses(true);
+    fetch(`/api/public/courses?branch_id=${encodeURIComponent(trialData.branch_id)}&booking=true`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setCourses(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setCourses([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCourses(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [trialData.branch_id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,7 +87,7 @@ export default function ContactPage() {
     try {
       const res = await fetch("/api/public/contact", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getFbHeaders() },
         body: JSON.stringify(formData),
       });
       if (!res.ok) throw new Error("Failed to submit form");
@@ -35,6 +97,34 @@ export default function ContactPage() {
       console.error(err);
       setStatus("error");
       setErrorMessage("There was a problem sending your message. Please try calling us instead.");
+    }
+  };
+
+  const handleTrialSubmit = async (e) => {
+    e.preventDefault();
+    setStatus("loading");
+    setErrorMessage("");
+    try {
+      const selectedCourse = courses.find((course) => String(course.id) === String(trialData.course_id));
+      const res = await fetch("/api/public/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getFbHeaders() },
+        body: JSON.stringify({
+          ...trialData,
+          subject: "Trial Class Booking",
+          lead_type: "trial_class",
+          source: "Trial Class Booking",
+          course_interest: selectedCourse?.title || "",
+          message: `Trial class requested for ${selectedCourse?.title || "selected course"}`,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Failed to book trial class");
+      setStatus("success");
+      setTrialData((prev) => ({ name: "", email: "", phone: "", branch_id: prev.branch_id, course_id: "", destination_country: "", channel: prev.channel }));
+    } catch (err) {
+      setStatus("error");
+      setErrorMessage(err.message || "There was a problem booking your trial class. Please call us instead.");
     }
   };
 
@@ -101,8 +191,7 @@ export default function ContactPage() {
                 </div>
                 <div className="relative z-10">
                   <h3 className="font-bold text-white text-lg mb-1">Email Support</h3>
-                  <a href="mailto:hello@languageacademy.com.bd" className="text-sm text-slate-300 hover:text-white transition-colors block">hello@languageacademy.com.bd</a>
-                  <a href="mailto:support@languageacademy.com.bd" className="text-sm text-slate-300 hover:text-white transition-colors block mt-1">support@languageacademy.com.bd</a>
+                  <a href="mailto:info@languageacademy.com.bd" className="text-sm text-slate-300 hover:text-white transition-colors block">info@languageacademy.com.bd</a>
                 </div>
               </div>
 
@@ -127,8 +216,24 @@ export default function ContactPage() {
             {/* RIGHT COLUMN: Contact Form Floating Panel */}
             <div className="premium-panel p-8 md:p-12 shadow-[0_30px_80px_-20px_rgba(15,23,42,0.2)] animate-fade-in-up delay-300 border-t-4 border-t-primary">
               <div className="mb-8 text-center">
-                <h2 className="text-3xl font-extrabold text-slate-900 mb-3 tracking-tight">Send a Message</h2>
-                <p className="text-slate-500 font-medium">We usually reply within 2 hours during business days.</p>
+                <h2 className="text-3xl font-extrabold text-slate-900 mb-3 tracking-tight">
+                  {formMode === "trial" ? "Book a Trial Class" : "Send a Message"}
+                </h2>
+                <p className="text-slate-500 font-medium">
+                  {formMode === "trial" ? "Pick your branch and course. Our advisor will confirm your trial class." : "We usually reply within 2 hours during business days."}
+                </p>
+                <div className="mt-6 grid grid-cols-2 rounded-2xl bg-slate-100 p-1 text-sm font-extrabold text-slate-600">
+                  {[["message", "Message"], ["trial", "Trial Class"]].map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => { setFormMode(mode); setStatus("idle"); setErrorMessage(""); }}
+                      className={`rounded-xl px-4 py-3 transition ${formMode === mode ? "bg-white text-slate-950 shadow-sm" : "hover:text-slate-900"}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {status === "success" ? (
@@ -136,11 +241,11 @@ export default function ContactPage() {
                   <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                     <CheckCircle2 className="text-green-600 w-10 h-10" />
                   </div>
-                  <h3 className="text-2xl font-bold text-slate-900 mb-3">Message Sent!</h3>
+                  <h3 className="text-2xl font-bold text-slate-900 mb-3">{formMode === "trial" ? "Trial Request Received!" : "Message Sent!"}</h3>
                   <p className="text-slate-600 mb-8 leading-relaxed">Thank you for reaching out to Language Academy. One of our academic advisors will contact you shortly.</p>
-                  <button onClick={() => setStatus("idle")} className="secondary-btn w-full">Send Another Message</button>
+                  <button onClick={() => setStatus("idle")} className="secondary-btn w-full">{formMode === "trial" ? "Book Another Trial" : "Send Another Message"}</button>
                 </div>
-              ) : (
+              ) : formMode === "message" ? (
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {status === "error" && (
                     <div className="rounded-xl bg-red-50 text-red-600 p-4 text-sm font-medium border border-red-100 flex items-start gap-3 animate-fade-in-down">
@@ -190,6 +295,65 @@ export default function ContactPage() {
                     <span className="relative z-10 flex items-center justify-center gap-2">
                       {status === "loading" ? <Loader2 className="animate-spin" size={20} /> : <Send size={20} />}
                       {status === "loading" ? "Sending..." : "Send Message securely"}
+                    </span>
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleTrialSubmit} className="space-y-6">
+                  {status === "error" && (
+                    <div className="rounded-xl bg-red-50 text-red-600 p-4 text-sm font-medium border border-red-100 flex items-start gap-3 animate-fade-in-down">
+                      <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+                      <span>{errorMessage}</span>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-700">Student Name <span className="text-primary">*</span></label>
+                      <input type="text" name="name" value={trialData.name} onChange={handleTrialChange} required className="form-input-premium shadow-inner" placeholder="Student full name" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-700">Phone Number <span className="text-primary">*</span></label>
+                      <input type="tel" name="phone" value={trialData.phone} onChange={handleTrialChange} required className="form-input-premium shadow-inner" placeholder="01XXXXXXXXX" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-700">Email Address <span className="text-primary">*</span></label>
+                      <input type="email" name="email" value={trialData.email} onChange={handleTrialChange} required className="form-input-premium shadow-inner" placeholder="student@email.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-700">Branch <span className="text-primary">*</span></label>
+                      <select name="branch_id" value={trialData.branch_id} onChange={handleTrialChange} required disabled={loadingBranches} className="form-input-premium shadow-inner font-medium text-slate-700 disabled:opacity-60">
+                        <option value="">{loadingBranches ? "Loading branches..." : "Select branch"}</option>
+                        {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.public_title || branch.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-700">Interested Course <span className="text-primary">*</span></label>
+                      <select name="course_id" value={trialData.course_id} onChange={handleTrialChange} required disabled={!trialData.branch_id || loadingCourses} className="form-input-premium shadow-inner font-medium text-slate-700 disabled:opacity-60">
+                        <option value="">{loadingCourses ? "Loading courses..." : trialData.branch_id ? "Select course" : "Select branch first"}</option>
+                        {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-700">Interested Country To Go <span className="text-primary">*</span></label>
+                      <select name="destination_country" value={trialData.destination_country} onChange={handleTrialChange} required className="form-input-premium shadow-inner font-medium text-slate-700">
+                        <option value="">Select country</option>
+                        {destinationOptions.map((country) => <option key={country} value={country}>{country}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <button type="submit" disabled={status === "loading" || loadingBranches || loadingCourses} className="primary-btn w-full py-4 text-base tracking-wide shadow-lg mt-2 relative overflow-hidden group disabled:opacity-70">
+                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out rounded-full"></div>
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                      {status === "loading" ? <Loader2 className="animate-spin" size={20} /> : <Send size={20} />}
+                      {status === "loading" ? "Booking..." : "Book Trial Class"}
                     </span>
                   </button>
                 </form>
