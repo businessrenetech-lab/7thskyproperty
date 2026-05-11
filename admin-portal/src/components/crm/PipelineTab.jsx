@@ -455,6 +455,13 @@ const PipelineTab = ({ leads, courses, onRefresh }) => {
     return `${baseUrl}/student-booking?branch=${encodeURIComponent(branchId)}&source=walk_in&channel=${channel}`;
   };
 
+  const buildTrialClassLink = () => {
+    const branchId = getActiveBranchId();
+    if (!branchId) return '';
+    const baseUrl = (import.meta.env.VITE_WEBSITE_URL || window.location.origin).replace(/\/$/, '');
+    return `${baseUrl}/trial-class?branch=${encodeURIComponent(branchId)}&channel=manual`;
+  };
+
   const copyBookingLink = async (channel) => {
     const url = buildBookingLink(channel);
     if (!url) { toast.warning('Select a specific branch before copying a booking link.'); return; };
@@ -463,6 +470,17 @@ const PipelineTab = ({ leads, courses, onRefresh }) => {
       toast.success(`${channel === 'kiosk' ? 'Kiosk QR' : 'Manual'} booking link copied.`);
     } catch {
       window.prompt('Copy booking link:', url);
+    }
+  };
+
+  const copyTrialClassLink = async () => {
+    const url = buildTrialClassLink();
+    if (!url) { toast.warning('Select a specific branch before copying a trial class link.'); return; };
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Trial class link copied.');
+    } catch {
+      window.prompt('Copy trial class link:', url);
     }
   };
 
@@ -527,6 +545,9 @@ const PipelineTab = ({ leads, courses, onRefresh }) => {
           </button>
           <button type="button" onClick={() => copyBookingLink('manual')} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.5rem 0.7rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: '0.72rem', fontWeight: 800, cursor: 'pointer' }}>
             <Copy size={13} /> Manual Link
+          </button>
+          <button type="button" onClick={copyTrialClassLink} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.5rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.38)', background: 'rgba(16,185,129,0.12)', color: '#10b981', fontSize: '0.72rem', fontWeight: 800, cursor: 'pointer' }}>
+            <Copy size={13} /> Trial Class Link
           </button>
           <button className="btn-primary" onClick={() => setShowForm(s => !s)} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', padding: '0.52rem 0.85rem' }}>
             <Plus size={15} /> New Lead

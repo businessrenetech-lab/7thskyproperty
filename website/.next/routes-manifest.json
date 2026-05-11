@@ -134,6 +134,12 @@
       "regex": "^/student\\-booking(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/student\\-booking(?:/)?$"
+    },
+    {
+      "page": "/trial-class",
+      "regex": "^/trial\\-class(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/trial\\-class(?:/)?$"
     }
   ],
   "dataRoutes": [],

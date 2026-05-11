@@ -17,5 +17,6 @@
   "/payment/success/page": "/payment/success",
   "/robots.txt/route": "/robots.txt",
   "/sitemap.xml/route": "/sitemap.xml",
-  "/student-booking/page": "/student-booking"
+  "/student-booking/page": "/student-booking",
+  "/trial-class/page": "/trial-class"
 }
