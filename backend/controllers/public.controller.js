@@ -11,6 +11,7 @@ const path = require('path');
 const { Op } = require('sequelize');
 const sequelize = require('../config/db.config');
 const fbCapi = require('../services/facebookCapi.service');
+const adminNotify = require('../services/adminNotification.service');
 const { getTableColumns, hasColumn, pickExisting, isTransientDbError } = require('../utils/schemaSafe');
 
 const parseBranchId = (req) => {
@@ -589,6 +590,13 @@ exports.submitContactForm = async (req, res) => {
       courseName: courseInterest || (isTrialBooking ? 'Trial Class Booking' : 'Website Enquiry'),
       value: course?.base_fee || 0,
     }).catch(() => {});
+
+    adminNotify.sendLeadNotificationEmail({
+      lead,
+      branch,
+      course,
+      type: isTrialBooking ? 'Trial Class Booking' : 'Website Enquiry',
+    }).catch(err => console.error('[ADMIN_NOTIFY] Lead email failed:', err.message));
   } catch (err) {
     await t.rollback();
     console.error('Error submitting contact form:', err);
@@ -726,6 +734,12 @@ exports.submitCourseEnquiry = async (req, res) => {
       courseName: course ? course.title : 'Course Enquiry',
       value: dealValue,
     }).catch(() => {});
+
+    adminNotify.sendLeadNotificationEmail({
+      lead,
+      course,
+      type: 'Course Enquiry',
+    }).catch(err => console.error('[ADMIN_NOTIFY] Course enquiry email failed:', err.message));
   } catch (err) {
     await t.rollback();
     console.error('Error submitting course enquiry:', err);
@@ -906,6 +920,14 @@ exports.submitStudentBooking = async (req, res) => {
       courseName: course?.title || 'Student Booking',
       value: dealValue,
     }).catch(() => {});
+
+    adminNotify.sendLeadNotificationEmail({
+      lead,
+      branch,
+      course,
+      batch,
+      type: 'Student Booking',
+    }).catch(err => console.error('[ADMIN_NOTIFY] Student booking email failed:', err.message));
   } catch (err) {
     if (t) await t.rollback().catch(() => {});
     console.error('Error submitting student booking:', err);

@@ -12,6 +12,8 @@ const DEFAULT_SETTINGS = [
   { setting_key: 'SMTP_HR_PASS', setting_value: '', description: 'HR Email Password', is_secret: true, category: 'email' },
   { setting_key: 'SMTP_SUPPORT_USER', setting_value: 'support@languageacademy.com.bd', description: 'Support Email — student support, enquiries', is_secret: false, category: 'email' },
   { setting_key: 'SMTP_SUPPORT_PASS', setting_value: '', description: 'Support Email Password', is_secret: true, category: 'email' },
+  { setting_key: 'ADMIN_NOTIFICATION_EMAILS', setting_value: 'info@languageacademy.com.bd, languageacademybd@gmail.com, redowansayem73@gmail.com, maz.ipsaustralia@gmail.com, coo@languageacademy.com.bd', description: 'Admin recipients for lead, enrollment, and monthly report emails', is_secret: false, category: 'email' },
+  { setting_key: 'MONTHLY_REPORT_LAST_SENT_PERIOD', setting_value: '', description: 'Last monthly admin report period sent', is_secret: false, category: 'email' },
 
   // ── SMS Gateway ─────────────────────────────────────────
   { setting_key: 'SMS_API_KEY', setting_value: '', description: 'Alpha SMS / BulkSMSBD API Key', is_secret: true, category: 'sms' },

@@ -200,6 +200,7 @@ const SystemSetting = require('./models/SystemSetting');
 const IncomeCategory = require('./models/IncomeCategory');
 const Customer = require('./models/Customer');
 const automationService = require('./services/automation.service');
+const adminNotify = require('./services/adminNotification.service');
 
 let birthdaySweepRunning = false;
 
@@ -216,6 +217,13 @@ const runBirthdaySweep = async () => {
     console.error('[AUTOMATION] Birthday reminder sweep failed:', error.message);
   } finally {
     birthdaySweepRunning = false;
+  }
+};
+
+const runMonthlyReportSweep = async () => {
+  const result = await adminNotify.runMonthlyReportSweep();
+  if (result?.sent) {
+    console.log(`[ADMIN_NOTIFY] Monthly report sent for ${result.period}`);
   }
 };
 
@@ -282,8 +290,10 @@ sequelize.authenticate()
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       runBirthdaySweep().catch(() => {});
+      runMonthlyReportSweep().catch(() => {});
       setInterval(() => {
         runBirthdaySweep().catch(() => {});
+        runMonthlyReportSweep().catch(() => {});
       }, 60 * 60 * 1000);
     });
   })

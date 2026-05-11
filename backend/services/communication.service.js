@@ -273,7 +273,7 @@ const brandedEmailWrapper = (title, bodyContent) => {
               <!-- Brand Name -->
               <h1 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:0.3px;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">Language Academy</h1>
               <!-- Tagline -->
-              <p style="margin:6px 0 0 0;font-size:13px;color:rgba(255,255,255,0.8);font-weight:400;letter-spacing:0.2px;">Best PTE &amp; IELTS Coaching Centre in Bangladesh</p>
+              <p style="margin:6px 0 0 0;font-size:13px;color:rgba(255,255,255,0.8);font-weight:400;letter-spacing:0.2px;">World-class PTE &amp; IELTS Centre in Bangladesh</p>
               <!-- Accent bar -->
               <div style="width:48px;height:3px;background-color:#95C04D;margin:14px auto 0 auto;border-radius:2px;"></div>
             </td>

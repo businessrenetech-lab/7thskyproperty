@@ -12,6 +12,7 @@ const SystemSetting = require('../models/SystemSetting');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const fbCapi = require('../services/facebookCapi.service');
+const adminNotify = require('../services/adminNotification.service');
 const { sendEnrollmentConfirmationEmail } = require('../services/communication.service');
 const sequelize = require('../config/db.config');
 const { createInvoiceWithGeneratedNo } = require('../utils/invoiceNumber');
@@ -104,7 +105,7 @@ const initiateCheckout = async (req, res) => {
     const bkashMerchantNo = await getBkashMerchantNo();
 
     // Create a Lead to hold the session state
-    await Lead.create({
+    const lead = await Lead.create({
       branch_id,
       name,
       email,
@@ -124,6 +125,14 @@ const initiateCheckout = async (req, res) => {
       payment_ref,
       redirect_url: `/payment/success?ref=${payment_ref}`
     });
+
+    adminNotify.sendLeadNotificationEmail({
+      lead,
+      branch,
+      course,
+      batch,
+      type: 'Website Checkout',
+    }).catch(err => console.error('[ADMIN_NOTIFY] Checkout lead email failed:', err.message));
   } catch (error) {
     console.error('Checkout Initiation Error:', error);
     res.status(500).json({ error: 'Failed to initiate checkout' });
@@ -352,6 +361,16 @@ const paymentSuccess = async (req, res) => {
         course_duration: course?.duration_weeks ? `${course.duration_weeks} weeks` : ''
       }).catch(err => console.error('[PAYMENT] Enrollment email failed:', err.message));
     }
+
+    adminNotify.sendEnrollmentNotificationEmail({
+      enrollment,
+      student,
+      user,
+      batch,
+      course,
+      invoice,
+      source: isPendingManualPayment ? 'website pending payment' : 'website paid checkout',
+    }).catch(err => console.error('[ADMIN_NOTIFY] Website enrollment email failed:', err.message));
   } catch (error) {
     if (dbTransaction) await dbTransaction.rollback().catch(() => {});
     console.error('Payment Success Processing Error:', error);

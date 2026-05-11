@@ -18,6 +18,7 @@ const bcrypt = require('bcryptjs');
 const automationService = require('../services/automation.service');
 const communicationService = require('../services/communication.service');
 const fbCapi = require('../services/facebookCapi.service');
+const adminNotify = require('../services/adminNotification.service');
 const { createInvoiceWithGeneratedNo } = require('../utils/invoiceNumber');
 
 const normalizeEducationDetails = (value) => {
@@ -257,6 +258,12 @@ exports.createLead = async (req, res) => {
       courseName: courseTitle || 'General Enquiry',
       value: deal_value,
     }).catch(() => {});
+
+    adminNotify.sendLeadNotificationEmail({
+      lead,
+      course: course_id ? { id: course_id, title: courseTitle, base_fee: deal_value } : null,
+      type: 'CRM Lead',
+    }).catch(err => console.error('[ADMIN_NOTIFY] CRM lead email failed:', err.message));
   } catch (error) {
     if (t) await t.rollback();
     res.status(500).json({ error: error.message });
@@ -576,6 +583,16 @@ exports.enrollLead = async (req, res) => {
       name: fullName, email: primaryEmail, phone: mobile_no || lead.phone,
       courseName: course.title, value: course.base_fee,
     }).catch(() => {});
+
+    adminNotify.sendEnrollmentNotificationEmail({
+      enrollment,
+      student,
+      user,
+      batch,
+      course,
+      invoice,
+      source: 'CRM lead enrollment',
+    }).catch(err => console.error('[ADMIN_NOTIFY] CRM enrollment email failed:', err.message));
   } catch (error) {
     await t.rollback();
     console.error('[CRM] Enroll Lead Error:', error);

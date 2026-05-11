@@ -10,6 +10,7 @@ const sequelize = require('../config/db.config');
 const { Op } = require('sequelize');
 const { createInvoiceWithGeneratedNo } = require('../utils/invoiceNumber');
 const { sendPartnerAccessRequestEmail } = require('../services/communication.service');
+const adminNotify = require('../services/adminNotification.service');
 
 const getEffectiveBranchId = (req) => (
   Object.prototype.hasOwnProperty.call(req, 'scopedBranchId') ? req.scopedBranchId : req.branchId
@@ -328,9 +329,11 @@ exports.createStudent = async (req, res) => {
     let invoice = null;
     let enrollment = null;
 
+    let enrolledCourse = null;
     if (course_id) {
       const course = await Course.findByPk(course_id, { transaction: t });
       if (course) {
+        enrolledCourse = course;
         enrollment = await Enrollment.create({
           branch_id: branchId,
           student_id: student.id,
@@ -389,6 +392,17 @@ exports.createStudent = async (req, res) => {
       invoice,
       temporary_password: generatedPassword
     });
+
+    if (enrollment) {
+      adminNotify.sendEnrollmentNotificationEmail({
+        enrollment,
+        student,
+        user,
+        course: enrolledCourse,
+        invoice,
+        source: 'direct student entry',
+      }).catch(err => console.error('[ADMIN_NOTIFY] Direct enrollment email failed:', err.message));
+    }
   } catch (error) {
     await t.rollback();
     console.error('[CreateStudent Error]:', error);

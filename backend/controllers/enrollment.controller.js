@@ -2,6 +2,7 @@ const Enrollment = require('../models/Enrollment');
 const Student = require('../models/Student');
 const Batch = require('../models/Batch');
 const { injectBranchFilter } = require('../middleware/branch.middleware');
+const adminNotify = require('../services/adminNotification.service');
 
 exports.createEnrollment = async (req, res) => {
   try {
@@ -24,6 +25,13 @@ exports.createEnrollment = async (req, res) => {
     });
 
     res.status(201).json(enrollment);
+
+    adminNotify.sendEnrollmentNotificationEmail({
+      enrollment,
+      student,
+      batch,
+      source: 'manual enrollment',
+    }).catch(err => console.error('[ADMIN_NOTIFY] Manual enrollment email failed:', err.message));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
