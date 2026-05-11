@@ -5,12 +5,12 @@ import { getPublicImageUrl } from "@/lib/imageUrl";
 
 export default function CourseCard({ course }) {
   const thumbnails = {
-    PTE: "/pte_course.png",
-    IELTS: "/ielts_course.png",
-    "Spoken English": "/hero_banner.png",
+    PTE: "/pte_course.webp",
+    IELTS: "/ielts_course.webp",
+    "Spoken English": "/hero_banner.webp",
   };
 
-  const thumbnail = getPublicImageUrl(course.image_url, thumbnails[course.category] || "/hero_banner.png");
+  const thumbnail = getPublicImageUrl(course.image_url, thumbnails[course.category] || "/hero_banner.webp");
 
   return (
     <div className="group rounded-3xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-xl hover:shadow-slate-200/50 flex h-full flex-col overflow-hidden">

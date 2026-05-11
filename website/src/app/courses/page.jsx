@@ -14,7 +14,7 @@ export const metadata = {
     title: "PTE-Focused Courses - Language Academy Bangladesh",
     description: "Find the right PTE course, with IELTS and English language programs also available. Small batches, unlimited mock tests, and certified faculty.",
     url: "https://languageacademy.com.bd/courses",
-    images: [{ url: "/pte_course.png", width: 1200, height: 630, alt: "Language Academy Courses" }],
+    images: [{ url: "/pte_course.webp", width: 1200, height: 630, alt: "Language Academy Courses" }],
   },
 };
 

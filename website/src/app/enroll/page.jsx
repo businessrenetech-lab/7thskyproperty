@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, CheckCircle2, Clock3, Loader2, ShieldCheck, Star, Users, X } from "lucide-react";
 
-const BKASH_LOGO_URL = "https://static.vecteezy.com/system/resources/thumbnails/068/842/080/small_2x/bkash-logo-horizontal-mobile-banking-app-icon-emblem-transparent-background-free-png.png";
+const BKASH_LOGO_URL = "/bkash-logo.webp";
 
 function CheckoutForm() {
   const searchParams = useSearchParams();

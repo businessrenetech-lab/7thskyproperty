@@ -5,8 +5,10 @@ export const metadata = {
   title: "Enrollment Successful | Language Academy",
 };
 
-export default function SuccessPage({ searchParams }) {
-  const transactionId = searchParams?.tran_id || 'UNKNOWN';
+export default async function SuccessPage({ searchParams }) {
+  const resolvedSearchParams = await searchParams;
+  const transactionParam = resolvedSearchParams?.tran_id;
+  const transactionId = Array.isArray(transactionParam) ? transactionParam[0] : transactionParam || 'UNKNOWN';
 
   return (
     <div className="pt-32 pb-24 min-h-screen bg-slate-50 flex items-center justify-center">

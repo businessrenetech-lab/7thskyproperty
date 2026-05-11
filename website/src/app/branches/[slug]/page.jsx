@@ -60,13 +60,13 @@ export async function generateMetadata({ params }) {
       title,
       description,
       url: `https://languageacademy.com.bd/branches/${branch.slug || slug}`,
-      images: [{ url: getPublicImageUrl(branch.hero_image_url, "/hero_banner.png"), width: 1200, height: 630, alt: branch.public_title || branch.name }],
+      images: [{ url: getPublicImageUrl(branch.hero_image_url, "/hero_banner.webp"), width: 1200, height: 630, alt: branch.public_title || branch.name }],
     },
   };
 }
 
 function CourseOfferCard({ course, branch }) {
-  const image = getPublicImageUrl(course.image_url, course.category === "IELTS" ? "/ielts_course.png" : "/pte_course.png");
+  const image = getPublicImageUrl(course.image_url, course.category === "IELTS" ? "/ielts_course.webp" : "/pte_course.webp");
   return (
     <article className="group overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_20px_60px_-38px_rgba(15,23,42,0.35)] transition hover:-translate-y-1 hover:shadow-[0_28px_80px_-38px_rgba(15,23,42,0.45)]" data-depth="3">
       <div className="relative aspect-[16/10] overflow-hidden">
@@ -109,7 +109,7 @@ export default async function BranchDetailPage({ params }) {
 
   const pteCourses = courses.filter((course) => String(course.category || '').toLowerCase().includes('pte'));
   const otherCourses = courses.filter((course) => !String(course.category || '').toLowerCase().includes('pte'));
-  const heroImage = getPublicImageUrl(branch.hero_image_url, "/hero_banner.png");
+  const heroImage = getPublicImageUrl(branch.hero_image_url, "/hero_banner.webp");
 
   return (
     <>

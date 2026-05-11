@@ -16,7 +16,7 @@ export const metadata = {
     title: "Learning Hub — Language Academy",
     description: "Free guides, PDFs, strategies, and expert tips for PTE and IELTS preparation.",
     url: "https://languageacademy.com.bd/blog",
-    images: [{ url: "/hero_banner.png", width: 1200, height: 630, alt: "Language Academy Learning Hub" }],
+    images: [{ url: "/hero_banner.webp", width: 1200, height: 630, alt: "Language Academy Learning Hub" }],
   },
 };
 

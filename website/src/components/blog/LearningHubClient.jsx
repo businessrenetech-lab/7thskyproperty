@@ -107,7 +107,7 @@ export default function LearningHubClient({ blogs = [], resources = [] }) {
       <section className="bg-academy-blue pt-24 pb-20 md:pt-32 md:pb-28 relative overflow-hidden">
         {/* Subtle background image/pattern */}
         <div className="absolute inset-0 opacity-90 mix-blend-overlay">
-          <Image src="/hero_desktop.jpg" alt="Background" fill className="object-cover" priority />
+          <Image src="/hero_desktop.webp" alt="Background" fill className="object-cover" priority />
         </div>
         <div className="absolute inset-0 bg-gradient-to-r from-academy-blue via-academy-blue/90 to-slate-900/80 z-0"></div>
 

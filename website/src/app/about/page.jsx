@@ -16,7 +16,7 @@ export const metadata = {
     title: "About Language Academy Bangladesh - Best PTE Centre in Dhaka",
     description: "Discover our mission, values, and world-class facilities designed for focused PTE preparation, with IELTS and English courses also available.",
     url: "https://languageacademy.com.bd/about",
-    images: [{ url: "/hero_banner.png", width: 1200, height: 630, alt: "About Language Academy Bangladesh" }],
+    images: [{ url: "/hero_banner.webp", width: 1200, height: 630, alt: "About Language Academy Bangladesh" }],
   },
 };
 
@@ -27,7 +27,7 @@ export default function AboutPage() {
       <section className="bg-academy-blue pt-24 pb-20 md:pt-32 md:pb-28 relative overflow-hidden">
         {/* Subtle background image/pattern */}
         <div className="absolute inset-0 opacity-20 mix-blend-overlay">
-          <Image src="/hero_desktop.jpg" alt="Background" fill className="object-cover" priority />
+          <Image src="/hero_desktop.webp" alt="Background" fill className="object-cover" priority />
         </div>
         <div className="absolute inset-0 bg-gradient-to-r from-academy-blue via-academy-blue/95 to-slate-900/80 z-0"></div>
         
@@ -94,10 +94,10 @@ export default function AboutPage() {
             {/* Left: Overlapping Images */}
             <div className="relative mx-auto lg:mx-0 max-w-md lg:max-w-none w-full aspect-square lg:aspect-auto lg:h-[600px]">
               <div className="absolute top-0 left-0 w-4/5 h-4/5 rounded-2xl overflow-hidden shadow-xl border-4 border-white z-10">
-                <Image src="/students_classroom.png" alt="Classroom" fill className="object-cover" />
+                <Image src="/students_classroom.webp" alt="Classroom" fill className="object-cover" />
               </div>
               <div className="absolute bottom-0 right-0 w-3/5 h-3/5 rounded-2xl overflow-hidden shadow-2xl border-4 border-white z-20">
-                <Image src="/student_journey.png" alt="Student Success" fill className="object-cover" />
+                <Image src="/student_journey.webp" alt="Student Success" fill className="object-cover" />
               </div>
               <div className="absolute top-1/2 -right-4 md:-right-8 transform -translate-y-1/2 bg-white rounded-xl shadow-xl p-4 border-l-4 border-l-primary z-30 flex items-center gap-4 w-64">
                 <div className="bg-primary/10 p-3 rounded-lg text-primary">
@@ -173,7 +173,7 @@ export default function AboutPage() {
             </div>
             
             <div className="bg-academy-blue rounded-2xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
-              <div className="absolute inset-0 opacity-10 bg-[url('/students_classroom.png')] bg-cover mix-blend-overlay"></div>
+              <div className="absolute inset-0 opacity-10 bg-[url('/students_classroom.webp')] bg-cover mix-blend-overlay"></div>
               <div className="relative z-10">
                 <div className="bg-primary/20 w-16 h-16 rounded-2xl flex items-center justify-center text-white mb-8">
                   <Globe2 size={32} />
@@ -348,7 +348,7 @@ export default function AboutPage() {
           </div>
           
           <div className="bg-academy-blue rounded-2xl p-8 md:p-12 text-center text-white relative overflow-hidden shadow-2xl">
-             <div className="absolute inset-0 opacity-20 mix-blend-overlay bg-[url('/hero_banner.png')] bg-cover bg-center"></div>
+             <div className="absolute inset-0 opacity-20 mix-blend-overlay bg-[url('/hero_banner.webp')] bg-cover bg-center"></div>
              <div className="relative z-10">
                <h2 className="text-3xl md:text-4xl font-black mb-6">Ready to start your journey?</h2>
                <p className="text-blue-100 text-lg mb-8 max-w-2xl mx-auto">At Language Academy, we connect talent to the world. Get started today and secure your target score.</p>

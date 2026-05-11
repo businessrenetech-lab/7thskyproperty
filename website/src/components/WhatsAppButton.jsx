@@ -95,7 +95,7 @@ export default function WhatsAppButton() {
           </div>
 
           {/* Chat Body */}
-          <div className="bg-[#efe6dd] p-4" style={{ backgroundImage: "url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')", backgroundSize: 'cover' }}>
+          <div className="bg-[#efe6dd] p-4" style={{ backgroundImage: 'radial-gradient(circle at 0 0, rgba(18,140,126,0.12) 0 2px, transparent 2px), radial-gradient(circle at 16px 16px, rgba(255,255,255,0.45) 0 2px, transparent 2px)', backgroundSize: '32px 32px' }}>
             <div className="mb-4 flex w-fit max-w-[90%] flex-col rounded-b-lg rounded-tr-lg bg-white p-3 text-sm shadow-sm">
               <span className="mb-1 text-[11px] font-bold text-[#128C7E]">System Message</span>
               <span className="text-gray-800 tracking-tight leading-tight">Hi there! 👋 How can we help you? Please leave your details and query below and our team will get right back to you!</span>

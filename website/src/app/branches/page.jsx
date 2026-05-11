@@ -19,7 +19,7 @@ async function getBranches() {
 }
 
 function BranchCard({ branch }) {
-  const branchImage = getPublicImageUrl(branch.hero_image_url, "/hero_banner.png");
+  const branchImage = getPublicImageUrl(branch.hero_image_url, "/hero_banner.webp");
   const active = !!branch.is_active;
   const content = (
     <div className="group relative h-full overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_24px_70px_-40px_rgba(15,23,42,0.35)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_30px_90px_-40px_rgba(15,23,42,0.45)]" data-depth="3">

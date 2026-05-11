@@ -79,7 +79,7 @@ export default async function BlogDetailPage({ params }) {
         "datePublished": blog.published_at,
         "dateModified": blog.updated_at || blog.published_at,
         "author": { "@type": "Organization", "name": "Language Academy Bangladesh", "url": "https://languageacademy.com.bd" },
-        "publisher": { "@type": "Organization", "name": "Language Academy Bangladesh", "logo": { "@type": "ImageObject", "url": "https://languageacademy.com.bd/logo.png" } },
+        "publisher": { "@type": "Organization", "name": "Language Academy Bangladesh", "logo": { "@type": "ImageObject", "url": "https://languageacademy.com.bd/logo.webp" } },
         "mainEntityOfPage": { "@type": "WebPage", "@id": `https://languageacademy.com.bd/blog/${blog.slug}` },
       }} />
 

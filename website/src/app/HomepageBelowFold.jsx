@@ -21,7 +21,7 @@ export default function HomepageBelowFold({ onBook }) {
             <AnimateOnScroll variant="slide-left">
               <div className="rounded-[2rem] overflow-hidden shadow-2xl shadow-slate-200/50">
                 <div className="relative h-[400px] w-full">
-                  <Image src="/hero_banner.png" alt="Best PTE centre in Dhaka - Language Academy Bangladesh" fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
+                  <Image src="/hero_banner.webp" alt="Best PTE centre in Dhaka - Language Academy Bangladesh" fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
                 </div>
               </div>
             </AnimateOnScroll>
@@ -128,7 +128,7 @@ export default function HomepageBelowFold({ onBook }) {
             <AnimateOnScroll variant="slide-right">
               <div className="rounded-[2rem] overflow-hidden shadow-2xl relative group">
                 <div className="relative h-[400px] w-full">
-                  <Image src="/pte_course.png" alt="PTE exam format and structure - Language Academy Dhaka" fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover transition-transform duration-700 group-hover:scale-105" />
+                  <Image src="/pte_course.webp" alt="PTE exam format and structure - Language Academy Dhaka" fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover transition-transform duration-700 group-hover:scale-105" />
                 </div>
                 <div className="absolute inset-0 bg-accent/20 mix-blend-overlay"></div>
               </div>
@@ -206,7 +206,7 @@ export default function HomepageBelowFold({ onBook }) {
                 </p>
                 <div className="rounded-[2rem] overflow-hidden shadow-2xl shadow-slate-200/50">
                   <div className="relative h-[280px] w-full">
-                    <Image src="/pte_vs_ielts.png" alt="PTE vs IELTS comparison - which English exam to choose in Bangladesh" fill sizes="(min-width: 1024px) 45vw, 100vw" className="object-cover" />
+                    <Image src="/pte_vs_ielts.webp" alt="PTE vs IELTS comparison - which English exam to choose in Bangladesh" fill sizes="(min-width: 1024px) 45vw, 100vw" className="object-cover" />
                   </div>
                 </div>
               </div>

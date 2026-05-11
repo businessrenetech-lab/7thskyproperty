@@ -60,7 +60,7 @@ export default function HomepageClient({ courses: initialCourses, blogs }) {
         {/* Background: desktop landscape image */}
         <div className="absolute inset-0">
           <Image
-            src="/hero_desktop.jpg"
+            src="/hero_desktop.webp"
             alt="Student with world landmarks - study abroad from Bangladesh"
             fill
             sizes="100vw"
@@ -135,7 +135,7 @@ export default function HomepageClient({ courses: initialCourses, blogs }) {
         {/* Background: mobile portrait image */}
         <div className="absolute inset-0">
           <Image
-            src="/hero_mobile.jpg"
+            src="/hero_mobile.webp"
             alt="Student with world landmarks - study abroad from Bangladesh"
             fill
             sizes="100vw"

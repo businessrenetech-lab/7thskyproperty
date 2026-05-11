@@ -9,7 +9,7 @@ export const metadata = {
     title: "Contact Language Academy — Free PTE & IELTS Consultation",
     description: "Visit our Dhanmondi campus or book a free online consultation. Phone: +880 1913-373581",
     url: "https://languageacademy.com.bd/contact",
-    images: [{ url: "/hero_banner.png", width: 1200, height: 630, alt: "Contact Language Academy Dhaka" }],
+    images: [{ url: "/hero_banner.webp", width: 1200, height: 630, alt: "Contact Language Academy Dhaka" }],
   },
 };
 

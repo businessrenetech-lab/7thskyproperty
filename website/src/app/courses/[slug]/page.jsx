@@ -33,7 +33,7 @@ function formatScheduleTime(t) {
 const DAY_ORDER = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'];
 const DAY_LABELS = { sat: 'Sat', sun: 'Sun', mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri' };
 
-const thumbnails = { PTE: "/pte_course.png", IELTS: "/ielts_course.png", "Spoken English": "/hero_banner.png" };
+const thumbnails = { PTE: "/pte_course.webp", IELTS: "/ielts_course.webp", "Spoken English": "/hero_banner.webp" };
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
@@ -53,7 +53,7 @@ export async function generateMetadata({ params }) {
       description,
       url: `https://languageacademy.com.bd/courses/${slug}`,
       images: [{
-        url: getAbsolutePublicImageUrl(course.image_url, thumbnails[course.category] || "/hero_banner.png"),
+        url: getAbsolutePublicImageUrl(course.image_url, thumbnails[course.category] || "/hero_banner.webp"),
         width: 1200, height: 630,
         alt: `${course.title} at Language Academy Bangladesh`,
       }],
@@ -81,7 +81,7 @@ export default async function CourseDetailPage({ params }) {
     { title: "Mock Tests & Review", lessons: [{ title: "Full-length mock test", duration: "120m" }, { title: "1-on-1 review session", duration: "45m" }] },
   ]);
 
-  const courseImage = getPublicImageUrl(course.image_url, thumbnails[course.category] || "/hero_banner.png");
+  const courseImage = getPublicImageUrl(course.image_url, thumbnails[course.category] || "/hero_banner.webp");
 
   const features = [
     { icon: Users, label: "Small Batch", desc: "Max 12 students" },

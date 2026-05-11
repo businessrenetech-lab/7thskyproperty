@@ -203,9 +203,9 @@ async function start() {
     return res.sendFile(fallbackPath);
   };
 
-  app.get('/uploads/blogs/{*splat}', sendMissingUploadFallback('blog_resources.png'));
-  app.get('/uploads/courses/{*splat}', sendMissingUploadFallback('pte_course.png'));
-  app.get('/uploads/branches/{*splat}', sendMissingUploadFallback('hero_banner.png'));
+  app.get('/uploads/blogs/{*splat}', sendMissingUploadFallback('blog_resources.webp'));
+  app.get('/uploads/courses/{*splat}', sendMissingUploadFallback('pte_course.webp'));
+  app.get('/uploads/branches/{*splat}', sendMissingUploadFallback('hero_banner.webp'));
 
   const sendSpaIndex = (indexFile) => (req, res) => {
     if (path.extname(req.path)) {

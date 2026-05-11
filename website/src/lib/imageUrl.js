@@ -8,7 +8,7 @@ const PUBLIC_ASSET_BASE = normalizeAssetBase(
   process.env.NEXT_PUBLIC_UPLOADS_BASE_URL || process.env.NEXT_PUBLIC_API_URL || ''
 );
 
-export function getPublicImageUrl(value, fallback = '/hero_banner.png') {
+export function getPublicImageUrl(value, fallback = '/hero_banner.webp') {
   const imageUrl = String(value || '').trim();
   if (!imageUrl) return fallback;
   if (/^(https?:)?\/\//i.test(imageUrl) || imageUrl.startsWith('data:')) return imageUrl;
@@ -18,7 +18,7 @@ export function getPublicImageUrl(value, fallback = '/hero_banner.png') {
   return imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
 }
 
-export function getAbsolutePublicImageUrl(value, fallback = 'https://languageacademy.com.bd/hero_banner.png') {
+export function getAbsolutePublicImageUrl(value, fallback = 'https://languageacademy.com.bd/hero_banner.webp') {
   const imageUrl = getPublicImageUrl(value, fallback);
   if (/^(https?:)?\/\//i.test(imageUrl) || imageUrl.startsWith('data:')) return imageUrl;
   return `https://languageacademy.com.bd${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
@@ -26,8 +26,8 @@ export function getAbsolutePublicImageUrl(value, fallback = 'https://languageaca
 
 export function getBlogImageFallback(category) {
   const normalizedCategory = String(category || '').toLowerCase();
-  if (normalizedCategory.includes('ielts')) return '/ielts_course.png';
-  if (normalizedCategory.includes('pte')) return '/pte_course.png';
-  if (normalizedCategory.includes('study')) return '/hero_student.jpg';
-  return '/blog_resources.png';
+  if (normalizedCategory.includes('ielts')) return '/ielts_course.webp';
+  if (normalizedCategory.includes('pte')) return '/pte_course.webp';
+  if (normalizedCategory.includes('study')) return '/hero_student.webp';
+  return '/blog_resources.webp';
 }

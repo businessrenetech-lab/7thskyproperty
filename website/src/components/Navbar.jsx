@@ -61,7 +61,7 @@ export default function Navbar() {
         <div className={`container-shell flex items-center justify-between transition-all duration-300 ${scrolled ? "py-2.5" : "py-3.5"}`}>
           {/* Logo */}
           <Link href="/" className="flex items-center transition-transform hover:scale-105">
-            <Image src="/logo.png" alt="Language Academy Logo" width={160} height={64} className="h-16 w-auto object-contain drop-shadow-sm" />
+            <Image src="/logo.webp" alt="Language Academy Logo" width={160} height={64} className="h-16 w-auto object-contain drop-shadow-sm" />
           </Link>
 
           {/* Desktop Links */}

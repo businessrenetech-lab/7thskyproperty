@@ -57,9 +57,9 @@ export const metadata = {
   },
 
   icons: {
-    icon: [{ url: "/logo.png", type: "image/png" }],
-    shortcut: ["/logo.png"],
-    apple: [{ url: "/logo.png", type: "image/png" }],
+    icon: [{ url: "/logo.webp", type: "image/webp" }],
+    shortcut: ["/logo.webp"],
+    apple: [{ url: "/logo.webp", type: "image/webp" }],
   },
 
   alternates: {
@@ -76,7 +76,7 @@ export const metadata = {
       "World-class PTE preparation in Dhaka with expert trainers, unlimited mock tests, small batches, and IELTS and English language courses also available.",
     images: [
       {
-        url: "/hero_banner.png",
+        url: "/hero_banner.webp",
         width: 1200,
         height: 630,
         alt: "Language Academy Bangladesh - Best PTE Centre in Dhaka",
@@ -89,7 +89,7 @@ export const metadata = {
     title: "Language Academy Bangladesh | Best PTE Centre in Dhaka, Bangladesh",
     description:
       "World-class PTE preparation in Dhaka with IELTS and English language courses also available.",
-    images: ["/hero_banner.png"],
+    images: ["/hero_banner.webp"],
   },
 
   robots: {
