@@ -1,1 +1,4 @@
-{"version":1,"functions":{"/blog":{},"/blog/[slug]":{},"/branches":{},"/about":{},"/enroll/success":{},"/branches/[slug]":{},"/courses":{},"/materials":{},"/":{},"/courses/[slug]":{}}}
+{
+  "version": 1,
+  "functions": {}
+}

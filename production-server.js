@@ -114,9 +114,11 @@ async function start() {
   // Step 5: Create Express app and mount routes
   log('STEP 5: Creating Express app and mounting routes...');
   const app = express();
+  const compression = require('compression');
   const cors = require('cors');
   const cookieParser = require('cookie-parser');
   const { getCorsOptions } = require('./backend/config/cors.config');
+  app.use(compression());
   app.use(cors(getCorsOptions()));
   app.use(cookieParser());
   app.use(express.json());
@@ -173,13 +175,31 @@ async function start() {
   log(`  Mounted ${routes.length - routesFailed}/${routes.length} API routes (${routesFailed} failed)`);
 
   // Static files
-  app.use('/uploads', express.static(path.join(__dirname, 'backend', 'uploads')));
+  const staticAssetCache = 'public, max-age=31536000, immutable';
+  const publicImageCache = 'public, max-age=86400, stale-while-revalidate=604800';
+
+  app.use('/uploads', express.static(path.join(__dirname, 'backend', 'uploads'), {
+    setHeaders: (res, filePath) => {
+      if (/\.(?:avif|webp|png|jpe?g|svg|ico)$/i.test(filePath)) {
+        res.set('Cache-Control', publicImageCache);
+      }
+    },
+  }));
 
   const websitePublicDir = path.join(__dirname, 'website', 'public');
+  app.use(express.static(websitePublicDir, {
+    index: false,
+    setHeaders: (res, filePath) => {
+      if (/\.(?:avif|webp|png|jpe?g|svg|ico)$/i.test(filePath)) {
+        res.set('Cache-Control', publicImageCache);
+      }
+    },
+  }));
+
   const sendMissingUploadFallback = (fallbackFile) => (req, res, next) => {
     const fallbackPath = path.join(websitePublicDir, fallbackFile);
     if (!fs.existsSync(fallbackPath)) return next();
-    res.set('Cache-Control', 'no-store');
+    res.set('Cache-Control', publicImageCache);
     return res.sendFile(fallbackPath);
   };
 
@@ -225,7 +245,7 @@ async function start() {
     if (fs.existsSync(assetPath)) {
       const mime = MIME_MAP[ext] || 'application/octet-stream';
       res.set('Content-Type', mime);
-      res.set('Cache-Control', 'public, max-age=31536000, immutable');
+      res.set('Cache-Control', staticAssetCache);
       return res.sendFile(assetPath);
     }
     return res.status(404).type('text/plain').send('Asset not found');
@@ -316,6 +336,9 @@ async function start() {
     const SystemSetting = require('./backend/models/SystemSetting');
     const IncomeCategory = require('./backend/models/IncomeCategory');
     const Customer = require('./backend/models/Customer');
+    const BlogPost = require('./backend/models/BlogPost');
+    const Resource = require('./backend/models/Resource');
+    const BlogResource = require('./backend/models/BlogResource');
 
     log('  Models loaded, setting up associations...');
 
@@ -350,7 +373,7 @@ async function start() {
       StaffAttendance, LeaveType, LeaveRequest, LeaveBalance,
       JobPosting, Applicant, StaffDocument, PerformanceReview,
       Shift, StaffSchedule, StaffProfile, StaffPayRule, TeacherSession, PayrollDeduction, PayrollBonus, RbacConfig, SystemSetting,
-      IncomeCategory, Customer,
+      IncomeCategory, Customer, BlogPost, Resource, BlogResource,
     ];
 
     log('  Syncing models...');

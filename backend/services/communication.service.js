@@ -29,22 +29,42 @@ const getConfig = async (key) => {
 };
 
 /**
- * Configure Hostinger SMTP transporter setup
- * This gets configured per-send now to allow dynamic setting updates,
- * or cached effectively if preferred. We'll build a fresh transport each time
- * to ensure if superadmin changes settings, they apply immediately.
+ * SMTP Account definitions for multi-account routing.
+ * Each account maps to a purpose and has its own credentials.
+ * Accounts: 'info' (default), 'hr', 'support'
  */
-const createTransporter = async () => {
+const SMTP_ACCOUNTS = {
+  info:    { userKey: 'SMTP_USER',         passKey: 'SMTP_PASS',         label: 'Language Academy' },
+  hr:      { userKey: 'SMTP_HR_USER',      passKey: 'SMTP_HR_PASS',      label: 'Language Academy HR' },
+  support: { userKey: 'SMTP_SUPPORT_USER', passKey: 'SMTP_SUPPORT_PASS', label: 'Language Academy Support' },
+};
+
+/**
+ * Configure Hostinger SMTP transporter setup.
+ * Supports multi-account: 'info' (default), 'hr', 'support'.
+ * Each account uses its own credentials from SystemSettings.
+ */
+const createTransporter = async (account = 'info') => {
   const host = await getConfig('SMTP_HOST') || 'smtp.hostinger.com';
   const port = parseInt(await getConfig('SMTP_PORT')) || 465;
-  const user = await getConfig('SMTP_USER') || 'your-email@yourdomain.com';
-  const pass = await getConfig('SMTP_PASS') || 'your-smtp-password';
+
+  const acct = SMTP_ACCOUNTS[account] || SMTP_ACCOUNTS.info;
+  const user = await getConfig(acct.userKey);
+  const pass = await getConfig(acct.passKey);
+
+  if (!user || !pass) {
+    // Fallback to default info account if the requested account is not configured
+    if (account !== 'info') {
+      console.warn(`[COMM_SERVICE] SMTP account '${account}' not configured, falling back to 'info'`);
+      return createTransporter('info');
+    }
+  }
 
   return nodemailer.createTransport({
     host,
     port,
     secure: true,
-    auth: { user, pass }
+    auth: { user: user || 'your-email@yourdomain.com', pass: pass || 'your-smtp-password' }
   });
 };
 
@@ -61,21 +81,27 @@ const parseTemplate = (text, recipient) => {
 };
 
 /**
- * Send an email using Nodemailer
+ * Send an email using Nodemailer.
+ * @param {string} to - Recipient email
+ * @param {string} subject - Email subject
+ * @param {string} htmlBody - HTML email body
+ * @param {Array} attachments - Optional attachments
+ * @param {string} fromAccount - SMTP account to send from: 'info' (default), 'hr', 'support'
  */
-const sendEmail = async (to, subject, htmlBody, attachments = []) => {
-  const user = await getConfig('SMTP_USER');
-  
+const sendEmail = async (to, subject, htmlBody, attachments = [], fromAccount = 'info') => {
+  const acct = SMTP_ACCOUNTS[fromAccount] || SMTP_ACCOUNTS.info;
+  const user = await getConfig(acct.userKey);
+
   if (!user || user === 'your-email@yourdomain.com') {
-    console.log(`[SIMULATION] Email Sent to: ${to} | Object: ${subject}`);
+    console.log(`[SIMULATION] Email Sent via ${fromAccount}@ to: ${to} | Subject: ${subject}`);
     await new Promise(r => setTimeout(r, 200));
     return { success: true, message: 'Simulated Email Sent' };
   }
 
-  const transporter = await createTransporter();
+  const transporter = await createTransporter(fromAccount);
 
   const mailOptions = {
-    from: `"Language Academy" <${user}>`,
+    from: `"${acct.label}" <${user}>`,
     to,
     subject,
     html: htmlBody,
@@ -84,9 +110,10 @@ const sendEmail = async (to, subject, htmlBody, attachments = []) => {
 
   try {
     const info = await transporter.sendMail(mailOptions);
+    console.log(`[COMM_SERVICE] Email sent via ${fromAccount}@ to ${to}: ${info.messageId}`);
     return { success: true, message: `Email sent: ${info.messageId}` };
   } catch (error) {
-    console.error('[COMM_SERVICE] Email send failed:', error.message);
+    console.error(`[COMM_SERVICE] Email send failed (${fromAccount}@):`, error.message);
     return { success: false, error: error.message };
   }
 };
@@ -422,7 +449,7 @@ const sendEnrollmentConfirmationEmail = async (orderData) => {
   `;
 
   const html = brandedEmailWrapper('Enrollment Confirmation — Language Academy', bodyContent);
-  return sendEmail(email, 'Enrollment Confirmed — Welcome to Language Academy!', html);
+  return sendEmail(email, 'Enrollment Confirmed — Welcome to Language Academy!', html, [], 'info');
 };
 
 /**
@@ -504,7 +531,8 @@ const sendPartnerAccessRequestEmail = async (studentData, adminEmail) => {
   // Build reply-to with both admin and student email
   const replyTo = [adminEmail, student_email].filter(Boolean).join(', ');
 
-  const user = await getConfig('SMTP_USER');
+  const acct = SMTP_ACCOUNTS.info;
+  const user = await getConfig(acct.userKey);
 
   if (!user || user === 'your-email@yourdomain.com') {
     console.log(`[SIMULATION] Partner Access Email Sent to: ${partnerEmail} | Student: ${student_name}`);
@@ -512,10 +540,10 @@ const sendPartnerAccessRequestEmail = async (studentData, adminEmail) => {
     return { success: true, message: 'Simulated Partner Email Sent' };
   }
 
-  const transporter = await createTransporter();
+  const transporter = await createTransporter('info');
 
   const mailOptions = {
-    from: `"Language Academy" <${user}>`,
+    from: `"${acct.label}" <${user}>`,
     to: partnerEmail,
     replyTo: replyTo,
     subject: `Portal Access Request — ${student_name} | Language Academy`,
@@ -538,5 +566,6 @@ module.exports = {
   parseTemplate,
   brandedEmailWrapper,
   sendEnrollmentConfirmationEmail,
-  sendPartnerAccessRequestEmail
+  sendPartnerAccessRequestEmail,
+  SMTP_ACCOUNTS
 };

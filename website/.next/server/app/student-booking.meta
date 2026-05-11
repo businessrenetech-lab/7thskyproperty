@@ -1,5 +1,15 @@
 {
   "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
     "x-next-cache-tags": "_N_T_/layout,_N_T_/student-booking/layout,_N_T_/student-booking/page,_N_T_/student-booking"
-  }
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/student-booking/__PAGE__",
+    "/student-booking",
+    "/_index",
+    "/_head"
+  ]
 }

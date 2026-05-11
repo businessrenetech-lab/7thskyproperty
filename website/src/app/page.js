@@ -4,7 +4,10 @@ import JsonLd, { faqSchema, breadcrumbSchema } from "@/components/JsonLd";
 import { getApiBase } from "@/lib/api";
 import { COURSE_FALLBACKS } from "@/lib/courseFallbacks";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
+
+const HOMEPAGE_REVALIDATE_SECONDS = 300;
+const isProductionBuild = process.env.NEXT_PHASE === "phase-production-build";
 
 /* ─── Homepage SEO Metadata ────────────────────────────────── */
 export const metadata = {
@@ -63,31 +66,37 @@ const homeFaqs = [
 
 async function getFeaturedCourses() {
   try {
-    const res = await fetch(`${getApiBase()}/api/public/courses`, { cache: "no-store" });
+    const res = await fetch(`${getApiBase()}/api/public/courses`, {
+      next: { revalidate: HOMEPAGE_REVALIDATE_SECONDS },
+    });
     if (!res.ok) return COURSE_FALLBACKS.slice(0, 6);
     const data = await res.json();
     return (Array.isArray(data) && data.length > 0 ? data : COURSE_FALLBACKS).slice(0, 6);
   } catch (error) {
-    console.error("Error fetching courses:", error);
+    if (!isProductionBuild) console.error("Error fetching courses:", error);
     return COURSE_FALLBACKS.slice(0, 6);
   }
 }
 
 async function getRecentBlogs() {
   try {
-    const res = await fetch(`${getApiBase()}/api/public/blog`, { cache: "no-store" });
+    const res = await fetch(`${getApiBase()}/api/public/blog`, {
+      next: { revalidate: HOMEPAGE_REVALIDATE_SECONDS },
+    });
     if (!res.ok) return [];
     const data = await res.json();
     return data.slice(0, 3);
   } catch (error) {
-    console.error("Error fetching blogs:", error);
+    if (!isProductionBuild) console.error("Error fetching blogs:", error);
     return [];
   }
 }
 
 export default async function Home() {
-  const featuredCourses = await getFeaturedCourses();
-  const recentBlogs = await getRecentBlogs();
+  const [featuredCourses, recentBlogs] = await Promise.all([
+    getFeaturedCourses(),
+    getRecentBlogs(),
+  ]);
 
   return (
     <>

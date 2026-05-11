@@ -6,8 +6,12 @@ const DEFAULT_SETTINGS = [
   // ── Email (SMTP) ────────────────────────────────────────
   { setting_key: 'SMTP_HOST', setting_value: 'smtp.hostinger.com', description: 'Outgoing Mail Server (SMTP)', is_secret: false, category: 'email' },
   { setting_key: 'SMTP_PORT', setting_value: '465', description: 'SMTP Port', is_secret: false, category: 'email' },
-  { setting_key: 'SMTP_USER', setting_value: '', description: 'SMTP Username / Email', is_secret: false, category: 'email' },
-  { setting_key: 'SMTP_PASS', setting_value: '', description: 'SMTP Password', is_secret: true, category: 'email' },
+  { setting_key: 'SMTP_USER', setting_value: 'info@languageacademy.com.bd', description: 'Primary Email (info@) — all general emails', is_secret: false, category: 'email' },
+  { setting_key: 'SMTP_PASS', setting_value: '', description: 'Primary Email Password', is_secret: true, category: 'email' },
+  { setting_key: 'SMTP_HR_USER', setting_value: 'hr@languageacademy.com.bd', description: 'HR Email — job offers, payslips, staff emails', is_secret: false, category: 'email' },
+  { setting_key: 'SMTP_HR_PASS', setting_value: '', description: 'HR Email Password', is_secret: true, category: 'email' },
+  { setting_key: 'SMTP_SUPPORT_USER', setting_value: 'support@languageacademy.com.bd', description: 'Support Email — student support, enquiries', is_secret: false, category: 'email' },
+  { setting_key: 'SMTP_SUPPORT_PASS', setting_value: '', description: 'Support Email Password', is_secret: true, category: 'email' },
 
   // ── SMS Gateway ─────────────────────────────────────────
   { setting_key: 'SMS_API_KEY', setting_value: '', description: 'Alpha SMS / BulkSMSBD API Key', is_secret: true, category: 'sms' },
@@ -50,8 +54,8 @@ const DEFAULT_SETTINGS = [
   { setting_key: 'CONTACT_PHONE_PRIMARY', setting_value: '+880-1913-373581', description: 'Primary Phone Number', is_secret: false, category: 'contact' },
   { setting_key: 'CONTACT_PHONE_SECONDARY', setting_value: '', description: 'Secondary Phone Number', is_secret: false, category: 'contact' },
   { setting_key: 'CONTACT_WHATSAPP', setting_value: '+8801913373581', description: 'WhatsApp Business Number', is_secret: false, category: 'contact' },
-  { setting_key: 'CONTACT_EMAIL_PRIMARY', setting_value: '', description: 'Primary Contact Email', is_secret: false, category: 'contact' },
-  { setting_key: 'CONTACT_EMAIL_SUPPORT', setting_value: '', description: 'Support Email Address', is_secret: false, category: 'contact' },
+  { setting_key: 'CONTACT_EMAIL_PRIMARY', setting_value: 'info@languageacademy.com.bd', description: 'Primary Contact Email', is_secret: false, category: 'contact' },
+  { setting_key: 'CONTACT_EMAIL_SUPPORT', setting_value: 'support@languageacademy.com.bd', description: 'Support Email Address', is_secret: false, category: 'contact' },
   { setting_key: 'CONTACT_ADDRESS', setting_value: 'SEL SUFI SQUARE, Unit: 1104, Level: 11, Plot: 58, Road: 16 (New) / 27 (Old), Dhanmondi R/A, Dhaka 1209', description: 'Business Address', is_secret: false, category: 'contact' },
   { setting_key: 'CONTACT_MAP_EMBED', setting_value: '', description: 'Google Maps Embed URL', is_secret: false, category: 'contact' },
 

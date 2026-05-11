@@ -16,15 +16,19 @@
     "postinstall": "cd backend && npm install && cd ../gateway && npm install && cd ../admin-portal && npm install && cd ../student-portal && npm install && cd ../teacher-portal && npm install && cd ../accounting-portal && npm install && cd ../hr-portal && npm install && cd ../crm-portal && npm install && cd ../website && npm install"
   },
   "dependencies": {
+    "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
-    "next": "14.2.35",
+    "next": "^16.2.6",
     "react": "^18",
     "react-dom": "^18"
   },
+  "overrides": {
+    "postcss": "8.5.10"
+  },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.9.0"
   }
 }

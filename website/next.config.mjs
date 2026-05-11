@@ -1,6 +1,25 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   skipTrailingSlashRedirect: true,
+  turbopack: {
+    root: process.cwd(),
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'static.vecteezy.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'languageacademy.com.bd',
+      },
+      {
+        protocol: 'https',
+        hostname: 'darkslateblue-cormorant-104679.hostingersite.com',
+      },
+    ],
+  },
   // In production, /admin and /student are served by the monolith directly.
   // In dev, the gateway proxy handles routing, but these rewrites still work
   // as a convenience if running Next.js standalone.

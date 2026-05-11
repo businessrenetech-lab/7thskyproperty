@@ -36,7 +36,8 @@ const DAY_LABELS = { sat: 'Sat', sun: 'Sun', mon: 'Mon', tue: 'Tue', wed: 'Wed',
 const thumbnails = { PTE: "/pte_course.png", IELTS: "/ielts_course.png", "Spoken English": "/hero_banner.png" };
 
 export async function generateMetadata({ params }) {
-  const course = await getCourseDetails(params.slug);
+  const { slug } = await params;
+  const course = await getCourseDetails(slug);
   if (!course) return { title: "Course Not Found" };
 
   const title = `${course.title} - Language Academy Bangladesh`;
@@ -46,11 +47,11 @@ export async function generateMetadata({ params }) {
   return {
     title,
     description,
-    alternates: { canonical: `https://languageacademy.com.bd/courses/${params.slug}` },
+    alternates: { canonical: `https://languageacademy.com.bd/courses/${slug}` },
     openGraph: {
       title,
       description,
-      url: `https://languageacademy.com.bd/courses/${params.slug}`,
+      url: `https://languageacademy.com.bd/courses/${slug}`,
       images: [{
         url: getAbsolutePublicImageUrl(course.image_url, thumbnails[course.category] || "/hero_banner.png"),
         width: 1200, height: 630,
@@ -61,7 +62,8 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function CourseDetailPage({ params }) {
-  const course = await getCourseDetails(params.slug);
+  const { slug } = await params;
+  const course = await getCourseDetails(slug);
   if (!course) notFound();
 
   const outcomes = safeParse(course.what_you_will_learn, [
@@ -107,7 +109,7 @@ export default async function CourseDetailPage({ params }) {
           <div className="mb-6 lg:hidden">
             <div className="overflow-hidden rounded-2xl shadow-lg border border-slate-100 bg-white p-1.5">
               <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl">
-                <Image src={courseImage} alt={course.title} fill sizes="100vw" className="object-cover" priority unoptimized />
+                <Image src={courseImage} alt={course.title} fill sizes="100vw" className="object-cover" priority />
               </div>
             </div>
           </div>
@@ -141,7 +143,7 @@ export default async function CourseDetailPage({ params }) {
             <div className="hidden lg:block">
               <div className="overflow-hidden rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-slate-100 bg-white p-2">
                 <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[1.5rem]">
-                  <Image src={courseImage} alt={course.title} fill sizes="40vw" className="object-cover" priority unoptimized />
+                  <Image src={courseImage} alt={course.title} fill sizes="40vw" className="object-cover" priority />
                 </div>
               </div>
             </div>

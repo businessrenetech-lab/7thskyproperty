@@ -13,7 +13,7 @@ const sequelize = new Sequelize(
     // Performance: Disable SQL logging in production
     logging: isProduction ? false : console.log,
     pool: {
-      max: Number(process.env.DB_POOL_MAX || 2),
+      max: Number(process.env.DB_POOL_MAX || 5),
       min: Number(process.env.DB_POOL_MIN || 0),
       acquire: Number(process.env.DB_POOL_ACQUIRE || 30000),
       idle: Number(process.env.DB_POOL_IDLE || 300000),

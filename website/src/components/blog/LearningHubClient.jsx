@@ -206,7 +206,6 @@ export default function LearningHubClient({ blogs = [], resources = [] }) {
                       sizes="(min-width: 1024px) 55vw, 100vw"
                       className="object-cover transition-transform duration-700 group-hover:scale-105"
                       priority
-                      unoptimized
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-slate-900/20 to-transparent lg:bg-gradient-to-r lg:from-slate-900/60 lg:via-transparent lg:to-transparent" />
 

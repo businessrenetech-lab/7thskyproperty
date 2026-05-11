@@ -24,7 +24,7 @@ function BranchCard({ branch }) {
   const content = (
     <div className="group relative h-full overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_24px_70px_-40px_rgba(15,23,42,0.35)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_30px_90px_-40px_rgba(15,23,42,0.45)]" data-depth="3">
       <div className="relative aspect-[16/10] overflow-hidden">
-        <Image src={branchImage} alt={branch.public_title || branch.name} fill sizes="(min-width: 1024px) 33vw, 100vw" className="object-cover transition duration-700 group-hover:scale-105" unoptimized />
+        <Image src={branchImage} alt={branch.public_title || branch.name} fill sizes="(min-width: 1024px) 33vw, 100vw" className="object-cover transition duration-700 group-hover:scale-105" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/15 to-transparent" aria-hidden="true" />
         <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-3">
           <span className="rounded-full bg-white/95 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.16em] text-slate-900">{branch.type === "head" ? "HQ" : "Branch"}</span>

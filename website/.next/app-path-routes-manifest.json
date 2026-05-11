@@ -1,1 +1,21 @@
-{"/_not-found/page":"/_not-found","/enroll/page":"/enroll","/student-booking/page":"/student-booking","/sitemap.xml/route":"/sitemap.xml","/robots.txt/route":"/robots.txt","/payment/success/page":"/payment/success","/blog/page":"/blog","/icon.png/route":"/icon.png","/branches/page":"/branches","/blog/[slug]/page":"/blog/[slug]","/branches/[slug]/page":"/branches/[slug]","/courses/page":"/courses","/enroll/success/page":"/enroll/success","/materials/page":"/materials","/about/page":"/about","/courses/[slug]/page":"/courses/[slug]","/page":"/","/contact/page":"/contact"}
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/about/page": "/about",
+  "/blog/[slug]/page": "/blog/[slug]",
+  "/blog/page": "/blog",
+  "/branches/[slug]/page": "/branches/[slug]",
+  "/branches/page": "/branches",
+  "/contact/page": "/contact",
+  "/courses/[slug]/page": "/courses/[slug]",
+  "/courses/page": "/courses",
+  "/enroll/page": "/enroll",
+  "/enroll/success/page": "/enroll/success",
+  "/icon.png/route": "/icon.png",
+  "/materials/page": "/materials",
+  "/page": "/",
+  "/payment/success/page": "/payment/success",
+  "/robots.txt/route": "/robots.txt",
+  "/sitemap.xml/route": "/sitemap.xml",
+  "/student-booking/page": "/student-booking"
+}

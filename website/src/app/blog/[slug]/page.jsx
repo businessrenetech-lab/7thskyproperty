@@ -22,17 +22,18 @@ async function getRelatedBlogs(currentSlug) {
 }
 
 export async function generateMetadata({ params }) {
-  const blog = await getBlogDetails(params.slug);
+  const { slug } = await params;
+  const blog = await getBlogDetails(slug);
   if (!blog) return { title: "Post Not Found" };
   return {
     title: blog.seo_title || blog.title,
     description: blog.seo_description || blog.excerpt || `Read ${blog.title} on Language Academy Blog.`,
-    alternates: { canonical: `https://languageacademy.com.bd/blog/${params.slug}` },
+    alternates: { canonical: `https://languageacademy.com.bd/blog/${slug}` },
     openGraph: {
       type: "article",
       title: blog.seo_title || blog.title,
       description: blog.seo_description || blog.excerpt,
-      url: `https://languageacademy.com.bd/blog/${params.slug}`,
+      url: `https://languageacademy.com.bd/blog/${slug}`,
       images: [{ url: getAbsolutePublicImageUrl(blog.image_url, getBlogImageFallback(blog.category)), width: 1200, height: 630, alt: blog.title }],
       publishedTime: blog.published_at,
       authors: ["Language Academy Bangladesh"],
@@ -41,10 +42,11 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function BlogDetailPage({ params }) {
-  const blog = await getBlogDetails(params.slug);
+  const { slug } = await params;
+  const blog = await getBlogDetails(slug);
   if (!blog) notFound();
 
-  const relatedBlogs = await getRelatedBlogs(params.slug);
+  const relatedBlogs = await getRelatedBlogs(slug);
 
   const formattedDate = new Date(blog.published_at || new Date()).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -183,7 +185,6 @@ export default async function BlogDetailPage({ params }) {
                 sizes="(max-width: 768px) 100vw, 1152px"
                 className="object-cover"
                 priority
-                unoptimized
               />
               {/* Subtle gradient overlay for polish */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />

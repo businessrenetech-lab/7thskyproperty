@@ -1,51 +1,52 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
-import Cockpit from './pages/Cockpit';
-import CRMPipeline from './pages/CRM';
-import LMSBatches from './pages/LMS';
-import BatchDetails from './pages/BatchDetails';
-import FinanceHub from './pages/Finance';
-import PTEEngine from './pages/PTE';
-import ERPSpaces from './pages/ERP';
-import GlobalReports from './pages/Reports';
-import Attendance from './pages/Attendance';
-import Students from './pages/Students';
-import StudentDetails from './pages/StudentDetails';
-import BranchManagement from './pages/BranchManagement';
-import Payroll from './pages/Payroll';
-import MaterialCenter from './pages/MaterialCenter';
-import Assets from './pages/Assets';
-import Automation from './pages/Automation';
-import Reconciliation from './pages/Reconciliation';
-// Accounting pages (same as accounting portal)
-import Invoices from './pages/AdminInvoices';
-import ExpenseManager from './pages/AdminExpenses';
-import Ledger from './pages/AdminLedger';
-import Journal from './pages/AdminJournal';
-import CashFlow from './pages/AdminCashFlow';
-import ReportsHub from './pages/AdminReportsHub';
-import POSFees from './pages/AdminPOSFees';
-import LiquidAccounts from './pages/AdminLiquidAccounts';
-import WebsiteManagement from './pages/WebsiteManagement';
-import PublicWebsite from './pages/PublicWebsite';
-import LoginPage from './pages/Login';
-import RBAC from './pages/RBAC';
-import HRMDashboard from './pages/HRMDashboard';
-import StaffAttendancePage from './pages/StaffAttendance';
-import LeaveManagement from './pages/LeaveManagement';
-import Recruitment from './pages/Recruitment';
-import StaffDocuments from './pages/StaffDocuments';
-import PerformanceReviews from './pages/PerformanceReviews';
-import ShiftPlanner from './pages/ShiftPlanner';
-import OrgChart from './pages/OrgChart';
-import Settings from './pages/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import { PermissionProvider } from './context/PermissionContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import './styles/GlobalStyles.css';
+
+const Cockpit = lazy(() => import('./pages/Cockpit'));
+const CRMPipeline = lazy(() => import('./pages/CRM'));
+const LMSBatches = lazy(() => import('./pages/LMS'));
+const BatchDetails = lazy(() => import('./pages/BatchDetails'));
+const FinanceHub = lazy(() => import('./pages/Finance'));
+const PTEEngine = lazy(() => import('./pages/PTE'));
+const ERPSpaces = lazy(() => import('./pages/ERP'));
+const GlobalReports = lazy(() => import('./pages/Reports'));
+const Attendance = lazy(() => import('./pages/Attendance'));
+const Students = lazy(() => import('./pages/Students'));
+const StudentDetails = lazy(() => import('./pages/StudentDetails'));
+const BranchManagement = lazy(() => import('./pages/BranchManagement'));
+const Payroll = lazy(() => import('./pages/Payroll'));
+const MaterialCenter = lazy(() => import('./pages/MaterialCenter'));
+const Assets = lazy(() => import('./pages/Assets'));
+const Automation = lazy(() => import('./pages/Automation'));
+const Reconciliation = lazy(() => import('./pages/Reconciliation'));
+const Invoices = lazy(() => import('./pages/AdminInvoices'));
+const ExpenseManager = lazy(() => import('./pages/AdminExpenses'));
+const Ledger = lazy(() => import('./pages/AdminLedger'));
+const Journal = lazy(() => import('./pages/AdminJournal'));
+const CashFlow = lazy(() => import('./pages/AdminCashFlow'));
+const ReportsHub = lazy(() => import('./pages/AdminReportsHub'));
+const POSFees = lazy(() => import('./pages/AdminPOSFees'));
+const LiquidAccounts = lazy(() => import('./pages/AdminLiquidAccounts'));
+const WebsiteManagement = lazy(() => import('./pages/WebsiteManagement'));
+const LoginPage = lazy(() => import('./pages/Login'));
+const RBAC = lazy(() => import('./pages/RBAC'));
+const HRMDashboard = lazy(() => import('./pages/HRMDashboard'));
+const StaffAttendancePage = lazy(() => import('./pages/StaffAttendance'));
+const LeaveManagement = lazy(() => import('./pages/LeaveManagement'));
+const Recruitment = lazy(() => import('./pages/Recruitment'));
+const StaffDocuments = lazy(() => import('./pages/StaffDocuments'));
+const PerformanceReviews = lazy(() => import('./pages/PerformanceReviews'));
+const ShiftPlanner = lazy(() => import('./pages/ShiftPlanner'));
+const OrgChart = lazy(() => import('./pages/OrgChart'));
+const Settings = lazy(() => import('./pages/Settings'));
+
+const RouteFallback = () => <div style={{ padding: '2rem', color: '#64748b' }}>Loading...</div>;
 
 const P = ({ title, children }) => (
   <ProtectedRoute><Layout title={title}>{children}</Layout></ProtectedRoute>
@@ -58,6 +59,7 @@ const App = () => {
       <AuthProvider>
         <PermissionProvider>
         <Router basename="/admin">
+          <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/login" element={<LoginPage />} />
@@ -99,6 +101,7 @@ const App = () => {
             <Route path="/settings" element={<P title="System Settings"><Settings /></P>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
         </Router>
         </PermissionProvider>
       </AuthProvider>

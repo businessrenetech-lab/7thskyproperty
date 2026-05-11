@@ -35,7 +35,6 @@ export default function BlogCard({ blog, priority = false }) {
             sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
             className="object-cover transition-transform duration-700 group-hover:scale-110"
             priority={priority}
-            unoptimized
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">

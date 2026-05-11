@@ -1,10 +1,11 @@
 /**
  * Language Academy — PDF Generation Utilities
  * Shared module for generating branded receipts, vouchers, and report headers.
- * Uses html2pdf.js for PDF generation.
+ * Loads html2pdf.js only when a PDF is exported.
  */
-import html2pdf from 'html2pdf.js';
 import logoSrc from '../assets/logo.png';
+
+const loadHtml2Pdf = async () => (await import('html2pdf.js')).default;
 
 // ── Institution Info ──
 export const getInstitutionInfo = () => ({
@@ -301,6 +302,7 @@ export const downloadReceiptPdf = async (tx) => {
     jsPDF: { unit: 'mm', format: 'a5', orientation: 'landscape' }
   };
 
+  const html2pdf = await loadHtml2Pdf();
   await html2pdf().set(opt).from(container).save();
 };
 
@@ -447,6 +449,7 @@ export const downloadInvoicePdf = async (inv) => {
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
 
+  const html2pdf = await loadHtml2Pdf();
   await html2pdf().set(opt).from(container).save();
 };
 
@@ -558,6 +561,7 @@ export const downloadVoucherPdf = async (expense) => {
     jsPDF: { unit: 'mm', format: 'a5', orientation: 'landscape' }
   };
 
+  const html2pdf = await loadHtml2Pdf();
   await html2pdf().set(opt).from(container).save();
 };
 
@@ -645,5 +649,6 @@ export const downloadExpenseListPdf = async (expenses, dateRange) => {
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
   };
 
+  const html2pdf = await loadHtml2Pdf();
   await html2pdf().set(opt).from(container).save();
 };

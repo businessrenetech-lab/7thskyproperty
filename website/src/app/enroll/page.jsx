@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, CheckCircle2, Clock3, Loader2, ShieldCheck, Star, Users, X } from "lucide-react";
 
 const BKASH_LOGO_URL = "https://static.vecteezy.com/system/resources/thumbnails/068/842/080/small_2x/bkash-logo-horizontal-mobile-banking-app-icon-emblem-transparent-background-free-png.png";
@@ -347,7 +348,7 @@ function CheckoutForm() {
               </button>
               <div className="flex items-center gap-4 pr-10">
                 <div className="flex h-14 w-28 items-center justify-center rounded-2xl bg-white p-2">
-                  <img src={BKASH_LOGO_URL} alt="bKash" className="max-h-10 object-contain" />
+                  <Image src={BKASH_LOGO_URL} alt="bKash" width={112} height={40} className="max-h-10 w-auto object-contain" unoptimized />
                 </div>
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/75">Manual bKash Payment</p>

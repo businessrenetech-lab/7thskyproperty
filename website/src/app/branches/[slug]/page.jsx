@@ -45,7 +45,8 @@ function branchSchema(branch) {
 }
 
 export async function generateMetadata({ params }) {
-  const branch = await getBranch(params.slug);
+  const { slug } = await params;
+  const branch = await getBranch(slug);
   if (!branch) return { title: "Branch Not Found" };
 
   const title = branch.seo_title || `${branch.public_title || branch.name} - PTE, IELTS and English Courses`;
@@ -54,11 +55,11 @@ export async function generateMetadata({ params }) {
   return {
     title,
     description,
-    alternates: { canonical: `https://languageacademy.com.bd/branches/${branch.slug || params.slug}` },
+    alternates: { canonical: `https://languageacademy.com.bd/branches/${branch.slug || slug}` },
     openGraph: {
       title,
       description,
-      url: `https://languageacademy.com.bd/branches/${branch.slug || params.slug}`,
+      url: `https://languageacademy.com.bd/branches/${branch.slug || slug}`,
       images: [{ url: getPublicImageUrl(branch.hero_image_url, "/hero_banner.png"), width: 1200, height: 630, alt: branch.public_title || branch.name }],
     },
   };
@@ -69,7 +70,7 @@ function CourseOfferCard({ course, branch }) {
   return (
     <article className="group overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-[0_20px_60px_-38px_rgba(15,23,42,0.35)] transition hover:-translate-y-1 hover:shadow-[0_28px_80px_-38px_rgba(15,23,42,0.45)]" data-depth="3">
       <div className="relative aspect-[16/10] overflow-hidden">
-        <Image src={image} alt={`${course.title} at ${branch.name}`} fill sizes="(min-width: 1024px) 33vw, 100vw" className="object-cover transition duration-700 group-hover:scale-105" unoptimized />
+        <Image src={image} alt={`${course.title} at ${branch.name}`} fill sizes="(min-width: 1024px) 33vw, 100vw" className="object-cover transition duration-700 group-hover:scale-105" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent" aria-hidden="true" />
         <div className="absolute bottom-4 left-4 flex gap-2">
           <span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-slate-900">{course.category || "PTE"}</span>
@@ -97,12 +98,13 @@ function CourseOfferCard({ course, branch }) {
 }
 
 export default async function BranchDetailPage({ params }) {
-  const branch = await getBranch(params.slug);
+  const { slug } = await params;
+  const branch = await getBranch(slug);
   if (!branch) notFound();
 
   const [courses, blogs] = await Promise.all([
-    getBranchCourses(branch.slug || params.slug),
-    getBranchBlogs(branch.slug || params.slug),
+    getBranchCourses(branch.slug || slug),
+    getBranchBlogs(branch.slug || slug),
   ]);
 
   const pteCourses = courses.filter((course) => String(course.category || '').toLowerCase().includes('pte'));
@@ -119,7 +121,7 @@ export default async function BranchDetailPage({ params }) {
       ])} />
       <div className="pb-24">
         <section className="relative overflow-hidden bg-slate-950 py-16 text-white md:py-24" data-depth="0">
-          <Image src={heroImage} alt={branch.public_title || branch.name} fill sizes="100vw" className="object-cover opacity-35" priority unoptimized />
+          <Image src={heroImage} alt={branch.public_title || branch.name} fill sizes="100vw" className="object-cover opacity-35" priority />
           <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/88 to-slate-950/40" aria-hidden="true" />
           <div className="absolute right-0 top-0 h-80 w-80 rounded-full bg-primary/20 blur-3xl" aria-hidden="true" data-depth="1" />
           <div className="container-shell relative z-10 grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-end" data-depth="4">

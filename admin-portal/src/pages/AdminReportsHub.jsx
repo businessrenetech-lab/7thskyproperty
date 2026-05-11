@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { PieChart, TrendingUp, TrendingDown, Building2, ClipboardList, Users, Scale, FileText, Calendar, Download, SearchX, Clock, Loader2, AlertTriangle } from 'lucide-react';
 import api from '../services/api';
 import '../styles/GlobalStyles.css';
-import html2pdf from 'html2pdf.js';
 import { buildPdfHeaderHtml, buildReportTableHtml, getInstitutionInfo } from '../utils/pdfUtils';
 import { useToast } from '../context/ToastContext';
 
@@ -247,6 +246,8 @@ export default function AdminReportsHub() {
       html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#ffffff' },
       jsPDF: { unit: 'mm', format: 'a4', orientation: rows.length > 0 && columns.length > 5 ? 'landscape' : 'portrait' }
     };
+
+    const html2pdf = (await import('html2pdf.js')).default;
 
     html2pdf()
       .set(opt)
