@@ -89,7 +89,6 @@ try {
   nextApp = next({
     dev: false,
     dir: websiteDir,
-    conf: { skipTrailingSlashRedirect: true },
   });
   nextHandle = nextApp.getRequestHandler();
   log('  Next.js app created successfully');

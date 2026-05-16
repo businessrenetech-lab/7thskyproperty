@@ -115,11 +115,10 @@ const PUBLIC_COURSE_FALLBACKS = [
 
 const getExistingUploadUrl = (value) => {
   const uploadUrl = String(value || '').trim();
-  if (!uploadUrl || !uploadUrl.startsWith('/uploads/')) return uploadUrl || null;
-
-  const relativePath = uploadUrl.replace(/^\/uploads\//, '');
-  const filePath = path.join(__dirname, '..', 'uploads', relativePath);
-  return fs.existsSync(filePath) ? uploadUrl : null;
+  if (!uploadUrl) return null;
+  // Always return the stored URL — let Express/fallback handler serve it.
+  // Previously this nullified URLs when fs.existsSync failed, hiding images.
+  return uploadUrl;
 };
 
 const isDatabaseUnavailableError = (error) => {
