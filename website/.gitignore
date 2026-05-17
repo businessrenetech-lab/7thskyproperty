@@ -12,6 +12,7 @@
 # next.js (keeping builds for production)
 /out/
 .next/cache/
+.next/dev/
 
 # production
 /build

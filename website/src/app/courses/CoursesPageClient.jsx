@@ -13,15 +13,33 @@ export default function CoursesPageClient({ initialCourses }) {
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Client-side fallback: re-fetch if SSR delivered empty data
+  // Client-side refresh: always re-fetch to get fresh image_url values.
+  // SSR may deliver stale data (e.g. null image_url) when the internal
+  // server-side fetch hits an older backend instance.
   useEffect(() => {
-    if (!initialCourses || initialCourses.length === 0) {
-      fetch("/api/public/courses")
-        .then((res) => res.ok ? res.json() : [])
-        .then((data) => { setCourses(Array.isArray(data) && data.length > 0 ? data : COURSE_FALLBACKS); })
-        .catch(() => { setCourses(COURSE_FALLBACKS); });
-    }
-  }, [initialCourses]);
+    const hasImages = (list) => list.some((c) => c.image_url);
+    const tryFetch = async () => {
+      try {
+        const res = await fetch("/api/public/courses");
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setCourses(data);
+            if (hasImages(data)) return; // done — images present
+          }
+        }
+      } catch { /* fall through */ }
+      // Fallback: fetch from public domain (bypasses stale internal code)
+      try {
+        const res = await fetch("https://languageacademy.com.bd/api/public/courses");
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) setCourses(data);
+        }
+      } catch { /* keep existing data */ }
+    };
+    tryFetch();
+  }, []);
 
   const categories = ["All", "PTE", "IELTS", "Spoken English"];
 

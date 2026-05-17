@@ -4,7 +4,7 @@ const PUBLIC_API_FALLBACK =
   process.env.NEXT_PUBLIC_API_URL
   || process.env.NEXT_PUBLIC_SITE_URL
   || process.env.PUBLIC_SITE_URL
-  || "https://darkslateblue-cormorant-104679.hostingersite.com";
+  || "https://languageacademy.com.bd";
 
 export async function fetchPublicJson(path, options = {}) {
   const { fallback = null, requireNonEmptyArray = false } = options;
