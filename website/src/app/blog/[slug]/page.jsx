@@ -104,100 +104,96 @@ export default async function BlogDetailPage({ params }) {
           </div>
         </div>
 
-        {/* ─── Hero Section ─── */}
-        <header className="relative bg-gradient-to-b from-slate-50 to-white">
-          <div className="container-shell max-w-6xl pt-8 pb-6 md:pt-12 md:pb-8">
-            <div className="max-w-4xl">
-
-            {/* Back Link */}
-            <Link
-              href="/blog"
-              className="inline-flex items-center gap-2 text-[13px] font-semibold text-slate-500 hover:text-primary transition-colors mb-6 group"
-            >
-              <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
-              Back to Learning Hub
-            </Link>
-
-            {/* Category + Meta */}
-            <div className="flex flex-wrap items-center gap-3 mb-5">
-              {blog.category && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/8 text-primary rounded-full font-bold uppercase tracking-wider text-[11px] border border-primary/10">
-                  <BookOpen size={11} />
-                  {blog.category}
-                </span>
-              )}
-              <div className="flex items-center gap-4 text-[13px] text-slate-400">
-                <span className="flex items-center gap-1.5">
-                  <Calendar size={13} />
-                  {formattedDate}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Clock size={13} />
-                  {blog.reading_time || 5} min read
-                </span>
-              </div>
-            </div>
-
-            {/* Title */}
-            <h1 className="text-[1.75rem] sm:text-[2rem] md:text-[2.25rem] lg:text-[2.5rem] font-extrabold text-slate-900 leading-[1.2] tracking-tight mb-4">
-              {blog.title}
-            </h1>
-
-            {/* Excerpt */}
-            {blog.excerpt && (
-              <p className="text-[15px] md:text-base text-slate-500 leading-relaxed max-w-2xl mb-5">
-                {blog.excerpt}
-              </p>
-            )}
-
-            {/* Tags */}
-            {parsedTags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-5">
-                {parsedTags.map(tag => (
-                  <span key={tag} className="text-[11px] font-medium bg-slate-100 text-slate-500 px-2.5 py-1 rounded-md border border-slate-200/60 hover:bg-slate-200/80 transition-colors cursor-default">
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Course CTA */}
-            {blog.course_relation && (
-              <Link
-                href={`/courses`}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-primary to-emerald-500 text-white font-semibold px-5 py-2.5 rounded-xl text-[13px] hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all"
-              >
-                <BookOpen size={14} />
-                Explore {blog.course_relation} Courses
-                <ChevronRight size={14} />
-              </Link>
-            )}
-            </div>
+        {/* ─── Premium Full-Width Hero Section ─── */}
+        <header className="relative w-full min-h-[50vh] md:min-h-[60vh] flex items-end pb-12 md:pb-20 overflow-hidden bg-slate-900">
+          <div className="absolute inset-0 z-0">
+            <Image
+              src={getPublicImageUrl(blog.image_url, getBlogImageFallback(blog.category))}
+              alt={blog.title}
+              fill
+              sizes="100vw"
+              className="object-cover opacity-50 mix-blend-overlay"
+              priority
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-transparent" />
           </div>
 
-          {/* Hero Image — full width within max-width container */}
-          <div className="container-shell max-w-6xl pb-8 md:pb-12">
-            <div className="aspect-[2/1] sm:aspect-[2.2/1] w-full overflow-hidden rounded-2xl md:rounded-3xl relative shadow-xl shadow-slate-200/50 ring-1 ring-slate-200/50">
-              <Image
-                src={getPublicImageUrl(blog.image_url, getBlogImageFallback(blog.category))}
-                alt={blog.title}
-                fill
-                sizes="(max-width: 768px) 100vw, 1152px"
-                className="object-cover"
-                priority
-              />
-              {/* Subtle gradient overlay for polish */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent" />
+          <div className="container-shell relative z-10 w-full pt-32">
+            <div className="max-w-4xl mx-auto lg:mx-0">
+              {/* Back Link */}
+              <Link
+                href="/blog"
+                className="inline-flex items-center gap-2 text-[13px] font-semibold text-white/70 hover:text-white transition-colors mb-8 group"
+              >
+                <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
+                Back to Learning Hub
+              </Link>
+
+              {/* Category + Meta */}
+              <div className="flex flex-wrap items-center gap-4 mb-6">
+                {blog.category && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-full font-bold uppercase tracking-wider text-[11px] shadow-lg shadow-primary/20">
+                    <BookOpen size={11} />
+                    {blog.category}
+                  </span>
+                )}
+                <div className="flex items-center gap-5 text-[13px] text-white/80 font-medium">
+                  <span className="flex items-center gap-1.5">
+                    <Calendar size={14} />
+                    {formattedDate}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Clock size={14} />
+                    {blog.reading_time || 5} min read
+                  </span>
+                </div>
+              </div>
+
+              {/* Title */}
+              <h1 className="text-[2rem] sm:text-[2.5rem] md:text-[3.25rem] lg:text-[4rem] font-black text-white leading-[1.1] tracking-tight mb-6 drop-shadow-md">
+                {blog.title}
+              </h1>
+
+              {/* Excerpt */}
+              {blog.excerpt && (
+                <p className="text-[16px] md:text-xl text-white/80 leading-relaxed max-w-3xl mb-8 font-medium">
+                  {blog.excerpt}
+                </p>
+              )}
+
+              {/* Tags & CTA */}
+              <div className="flex flex-wrap items-center gap-6">
+                {parsedTags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {parsedTags.map(tag => (
+                      <span key={tag} className="text-[12px] font-bold bg-white/10 text-white backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/20">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {blog.course_relation && (
+                  <Link
+                    href={`/courses`}
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-primary to-emerald-500 text-white font-bold px-6 py-3 rounded-full text-[14px] hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all"
+                  >
+                    <BookOpen size={16} />
+                    Explore {blog.course_relation} Courses
+                    <ChevronRight size={16} />
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </header>
 
         {/* ─── Content Area ─── */}
-        <div className="container-shell max-w-6xl">
-          <div className="flex flex-col lg:flex-row gap-10 lg:gap-14 justify-between">
+        <div className="container-shell max-w-7xl pt-12 pb-20">
+          <div className="flex flex-col lg:flex-row gap-12 lg:gap-20 justify-between">
 
             {/* Main Article Column */}
-            <article className="flex-1 min-w-0 max-w-3xl pb-16">
+            <article className="flex-1 min-w-0 max-w-[850px] mx-auto lg:mx-0 pb-16">
               {/* Article Body */}
               <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm">
                 {blog.content ? (

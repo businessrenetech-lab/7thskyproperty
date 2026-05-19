@@ -82,13 +82,13 @@ export default function HomepageClient({ courses: initialCourses, blogs }) {
                 </span>
 
                 <h1 className="text-[3rem] xl:text-[3.6rem] 2xl:text-[4rem] font-extrabold leading-[1.06] text-slate-900 tracking-tight">
-                  Best PTE Centre<br />
-                  in Dhaka,<br />
+                  Best PTE Coaching<br />
+                  Centre in Dhaka,<br />
                   Bangladesh
                 </h1>
 
                 <p className="mt-4 text-[15px] xl:text-base leading-[1.7] text-slate-600 max-w-[480px]">
-                  A world-class PTE preparation centre in Dhaka for students who want stronger English skills and smarter exam preparation. We also provide IELTS and English courses for study, migration, and career growth.
+                  A world-class PTE coaching centre in Dhaka for students who want stronger English skills and smarter exam preparation. Practice PTE online with our AI mock tests or join our in-person batches. We also provide IELTS and English courses for study abroad.
                 </p>
 
                 {/* Feature Pills â€” single row on desktop */}
@@ -158,8 +158,8 @@ export default function HomepageClient({ courses: initialCourses, blogs }) {
           {/* Headline */}
           <AnimateOnScroll variant="slide-left">
             <h1 className="mt-3 text-center text-[2rem] sm:text-[2.6rem] md:text-[3rem] font-extrabold leading-[1.08] text-slate-900 tracking-tight">
-              Best PTE Centre<br />
-              in Dhaka,<br />
+              Best PTE Coaching<br />
+              Centre in Dhaka,<br />
               Bangladesh
             </h1>
           </AnimateOnScroll>
@@ -167,7 +167,7 @@ export default function HomepageClient({ courses: initialCourses, blogs }) {
           {/* Paragraph */}
           <AnimateOnScroll variant="fade-up">
             <p className="mt-3 text-center text-[13px] sm:text-[14px] leading-[1.6] text-slate-600 max-w-[400px] mx-auto">
-              A world-class PTE preparation centre in Dhaka for students who want stronger English skills and smarter exam preparation. We also provide IELTS and English courses for study, migration, and career growth.
+              A world-class PTE coaching centre in Dhaka. Practice PTE online with our AI mock tests or join our in-person batches. We also provide IELTS and English courses for study abroad and migration.
             </p>
           </AnimateOnScroll>
 

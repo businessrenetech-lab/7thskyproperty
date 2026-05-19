@@ -6,15 +6,15 @@ import { fetchPublicJson } from "@/lib/serverApi";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Courses - PTE Preparation, IELTS & English Language Programs in Dhaka",
+  title: "Online PTE Course & IELTS Classes in Dhaka | Language Academy",
   description:
-    "Explore PTE-focused courses at Language Academy Bangladesh, with IELTS preparation and English language courses also available. Small batches, unlimited mock tests, online and offline classes in Dhaka.",
+    "Explore courses at Language Academy, the best PTE coaching centre in Dhaka. PTE practice online, IELTS preparation, and study abroad consulting available.",
   alternates: { canonical: "https://languageacademy.com.bd/courses" },
   openGraph: {
-    title: "PTE-Focused Courses - Language Academy Bangladesh",
-    description: "Find the right PTE course, with IELTS and English language programs also available. Small batches, unlimited mock tests, and certified faculty.",
+    title: "Online PTE Course & IELTS Preparation | Language Academy",
+    description: "Find the right PTE course with AI mock tests, expert trainers, and small batches. IELTS and study abroad support also available.",
     url: "https://languageacademy.com.bd/courses",
-    images: [{ url: "/pte_course.webp", width: 1200, height: 630, alt: "Language Academy Courses" }],
+    images: [{ url: "/pte_course.webp", width: 1200, height: 630, alt: "Online PTE Course at Language Academy" }],
   },
 };
 

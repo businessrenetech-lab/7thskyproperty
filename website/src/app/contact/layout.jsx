@@ -1,13 +1,13 @@
 import JsonLd, { faqSchema, breadcrumbSchema } from "@/components/JsonLd";
 
 export const metadata = {
-  title: "Contact Us — Book a Free PTE & IELTS Consultation in Dhaka",
+  title: "Contact Us | Free PTE & IELTS Consultation — Language Academy",
   description:
-    "Get in touch with Language Academy Bangladesh, a world-class PTE centre in Dhaka. Visit our Dhanmondi campus, call +880 1913-373581, or book a free consultation for PTE, IELTS, and English language courses.",
+    "Get in touch with Language Academy, the best PTE coaching centre in Dhaka. Book a free consultation for PTE, IELTS, or study abroad. Call +880 1913-373581.",
   alternates: { canonical: "https://languageacademy.com.bd/contact" },
   openGraph: {
-    title: "Contact Language Academy — Free PTE & IELTS Consultation",
-    description: "Visit our Dhanmondi campus or book a free online consultation. Phone: +880 1913-373581",
+    title: "Contact Language Academy — Best PTE Coaching Centre",
+    description: "Visit our Dhanmondi campus or book a free online consultation for PTE, IELTS and Spoken English. Phone: +880 1913-373581",
     url: "https://languageacademy.com.bd/contact",
     images: [{ url: "/hero_banner.webp", width: 1200, height: 630, alt: "Contact Language Academy Dhaka" }],
   },

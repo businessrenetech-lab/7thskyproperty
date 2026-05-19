@@ -3,6 +3,7 @@
   "/_not-found/page": "/_not-found",
   "/about/page": "/about",
   "/blog/[slug]/page": "/blog/[slug]",
+  "/blog/best-pte-coaching-centre-in-dhaka/page": "/blog/best-pte-coaching-centre-in-dhaka",
   "/blog/page": "/blog",
   "/branches/[slug]/page": "/branches/[slug]",
   "/branches/page": "/branches",

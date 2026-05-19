@@ -70,6 +70,12 @@
       "namedRegex": "^/blog(?:/)?$"
     },
     {
+      "page": "/blog/best-pte-coaching-centre-in-dhaka",
+      "regex": "^/blog/best\\-pte\\-coaching\\-centre\\-in\\-dhaka(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/blog/best\\-pte\\-coaching\\-centre\\-in\\-dhaka(?:/)?$"
+    },
+    {
       "page": "/branches",
       "regex": "^/branches(?:/)?$",
       "routeKeys": {},

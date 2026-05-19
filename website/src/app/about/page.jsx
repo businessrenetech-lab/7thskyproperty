@@ -8,12 +8,12 @@ import {
 } from "lucide-react";
 
 export const metadata = {
-  title: "About Us - Language Academy Bangladesh | Best PTE & IELTS Centre in Dhaka",
+  title: "About Us | Best PTE Coaching Centre in Dhaka — Language Academy",
   description:
-    "Discover Language Academy Bangladesh, Dhaka's premier PTE and IELTS preparation centre. We connect ambitious students and professionals with global opportunities through expert coaching.",
+    "Discover Language Academy Bangladesh, Dhaka's premier PTE coaching centre. We provide PTE practice online, expert trainers, and study abroad consulting.",
   alternates: { canonical: "https://languageacademy.com.bd/about" },
   openGraph: {
-    title: "About Language Academy Bangladesh - Best PTE Centre in Dhaka",
+    title: "About Language Academy — Best PTE Coaching Centre Dhaka",
     description: "Discover our mission, values, and world-class facilities designed for focused PTE preparation, with IELTS and English courses also available.",
     url: "https://languageacademy.com.bd/about",
     images: [{ url: "/hero_banner.webp", width: 1200, height: 630, alt: "About Language Academy Bangladesh" }],

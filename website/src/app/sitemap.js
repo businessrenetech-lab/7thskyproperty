@@ -6,7 +6,8 @@ async function getCourses() {
   try {
     const res = await fetch(`${getApiBase()}/api/public/courses`, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
-    return res.json();
+    const text = await res.text();
+    return text ? JSON.parse(text) : [];
   } catch { return []; }
 }
 
@@ -14,7 +15,8 @@ async function getBlogs() {
   try {
     const res = await fetch(`${getApiBase()}/api/public/blog`, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
-    return res.json();
+    const text = await res.text();
+    return text ? JSON.parse(text) : [];
   } catch { return []; }
 }
 
@@ -22,7 +24,8 @@ async function getBranches() {
   try {
     const res = await fetch(`${getApiBase()}/api/public/branches`, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
-    return res.json();
+    const text = await res.text();
+    return text ? JSON.parse(text) : [];
   } catch { return []; }
 }
 
