@@ -36,9 +36,10 @@ export default function HomepageClient({ courses: initialCourses, blogs }) {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [bookingInterest, setBookingInterest] = useState("");
 
-  // Client-side fallback: re-fetch if SSR delivered empty courses
+  // Client-side refresh: static builds can ship fallback courses without image_url.
   useEffect(() => {
-    if (!initialCourses || initialCourses.length === 0) {
+    const hasImages = (initialCourses || []).some((course) => course.image_url);
+    if (!initialCourses || initialCourses.length === 0 || !hasImages) {
       fetch("/api/public/courses")
         .then((res) => res.ok ? res.json() : [])
         .then((data) => { if (data.length > 0) setCourses(data.slice(0, 6)); })

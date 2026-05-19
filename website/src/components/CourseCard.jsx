@@ -1,5 +1,6 @@
+"use client";
+
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowRight, Clock3, Star, Users } from "lucide-react";
 import { getPublicImageUrl } from "@/lib/imageUrl";
 
@@ -10,12 +11,26 @@ export default function CourseCard({ course }) {
     "Spoken English": "/hero_banner.webp",
   };
 
-  const thumbnail = getPublicImageUrl(course.image_url, thumbnails[course.category] || "/hero_banner.webp");
+  const fallbackThumbnail = thumbnails[course.category] || "/hero_banner.webp";
+  const thumbnail = getPublicImageUrl(course.image_url, fallbackThumbnail);
+
+  const handleImageError = (event) => {
+    if (event.currentTarget.dataset.fallbackApplied) return;
+    event.currentTarget.dataset.fallbackApplied = "true";
+    event.currentTarget.src = fallbackThumbnail;
+  };
 
   return (
     <div className="group rounded-3xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-xl hover:shadow-slate-200/50 flex h-full flex-col overflow-hidden">
       <div className="relative aspect-[16/10] overflow-hidden">
-        <Image src={thumbnail} alt={course.title} fill sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw" className="object-cover transition-transform duration-700 group-hover:scale-105" />
+        <img
+          src={thumbnail}
+          alt={course.title}
+          loading="lazy"
+          decoding="async"
+          onError={handleImageError}
+          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent opacity-60" />
         <div className="absolute bottom-4 left-4 flex gap-2">
           <span className="rounded-full bg-white/95 px-3 py-1 text-xs font-bold text-slate-900 shadow-sm backdrop-blur">{course.category}</span>
