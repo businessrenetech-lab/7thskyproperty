@@ -9,10 +9,10 @@ const loadHtml2Pdf = async () => (await import('html2pdf.js')).default;
 
 // ── Institution Info ──
 export const getInstitutionInfo = () => ({
-  name: 'Language Academy',
+  name: 'Language Academy Bangladesh',
   address: 'SEL SUFI SQUARE, Unit: 1104, Level: 11, Dhanmondi R/A, Dhaka 1209',
-  phone: '+880 1913-373581',
-  email: 'hello@languageacademy.com.bd',
+  phone: '01820006677',
+  email: 'info@languageacademy.com.bd',
   website: 'languageacademy.com.bd'
 });
 
@@ -68,7 +68,7 @@ export const buildPdfHeaderHtml = async (reportTitle, periodText) => {
         <div style="display:flex; align-items:center; gap:12px;">
           ${logo ? `<img src="${logo}" style="height:44px;" />` : ''}
           <div>
-            <div style="font-size:17px; font-weight:800; color:#275fa7; letter-spacing:0.5px; font-family:'Outfit','Inter',sans-serif;">LANGUAGE ACADEMY</div>
+            <div style="font-size:17px; font-weight:800; color:#275fa7; letter-spacing:0.5px; font-family:'Outfit','Inter',sans-serif;">LANGUAGE ACADEMY BANGLADESH</div>
             <div style="font-size:9px; color:#64748b; margin-top:2px;">${info.address}</div>
             <div style="font-size:9px; color:#64748b;">Phone: ${info.phone} | ${info.email} | ${info.website}</div>
           </div>
@@ -218,7 +218,7 @@ export const generateReceiptHtml = async (tx) => {
         <div style="display:flex; align-items:center; gap:12px;">
           ${logo ? `<img src="${logo}" style="height:48px;" />` : ''}
           <div>
-            <div style="font-size:18px; font-weight:800; color:#275fa7; font-family:'Outfit',sans-serif;">LANGUAGE ACADEMY</div>
+            <div style="font-size:18px; font-weight:800; color:#275fa7; font-family:'Outfit',sans-serif;">LANGUAGE ACADEMY BANGLADESH</div>
             <div style="font-size:9px; color:#64748b;">${info.address}</div>
             <div style="font-size:9px; color:#64748b;">Phone: ${info.phone} | ${info.email} | ${info.website}</div>
           </div>
@@ -346,7 +346,7 @@ export const generateInvoiceHtml = async (inv) => {
         <div style="display:flex; align-items:center; gap:14px;">
           ${logo ? `<img src="${logo}" style="height:52px;" />` : ''}
           <div>
-            <div style="font-size:20px; font-weight:800; color:#275fa7; font-family:'Outfit',sans-serif;">LANGUAGE ACADEMY</div>
+            <div style="font-size:20px; font-weight:800; color:#275fa7; font-family:'Outfit',sans-serif;">LANGUAGE ACADEMY BANGLADESH</div>
             <div style="font-size:10px; color:#64748b; margin-top:2px;">${info.address}</div>
             <div style="font-size:10px; color:#64748b;">Phone: ${info.phone} | ${info.email}</div>
             <div style="font-size:10px; color:#64748b;">Web: ${info.website}</div>
@@ -481,7 +481,7 @@ export const generateVoucherHtml = async (expense) => {
         <div style="display:flex; align-items:center; gap:12px;">
           ${logo ? `<img src="${logo}" style="height:48px;" />` : ''}
           <div>
-            <div style="font-size:18px; font-weight:800; color:#275fa7; font-family:'Outfit',sans-serif;">LANGUAGE ACADEMY</div>
+            <div style="font-size:18px; font-weight:800; color:#275fa7; font-family:'Outfit',sans-serif;">LANGUAGE ACADEMY BANGLADESH</div>
             <div style="font-size:9px; color:#64748b;">${info.address}</div>
             <div style="font-size:9px; color:#64748b;">Phone: ${info.phone} | ${info.email} | ${info.website}</div>
           </div>

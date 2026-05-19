@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Receipt, Download } from 'lucide-react';
+import { Loader2, Download } from 'lucide-react';
 import api from '../services/api';
 import Modal from '../components/Modal';
-import { generateReceiptHtml, downloadReceiptPdf } from '../utils/pdfUtils';
+import { downloadReceiptPdf } from '../utils/pdfUtils';
 import '../styles/GlobalStyles.css';
 import { useToast } from '../context/ToastContext';
 
@@ -18,11 +18,8 @@ const POSFees = () => {
   const [activeTab, setActiveTab] = useState('pending');
   const [showCollectModal, setShowCollectModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [showReceiptModal, setShowReceiptModal] = useState(false);
   
   const [selectedInvoice, setSelectedInvoice] = useState(null);
-  const [selectedTx, setSelectedTx] = useState(null);
-  const [receiptHtmlContent, setReceiptHtmlContent] = useState('');
   
   const [paymentData, setPaymentData] = useState({ amount: '', account_id: '', method: 'cash', transaction_ref: '', notes: '', referral_amount: 0 });
   const [rejectNote, setRejectNote] = useState('');
@@ -84,12 +81,7 @@ const POSFees = () => {
     finally { setLoading(false); }
   };
 
-  const openReceipt = async (tx) => {
-    setSelectedTx(tx);
-    const html = await generateReceiptHtml(tx);
-    setReceiptHtmlContent(html);
-    setShowReceiptModal(true);
-  };
+
 
   const methodColors = { bkash: '#e2136e', nagad: '#f6921e', card: '#3b82f6', cash: '#10b981', bank_transfer: '#8b5cf6' };
   const selectedReferral = getInvoiceReferralInfo(selectedInvoice);
@@ -164,8 +156,8 @@ const POSFees = () => {
                         </td>
                         <td style={{ fontSize: '12px', color: 'var(--text-dim)' }}>{new Date(row.paid_at).toLocaleDateString()}</td>
                         <td>
-                          <button onClick={() => openReceipt(row)} className="btn-ghost" style={{ padding: '3px 10px', fontSize: '11px', borderColor: 'rgba(0,212,255,0.3)', color: '#38E8FF' }}>
-                            <Receipt size={12} /> Receipt
+                          <button onClick={() => downloadReceiptPdf(row)} className="btn-ghost" style={{ padding: '3px 10px', fontSize: '11px', borderColor: 'rgba(0,212,255,0.3)', color: '#38E8FF' }}>
+                            <Download size={12} /> Receipt
                           </button>
                         </td>
                       </tr>
@@ -392,17 +384,6 @@ const POSFees = () => {
         </form>
       </Modal>
 
-      {/* ═══ Branded Receipt Modal ═══ */}
-      <Modal isOpen={showReceiptModal} onClose={() => setShowReceiptModal(false)} title="Official Receipt">
-        {selectedTx && (
-          <div>
-            <div dangerouslySetInnerHTML={{ __html: receiptHtmlContent }} style={{ marginBottom: '16px' }} />
-            <button onClick={() => downloadReceiptPdf(selectedTx)} className="btn-stitch" style={{ width: '100%', justifyContent: 'center', padding: '12px' }}>
-              <Download size={16} /> Download Receipt PDF
-            </button>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 };

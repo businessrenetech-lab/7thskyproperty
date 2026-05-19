@@ -37,7 +37,9 @@ const StudentBookingFormPDF = forwardRef(({ student }, ref) => {
           paddingBottom: '20px',
           marginBottom: '30px'
         }}>
-          <h1 style={{ color: '#275fa7', margin: '0 0 10px 0', fontSize: '28px', textTransform: 'uppercase', letterSpacing: '1px' }}>Language Academy</h1>
+          <h1 style={{ color: '#275fa7', margin: '0 0 4px 0', fontSize: '28px', textTransform: 'uppercase', letterSpacing: '1px' }}>Language Academy Bangladesh</h1>
+          <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px' }}>SEL SUFI SQUARE, Unit: 1104, Level: 11, Dhanmondi R/A, Dhaka 1209</div>
+          <div style={{ fontSize: '11px', color: '#64748b' }}>Phone: 01820006677 | info@languageacademy.com.bd | languageacademy.com.bd</div>
           <h2 style={{ color: '#64748b', margin: '0', fontSize: '18px', fontWeight: '500' }}>Student Admission Form</h2>
           <div style={{ marginTop: '15px', color: '#64748b', fontSize: '12px' }}>
             Reference: LA-STU-{student.id} | Date: {new Date().toLocaleDateString()}
@@ -173,7 +175,7 @@ const StudentBookingFormPDF = forwardRef(({ student }, ref) => {
         </div>
 
         <div style={{ position: 'absolute', bottom: '20px', left: 0, right: 0, textAlign: 'center', fontSize: '10px', color: '#94a3b8' }}>
-          This is a system generated document. Language Academy &copy; {new Date().getFullYear()}
+          This is a system generated document. Language Academy Bangladesh &copy; {new Date().getFullYear()}
         </div>
       </div>
     </div>
