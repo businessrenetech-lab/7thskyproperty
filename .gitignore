@@ -7,6 +7,11 @@ node_modules/
 build/
 .cache/
 **/.next/
+!website/.next/
+!website/.next/**
+website/.next/cache/
+website/.next/dev/
+website/.next/turbopack
 
 # Environment
 .env
