@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import BottomNav from './BottomNav';
+import PageTransition from './PageTransition';
 import '../styles/GlobalStyles.css';
 
 const Layout = ({ children, title }) => {
@@ -43,7 +44,9 @@ const Layout = ({ children, title }) => {
         onMenuClick={() => setSidebarOpen(prev => !prev)} 
       />
       <main className="canvas">
-        {children}
+        <PageTransition>
+          {children}
+        </PageTransition>
       </main>
 
       {/* Bottom navigation — mobile only */}

@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import PageLoader from './components/PageLoader';
 import { AuthProvider } from './context/AuthContext';
 import { PermissionProvider } from './context/PermissionContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -46,8 +47,6 @@ const ShiftPlanner = lazy(() => import('./pages/ShiftPlanner'));
 const OrgChart = lazy(() => import('./pages/OrgChart'));
 const Settings = lazy(() => import('./pages/Settings'));
 
-const RouteFallback = () => <div style={{ padding: '2rem', color: '#64748b' }}>Loading...</div>;
-
 const P = ({ title, children }) => (
   <ProtectedRoute><Layout title={title}>{children}</Layout></ProtectedRoute>
 );
@@ -59,7 +58,7 @@ const App = () => {
       <AuthProvider>
         <PermissionProvider>
         <Router basename="/admin">
-          <Suspense fallback={<RouteFallback />}>
+          <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/login" element={<LoginPage />} />

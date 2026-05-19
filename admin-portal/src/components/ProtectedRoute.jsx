@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionContext';
 import { Shield } from 'lucide-react';
+import PageLoader from './PageLoader';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading: authLoading } = useAuth();
@@ -10,7 +11,7 @@ const ProtectedRoute = ({ children }) => {
   const location = useLocation();
 
   if (authLoading || permLoading) {
-    return <div style={{ background: '#0f172a', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>Loading System...</div>;
+    return <PageLoader />;
   }
 
   if (!user) {

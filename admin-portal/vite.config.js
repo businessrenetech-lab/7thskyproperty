@@ -6,6 +6,28 @@ export default defineConfig({
   base: '/admin/',
   build: {
     chunkSizeWarningLimit: 1000,
+    // Optimize chunk splitting for faster loads
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separate vendor chunks for better caching
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-charts': ['recharts'],
+          'vendor-editor': [
+            '@tiptap/react',
+            '@tiptap/starter-kit',
+            '@tiptap/extension-link',
+            '@tiptap/extension-image',
+            '@tiptap/extension-youtube',
+          ],
+          'vendor-utils': ['axios', 'lucide-react'],
+        },
+      },
+    },
+    // Enable minification (esbuild is built-in and faster than terser)
+    minify: 'esbuild',
+    // Target modern browsers for smaller bundles
+    target: 'es2020',
   },
   server: {
     host: '127.0.0.1',

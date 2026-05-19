@@ -1701,3 +1701,149 @@ table.stitch tbody tr:hover td { background: rgba(255,255,255,0.03); }
   100% { opacity: 0; transform: translateY(20px) scale(0.95); max-height: 0; padding: 0; margin-bottom: -10px; }
 }
 
+
+/* ══════════════════════════════════════════════
+   PAGE TRANSITION SYSTEM — App-like feel
+   ══════════════════════════════════════════════ */
+
+.page-transition {
+  will-change: opacity, transform;
+}
+
+.page-transition--enter {
+  animation: pageEnter 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.page-transition--exit {
+  animation: pageExit 0.15s cubic-bezier(0.4, 0, 1, 1) both;
+  pointer-events: none;
+}
+
+@keyframes pageEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.995);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes pageExit {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.998);
+  }
+}
+
+/* ══════════════════════════════════════════════
+   TOP LOADER — Linear gradient bar at top edge
+   ══════════════════════════════════════════════ */
+
+.top-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 9999;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.top-loader__bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--primary, #7bc62e) 15%,
+    var(--accent, #275fa7) 50%,
+    #9B6DFF 75%,
+    var(--primary, #7bc62e) 100%
+  );
+  background-size: 300% 100%;
+  animation: topBarSlide 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  border-radius: 0 2px 2px 0;
+}
+
+.top-loader__glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 6px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(123, 198, 46, 0.5) 15%,
+    rgba(39, 95, 167, 0.4) 50%,
+    rgba(155, 109, 255, 0.3) 75%,
+    transparent 100%
+  );
+  background-size: 300% 100%;
+  animation: topBarSlide 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  filter: blur(4px);
+}
+
+@keyframes topBarSlide {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+/* ── Light mode ── */
+:root.light .top-loader__glow {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(123, 198, 46, 0.35) 15%,
+    rgba(39, 95, 167, 0.3) 50%,
+    rgba(155, 109, 255, 0.2) 75%,
+    transparent 100%
+  );
+  background-size: 300% 100%;
+  animation: topBarSlide 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  filter: blur(3px);
+}
+
+/* ══════════════════════════════════════════════
+   PERFORMANCE — GPU hints, smooth scroll, etc.
+   ══════════════════════════════════════════════ */
+
+.sidebar,
+.topbar,
+.bottom-nav,
+.canvas {
+  will-change: auto;
+}
+
+/* Smooth scrolling for canvas */
+.canvas {
+  scroll-behavior: smooth;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .page-transition--enter,
+  .page-transition--exit {
+    animation: none !important;
+  }
+  .top-loader__bar,
+  .top-loader__glow {
+    animation: none !important;
+  }
+}

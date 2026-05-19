@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Users, BookOpen, DollarSign, Settings, LogOut, Map as RoomMap,
   FileText, BarChart3, Calendar, Layers, GraduationCap, CreditCard, Package, Zap,
@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { prefetchRoute, prefetchVisibleRoutes } from '../utils/prefetch';
 import '../styles/GlobalStyles.css';
 
 const ALL_SECTIONS = [
@@ -106,6 +107,12 @@ const Sidebar = ({ isOpen, onClose }) => {
     }))
     .filter(section => section.items.length > 0);
 
+  /* ─── Auto-prefetch all visible routes during idle time ──── */
+  useEffect(() => {
+    const allIds = sectionList.flatMap(s => s.items.map(i => i.id));
+    if (allIds.length > 0) prefetchVisibleRoutes(allIds);
+  }, [sectionList.length]);
+
   return (
     <aside className={`sidebar glass-morphism ${isOpen ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       {/* Logo */}
@@ -149,6 +156,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 : location.pathname === itemPath;
               return (
                 <div key={item.id} onClick={() => handleNavClick(itemPath)}
+                  onMouseEnter={() => prefetchRoute(item.id)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '0.8rem',
                     padding: '0.6rem 0.8rem', borderRadius: '8px', cursor: 'pointer',
@@ -176,6 +184,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               <p style={{ fontSize: '0.6rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '600', margin: 0 }}>SYSTEM</p>
             </div>
             <div onClick={() => handleNavClick('/settings')}
+              onMouseEnter={() => prefetchRoute('settings')}
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.8rem',
                 padding: '0.6rem 0.8rem', borderRadius: '8px', cursor: 'pointer',
