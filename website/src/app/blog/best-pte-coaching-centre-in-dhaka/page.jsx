@@ -2,6 +2,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { CheckCircle2, MonitorPlay, Users, GraduationCap, ArrowRight, Target, Clock, BookOpen, Star, Award, MapPin, Globe } from "lucide-react";
+import JsonLd, { faqSchema } from "@/components/JsonLd";
 
 export const metadata = {
   title: "Best PTE Coaching Centre in Dhaka | Language Academy",
@@ -29,10 +30,46 @@ export const metadata = {
 };
 
 export default function PteCoachingDhakaPost() {
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": "https://languageacademy.com.bd/blog/best-pte-coaching-centre-in-dhaka"
+    },
+    "headline": "The Best PTE Coaching Centre in Dhaka, Bangladesh",
+    "description": "Language Academy is the top PTE coaching center in Dhaka, offering expert-led offline and online courses. Get 79+ score with our AI mock tests and master trainers.",
+    "image": "https://languageacademy.com.bd/hero_banner.webp",
+    "author": {
+      "@type": "Organization",
+      "name": "Language Academy Bangladesh",
+      "url": "https://languageacademy.com.bd"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Language Academy Bangladesh",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://languageacademy.com.bd/logo.webp"
+      }
+    },
+    "datePublished": "2024-01-15T00:00:00Z",
+    "dateModified": "2026-05-20T01:14:16Z"
+  };
+
+  const faqData = faqSchema([
+    ["What is the PTE Exam Fee in Bangladesh?", "As of the current academic year, the standard PTE Academic exam fee in Bangladesh is USD 220 (approximately BDT 26,000 to BDT 28,000, depending on the bank's exchange rate). We offer complimentary exam booking assistance for our enrolled students."],
+    ["Where are the PTE Exam Centers in Dhaka?", "There are verified Pearson VUE test centers available in Dhaka, primarily located in Dhanmondi and Uttara. A third center is also available in Chittagong for students outside the capital."],
+    ["Does Canada accept PTE for Study & PR?", "Yes, absolutely! Over 91% of Canadian Universities and colleges accept PTE Academic for admission. Furthermore, the Canadian immigration authority now fully accepts PTE Core for permanent residency (PR) and economic immigration applications."]
+  ]);
+
   return (
-    <article className="min-h-screen bg-slate-50 pb-20">
-      {/* Premium Full-Width Hero Section */}
-      <header className="relative w-full min-h-[50vh] md:min-h-[60vh] flex items-end pb-12 md:pb-20 overflow-hidden bg-slate-900">
+    <>
+      <JsonLd data={articleSchema} />
+      <JsonLd data={faqData} />
+      <article className="min-h-screen bg-slate-50 pb-20">
+        {/* Premium Full-Width Hero Section */}
+        <header className="relative w-full min-h-[50vh] md:min-h-[60vh] flex items-end pb-12 md:pb-20 overflow-hidden bg-slate-950">
         <div className="absolute inset-0 z-0">
           <Image
             src="/hero_banner.webp"
@@ -275,5 +312,6 @@ export default function PteCoachingDhakaPost() {
         </div>
       </div>
     </article>
+    </>
   );
 }

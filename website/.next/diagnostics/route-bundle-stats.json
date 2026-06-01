@@ -1,13 +1,13 @@
 [
   {
     "route": "/",
-    "firstLoadUncompressedJsBytes": 722738,
+    "firstLoadUncompressedJsBytes": 722767,
     "firstLoadChunkPaths": [
       ".next\\static\\chunks\\05_nxjk~v067d.js",
       ".next\\static\\chunks\\0ozkdi9gedbzu.js",
       ".next\\static\\chunks\\0d3shmwh5_nmn.js",
       ".next\\static\\chunks\\10~t6emm0lg0r.js",
-      ".next\\static\\chunks\\0~-073t7swcts.js",
+      ".next\\static\\chunks\\10l.a_1kk.i9t.js",
       ".next\\static\\chunks\\0t1et0tty8o9s.js",
       ".next\\static\\chunks\\0lge7tei0.yg0.js",
       ".next\\static\\chunks\\0m_p1bxtorv5i.js",
@@ -103,13 +103,13 @@
   },
   {
     "route": "/courses",
-    "firstLoadUncompressedJsBytes": 697172,
+    "firstLoadUncompressedJsBytes": 697201,
     "firstLoadChunkPaths": [
       ".next\\static\\chunks\\05_nxjk~v067d.js",
       ".next\\static\\chunks\\0ozkdi9gedbzu.js",
       ".next\\static\\chunks\\0d3shmwh5_nmn.js",
       ".next\\static\\chunks\\10~t6emm0lg0r.js",
-      ".next\\static\\chunks\\0v883ovx~y.dt.js",
+      ".next\\static\\chunks\\0~vwjlexrhw-m.js",
       ".next\\static\\chunks\\0t1et0tty8o9s.js",
       ".next\\static\\chunks\\0lge7tei0.yg0.js",
       ".next\\static\\chunks\\0m_p1bxtorv5i.js",

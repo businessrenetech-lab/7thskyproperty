@@ -40,9 +40,9 @@ export default async function sitemap() {
     { url: `${SITE_URL}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE_URL}/contact`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE_URL}/blog`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
+    { url: `${SITE_URL}/blog/best-pte-coaching-centre-in-dhaka`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE_URL}/branches`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
-    { url: `${SITE_URL}/enroll`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${SITE_URL}/materials`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
+    { url: `${SITE_URL}/trial-class`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
   ];
 
   const courseRoutes = courses.map((course) => ({
@@ -68,5 +68,16 @@ export default async function sitemap() {
       priority: branch.type === "head" ? 0.85 : 0.75,
     }));
 
-  return [...staticRoutes, ...courseRoutes, ...blogRoutes, ...branchRoutes];
+  const allRoutes = [...staticRoutes, ...courseRoutes, ...blogRoutes, ...branchRoutes];
+  const uniqueRoutes = [];
+  const visitedUrls = new Set();
+
+  for (const route of allRoutes) {
+    if (!visitedUrls.has(route.url)) {
+      visitedUrls.add(route.url);
+      uniqueRoutes.push(route);
+    }
+  }
+
+  return uniqueRoutes;
 }

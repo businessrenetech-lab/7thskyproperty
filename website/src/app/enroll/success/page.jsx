@@ -10,6 +10,10 @@ export default async function SuccessPage({ searchParams }) {
   const transactionParam = resolvedSearchParams?.tran_id;
   const transactionId = Array.isArray(transactionParam) ? transactionParam[0] : transactionParam || 'UNKNOWN';
 
+  const portalUrl = process.env.NODE_ENV === 'production'
+    ? 'https://languageacademy.com.bd/student'
+    : 'http://localhost:5174/student';
+
   return (
     <div className="pt-32 pb-24 min-h-screen bg-slate-50 flex items-center justify-center">
       <div className="max-w-md w-full mx-auto px-4 sm:px-6">
@@ -24,7 +28,7 @@ export default async function SuccessPage({ searchParams }) {
           <h1 className="text-2xl font-extrabold text-slate-900 mb-2">Welcome to the Academy!</h1>
             <p className="text-slate-500 mb-6">
              Your enrollment was successful. We&apos;ve sent a confirmation and your login credentials to your email address.
-           </p>
+            </p>
 
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-8 text-left">
             <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Transaction ID</div>
@@ -34,7 +38,7 @@ export default async function SuccessPage({ searchParams }) {
           <div className="space-y-3 flex flex-col items-center">
             {/* Directing student to their portal which is running on port 5174 usually, or proxied heavily */}
             <a 
-              href="http://localhost:5174/student" 
+              href={portalUrl} 
               className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl transition-all shadow flex items-center justify-center gap-2"
             >
               <User size={18} /> Go to Student Portal

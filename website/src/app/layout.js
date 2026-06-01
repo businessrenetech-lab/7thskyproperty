@@ -75,10 +75,6 @@ export const metadata = {
     apple: [{ url: "/logo.webp", type: "image/webp" }],
   },
 
-  alternates: {
-    canonical: "https://languageacademy.com.bd",
-  },
-
   openGraph: {
     type: "website",
     locale: "en_US",

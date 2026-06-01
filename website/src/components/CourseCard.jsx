@@ -48,11 +48,13 @@ export default function CourseCard({ course }) {
           <span className="inline-flex items-center gap-1.5"><Star size={15} className="text-amber-400" fill="currentColor" />Unlimited Mock Tests</span>
         </div>
         <div className="mt-8 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Total Fee</p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-900 tracking-tight">৳{Number(course.base_fee || 0).toLocaleString()}</p>
-          </div>
-          <Link href={`/courses/${course.slug || course.id}`} className="rounded-full bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-600 flex items-center gap-2">
+          {course.show_pricing !== false && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Total Fee</p>
+              <p className="mt-1 text-2xl font-extrabold text-slate-900 tracking-tight">৳{Number(course.base_fee || 0).toLocaleString()}</p>
+            </div>
+          )}
+          <Link href={`/courses/${course.slug || course.id}`} className="ml-auto rounded-full bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-600 flex items-center gap-2">
             Details <ArrowRight size={16} />
           </Link>
         </div>

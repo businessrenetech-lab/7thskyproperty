@@ -236,6 +236,7 @@ export default async function CourseDetailPage({ params }) {
           <div className="space-y-6 lg:sticky lg:top-28 lg:self-start pt-8 md:pt-10">
             {/* Pricing Card */}
             <div className="rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50 bg-white overflow-hidden">
+              {course.show_pricing !== false && (
               <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-7 md:p-8 text-white relative overflow-hidden">
                 <div className="absolute top-0 right-0 -mr-6 -mt-6 h-28 w-28 rounded-full bg-primary/15 blur-2xl" />
                 <div className="absolute bottom-0 left-0 -ml-4 -mb-4 h-20 w-20 rounded-full bg-accent/10 blur-xl" />
@@ -246,6 +247,7 @@ export default async function CourseDetailPage({ params }) {
                 </div>
                 <p className="mt-3 text-sm text-white/60">Everything included — materials, mock tests & support</p>
               </div>
+              )}
               <div className="p-6 md:p-7">
                 <div className="flex flex-col gap-2.5">
                   <Link href={`/enroll?course=${course.slug}`} className="primary-btn w-full justify-center py-3.5 text-base font-bold">Enroll Now <ArrowRight size={18} /></Link>
@@ -342,10 +344,12 @@ export default async function CourseDetailPage({ params }) {
       {/* Mobile Sticky CTA */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-xl p-3 lg:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
         <div className="flex items-center gap-3">
+          {course.show_pricing !== false && (
           <div className="flex-1 min-w-0">
             <p className="text-lg font-extrabold text-slate-900 truncate">৳{Number(course.base_fee || 0).toLocaleString()}</p>
             <p className="text-[10px] text-slate-400 font-medium">All inclusive</p>
           </div>
+          )}
           <Link href={`/enroll?course=${course.slug}`} className="primary-btn px-5 py-2.5 text-sm whitespace-nowrap">Enroll Now <ArrowRight size={14} /></Link>
         </div>
       </div>

@@ -86,11 +86,13 @@ function CourseOfferCard({ course, branch }) {
           <span className="inline-flex items-center gap-1.5"><Star size={14} className="text-amber-400" fill="currentColor" />Mock support</span>
         </div>
         <div className="mt-7 flex items-center justify-between gap-4">
+          {course.show_pricing !== false && (
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Course Fee</p>
             <p className="text-2xl font-extrabold text-slate-900">BDT {Number(course.base_fee || 0).toLocaleString()}</p>
           </div>
-          <Link href={`/enroll?branch=${branch.id}&course=${course.slug || course.id}`} className="rounded-full bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-primary">Enroll <ArrowRight size={15} className="inline" /></Link>
+          )}
+          <Link href={`/enroll?branch=${branch.id}&course=${course.slug || course.id}`} className="ml-auto rounded-full bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-primary">Enroll <ArrowRight size={15} className="inline" /></Link>
         </div>
       </div>
     </article>

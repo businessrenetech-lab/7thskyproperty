@@ -32,6 +32,7 @@ const CATEGORIES = [
   { id: 'sms',          label: 'SMS Gateway',                 icon: <MessageSquare size={20}/>, color: '#00FF94', desc: 'SMS API keys and sender configuration' },
   { id: 'integrations', label: 'Third-party Integrations',    icon: <Link2 size={20} />,     color: '#FF4D6D', desc: 'SSLCommerz, Tawk.to, and other platform integrations' },
   { id: 'payment',      label: 'Payment Settings',            icon: <CreditCard size={20} />, color: '#e2136e', desc: 'Merchant numbers and manual payment instructions' },
+  { id: 'website',      label: 'Website Display',             icon: <Globe size={20} />,     color: '#7bc62e', desc: 'Control what is shown on the public website' },
 ];
 
 /* ─── Input Component ──────────────────────────────────────── */
@@ -39,6 +40,7 @@ const SettingInput = ({ setting, value, onChange }) => {
   const toast = useToast();
   const [showSecret, setShowSecret] = useState(false);
   const isColor = setting.key.includes('COLOR');
+  const isToggle = setting.key.startsWith('SHOW_');
   const isTextarea = setting.key.includes('ADDRESS') || setting.key.includes('META_DESCRIPTION') || setting.key.includes('ROBOTS_TXT') || setting.key.includes('MAP_EMBED');
 
   const inputStyles = {
@@ -85,7 +87,18 @@ const SettingInput = ({ setting, value, onChange }) => {
           }} />
         )}
 
-        {isTextarea ? (
+        {isToggle ? (
+          <button
+            type="button"
+            onClick={() => onChange(setting.key, value === 'false' ? 'true' : 'false')}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}
+          >
+            <span style={{ width: '44px', height: '24px', borderRadius: '999px', background: value !== 'false' ? '#7bc62e' : 'var(--border)', position: 'relative', transition: 'all .2s' }}>
+              <span style={{ position: 'absolute', top: '2px', left: value !== 'false' ? '22px' : '2px', width: '20px', height: '20px', borderRadius: '50%', background: '#fff', transition: 'all .2s' }} />
+            </span>
+            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>{value !== 'false' ? 'Visible' : 'Hidden'}</span>
+          </button>
+        ) : isTextarea ? (
           <textarea
             value={value}
             onChange={e => onChange(setting.key, e.target.value)}

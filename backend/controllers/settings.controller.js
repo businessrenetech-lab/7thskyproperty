@@ -79,6 +79,9 @@ const DEFAULT_SETTINGS = [
 
   // ── Payment Settings ─────────────────────────────────────
   { setting_key: 'BKASH_MERCHANT_NO', setting_value: '01913-373581', description: 'bKash Merchant Number', is_secret: false, category: 'payment' },
+
+  // ── Website Display ──────────────────────────────────────
+  { setting_key: 'SHOW_COURSE_PRICING', setting_value: 'true', description: 'Show course pricing on the public website', is_secret: false, category: 'website' },
 ];
 
 // Ensure defaults exist upon first load

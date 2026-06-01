@@ -267,7 +267,8 @@ exports.getPublishedCourses = async (req, res) => {
       order: [['created_at', 'DESC']],
     });
 
-    res.json(courses.map(mapPublicCourse));
+    const showPricing = (await getPublicSetting('SHOW_COURSE_PRICING', 'true')) !== 'false';
+    res.json(courses.map((c) => ({ ...mapPublicCourse(c), show_pricing: showPricing })));
   } catch (err) {
     console.error('Error fetching courses:', err);
     if (isDatabaseUnavailableError(err)) return res.json(PUBLIC_COURSE_FALLBACKS);
@@ -314,7 +315,8 @@ exports.getCourseDetails = async (req, res) => {
       return res.status(404).json({ message: 'Course not found' });
     }
 
-    res.json(mapPublicCourse(course));
+    const showPricing = (await getPublicSetting('SHOW_COURSE_PRICING', 'true')) !== 'false';
+    res.json({ ...mapPublicCourse(course), show_pricing: showPricing });
   } catch (err) {
     console.error('Error fetching course details:', err);
     if (isDatabaseUnavailableError(err)) {
@@ -459,7 +461,8 @@ exports.getPublicBranchCourses = async (req, res) => {
       order: [['created_at', 'DESC']],
     });
 
-    res.json(courses.map(mapPublicCourse));
+    const showPricing = (await getPublicSetting('SHOW_COURSE_PRICING', 'true')) !== 'false';
+    res.json(courses.map((c) => ({ ...mapPublicCourse(c), show_pricing: showPricing })));
   } catch (err) {
     console.error('Error fetching branch courses:', err);
     if (isDatabaseUnavailableError(err)) return res.json([]);

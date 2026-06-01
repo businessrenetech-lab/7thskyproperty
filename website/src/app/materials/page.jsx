@@ -4,9 +4,15 @@ import { Lock, ArrowRight, BookOpen } from 'lucide-react';
 export const metadata = {
   title: "Student Materials | Language Academy",
   description: "Access your premium study materials, mock tests, and class notes.",
+  alternates: { canonical: "/materials" },
+  robots: { index: false, follow: false },
 };
 
 export default function MaterialsPage() {
+  const portalUrl = process.env.NODE_ENV === 'production'
+    ? 'https://languageacademy.com.bd/student'
+    : 'http://localhost:5174/student';
+
   return (
     <div className="pt-32 pb-24 min-h-screen bg-slate-50 flex items-center justify-center">
       <div className="max-w-md w-full mx-auto px-4 sm:px-6">
@@ -35,7 +41,7 @@ export default function MaterialsPage() {
           </div>
 
           <a 
-            href="http://localhost:5174/student" 
+            href={portalUrl} 
             className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl transition-all shadow-lg hover:shadow-primary/30 flex items-center justify-center gap-2"
           >
             Login to Student Portal <ArrowRight size={18} />
