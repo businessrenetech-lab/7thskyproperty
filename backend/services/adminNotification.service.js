@@ -10,11 +10,7 @@ const SystemSetting = require('../models/SystemSetting');
 const { sendEmail, brandedEmailWrapper } = require('./communication.service');
 
 const DEFAULT_ADMIN_RECIPIENTS = [
-  'info@languageacademy.com.bd',
-  'languageacademybd@gmail.com',
-  'redowansayem73@gmail.com',
-  'maz.ipsaustralia@gmail.com',
-  'coo@languageacademy.com.bd',
+  'info@seventhskypropertycare.com',
 ];
 
 const ADMIN_RECIPIENTS_KEY = 'ADMIN_NOTIFICATION_EMAILS';
@@ -82,7 +78,7 @@ const detailRows = (rows) => rows
 const card = (title, rows) => `
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e9ecef;border-radius:10px;overflow:hidden;margin-bottom:24px;">
     <tr>
-      <td style="background-color:#32619A;padding:14px 20px;">
+      <td style="background-color:#003768;padding:14px 20px;">
         <h3 style="margin:0;font-size:15px;font-weight:700;color:#ffffff;letter-spacing:0.3px;">${escapeHtml(title)}</h3>
       </td>
     </tr>
@@ -112,11 +108,11 @@ const sendLeadNotificationEmail = async ({ lead, branch, course, batch, type } =
   ]);
 
   const leadType = type || lead.tags?.booking_type || lead.source || 'New Lead';
-  const subject = `New ${leadType} Lead - ${lead.name} | Language Academy`;
+  const subject = `New ${leadType} Lead - ${lead.name} | Seventh Sky Property Care`;
   const bodyContent = `
     <h2 class="hero-title" style="margin:0 0 6px 0;font-size:24px;font-weight:700;color:#1a1a2e;">New Lead Submitted</h2>
     <p style="margin:0 0 24px 0;font-size:15px;color:#495057;line-height:1.7;">
-      A new lead has just submitted to Language Academy, the world-class PTE &amp; IELTS centre in Bangladesh. Please assign follow-up quickly while the intent is fresh.
+      A new real estate lead has just been submitted to Seventh Sky Property Care. Please assign follow-up quickly while the intent is fresh.
     </p>
     ${card('Lead Details', [
       ['Name', lead.name],
@@ -128,24 +124,24 @@ const sendLeadNotificationEmail = async ({ lead, branch, course, batch, type } =
       ['Priority', lead.priority],
       ['Score', lead.score],
       ['Branch', resolvedBranch?.name || lead.branch_id],
-      ['Course', resolvedCourse?.title || lead.batch_interest],
-      ['Batch', resolvedBatch?.name || resolvedBatch?.code],
-      ['Interested Country', lead.destination_country],
+      ['Service / Property', resolvedCourse?.title || lead.batch_interest],
+      ['Project / Stage', resolvedBatch?.name || resolvedBatch?.code],
+      ['Interested Area', lead.destination_country],
       ['Deal Value', lead.deal_value ? formatMoney(lead.deal_value) : 'N/A'],
       ['Submitted At', formatDateTime(lead.createdAt || new Date())],
     ])}
     ${lead.notes ? `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
         <tr>
-          <td style="background-color:#f8f9fa;border-left:4px solid #95C04D;padding:16px 20px;border-radius:0 8px 8px 0;">
-            <p style="margin:0 0 6px 0;font-size:15px;color:#32619A;font-weight:700;">Notes</p>
+          <td style="background-color:#f8f9fa;border-left:4px solid #1bbdf1;padding:16px 20px;border-radius:0 8px 8px 0;">
+            <p style="margin:0 0 6px 0;font-size:15px;color:#003768;font-weight:700;">Notes</p>
             <p style="margin:0;font-size:14px;color:#495057;line-height:1.6;white-space:pre-line;">${escapeHtml(lead.notes)}</p>
           </td>
         </tr>
       </table>
     ` : ''}
     <p style="margin:0;font-size:14px;color:#6c757d;line-height:1.6;">
-      Recommended next action: call the lead, confirm course fit, and update CRM status after contact.
+      Recommended next action: call the lead, confirm property/service fit, and update CRM status after contact.
     </p>
   `;
 
@@ -162,19 +158,19 @@ const sendEnrollmentNotificationEmail = async ({ enrollment, student, user, bran
   const resolvedBranch = branch || await findBranch(enrollment.branch_id);
   const studentName = resolvedUser?.name || [resolvedStudent?.first_name, resolvedStudent?.last_name].filter(Boolean).join(' ') || `Student #${enrollment.student_id}`;
 
-  const subject = `Course Enrollment Created - ${studentName} | Language Academy`;
+  const subject = `Client Request Created - ${studentName} | Seventh Sky Property Care`;
   const bodyContent = `
-    <h2 class="hero-title" style="margin:0 0 6px 0;font-size:24px;font-weight:700;color:#1a1a2e;">Course Enrollment Created</h2>
+    <h2 class="hero-title" style="margin:0 0 6px 0;font-size:24px;font-weight:700;color:#1a1a2e;">Client Request Created</h2>
     <p style="margin:0 0 24px 0;font-size:15px;color:#495057;line-height:1.7;">
-      A course enrollment has been created at Language Academy, the world-class PTE &amp; IELTS centre in Bangladesh. Please verify payment status and student onboarding steps.
+      A client request has been created at Seventh Sky Property Care. Please verify payment status and next-step onboarding.
     </p>
-    ${card('Enrollment Details', [
-      ['Student', studentName],
+    ${card('Request Details', [
+      ['Client', studentName],
       ['Phone', resolvedStudent?.mobile_no],
       ['Email', resolvedUser?.email],
       ['Branch', resolvedBranch?.name || enrollment.branch_id],
-      ['Course', resolvedCourse?.title || 'N/A'],
-      ['Batch', resolvedBatch?.name || resolvedBatch?.code || 'TBA'],
+      ['Service / Property', resolvedCourse?.title || 'N/A'],
+      ['Project / Stage', resolvedBatch?.name || resolvedBatch?.code || 'TBA'],
       ['Total Fee', formatMoney(enrollment.total_fee)],
       ['Paid Amount', formatMoney(enrollment.paid_amount)],
       ['Discount', formatMoney(enrollment.discount)],
@@ -184,11 +180,11 @@ const sendEnrollmentNotificationEmail = async ({ enrollment, student, user, bran
       ['Created At', formatDateTime(enrollment.createdAt || new Date())],
     ])}
     <p style="margin:0;font-size:14px;color:#6c757d;line-height:1.6;">
-      Recommended next action: confirm payment collection, batch assignment, and student welcome communication.
+      Recommended next action: confirm payment collection, project assignment, and client welcome communication.
     </p>
   `;
 
-  return sendAdminEmail(subject, `Course Enrollment - ${studentName}`, bodyContent);
+  return sendAdminEmail(subject, `Client Request - ${studentName}`, bodyContent);
 };
 
 const getPreviousMonthRange = (now = new Date()) => {
@@ -227,7 +223,7 @@ const rowsFromAggregate = (items, labelKey, valueKey) => {
   return items.map(item => `
     <tr>
       <td style="padding:10px 20px;font-size:14px;color:#1a1a2e;border-bottom:1px solid #f0f2f5;">${escapeHtml(item[labelKey] || 'Unknown')}</td>
-      <td style="padding:10px 20px;font-size:14px;color:#32619A;font-weight:700;text-align:right;border-bottom:1px solid #f0f2f5;">${escapeHtml(item[valueKey])}</td>
+      <td style="padding:10px 20px;font-size:14px;color:#003768;font-weight:700;text-align:right;border-bottom:1px solid #f0f2f5;">${escapeHtml(item[valueKey])}</td>
     </tr>
   `).join('');
 };
@@ -235,7 +231,7 @@ const rowsFromAggregate = (items, labelKey, valueKey) => {
 const tableBlock = (title, leftLabel, rightLabel, rows) => `
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e9ecef;border-radius:10px;overflow:hidden;margin-bottom:24px;">
     <tr>
-      <td colspan="2" style="background-color:#32619A;padding:14px 20px;">
+      <td colspan="2" style="background-color:#003768;padding:14px 20px;">
         <h3 style="margin:0;font-size:15px;font-weight:700;color:#ffffff;letter-spacing:0.3px;">${escapeHtml(title)}</h3>
       </td>
     </tr>
@@ -292,7 +288,7 @@ const sendMonthlyReportEmail = async ({ start, end, periodKey, label }) => {
   const courseTotals = new Map();
   for (const enrollment of enrollments) {
     const courseId = batchCourseIds.get(enrollment.batch_id);
-    const courseName = courseNames.get(courseId) || 'Unassigned Course';
+    const courseName = courseNames.get(courseId) || 'Unassigned Service';
     courseTotals.set(courseName, (courseTotals.get(courseName) || 0) + 1);
   }
 
@@ -317,29 +313,29 @@ const sendMonthlyReportEmail = async ({ start, end, periodKey, label }) => {
   const bodyContent = `
     <h2 class="hero-title" style="margin:0 0 6px 0;font-size:24px;font-weight:700;color:#1a1a2e;">Monthly Growth Report</h2>
     <p style="margin:0 0 24px 0;font-size:15px;color:#495057;line-height:1.7;">
-      Performance summary for ${escapeHtml(label)} from Language Academy, the world-class PTE &amp; IELTS centre in Bangladesh.
+      Performance summary for ${escapeHtml(label)} from Seventh Sky Property Care.
     </p>
     ${card('Executive Summary', [
       ['Report Period', label],
       ['New Leads', leadCount],
-      ['Trial Class Leads', trialLeadCount],
+      ['Qualified Leads', trialLeadCount],
       ['Successful Leads', successfulLeadCount],
-      ['Course Enrollments', enrollmentCount],
-      ['Paid Enrollments', paidEnrollmentCount],
-      ['Enrollment Fee Pipeline', formatMoney(enrollmentFeeTotal)],
-      ['Collected Enrollment Amount', formatMoney(enrollmentPaidTotal)],
+      ['Client Requests', enrollmentCount],
+      ['Paid Requests', paidEnrollmentCount],
+      ['Request Fee Pipeline', formatMoney(enrollmentFeeTotal)],
+      ['Collected Request Amount', formatMoney(enrollmentPaidTotal)],
       ['Report Key', periodKey],
     ])}
     ${tableBlock('Lead Sources', 'Source', 'Leads', rowsFromAggregate(sourceRows, 'source', 'count'))}
     ${tableBlock('Branch Lead Performance', 'Branch', 'Leads', rowsFromAggregate(branchLeadSummary, 'branch', 'count'))}
-    ${tableBlock('Branch Enrollment Performance', 'Branch', 'Enrollments / Pipeline', rowsFromAggregate(branchEnrollmentSummary, 'branch', 'summary'))}
-    ${tableBlock('Top Enrolled Courses', 'Course', 'Enrollments', rowsFromAggregate(courseSummary, 'course', 'count'))}
+    ${tableBlock('Branch Request Performance', 'Branch', 'Requests / Pipeline', rowsFromAggregate(branchEnrollmentSummary, 'branch', 'summary'))}
+    ${tableBlock('Top Requested Services', 'Service', 'Requests', rowsFromAggregate(courseSummary, 'course', 'count'))}
     <p style="margin:0;font-size:14px;color:#6c757d;line-height:1.6;">
-      Recommended review: compare lead source quality, speed-to-lead, trial-to-enrollment conversion, and pending-payment follow-up by branch.
+      Recommended review: compare lead source quality, speed-to-lead, lead-to-client conversion, and pending-payment follow-up by branch.
     </p>
   `;
 
-  return sendAdminEmail(`Monthly Report - ${label} | Language Academy`, `Monthly Report - ${label}`, bodyContent);
+  return sendAdminEmail(`Monthly Report - ${label} | Seventh Sky Property Care`, `Monthly Report - ${label}`, bodyContent);
 };
 
 const runMonthlyReportSweep = async ({ force = false } = {}) => {

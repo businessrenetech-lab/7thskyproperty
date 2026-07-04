@@ -7,10 +7,10 @@ const communicationService = require('./communication.service');
 const { Op, fn, col, where } = require('sequelize');
 
 const DEFAULT_BIRTHDAY_RULE = {
-  name: 'Birthday Wishes for Leads & Students',
+  name: 'Birthday Wishes for Leads & Clients',
   trigger_type: 'birthday_reminder',
   action_type: 'send_sms',
-  template: 'Dear {Name}, Wish You Wonderful Year Ahead. Happy Birthday. From Language Academy Bangladesh.',
+  template: 'Dear {Name}, wishing you a wonderful year ahead. Happy Birthday from Seventh Sky Property Care.',
   is_active: true,
 };
 
@@ -93,7 +93,7 @@ class AutomationService {
         if (!data.email) return false;
         return (await communicationService.sendEmail(
           data.email,
-          rule.config?.subject || rule.name || 'Language Academy Bangladesh',
+          rule.config?.subject || rule.name || 'Seventh Sky Property Care',
           `<p>${message}</p>`
         )).success;
 

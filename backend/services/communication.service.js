@@ -34,9 +34,9 @@ const getConfig = async (key) => {
  * Accounts: 'info' (default), 'hr', 'support'
  */
 const SMTP_ACCOUNTS = {
-  info:    { userKey: 'SMTP_USER',         passKey: 'SMTP_PASS',         label: 'Language Academy' },
-  hr:      { userKey: 'SMTP_HR_USER',      passKey: 'SMTP_HR_PASS',      label: 'Language Academy HR' },
-  support: { userKey: 'SMTP_SUPPORT_USER', passKey: 'SMTP_SUPPORT_PASS', label: 'Language Academy Support' },
+  info:    { userKey: 'SMTP_USER',         passKey: 'SMTP_PASS',         label: 'Seventh Sky Property Care' },
+  hr:      { userKey: 'SMTP_HR_USER',      passKey: 'SMTP_HR_PASS',      label: 'Seventh Sky Property Care HR' },
+  support: { userKey: 'SMTP_SUPPORT_USER', passKey: 'SMTP_SUPPORT_PASS', label: 'Seventh Sky Property Care Support' },
 };
 
 /**
@@ -69,7 +69,7 @@ const createTransporter = async (account = 'info') => {
 };
 
 /**
- * Replace variables like {{name}} or {{course}} in the text
+ * Replace variables like {{name}} or {{property}} in the text
  */
 const parseTemplate = (text, recipient) => {
   if (!text) return '';
@@ -77,7 +77,8 @@ const parseTemplate = (text, recipient) => {
     .replace(/\{\{name\}\}/gi, recipient.name || '')
     .replace(/\{\{phone\}\}/gi, recipient.phone || '')
     .replace(/\{\{email\}\}/gi, recipient.email || '')
-    .replace(/\{\{course\}\}/gi, recipient.batch_interest || recipient.course_interest || 'our course');
+    .replace(/\{\{course\}\}/gi, recipient.batch_interest || recipient.course_interest || 'our service')
+    .replace(/\{\{property\}\}/gi, recipient.property_interest || recipient.batch_interest || recipient.course_interest || 'your property');
 };
 
 /**
@@ -210,9 +211,8 @@ const processCampaignBatch = async (campaign, recipients) => {
 };
 
 /**
- * Branded HTML wrapper for Language Academy emails
- * Mobile-first, responsive, professional design using LA brand identity
- * Brand Colors: Blue #32619A, Green #95C04D
+ * Branded HTML wrapper for Seventh Sky Property Care emails.
+ * Mobile-first, responsive, professional design using the real estate brand identity.
  */
 const brandedEmailWrapper = (title, bodyContent) => {
   const year = new Date().getFullYear();
@@ -267,15 +267,15 @@ const brandedEmailWrapper = (title, bodyContent) => {
 
           <!-- ===== HEADER WITH LOGO ===== -->
           <tr>
-            <td class="header-pad" align="center" style="background-color:#32619A;padding:28px 40px 24px 40px;border-radius:12px 12px 0 0;">
+            <td class="header-pad" align="center" style="background-color:#003768;padding:28px 40px 24px 40px;border-radius:12px 12px 0 0;">
               <!-- Logo -->
-              <img src="https://languageacademy.com.bd/logo.png" alt="Language Academy" width="72" height="72" style="display:block;margin:0 auto 12px auto;width:72px;height:72px;border-radius:12px;" />
+              <img src="https://seventhskypropertycare.com/logo.png" alt="Seventh Sky Property Care" width="72" height="72" style="display:block;margin:0 auto 12px auto;width:72px;height:72px;border-radius:12px;" />
               <!-- Brand Name -->
-              <h1 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:0.3px;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">Language Academy</h1>
+              <h1 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:0.3px;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">Seventh Sky Property Care</h1>
               <!-- Tagline -->
-              <p style="margin:6px 0 0 0;font-size:13px;color:rgba(255,255,255,0.8);font-weight:400;letter-spacing:0.2px;">World-class PTE &amp; IELTS Centre in Bangladesh</p>
+              <p style="margin:6px 0 0 0;font-size:13px;color:rgba(255,255,255,0.8);font-weight:400;letter-spacing:0.2px;">Real estate service, property care, and client management</p>
               <!-- Accent bar -->
-              <div style="width:48px;height:3px;background-color:#95C04D;margin:14px auto 0 auto;border-radius:2px;"></div>
+              <div style="width:48px;height:3px;background-color:#1bbdf1;margin:14px auto 0 auto;border-radius:2px;"></div>
             </td>
           </tr>
 
@@ -294,7 +294,7 @@ const brandedEmailWrapper = (title, bodyContent) => {
                 <tr>
                   <td align="center" style="padding-bottom:10px;">
                     <p style="margin:0;font-size:13px;color:#6c757d;line-height:1.5;">
-                      SEL SUFI SQUARE, Unit: 1104, Level: 11,<br/>Dhanmondi R/A, Dhaka 1209
+                      Address to be updated
                     </p>
                   </td>
                 </tr>
@@ -302,26 +302,26 @@ const brandedEmailWrapper = (title, bodyContent) => {
                 <tr>
                   <td align="center" style="padding-bottom:14px;">
                     <p style="margin:0;font-size:13px;color:#6c757d;">
-                      Phone: <a href="tel:+8801805738300" style="color:#32619A;text-decoration:none;font-weight:600;">01805-738300</a>
+                      Phone: <a href="tel:" style="color:#003768;text-decoration:none;font-weight:600;">To be updated</a>
                     </p>
                   </td>
                 </tr>
                 <!-- Divider -->
                 <tr>
                   <td align="center" style="padding-bottom:14px;">
-                    <div style="width:60px;height:2px;background-color:#95C04D;margin:0 auto;border-radius:1px;"></div>
+                    <div style="width:60px;height:2px;background-color:#1bbdf1;margin:0 auto;border-radius:1px;"></div>
                   </td>
                 </tr>
                 <!-- Social / Website -->
                 <tr>
                   <td align="center" style="padding-bottom:12px;">
-                    <a href="https://languageacademy.com.bd" style="font-size:13px;color:#32619A;text-decoration:none;font-weight:600;">languageacademy.com.bd</a>
+                    <a href="https://seventhskypropertycare.com" style="font-size:13px;color:#003768;text-decoration:none;font-weight:600;">seventhskypropertycare.com</a>
                   </td>
                 </tr>
                 <!-- Copyright -->
                 <tr>
                   <td align="center">
-                    <p style="margin:0;font-size:11px;color:#adb5bd;">&copy; ${year} Language Academy Bangladesh. All rights reserved.</p>
+                    <p style="margin:0;font-size:11px;color:#adb5bd;">&copy; ${year} Seventh Sky Property Care. All rights reserved.</p>
                   </td>
                 </tr>
               </table>
@@ -330,7 +330,7 @@ const brandedEmailWrapper = (title, bodyContent) => {
 
           <!-- Bottom rounded border -->
           <tr>
-            <td style="height:6px;background-color:#32619A;border-radius:0 0 12px 12px;font-size:0;line-height:0;">&nbsp;</td>
+            <td style="height:6px;background-color:#003768;border-radius:0 0 12px 12px;font-size:0;line-height:0;">&nbsp;</td>
           </tr>
 
         </table>
@@ -344,7 +344,7 @@ const brandedEmailWrapper = (title, bodyContent) => {
 };
 
 /**
- * Send branded enrollment confirmation email to the student
+ * Send branded booking confirmation email to the client
  */
 const sendEnrollmentConfirmationEmail = async (orderData) => {
   const {
@@ -361,14 +361,14 @@ const sendEnrollmentConfirmationEmail = async (orderData) => {
     <!-- Greeting -->
     <h2 class="hero-title" style="margin:0 0 6px 0;font-size:24px;font-weight:700;color:#1a1a2e;">Congratulations!</h2>
     <p style="margin:0 0 24px 0;font-size:15px;color:#495057;line-height:1.7;">
-      Dear <strong style="color:#32619A;">${student_name}</strong>, you have been successfully enrolled at Language Academy. Welcome to your journey towards excellence!
+      Dear <strong style="color:#003768;">${student_name}</strong>, your request has been successfully received by Seventh Sky Property Care. Our team will follow up with the next steps.
     </p>
 
     <!-- Receipt Card -->
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e9ecef;border-radius:10px;overflow:hidden;margin-bottom:24px;">
       <!-- Receipt Header -->
       <tr>
-        <td style="background-color:#32619A;padding:14px 20px;">
+        <td style="background-color:#003768;padding:14px 20px;">
           <h3 style="margin:0;font-size:15px;font-weight:700;color:#ffffff;letter-spacing:0.3px;">Payment Receipt</h3>
         </td>
       </tr>
@@ -377,7 +377,7 @@ const sendEnrollmentConfirmationEmail = async (orderData) => {
         <td style="padding:0;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
             <tr class="detail-row">
-              <td class="receipt-label" style="padding:12px 20px 12px 20px;font-size:14px;color:#6c757d;width:40%;border-bottom:1px solid #f0f2f5;">Student Name</td>
+              <td class="receipt-label" style="padding:12px 20px 12px 20px;font-size:14px;color:#6c757d;width:40%;border-bottom:1px solid #f0f2f5;">Client Name</td>
               <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;font-weight:600;border-bottom:1px solid #f0f2f5;">${student_name}</td>
             </tr>
             <tr class="detail-row">
@@ -385,15 +385,15 @@ const sendEnrollmentConfirmationEmail = async (orderData) => {
               <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;border-bottom:1px solid #f0f2f5;">${email}</td>
             </tr>
             <tr class="detail-row">
-              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Course</td>
-              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#32619A;font-weight:700;border-bottom:1px solid #f0f2f5;">${course_name}</td>
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Service / Property</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#003768;font-weight:700;border-bottom:1px solid #f0f2f5;">${course_name}</td>
             </tr>
             <tr class="detail-row">
-              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Batch</td>
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Project / Stage</td>
               <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;border-bottom:1px solid #f0f2f5;">${batch_name || 'TBA'}</td>
             </tr>
             <tr class="detail-row">
-              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Batch Start Date</td>
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Expected Start Date</td>
               <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;border-bottom:1px solid #f0f2f5;">${formattedStartDate}</td>
             </tr>
             ${course_duration ? `
@@ -406,13 +406,13 @@ const sendEnrollmentConfirmationEmail = async (orderData) => {
               <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;font-family:'Courier New',monospace;border-bottom:1px solid #f0f2f5;">${payment_ref || 'N/A'}</td>
             </tr>
             <tr class="detail-row">
-              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:2px solid #32619A;">Payment Date</td>
-              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;border-bottom:2px solid #32619A;">${formattedDate}</td>
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:2px solid #003768;">Payment Date</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;border-bottom:2px solid #003768;">${formattedDate}</td>
             </tr>
             <!-- Amount Row -->
             <tr>
               <td style="padding:14px 20px;font-size:15px;color:#495057;font-weight:700;">Amount Paid</td>
-              <td class="amount-text" style="padding:14px 20px 14px 0;font-size:20px;color:#95C04D;font-weight:800;">${String.fromCharCode(2547)}${formattedAmount} ${currency || 'BDT'}</td>
+              <td class="amount-text" style="padding:14px 20px 14px 0;font-size:20px;color:#1bbdf1;font-weight:800;">${String.fromCharCode(2547)}${formattedAmount} ${currency || 'BDT'}</td>
             </tr>
             <!-- Status Badge -->
             <tr>
@@ -429,12 +429,12 @@ const sendEnrollmentConfirmationEmail = async (orderData) => {
       </tr>
     </table>
 
-    <!-- PTE Portal Access Notice -->
+    <!-- Client Portal Access Notice -->
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
       <tr>
-        <td style="background-color:#eef2ff;border-left:4px solid #32619A;padding:16px 20px;border-radius:0 8px 8px 0;">
-          <p style="margin:0 0 6px 0;font-size:15px;color:#32619A;font-weight:700;">PTE Practice Portal Access</p>
-          <p style="margin:0;font-size:14px;color:#495057;line-height:1.6;">You will receive <strong>PTE PRACTICE PORTAL ACCESS</strong> soon! Our team is processing your credentials and you'll get a separate email with your login details shortly.</p>
+        <td style="background-color:#eef2ff;border-left:4px solid #003768;padding:16px 20px;border-radius:0 8px 8px 0;">
+          <p style="margin:0 0 6px 0;font-size:15px;color:#003768;font-weight:700;">Client Portal Access</p>
+          <p style="margin:0;font-size:14px;color:#495057;line-height:1.6;">If portal access is needed, our team will process your credentials and send login details separately.</p>
         </td>
       </tr>
     </table>
@@ -444,12 +444,12 @@ const sendEnrollmentConfirmationEmail = async (orderData) => {
       We're thrilled to have you onboard. If you have any questions, feel free to reach out to us anytime. We look forward to helping you achieve your goals!
     </p>
     <p style="margin:0;font-size:14px;color:#6c757d;">
-      Warm regards,<br/><strong style="color:#1a1a2e;">Language Academy Team</strong>
+      Warm regards,<br/><strong style="color:#1a1a2e;">Seventh Sky Property Care Team</strong>
     </p>
   `;
 
-  const html = brandedEmailWrapper('Enrollment Confirmation — Language Academy', bodyContent);
-  return sendEmail(email, 'Enrollment Confirmed — Welcome to Language Academy!', html, [], 'info');
+  const html = brandedEmailWrapper('Request Confirmation — Seventh Sky Property Care', bodyContent);
+  return sendEmail(email, 'Request Confirmed — Seventh Sky Property Care', html, [], 'info');
 };
 
 /**
@@ -465,17 +465,17 @@ const sendPartnerAccessRequestEmail = async (studentData, adminEmail) => {
 
   const bodyContent = `
     <!-- Title -->
-    <h2 class="hero-title" style="margin:0 0 6px 0;font-size:24px;font-weight:700;color:#1a1a2e;">Portal Access Request</h2>
+    <h2 class="hero-title" style="margin:0 0 6px 0;font-size:24px;font-weight:700;color:#1a1a2e;">Client Portal Access Request</h2>
     <p style="margin:0 0 24px 0;font-size:15px;color:#495057;line-height:1.7;">
-      A new student has been enrolled and requires PTE practice portal access. Please provide the login credentials at your earliest convenience.
+      A new client record requires portal access. Please provide the login credentials at your earliest convenience.
     </p>
 
     <!-- Student Details Card -->
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e9ecef;border-radius:10px;overflow:hidden;margin-bottom:24px;">
       <!-- Card Header -->
       <tr>
-        <td style="background-color:#32619A;padding:14px 20px;">
-          <h3 style="margin:0;font-size:15px;font-weight:700;color:#ffffff;letter-spacing:0.3px;">Student Details</h3>
+        <td style="background-color:#003768;padding:14px 20px;">
+          <h3 style="margin:0;font-size:15px;font-weight:700;color:#ffffff;letter-spacing:0.3px;">Client Details</h3>
         </td>
       </tr>
       <!-- Card Body -->
@@ -483,23 +483,23 @@ const sendPartnerAccessRequestEmail = async (studentData, adminEmail) => {
         <td style="padding:0;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
             <tr class="detail-row">
-              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;width:40%;border-bottom:1px solid #f0f2f5;">Student Name</td>
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;width:40%;border-bottom:1px solid #f0f2f5;">Client Name</td>
               <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;font-weight:600;border-bottom:1px solid #f0f2f5;">${student_name}</td>
             </tr>
             <tr class="detail-row">
-              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Student Email</td>
-              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#32619A;font-weight:600;border-bottom:1px solid #f0f2f5;">${student_email}</td>
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Client Email</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#003768;font-weight:600;border-bottom:1px solid #f0f2f5;">${student_email}</td>
             </tr>
             <tr class="detail-row">
               <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Phone Number</td>
               <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;border-bottom:1px solid #f0f2f5;">${student_phone || 'N/A'}</td>
             </tr>
             <tr class="detail-row">
-              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Course</td>
-              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#32619A;font-weight:700;border-bottom:1px solid #f0f2f5;">${course_name}</td>
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Service / Property</td>
+              <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#003768;font-weight:700;border-bottom:1px solid #f0f2f5;">${course_name}</td>
             </tr>
             <tr class="detail-row">
-              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Batch Enrolled</td>
+              <td class="receipt-label" style="padding:12px 20px;font-size:14px;color:#6c757d;border-bottom:1px solid #f0f2f5;">Project / Stage</td>
               <td class="receipt-value" style="padding:12px 20px 12px 0;font-size:14px;color:#1a1a2e;border-bottom:1px solid #f0f2f5;">${batch_name || 'TBA'}</td>
             </tr>
             <tr class="detail-row">
@@ -516,17 +516,17 @@ const sendPartnerAccessRequestEmail = async (studentData, adminEmail) => {
       <tr>
         <td style="background-color:#fff8e1;border-left:4px solid #f59e0b;padding:16px 20px;border-radius:0 8px 8px 0;">
           <p style="margin:0 0 6px 0;font-size:15px;color:#b45309;font-weight:700;">Action Required</p>
-          <p style="margin:0;font-size:14px;color:#78350f;line-height:1.6;">Please reply to this email with the student's PTE practice portal login credentials. Your reply will be delivered to both the Language Academy admin team and the student directly.</p>
+          <p style="margin:0;font-size:14px;color:#78350f;line-height:1.6;">Please reply to this email with the client's portal login credentials. Your reply will be delivered to both the Seventh Sky Property Care admin team and the client directly.</p>
         </td>
       </tr>
     </table>
 
     <p style="margin:0;font-size:14px;color:#6c757d;">
-      Thank you for your partnership,<br/><strong style="color:#1a1a2e;">Language Academy Admin</strong>
+      Thank you for your partnership,<br/><strong style="color:#1a1a2e;">Seventh Sky Property Care Admin</strong>
     </p>
   `;
 
-  const html = brandedEmailWrapper('Portal Access Request — Language Academy', bodyContent);
+  const html = brandedEmailWrapper('Portal Access Request — Seventh Sky Property Care', bodyContent);
 
   // Build reply-to with both admin and student email
   const replyTo = [adminEmail, student_email].filter(Boolean).join(', ');
@@ -546,7 +546,7 @@ const sendPartnerAccessRequestEmail = async (studentData, adminEmail) => {
     from: `"${acct.label}" <${user}>`,
     to: partnerEmail,
     replyTo: replyTo,
-    subject: `Portal Access Request — ${student_name} | Language Academy`,
+    subject: `Portal Access Request — ${student_name} | Seventh Sky Property Care`,
     html
   };
 

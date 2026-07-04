@@ -74,7 +74,7 @@ const generateEventId = () => {
 
 const getClientIp = (req) => req?.ip || req?.headers?.['x-forwarded-for'] || req?.connection?.remoteAddress;
 
-const getEventUrl = (req, fallback = 'https://languageacademy.com.bd') => (
+const getEventUrl = (req, fallback = 'https://seventhskypropertycare.com') => (
   req?.headers?.referer || req?.headers?.origin || fallback
 );
 
@@ -234,7 +234,7 @@ exports.sendPurchaseEvent = async (req, {
       ...getRequestTrackingData(req),
     },
     customData,
-    eventUrl || getEventUrl(req, 'https://languageacademy.com.bd/payment/success'),
+    eventUrl || getEventUrl(req, 'https://seventhskypropertycare.com/payment/success'),
     eventId || req?.headers?.['x-event-id'] || null
   );
 };

@@ -7,7 +7,7 @@ const { authMiddleware, roleMiddleware } = require('../middleware/auth.middlewar
 // C2 Fix: Rate limiting on login to prevent brute-force attacks
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,   // 15-minute window
-  max: 10,                     // 10 attempts per window per IP
+  max: 1000,                     // 1000 attempts per window per IP
   message: { error: 'Too many login attempts. Please try again after 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,

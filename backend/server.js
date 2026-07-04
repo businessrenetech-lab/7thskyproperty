@@ -1,77 +1,63 @@
+/**
+ * Seventh Sky Property Care — API Server
+ * --------------------------------------
+ * Clean boot. Schema is owned by sequelize-cli migrations (see /migrations),
+ * NOT by sequelize.sync(). Routes are mounted resiliently so the API can run
+ * while individual domain modules are still being rebuilt.
+ */
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
-// Enforce globally at the system process level
-process.env.TZ = 'Asia/Dhaka';
+// Enforce timezone at the process level
+process.env.TZ = process.env.TZ || 'Asia/Dhaka';
 
 const sequelize = require('./config/db.config');
 const { getCorsOptions } = require('./config/cors.config');
+
 const app = express();
 
 // ─── SECURITY MIDDLEWARE ────────────────────────────────────────────────────
-// C1 Fix: Security headers (CSP, X-Frame-Options, HSTS, nosniff, etc.)
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https:"],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:', 'https:'],
       connectSrc: ["'self'"],
     },
   },
   crossOriginEmbedderPolicy: false,
 }));
 
-// M4 Fix: Request logging — only log API calls, skip static files for performance
 if (process.env.NODE_ENV !== 'test') {
   app.use('/api', morgan(process.env.NODE_ENV === 'production' ? 'short' : 'dev'));
 }
 
-// CORS
 app.use(cors(getCorsOptions()));
 app.use(cookieParser());
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
-// M1 Fix: Body size limit (prevents JSON bomb DoS)
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+// ─── STATIC UPLOADS (token-gated for private docs) ──────────────────────────
+// Public-ish asset folders served with caching (no auth needed for website media).
+const publicUploadDirs = ['properties', 'services', 'website', 'branches', 'assets'];
+publicUploadDirs.forEach((dir) => {
+  app.use(`/uploads/${dir}`, express.static(path.join(__dirname, 'uploads', dir), {
+    maxAge: '1d', etag: true, lastModified: true,
+  }));
+});
 
-// M2 Fix: Uploads — lightweight token check (no DB query per file)
-// Only verify JWT signature, don't fetch user from DB for static files
-const jwt = require('jsonwebtoken');
-app.use('/uploads/courses', express.static(path.join(__dirname, 'uploads', 'courses'), {
-  maxAge: '1d',
-  etag: true,
-  lastModified: true,
-}));
-
-app.use('/uploads/branches', express.static(path.join(__dirname, 'uploads', 'branches'), {
-  maxAge: '1d',
-  etag: true,
-  lastModified: true,
-}));
-
-app.use('/uploads/resources', express.static(path.join(__dirname, 'uploads', 'resources'), {
-  maxAge: '1d',
-  etag: true,
-  lastModified: true,
-}));
-
-app.use('/uploads/blogs', express.static(path.join(__dirname, 'uploads', 'blogs'), {
-  maxAge: '1d',
-  etag: true,
-  lastModified: true,
-}));
-
+// Everything else under /uploads requires a valid JWT (signed docs, client files, etc.)
 app.use('/uploads', (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '') 
-    || req.query.token; // Allow ?token= for image tags
+  const token = req.header('Authorization')?.replace('Bearer ', '') || req.query.token;
   if (!token) return res.status(401).json({ error: 'Authentication required' });
   try {
     jwt.verify(token, process.env.JWT_SECRET);
@@ -79,225 +65,137 @@ app.use('/uploads', (req, res, next) => {
   } catch {
     return res.status(401).json({ error: 'Invalid token' });
   }
-}, express.static(path.join(__dirname, 'uploads'), {
-  maxAge: '1d',           // Cache files for 1 day
-  etag: true,             // Enable ETag for conditional requests
-  lastModified: true,
-}));
+}, express.static(path.join(__dirname, 'uploads'), { maxAge: '1d', etag: true, lastModified: true }));
 
-// Health check endpoint (no auth, no helmet interference)
+// ─── HEALTH CHECK ───────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'seventh-sky-api', timestamp: new Date().toISOString() });
 });
 
-// Routes
-app.use('/api/auth', require('./routes/auth.routes'));
-app.use('/api/crm', require('./routes/crm.routes'));
-app.use('/api/lms', require('./routes/lms.routes'));
-app.use('/api/branches', require('./routes/branch.routes'));
-app.use('/api/accounting', require('./routes/accounting.routes'));
-app.use('/api/reconciliation', require('./routes/reconciliation.routes'));
-app.use('/api/pte', require('./routes/pte.routes'));
-app.use('/api/students', require('./routes/student.routes'));
-app.use('/api/student', require('./routes/student.routes'));
-app.use('/api/attendance', require('./routes/attendance.routes'));
-app.use('/api/enrollments', require('./routes/enrollment.routes'));
-app.use('/api/pos', require('./routes/pos.routes'));
-app.use('/api/finance', require('./routes/finance.routes'));
-app.use('/api/erp', require('./routes/erp.routes'));
-app.use('/api/schedule', require('./routes/schedule.routes'));
-app.use('/api/notifications', require('./routes/notification.routes'));
-app.use('/api/dashboard', require('./routes/dashboard.routes'));
-app.use('/api/payroll', require('./routes/payroll.routes'));
-app.use('/api/materials', require('./routes/material.routes'));
-app.use('/api/assets', require('./routes/asset.routes'));
-app.use('/api/reports', require('./routes/report.routes'));
-app.use('/api/automation', require('./routes/automation.routes'));
+// ─── RESILIENT ROUTE MOUNTING ───────────────────────────────────────────────
+// During the rebuild, some domain modules may not exist yet or may still depend
+// on code being replaced. We mount each independently and log failures rather
+// than crashing the whole API.
+const mounted = [];
+const skipped = [];
+function mount(urlPath, modulePath) {
+  try {
+    // eslint-disable-next-line global-require, import/no-dynamic-require
+    const router = require(modulePath);
+    app.use(urlPath, router);
+    mounted.push(urlPath);
+  } catch (err) {
+    skipped.push(`${urlPath} (${err.code || 'ERR'}: ${err.message.split('\n')[0].slice(0, 90)})`);
+  }
+}
 
-// New Finance Routes
-app.use('/api/invoices', require('./routes/invoice.routes'));
-app.use('/api/expenses', require('./routes/expense.routes'));
-app.use('/api/budget', require('./routes/budget.routes'));
+// Core infrastructure (reused, generic)
+mount('/api/auth', './routes/auth.routes');
+mount('/api/rbac', './routes/rbac.routes');
+mount('/api/settings', './routes/settings.routes');
+mount('/api/notifications', './routes/notification.routes');
+mount('/api/branches', './routes/branch.routes');
+mount('/api/automation', './routes/automation.routes');
+mount('/api/dashboard', './routes/dashboard.routes');
 
-// Website Public & Payment Routes
-app.use('/api/public', require('./routes/public.routes'));
-app.use('/api/payment', require('./routes/payment.routes'));
-app.use('/api/website', require('./routes/website.routes'));
-app.use('/api/hrm', require('./routes/hrm.routes'));
-app.use('/api/rbac', require('./routes/rbac.routes'));
-app.use('/api/settings', require('./routes/settings.routes'));
+// Kept integrations (per project decisions): biometric (ZKTeco) + payments (SSLCommerz)
+try {
+  const { admsRouter, apiRouter: biometricApiRouter } = require('./routes/biometric.routes');
+  app.use('/iclock', admsRouter);
+  app.use('/api/biometric', biometricApiRouter);
+  mounted.push('/api/biometric');
+} catch (err) {
+  skipped.push(`/api/biometric (${err.code || 'ERR'})`);
+}
+mount('/api/payment', './routes/payment.routes');
 
-// Default Route
+// HRM / Accounting (internal Seventh Sky operations — adapted in later phases)
+mount('/api/hrm', './routes/hrm.routes');
+mount('/api/payroll', './routes/payroll.routes');
+mount('/api/assets', './routes/asset.routes');
+mount('/api/expenses', './routes/expense.routes');
+mount('/api/invoices', './routes/invoicing.routes');
+mount('/api/billing', './routes/billing.routes');
+mount('/api/account-categories', './routes/accountCategory.routes');
+mount('/api/folios', './routes/folio.routes');
+mount('/api/payments', './routes/paymentsList.routes');
+mount('/api/budget', './routes/budget.routes');
+mount('/api/accounting', './routes/accounting.routes');
+mount('/api/finance', './routes/finance.routes');
+mount('/api/reconciliation', './routes/reconciliation.routes');
+
+// ─── Seventh Sky domain modules (added as each phase is built) ───────────────
+mount('/api/contacts', './routes/contact.routes');
+mount('/api/party-role-profiles', './routes/partyRoleProfile.routes');
+mount('/api/clients', './routes/client.routes');
+mount('/api/properties', './routes/property.routes');
+mount('/api/tenancies', './routes/tenancy.routes');
+mount('/api/tenant-applications', './routes/tenantApplication.routes');
+mount('/api/rental-assessments', './routes/rentalAssessment.routes');
+mount('/api/rental-enquiries', './routes/rentalEnquiry.routes');
+mount('/api/property-management', './routes/propertyManagement.routes');
+mount('/api/owner-statements', './routes/ownerStatement.routes');
+mount('/api/landlord', './routes/landlord.routes');
+mount('/api/tenant', './routes/tenant.routes');
+mount('/api/vacancy-notices', './routes/vacancyNotice.routes');
+mount('/api/deposit-settlements', './routes/depositSettlement.routes');
+mount('/api/rental-reports', './routes/rentalReports.routes');
+mount('/api/utility-bills', './routes/utilityBill.routes');
+mount('/api/tenant-requests', './routes/tenantRequest.routes');
+mount('/api/arrears-actions', './routes/arrearsAction.routes');
+mount('/api/marketing-activities', './routes/marketingActivity.routes');
+mount('/api/expense-approvals', './routes/expenseApproval.routes');
+mount('/api/property-risks', './routes/propertyRisk.routes');
+mount('/api/move-in-checklist', './routes/moveInChecklist.routes');
+mount('/api/public-party', './routes/publicParty.routes');
+mount('/api/deals', './routes/deal.routes');
+mount('/api/services', './routes/service.routes');
+mount('/api/leads', './routes/lead.routes');
+mount('/api/providers', './routes/provider.routes');
+mount('/api/projects', './routes/project.routes');
+mount('/api/registers', './routes/register.routes');
+mount('/api/work-orders', './routes/workOrder.routes');
+mount('/api/inspections', './routes/inspection.routes');
+mount('/api/documents', './routes/document.routes');
+mount('/api/signing', './routes/signing.routes');
+mount('/api/agreements', './routes/agreement.routes');
+mount('/api/sign', './routes/sign.routes');
+mount('/api/portal', './routes/portal.routes');
+mount('/api/public', './routes/public.routes');
+
+// Default route
 app.get('/', (req, res) => {
-  res.json({ message: 'Language Academy API is running' });
+  res.json({ message: 'Seventh Sky Property Care API is running' });
 });
 
-
-
-// H1 Fix: Global error handler — use centralized middleware
+// Centralized error handler
 const { errorHandler } = require('./middleware/errorHandler');
 app.use(errorHandler);
 
-// Ensure critical tables exist
-const ExpenseCategory = require('./models/ExpenseCategory');
-const Expense = require('./models/Expense');
-const Contact = require('./models/Contact');
-const Opportunity = require('./models/Opportunity');
-const Activity = require('./models/Activity');
-const CampaignTemplate = require('./models/CampaignTemplate');
-const Lead = require('./models/Lead');
-const Student = require('./models/Student');
-const PteTask = require('./models/PteTask');
-const Course = require('./models/Course');
-const Batch = require('./models/Batch');
-const BlogPost = require('./models/BlogPost');
-const Resource = require('./models/Resource');
-const BlogResource = require('./models/BlogResource');
-
-// Set up Course↔Batch association (avoiding circular dependency in model files)
-Course.hasMany(Batch, { foreignKey: 'course_id' });
-
-// Sync Database
+// ─── STARTUP ─────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
-// Import reconciliation models for sync
-const ReconciliationSession = require('./models/ReconciliationSession');
-const ReconciliationLine = require('./models/ReconciliationLine');
-const ReconciliationMatch = require('./models/ReconciliationMatch');
-const ReconciliationEvent = require('./models/ReconciliationEvent');
-const LiquidityMovement = require('./models/LiquidityMovement');
-
-// Import accounting & pos models for sync
-const Transaction = require('./models/Transaction');
-const JournalEntry = require('./models/JournalEntry');
-const JournalLine = require('./models/JournalLine');
-const Account = require('./models/Account');
-const Branch = require('./models/Branch');
-const BankAccount = require('./models/BankAccount');
-const BankAccountLedgerMap = require('./models/BankAccountLedgerMap');
-const Invoice = require('./models/Invoice');
-const Enrollment = require('./models/Enrollment');
-const User = require('./models/User');
-
-// HRM Models
-const StaffAttendance = require('./models/StaffAttendance');
-const LeaveType = require('./models/LeaveType');
-const LeaveRequest = require('./models/LeaveRequest');
-const LeaveBalance = require('./models/LeaveBalance');
-const JobPosting = require('./models/JobPosting');
-const Applicant = require('./models/Applicant');
-const StaffDocument = require('./models/StaffDocument');
-const PerformanceReview = require('./models/PerformanceReview');
-const Shift = require('./models/Shift');
-const StaffSchedule = require('./models/StaffSchedule');
-const StaffProfile = require('./models/StaffProfile');
-const StaffPayRule = require('./models/StaffPayRule');
-const TeacherSession = require('./models/TeacherSession');
-const PayrollDeduction = require('./models/PayrollDeduction');
-const PayrollBonus = require('./models/PayrollBonus');
-const RbacConfig = require('./models/RbacConfig');
-const SystemSetting = require('./models/SystemSetting');
-const IncomeCategory = require('./models/IncomeCategory');
-const Customer = require('./models/Customer');
-const automationService = require('./services/automation.service');
-const adminNotify = require('./services/adminNotification.service');
-
-let birthdaySweepRunning = false;
-
-const runBirthdaySweep = async () => {
-  if (birthdaySweepRunning) return;
-
-  birthdaySweepRunning = true;
+(async () => {
+  let dbOk = false;
   try {
-    const result = await automationService.processBirthdayReminders();
-    if (result.sent || result.processed) {
-      console.log(`[AUTOMATION] Birthday reminder sweep completed. Processed: ${result.processed}, Sent: ${result.sent}`);
-    }
-  } catch (error) {
-    console.error('[AUTOMATION] Birthday reminder sweep failed:', error.message);
-  } finally {
-    birthdaySweepRunning = false;
+    await sequelize.authenticate();
+    dbOk = true;
+    console.log('✓ Database connected');
+  } catch (err) {
+    console.warn(`⚠ Database not reachable yet (${err.code || 'ERR'}). API will still start. ` +
+      'Run migrations once DB access is configured.');
   }
-};
 
-const runMonthlyReportSweep = async () => {
-  const result = await adminNotify.runMonthlyReportSweep();
-  if (result?.sent) {
-    console.log(`[ADMIN_NOTIFY] Monthly report sent for ${result.period}`);
-  }
-};
-
-// ─── MODEL ASSOCIATIONS (Centralized to avoid circularity) ──────────────────
-ReconciliationSession.hasMany(ReconciliationLine, { foreignKey: 'session_id' });
-ReconciliationSession.hasMany(ReconciliationEvent, { foreignKey: 'session_id' });
-
-ReconciliationLine.belongsTo(ReconciliationSession, { foreignKey: 'session_id' });
-ReconciliationLine.belongsTo(BankAccount, { foreignKey: 'bank_account_id' });
-ReconciliationLine.belongsTo(Account, { foreignKey: 'account_id' });
-
-ReconciliationEvent.belongsTo(ReconciliationSession, { foreignKey: 'session_id' });
-
-// Accounting & CRM
-Student.belongsTo(User, { foreignKey: 'user_id' });
-User.hasOne(Student, { foreignKey: 'user_id' });
-
-Enrollment.belongsTo(Student, { foreignKey: 'student_id' });
-Enrollment.belongsTo(Batch, { foreignKey: 'batch_id' });
-Transaction.belongsTo(Enrollment, { foreignKey: 'enrollment_id' });
-Invoice.belongsTo(Student, { foreignKey: 'student_id' });
-Invoice.belongsTo(Enrollment, { foreignKey: 'enrollment_id' });
-
-JournalEntry.hasMany(JournalLine, { foreignKey: 'journal_entry_id' });
-JournalLine.belongsTo(JournalEntry, { foreignKey: 'journal_entry_id' });
-JournalLine.belongsTo(Account, { foreignKey: 'account_id' });
-// ─── END ASSOCIATIONS ───────────────────────────────────────────────────────
-
-sequelize.authenticate()
-  .then(() => {
-    console.log('Database connected...');
-    // Sync tables — errors are caught per-table so one failure doesn't block startup
-    const models = [
-      Branch, User, ExpenseCategory, Expense, Lead, Contact, Opportunity, Activity,
-      CampaignTemplate, Student, PteTask, Course, Batch, BlogPost, Resource, BlogResource, Account, BankAccount,
-      BankAccountLedgerMap, Invoice, Enrollment, Transaction, JournalEntry,
-      JournalLine, ReconciliationSession, ReconciliationLine,
-      ReconciliationMatch, ReconciliationEvent, LiquidityMovement,
-      StaffAttendance, LeaveType, LeaveRequest, LeaveBalance,
-      JobPosting, Applicant, StaffDocument, PerformanceReview,
-      Shift, StaffSchedule, StaffProfile, StaffPayRule, TeacherSession, PayrollDeduction, PayrollBonus, RbacConfig, SystemSetting,
-      IncomeCategory, Customer,
-    ];
-    // L2 Fix: Block ALTER sync in production — prevents accidental schema changes
-    const isProduction = process.env.NODE_ENV === 'production';
-    const wantsAlter = process.env.DB_SYNC_ALTER === 'true';
-    if (isProduction && wantsAlter) {
-      console.warn('⚠ DB_SYNC_ALTER=true is BLOCKED in production. Set NODE_ENV=development to enable.');
-    }
-    const syncOptions = (!isProduction && wantsAlter) ? { alter: true } : {};
-    return Promise.allSettled(
-      models.map(m => m.sync(syncOptions).catch(err => {
-        console.warn(`  ⚠ Sync warning for ${m.name}: ${err.message.substring(0, 80)}`);
-      }))
-    );
-  })
-  .then(() => {
-    // Initialize required defaults like Settings
-    const settingsController = require('./controllers/settings.controller');
-    return settingsController.initializeDefaults().catch(err => console.error('Error initializing settings:', err));
-  })
-  .then(() => automationService.ensureDefaultBirthdayRule())
-  .then(() => {
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      runBirthdaySweep().catch(() => {});
-      runMonthlyReportSweep().catch(() => {});
-      setInterval(() => {
-        runBirthdaySweep().catch(() => {});
-        runMonthlyReportSweep().catch(() => {});
-      }, 60 * 60 * 1000);
+      console.log(`✓ Seventh Sky API running on port ${PORT} (db: ${dbOk ? 'up' : 'down'})`);
+      console.log(`  mounted: ${mounted.join(', ') || 'none'}`);
+      if (skipped.length) console.log(`  skipped (to be rebuilt): \n   - ${skipped.join('\n   - ')}`);
+      if (dbOk) {
+        try {
+          require('./services/rentalReceiptScheduler.service').startRentalReceiptScheduler();
+        } catch (err) {
+          console.warn(`[RentalReceiptScheduler] not started: ${err.message}`);
+        }
+      }
     });
-  })
-  .catch(err => {
-    console.error('Database connection error:', err);
-    process.exit(1);
-  });
+})();

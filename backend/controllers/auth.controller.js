@@ -5,13 +5,16 @@ const Branch = require('../models/Branch');
 const RbacConfig = require('../models/RbacConfig');
 const { getTableColumns, hasColumn } = require('../utils/schemaSafe');
 
-const ASSIGNABLE_ROLES = ['super_admin', 'branch_admin', 'counselor', 'trainer', 'accounts', 'hr', 'staff', 'unassigned'];
-const BRANCH_ADMIN_ROLES = ['counselor', 'trainer', 'accounts', 'hr', 'staff', 'unassigned'];
+const ASSIGNABLE_ROLES = ['super_admin', 'branch_admin', 'property_manager', 'sales_executive', 'accounts', 'owner', 'tenant', 'buyer', 'supplier', 'staff', 'unassigned'];
+const BRANCH_ADMIN_ROLES = ['property_manager', 'sales_executive', 'accounts', 'staff', 'unassigned'];
 const LEGACY_ROLE_ALIASES = {
   accounting: 'accounts',
-  teacher: 'trainer',
-  crm: 'counselor',
-  hrm: 'hr',
+  counselor: 'sales_executive',
+  crm: 'sales_executive',
+  trainer: 'property_manager',
+  teacher: 'property_manager',
+  hr: 'accounts',
+  hrm: 'accounts',
 };
 const AUTH_COOKIE_NAME = 'la_admin_token';
 const AUTH_TOKEN_TTL = '7d';

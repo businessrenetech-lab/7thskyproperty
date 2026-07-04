@@ -6,13 +6,13 @@ const DEFAULT_SETTINGS = [
   // ── Email (SMTP) ────────────────────────────────────────
   { setting_key: 'SMTP_HOST', setting_value: 'smtp.hostinger.com', description: 'Outgoing Mail Server (SMTP)', is_secret: false, category: 'email' },
   { setting_key: 'SMTP_PORT', setting_value: '465', description: 'SMTP Port', is_secret: false, category: 'email' },
-  { setting_key: 'SMTP_USER', setting_value: 'info@languageacademy.com.bd', description: 'Primary Email (info@) — all general emails', is_secret: false, category: 'email' },
+  { setting_key: 'SMTP_USER', setting_value: 'info@seventhskypropertycare.com', description: 'Primary Email (info@) — all general emails', is_secret: false, category: 'email' },
   { setting_key: 'SMTP_PASS', setting_value: '', description: 'Primary Email Password', is_secret: true, category: 'email' },
-  { setting_key: 'SMTP_HR_USER', setting_value: 'hr@languageacademy.com.bd', description: 'HR Email — job offers, payslips, staff emails', is_secret: false, category: 'email' },
+  { setting_key: 'SMTP_HR_USER', setting_value: 'hr@seventhskypropertycare.com', description: 'HR Email — job offers, payslips, staff emails', is_secret: false, category: 'email' },
   { setting_key: 'SMTP_HR_PASS', setting_value: '', description: 'HR Email Password', is_secret: true, category: 'email' },
-  { setting_key: 'SMTP_SUPPORT_USER', setting_value: 'support@languageacademy.com.bd', description: 'Support Email — student support, enquiries', is_secret: false, category: 'email' },
+  { setting_key: 'SMTP_SUPPORT_USER', setting_value: 'support@seventhskypropertycare.com', description: 'Support Email — client support and enquiries', is_secret: false, category: 'email' },
   { setting_key: 'SMTP_SUPPORT_PASS', setting_value: '', description: 'Support Email Password', is_secret: true, category: 'email' },
-  { setting_key: 'ADMIN_NOTIFICATION_EMAILS', setting_value: 'info@languageacademy.com.bd, languageacademybd@gmail.com, redowansayem73@gmail.com, maz.ipsaustralia@gmail.com, coo@languageacademy.com.bd', description: 'Admin recipients for lead, enrollment, and monthly report emails', is_secret: false, category: 'email' },
+  { setting_key: 'ADMIN_NOTIFICATION_EMAILS', setting_value: 'info@seventhskypropertycare.com', description: 'Admin recipients for lead, client request, and monthly report emails', is_secret: false, category: 'email' },
   { setting_key: 'MONTHLY_REPORT_LAST_SENT_PERIOD', setting_value: '', description: 'Last monthly admin report period sent', is_secret: false, category: 'email' },
 
   // ── SMS Gateway ─────────────────────────────────────────
@@ -39,37 +39,37 @@ const DEFAULT_SETTINGS = [
   { setting_key: 'GOOGLE_ADS_CONVERSION_LABEL', setting_value: '', description: 'Google Ads Conversion Label', is_secret: false, category: 'google' },
 
   // ── SEO & Meta ──────────────────────────────────────────
-  { setting_key: 'SEO_SITE_TITLE', setting_value: 'Language Academy', description: 'Default Site Title', is_secret: false, category: 'seo' },
+  { setting_key: 'SEO_SITE_TITLE', setting_value: 'Seventh Sky Property Care', description: 'Default Site Title', is_secret: false, category: 'seo' },
   { setting_key: 'SEO_META_DESCRIPTION', setting_value: '', description: 'Default Meta Description', is_secret: false, category: 'seo' },
   { setting_key: 'SEO_META_KEYWORDS', setting_value: '', description: 'Default Meta Keywords (comma-separated)', is_secret: false, category: 'seo' },
   { setting_key: 'SEO_OG_IMAGE', setting_value: '', description: 'Default Open Graph Image URL', is_secret: false, category: 'seo' },
   { setting_key: 'ROBOTS_TXT_EXTRA', setting_value: '', description: 'Extra Robots.txt Rules', is_secret: false, category: 'seo' },
 
   // ── Social Media Profiles ───────────────────────────────
-  { setting_key: 'SOCIAL_FACEBOOK', setting_value: 'https://facebook.com/languageacademybd', description: 'Facebook Page URL', is_secret: false, category: 'social' },
-  { setting_key: 'SOCIAL_INSTAGRAM', setting_value: 'https://instagram.com/languageacademyb', description: 'Instagram Profile URL', is_secret: false, category: 'social' },
-  { setting_key: 'SOCIAL_YOUTUBE', setting_value: 'https://youtube.com/@languageacademybd', description: 'YouTube Channel URL', is_secret: false, category: 'social' },
+  { setting_key: 'SOCIAL_FACEBOOK', setting_value: '', description: 'Facebook Page URL', is_secret: false, category: 'social' },
+  { setting_key: 'SOCIAL_INSTAGRAM', setting_value: '', description: 'Instagram Profile URL', is_secret: false, category: 'social' },
+  { setting_key: 'SOCIAL_YOUTUBE', setting_value: '', description: 'YouTube Channel URL', is_secret: false, category: 'social' },
   { setting_key: 'SOCIAL_LINKEDIN', setting_value: '', description: 'LinkedIn Page URL', is_secret: false, category: 'social' },
   { setting_key: 'SOCIAL_TIKTOK', setting_value: '', description: 'TikTok Profile URL', is_secret: false, category: 'social' },
   { setting_key: 'SOCIAL_TWITTER', setting_value: '', description: 'X (Twitter) Profile URL', is_secret: false, category: 'social' },
 
   // ── Contact Information ─────────────────────────────────
-  { setting_key: 'CONTACT_PHONE_PRIMARY', setting_value: '+880-1913-373581', description: 'Primary Phone Number', is_secret: false, category: 'contact' },
+  { setting_key: 'CONTACT_PHONE_PRIMARY', setting_value: '', description: 'Primary Phone Number', is_secret: false, category: 'contact' },
   { setting_key: 'CONTACT_PHONE_SECONDARY', setting_value: '', description: 'Secondary Phone Number', is_secret: false, category: 'contact' },
-  { setting_key: 'CONTACT_WHATSAPP', setting_value: '+8801913373581', description: 'WhatsApp Business Number', is_secret: false, category: 'contact' },
-  { setting_key: 'CONTACT_EMAIL_PRIMARY', setting_value: 'info@languageacademy.com.bd', description: 'Primary Contact Email', is_secret: false, category: 'contact' },
-  { setting_key: 'CONTACT_EMAIL_SUPPORT', setting_value: 'support@languageacademy.com.bd', description: 'Support Email Address', is_secret: false, category: 'contact' },
-  { setting_key: 'CONTACT_ADDRESS', setting_value: 'SEL SUFI SQUARE, Unit: 1104, Level: 11, Plot: 58, Road: 16 (New) / 27 (Old), Dhanmondi R/A, Dhaka 1209', description: 'Business Address', is_secret: false, category: 'contact' },
+  { setting_key: 'CONTACT_WHATSAPP', setting_value: '', description: 'WhatsApp Business Number', is_secret: false, category: 'contact' },
+  { setting_key: 'CONTACT_EMAIL_PRIMARY', setting_value: 'info@seventhskypropertycare.com', description: 'Primary Contact Email', is_secret: false, category: 'contact' },
+  { setting_key: 'CONTACT_EMAIL_SUPPORT', setting_value: 'support@seventhskypropertycare.com', description: 'Support Email Address', is_secret: false, category: 'contact' },
+  { setting_key: 'CONTACT_ADDRESS', setting_value: '', description: 'Business Address', is_secret: false, category: 'contact' },
   { setting_key: 'CONTACT_MAP_EMBED', setting_value: '', description: 'Google Maps Embed URL', is_secret: false, category: 'contact' },
 
   // ── Branding & Business ─────────────────────────────────
-  { setting_key: 'BRAND_NAME', setting_value: 'Language Academy', description: 'Business / Brand Name', is_secret: false, category: 'branding' },
-  { setting_key: 'BRAND_TAGLINE', setting_value: 'Premium PTE & IELTS Coaching in Dhaka', description: 'Brand Tagline', is_secret: false, category: 'branding' },
+  { setting_key: 'BRAND_NAME', setting_value: 'Seventh Sky Property Care', description: 'Business / Brand Name', is_secret: false, category: 'branding' },
+  { setting_key: 'BRAND_TAGLINE', setting_value: 'Real estate service, property care, and client management', description: 'Brand Tagline', is_secret: false, category: 'branding' },
   { setting_key: 'BRAND_LOGO_URL', setting_value: '', description: 'Logo URL (light version)', is_secret: false, category: 'branding' },
   { setting_key: 'BRAND_LOGO_DARK_URL', setting_value: '', description: 'Logo URL (dark version)', is_secret: false, category: 'branding' },
   { setting_key: 'BRAND_FAVICON_URL', setting_value: '', description: 'Favicon URL', is_secret: false, category: 'branding' },
-  { setting_key: 'BRAND_PRIMARY_COLOR', setting_value: '#7bc62e', description: 'Primary Brand Color (hex)', is_secret: false, category: 'branding' },
-  { setting_key: 'BRAND_ACCENT_COLOR', setting_value: '#275fa7', description: 'Accent Brand Color (hex)', is_secret: false, category: 'branding' },
+  { setting_key: 'BRAND_PRIMARY_COLOR', setting_value: '#1bbdf1', description: 'Primary Brand Color (hex)', is_secret: false, category: 'branding' },
+  { setting_key: 'BRAND_ACCENT_COLOR', setting_value: '#003768', description: 'Accent Brand Color (hex)', is_secret: false, category: 'branding' },
 
   // ── Third-party Integrations ───────────────────────────
   { setting_key: 'TAWK_TO_WIDGET_ID', setting_value: '', description: 'Tawk.to Chat Widget ID', is_secret: false, category: 'integrations' },
@@ -78,7 +78,7 @@ const DEFAULT_SETTINGS = [
   { setting_key: 'SSLCOMMERZ_IS_LIVE', setting_value: 'false', description: 'SSLCommerz Live Mode (true/false)', is_secret: false, category: 'integrations' },
 
   // ── Payment Settings ─────────────────────────────────────
-  { setting_key: 'BKASH_MERCHANT_NO', setting_value: '01913-373581', description: 'bKash Merchant Number', is_secret: false, category: 'payment' },
+  { setting_key: 'BKASH_MERCHANT_NO', setting_value: '', description: 'bKash Merchant Number', is_secret: false, category: 'payment' },
 
   // ── Website Display ──────────────────────────────────────
   { setting_key: 'SHOW_COURSE_PRICING', setting_value: 'true', description: 'Show course pricing on the public website', is_secret: false, category: 'website' },
