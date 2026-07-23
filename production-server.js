@@ -50,22 +50,36 @@ try {
 } catch (err) { log(`FATAL: express: ${err.message}`); process.exit(1); }
 
 // ─── Step 3: Next.js (the public website) ────────────────────────────────────
-let nextApp, nextHandle;
+// The website is OPTIONAL for the platform: if it isn't built, we still serve
+// the API and the admin portal (no crash loop). Build it with `npm run build:all`.
+let nextApp, nextHandle, hasWebsite = false;
 const websiteDir = path.join(__dirname, 'website');
 const nextDir = path.join(websiteDir, '.next');
-log(`STEP 3: website=${fs.existsSync(websiteDir)} .next=${fs.existsSync(nextDir)} BUILD_ID=${fs.existsSync(path.join(nextDir, 'BUILD_ID'))}`);
-try {
-  const next = require(path.join(websiteDir, 'node_modules', 'next'));
-  nextApp = next({ dev: false, dir: websiteDir });
-  nextHandle = nextApp.getRequestHandler();
-  log('  Next.js app created');
-} catch (err) { log(`FATAL: Next.js: ${err.stack || err.message}`); process.exit(1); }
+const websiteBuilt = fs.existsSync(path.join(nextDir, 'BUILD_ID'));
+log(`STEP 3: website=${fs.existsSync(websiteDir)} .next=${fs.existsSync(nextDir)} BUILD_ID=${websiteBuilt}`);
+if (websiteBuilt) {
+  try {
+    const next = require(path.join(websiteDir, 'node_modules', 'next'));
+    nextApp = next({ dev: false, dir: websiteDir });
+    nextHandle = nextApp.getRequestHandler();
+    hasWebsite = true;
+    log('  Next.js app created');
+  } catch (err) {
+    log(`  ⚠ Next.js unavailable — serving API + admin only: ${err.message}`);
+  }
+} else {
+  log('  ⚠ No website build (.next/BUILD_ID missing). Serving API + admin only. Run `npm run build:all` to enable the public site.');
+}
 
 async function start() {
-  // ─── Step 4: prepare Next.js ───────────────────────────────────────────────
-  log('STEP 4: preparing Next.js (10-30s)…');
-  try { await nextApp.prepare(); log('  Next.js ready'); }
-  catch (err) { log(`FATAL: Next prepare: ${err.stack || err.message}`); process.exit(1); }
+  // ─── Step 4: prepare Next.js (only if it's built) ──────────────────────────
+  if (hasWebsite) {
+    log('STEP 4: preparing Next.js (10-30s)…');
+    try { await nextApp.prepare(); log('  Next.js ready'); }
+    catch (err) { log(`  ⚠ Next prepare failed — serving API + admin only: ${err.message}`); hasWebsite = false; }
+  } else {
+    log('STEP 4: skipped (no website build)');
+  }
 
   // ─── Step 5: Express app + middleware ──────────────────────────────────────
   log('STEP 5: building Express app…');
@@ -134,9 +148,24 @@ async function start() {
     });
   }
 
-  // ─── Website public assets, then Next.js catch-all for everything else ─────
+  // ─── Website public assets, then the catch-all ────────────────────────────
   app.use(express.static(path.join(websiteDir, 'public'), { index: false }));
-  app.all('{*splat}', (req, res) => nextHandle(req, res));
+  if (hasWebsite) {
+    app.all('{*splat}', (req, res) => nextHandle(req, res));
+  } else {
+    // No public site yet — keep /api and /admin working; friendly placeholder at /.
+    app.all('{*splat}', (req, res) => {
+      if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
+      res.status(200).type('html').send(
+        '<!doctype html><meta charset="utf-8"><title>Seventh Sky Properties</title>'
+        + '<body style="font-family:system-ui,-apple-system,sans-serif;max-width:640px;margin:64px auto;padding:0 20px;color:#0d1b2f">'
+        + '<h1>Seventh Sky Properties</h1>'
+        + '<p>The admin portal is live at <a href="/admin">/admin</a>.</p>'
+        + '<p style="color:#8a99ae">The public website has not been built yet. Run '
+        + '<code>npm run build:all</code> on the server and restart to enable it.</p></body>'
+      );
+    });
+  }
   log('STEP 5: done');
 
   // ─── Step 6: database (authenticate only — migrations own the schema) ──────
