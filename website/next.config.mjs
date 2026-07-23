@@ -25,8 +25,17 @@ const nextConfig = {
   // In dev, the gateway proxy handles routing, but these rewrites still work
   // as a convenience if running Next.js standalone.
   async rewrites() {
-    // Only apply dev proxy rewrites when not in production
-    if (process.env.NODE_ENV === 'production') return [];
+    if (process.env.NODE_ENV === 'production') {
+      // On single-origin hosts (e.g. Hostinger) the Express API lives on its
+      // own subdomain. Proxy the website's relative /api and /uploads calls to
+      // it so no client code needs absolute URLs and no CORS is required.
+      const apiOrigin = (process.env.NEXT_PUBLIC_API_ORIGIN || '').replace(/\/+$/, '');
+      if (!apiOrigin) return [];
+      return [
+        { source: '/api/:path*', destination: `${apiOrigin}/api/:path*` },
+        { source: '/uploads/:path*', destination: `${apiOrigin}/uploads/:path*` },
+      ];
+    }
     return [
       {
         source: '/admin',

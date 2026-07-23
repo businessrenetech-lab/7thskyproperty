@@ -10,6 +10,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
+const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
@@ -172,6 +173,20 @@ mount('/api/sign', './routes/sign.routes');
 mount('/api/intake', './routes/intake.routes');
 mount('/api/portal', './routes/portal.routes');
 mount('/api/public', './routes/public.routes');
+
+// ─── ADMIN SPA (optional, single-origin production) ─────────────────────────
+// When ADMIN_DIST points at the built admin-portal (Vite base '/admin/'), this
+// app serves the admin at /admin on the SAME origin as /api — so the admin's
+// default VITE_API_URL of '/api' works with no rebuild and no CORS.
+const adminDist = process.env.ADMIN_DIST
+  ? path.resolve(process.env.ADMIN_DIST)
+  : path.join(__dirname, '..', 'admin-portal', 'dist');
+if (fs.existsSync(path.join(adminDist, 'index.html'))) {
+  app.use('/admin', express.static(adminDist, { maxAge: '1h', etag: true }));
+  // SPA fallback for client-side routes (but never for /api or /uploads).
+  app.get(/^\/admin(\/.*)?$/, (req, res) => res.sendFile(path.join(adminDist, 'index.html')));
+  console.log(`✓ Admin SPA served from ${adminDist} at /admin`);
+}
 
 // Default route
 app.get('/', (req, res) => {

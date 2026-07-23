@@ -67,3 +67,8 @@ backend/uploads/
 backend/_token.txt
 tmp/
 .gstack/
+
+# Next.js build output (uploaded to host directly, not git)
+website/.next/
+**/.next/
+!*.hostinger.example
