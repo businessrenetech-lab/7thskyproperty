@@ -26,11 +26,11 @@ const JournalLine = sequelize.define('JournalLine', {
     },
   },
   debit: {
-    type: DataTypes.DECIMAL(14, 4),
+    type: DataTypes.DECIMAL(15, 2),
     defaultValue: 0,
   },
   credit: {
-    type: DataTypes.DECIMAL(14, 4),
+    type: DataTypes.DECIMAL(15, 2),
     defaultValue: 0,
   },
   notes: {

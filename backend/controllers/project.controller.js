@@ -13,10 +13,22 @@ const propInc = { model: Property, as: 'property', attributes: ['id', 'property_
 
 // JSON columns can come back as strings on some MySQL/Sequelize combos — coerce to array.
 const arr = (v) => { if (Array.isArray(v)) return v; try { return JSON.parse(v || '[]'); } catch { return []; } };
+const { phaseOf, PHASE_UNLOCK_HINT } = require('../services/progressiveSop.service');
 const hydrate = (project) => {
   if (!project) return project;
   const o = project.toJSON ? project.toJSON() : project;
-  if (o.stages) o.stages = o.stages.map((s) => ({ ...s, checklist: arr(s.checklist), required_documents: arr(s.required_documents) }));
+  if (o.stages) o.stages = o.stages.map((s) => {
+    const phase = phaseOf(s.stage_key);
+    return {
+      ...s,
+      checklist: arr(s.checklist),
+      required_documents: arr(s.required_documents),
+      // Progressive SOP metadata for the UI.
+      phase,
+      locked: s.status === 'blocked',
+      unlock_hint: s.status === 'blocked' ? (PHASE_UNLOCK_HINT[phase] || 'unlocks later in the lifecycle') : null,
+    };
+  });
   return o;
 };
 
@@ -115,12 +127,18 @@ exports.updateStage = asyncHandler(async (req, res) => {
   // When a stage completes, advance the next pending stage + project.current_stage_key
   if (patch.status === 'done') {
     const stages = await ProjectStage.findAll({ where: { project_id: p.id }, order: [['sort_order', 'ASC']] });
-    const next = stages.find((s) => s.status !== 'done' && s.status !== 'skipped');
+    // Advance to the next UNLOCKED stage only — 'blocked' stages stay locked
+    // until their lifecycle event fires (progressive SOP).
+    const next = stages.find((s) => s.status !== 'done' && s.status !== 'skipped' && s.status !== 'blocked');
     if (next) {
       if (next.status === 'pending') await next.update({ status: 'in_progress' });
       await p.update({ current_stage_key: next.stage_key });
     } else {
-      await p.update({ status: 'completion', current_stage_key: null, completed_at: new Date() });
+      // No unlocked stage left to work on right now. Only mark the whole project
+      // complete if there are genuinely no blocked stages waiting either.
+      const anyBlocked = stages.some((s) => s.status === 'blocked');
+      if (!anyBlocked) await p.update({ status: 'completion', current_stage_key: null, completed_at: new Date() });
+      else await p.update({ current_stage_key: null });
     }
   }
   const fresh = await Project.findByPk(p.id, { include: [{ model: ProjectStage, as: 'stages' }], order: [[{ model: ProjectStage, as: 'stages' }, 'sort_order', 'ASC']] });

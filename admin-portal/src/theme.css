@@ -10,7 +10,7 @@
   --primary-100: #b3eeff;
   --accent: #003768;
 
-  --bg: #f8fafc;
+  --bg: #ffffff;
   --surface: #ffffff;
   --surface-2: #f1f5f9;
   --border: #e2e8f0;
@@ -185,6 +185,7 @@ table.tbl tbody tr:last-child td { border-bottom: none; }
 .page-head .title { font-size: 22px; font-weight: 800; letter-spacing: -.03em; margin: 0; }
 .page-head .desc { color: var(--muted); font-size: 13px; margin-top: 2px; }
 .spinner { width: 18px; height: 18px; border: 2px solid var(--primary-100); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; }
+.spin { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .center-screen { min-height: 100vh; display: grid; place-items: center; }
 .kv { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }

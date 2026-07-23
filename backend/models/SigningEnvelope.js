@@ -6,6 +6,7 @@ const SigningEnvelope = sequelize.define('SigningEnvelope', {
   branch_id: { type: DataTypes.INTEGER, allowNull: false },
   envelope_code: { type: DataTypes.STRING(40), unique: true },
   template_id: DataTypes.INTEGER,
+  agreement_template_id: DataTypes.INTEGER,
   agreement_id: DataTypes.INTEGER,
   title: { type: DataTypes.STRING, allowNull: false },
   status: { type: DataTypes.ENUM('draft', 'pending_approval', 'sent', 'viewed', 'partially_signed', 'completed', 'declined', 'voided', 'expired'), defaultValue: 'draft' },
@@ -16,6 +17,10 @@ const SigningEnvelope = sequelize.define('SigningEnvelope', {
   signing_order_enforced: { type: DataTypes.BOOLEAN, defaultValue: true },
   final_pdf_url: DataTypes.STRING,
   certificate_url: DataTypes.STRING,
+  // Smart Agreement + KYC intake: which role's KYC this envelope collects, and
+  // how strictly signing/activation is gated on it.
+  kyc_role: DataTypes.STRING(40),
+  kyc_policy: { type: DataTypes.ENUM('strict', 'flexible', 'none'), defaultValue: 'flexible' },
   content_hash: DataTypes.STRING(128),
   expires_at: DataTypes.DATE,
   sent_at: DataTypes.DATE,

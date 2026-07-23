@@ -96,7 +96,7 @@ const sendEmail = async (to, subject, htmlBody, attachments = [], fromAccount = 
   if (!user || user === 'your-email@yourdomain.com') {
     console.log(`[SIMULATION] Email Sent via ${fromAccount}@ to: ${to} | Subject: ${subject}`);
     await new Promise(r => setTimeout(r, 200));
-    return { success: true, message: 'Simulated Email Sent' };
+    return { success: true, simulated: true, message: 'Simulated Email Sent' };
   }
 
   const transporter = await createTransporter(fromAccount);

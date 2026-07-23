@@ -1,27 +1,68 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { 
-  Home, User, Users, CalendarClock, Wallet, FileText, Activity, 
-  ArrowLeft, Plus, Trash2, Edit, Check, Upload, PlusCircle, 
-  Settings, Phone, Mail, File, ShieldAlert, Award, Search, Info, PlusSquare
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import {
+  Home, User, Users, CalendarClock, Wallet, FileText, Activity,
+  ArrowLeft, Plus, Trash2, Edit, Check, Upload, PlusCircle,
+  Settings, Phone, Mail, File, ShieldAlert, Award, Search, Info, PlusSquare,
+  Wrench, ClipboardCheck, Tags, Briefcase, Receipt, FileSignature,
+  LayoutGrid, AlertTriangle, Clock, MoreHorizontal, ChevronRight, ExternalLink, RefreshCw, LogOut
 } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { PageHead, DataTable, StatusBadge, Drawer, SearchInput, KV, Spinner, Badge, Button, Field, Input, Select, Textarea } from '../ui/kit';
 import { Combo } from '../ui/pickers';
+import FileUpload from '../ui/FileUpload';
 import TenantApplications from './TenantApplications';
+import OwnerWizard from './OwnerWizard';
+import AddTenantChooser from '../components/AddTenantChooser';
+import AddOwnerChooser from '../components/AddOwnerChooser';
+import DocumentVerification from '../components/DocumentVerification';
+import ManageTenants from '../components/ManageTenants';
+import RenewDrawer from '../components/RenewDrawer';
+import SettlementWizard from '../components/SettlementWizard';
 import { PropertyAssessmentPanel } from './RentalAssessments';
 import PropertyOnboarding from './PropertyOnboarding';
 import { LifecycleChip, FinancialStrip, NextActionBanner, BlockersStrip, CountsRow } from './PropertyStateHeader';
 import { CommunicationsTab, AuditLogTab } from './PropertyTimeline';
 import OwnerStatements from './OwnerStatements';
 import PropertyRoleStrip from './PropertyRoleStrip';
+import PropertyPayouts from './PropertyPayouts';
+import PropertyTransactions from './PropertyTransactions';
+import OwnerOperations from './OwnerOperations';
+import { 
+  PropertyUtilitiesTab, PropertyRequestsTab, PropertyExpensesTab, 
+  PropertyArrearsTab, PropertyMarketingTab, PropertyRisksTab 
+} from './PropertyOperationsTabs';
 
 const money = (v) => (v == null ? '৳0.00' : '৳' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+const bdt = (v) => { const n = Number(v || 0); if (Math.abs(n) >= 1e7) return '৳' + (n / 1e7).toFixed(2) + 'Cr'; if (Math.abs(n) >= 1e5) return '৳' + (n / 1e5).toFixed(1) + 'L'; if (Math.abs(n) >= 1e3) return '৳' + Math.round(n / 1e3) + 'k'; return '৳' + Math.round(n); };
+const initials = (name) => (name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+const avGrad = (seed) => { const g = ['linear-gradient(140deg,#f0663f,#c73b6a)', 'linear-gradient(140deg,#3aa0d8,#024b86)', 'linear-gradient(140deg,#12b6f3,#0a86c4)', 'linear-gradient(140deg,#7c5cff,#4a2fb8)', 'linear-gradient(140deg,#0ea371,#0a6b4c)']; return g[Math.abs(String(seed || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % g.length]; };
+
+// 7-section information architecture for the property file (down from 18 tabs).
+const SECTIONS = [
+  { key: 'overview', label: 'Overview', icon: LayoutGrid },
+  { key: 'financials', label: 'Financials', icon: Wallet, subs: [['payouts', 'Payouts & Balances'], ['transactions', 'Transactions'], ['statements', 'Owner Statements']] },
+  { key: 'tenancy', label: 'Tenancy', icon: Users, subs: [['tenants', 'Active Tenants'], ['applications', 'Applications']] },
+  { key: 'onboarding', label: 'Onboarding', icon: ClipboardCheck, subs: [['workflow', 'Workflow / SOP'], ['assessment', 'Assessment'], ['owner', 'Owners & KYC'], ['compliance', 'Document Verification']] },
+  { key: 'operations', label: 'Operations', icon: Wrench, subs: [['owner', 'Owner'], ['utilities', 'Utilities'], ['requests', 'Requests'], ['arrears', 'Arrears'], ['marketing', 'Marketing'], ['expenses', 'Expenses'], ['risks', 'Risks']] },
+  { key: 'documents', label: 'Documents', icon: FileText },
+  { key: 'activity', label: 'Activity', icon: Activity, subs: [['communications', 'Communications'], ['audit', 'Audit Log']] },
+];
+// Map legacy detailTab names (deep links, next-action/blocker jumps) → [section, sub].
+const LEGACY_TAB_MAP = {
+  details: ['overview', null], owner: ['operations', 'owner'], tenants: ['tenancy', 'tenants'],
+  statements: ['financials', 'statements'], payouts: ['financials', 'payouts'], transactions: ['financials', 'transactions'],
+  applications: ['tenancy', 'applications'], assessment: ['onboarding', 'assessment'], onboarding: ['onboarding', 'workflow'],
+  requests: ['operations', 'requests'], utilities: ['operations', 'utilities'], expenses: ['operations', 'expenses'],
+  arrears: ['operations', 'arrears'], marketing: ['operations', 'marketing'], risks: ['operations', 'risks'],
+  communications: ['activity', 'communications'], audit: ['activity', 'audit'], documents: ['documents', null],
+};
 
 export default function RentalProperties() {
   const toast = useToast();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const nav = useNavigate();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -30,8 +71,9 @@ export default function RentalProperties() {
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [detailTab, setDetailTab] = useState('details'); // 'details' | 'tenants' | 'owner'
-  const [sidebarTab, setSidebarTab] = useState('documents'); // 'documents' | 'activity'
+  const [section, setSection] = useState('overview'); // top-level property-file section
+  const [subTab, setSubTab] = useState(null); // sub-tab within a section
+  const goTab = (name) => { const m = LEGACY_TAB_MAP[name] || ['overview', null]; setSection(m[0]); setSubTab(m[1]); };
 
   // Drawers
   const [showKycDrawer, setShowKycDrawer] = useState(false);
@@ -110,17 +152,40 @@ export default function RentalProperties() {
     }
   }, [selectedId, loadDetail]);
 
+  useEffect(() => {
+    const openId = searchParams.get('open');
+    if (openId) {
+      setSelectedId(openId);
+      setSection('overview');
+      setSubTab(null);
+    }
+  }, [searchParams]);
+
   const handleRowClick = (property) => {
     setSelectedId(property.id);
-    setDetailTab(searchParams.get('detailTab') || 'details');
+    const dt = searchParams.get('detailTab');
+    if (dt && LEGACY_TAB_MAP[dt]) { setSection(LEGACY_TAB_MAP[dt][0]); setSubTab(LEGACY_TAB_MAP[dt][1]); }
+    else { setSection('overview'); setSubTab(null); }
   };
 
   const handleBackToList = () => {
     setSelectedId(null);
+    if (searchParams.has('open')) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('open');
+      setSearchParams(nextParams, { replace: true });
+    }
     loadProperties();
   };
 
-  // Open KYC Drawer and populate form
+  const [showOwnerWizard, setShowOwnerWizard] = useState(false);
+  const [showOwnerChooser, setShowOwnerChooser] = useState(false);
+  const [ownerPrefill, setOwnerPrefill] = useState(null);
+  const [showTenantChooser, setShowTenantChooser] = useState(false);
+  const [showManageTenants, setShowManageTenants] = useState(false);
+  const [renewTarget, setRenewTarget] = useState(null);   // P2 renewal drawer
+  const [settleTarget, setSettleTarget] = useState(null); // P3 { tenancy, mode: 'end'|'terminate' }
+  // Open KYC Drawer and populate form (legacy — replaced by OwnerWizard)
   const openKycDrawer = () => {
     if (detail?.ownerProfile) {
       setKycForm({
@@ -221,6 +286,13 @@ export default function RentalProperties() {
     }
   };
 
+  // Send an overdue-rent reminder to the tenant.
+  const handleSendReminder = async (tenancyId) => {
+    if (!tenancyId) return toast.error('No active tenancy to remind.');
+    try { const { data } = await api.post(`/tenancies/${tenancyId}/send-rent-reminder`); toast.success(data.message); }
+    catch (e) { toast.error(e.response?.data?.error || 'Reminder failed'); }
+  };
+
   // Send the prefilled tenancy agreement for signing (tenant + Seventh Sky,
   // owner CC'd). The tenancy activates automatically when fully signed.
   const handleStartTenancyAgreement = async (tenancyId) => {
@@ -296,6 +368,19 @@ export default function RentalProperties() {
     { key: 'tenant', header: 'Tenant', render: (r) => r.tenant ? <span className="cell-strong">{r.tenant.full_name}</span> : <span className="cell-sub">—</span> },
     { key: 'manager', header: 'Manager', render: (r) => r.manager ? <span className="cell-sub">{r.manager.full_name}</span> : <span className="cell-sub">—</span> },
     { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status} /> },
+    { key: 'edit', header: '', render: (r) => (
+      <Button
+        size="sm"
+        variant="ghost"
+        icon={Edit}
+        onClick={(event) => {
+          event.stopPropagation();
+          nav(`/property-management/rentals/new/${r.id}?listing_type=rent&category=${encodeURIComponent(r.category || 'residential')}`);
+        }}
+      >
+        Edit property
+      </Button>
+    )},
   ];
 
   if (selectedId) {
@@ -308,101 +393,142 @@ export default function RentalProperties() {
       );
     }
 
-    const { data: prop = {}, tenancies = [], ownerProfile, fees = [], financials = {}, activity = [], state = null, communications = [], auditLog = [] } = detail;
+    const { 
+      data: prop = {}, tenancies = [], ownerProfile, fees = [], financials = {}, activity = [], state = null, communications = [], auditLog = [],
+      utilityBills = [], tenantRequests = [], arrearsActions = [], marketingActivities = [], expenseApprovals = [], propertyRisks = []
+    } = detail;
+    const activeTenancyId = tenancies.find((t) => t.status === 'active')?.id || null;
+
+    const fin = state?.financial || {};
+    const to = fin.tenant_outstanding || {};
+    const activeT = tenancies.find((t) => t.status === 'active') || null;
+    const activeTenant = activeT?.tenant || prop.tenant || null;
+    const sec = section;
+    const curSecDef = SECTIONS.find((x) => x.key === sec) || SECTIONS[0];
+    const effSub = subTab || (curSecDef.subs ? curSecDef.subs[0][0] : null);
+    const isSec = (s, sub) => sec === s && (sub === undefined || effSub === sub);
+    const attn = state?.next_action
+      ? { title: state.next_action.title || state.next_action.label, sub: state.next_action.description || state.next_action.detail || '', cta: state.next_action.cta || 'Open', tab: state.next_action.tab }
+      : (state?.blockers?.length ? { title: state.blockers[0].label || state.blockers[0].title, sub: 'Resolve to move this property forward.', cta: state.blockers[0].cta || 'Resolve', tab: state.blockers[0].tab } : null);
+    const leaseDays = fin.days_until_lease_end;
 
     return (
-      <div className="property-detail-layout" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Detail Header — title + lifecycle + back + actions */}
-        <div className="page-head" style={{ marginBottom: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-            <Button variant="ghost" className="btn-icon" onClick={handleBackToList}><ArrowLeft size={16} /></Button>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <h1 className="title" style={{ fontSize: 20, marginRight: 4 }}>{prop.title}</h1>
-                <span className="code-chip">{prop.property_code}</span>
-                {state && <LifecycleChip state={state.lifecycle_state} />}
-              </div>
-              <div className="desc" style={{ fontSize: 13, marginTop: 6 }}>
-                {[prop.address, prop.area, prop.city].filter(Boolean).join(', ') || 'No address set'}
-                {prop.manager && <> · Manager: <strong>{prop.manager.full_name}</strong></>}
-                {prop.owner && <> · Owner: <strong>{prop.owner.full_name}</strong></>}
-                {prop.tenant && <> · Tenant: <strong>{prop.tenant.full_name}</strong></>}
-              </div>
-              {state && <div style={{ marginTop: 8 }}><CountsRow counts={state.counts} /></div>}
+      <div className="property-detail-layout pm-scope" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Breadcrumb + back */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Button variant="ghost" className="btn-icon" onClick={handleBackToList}><ArrowLeft size={16} /></Button>
+          <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Property Management › Rentals › <strong style={{ color: 'var(--ink)' }}>{prop.title}</strong></div>
+        </div>
+
+        {/* Header hero */}
+        <div className="card" style={{ display: 'flex', gap: 18, padding: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ width: 118, height: 92, borderRadius: 12, flexShrink: 0, overflow: 'hidden', background: prop.featured_image_url ? `center/cover url(${prop.featured_image_url})` : 'linear-gradient(135deg,#cfe9f7,#9fd0ee)', display: 'grid', placeItems: 'center', boxShadow: 'inset 0 0 0 1px rgba(13,27,47,.06)' }}>
+            {!prop.featured_image_url && <Home size={34} color="#4a86ad" style={{ opacity: .7 }} />}
+          </div>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <h1 style={{ margin: 0, fontSize: 21, fontWeight: 780, letterSpacing: '-.02em' }}>{prop.title}</h1>
+              <span className="code-chip">{prop.property_code}</span>
+              {state && <LifecycleChip state={state.lifecycle_state} />}
+            </div>
+            <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 5 }}>{[prop.address, prop.area, prop.city].filter(Boolean).join(', ') || 'No address set'}{prop.manager && <> · Manager: <strong style={{ color: 'var(--ink)' }}>{prop.manager.full_name}</strong></>}</div>
+            <div style={{ display: 'flex', gap: 18, marginTop: 11, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--muted)' }}>
+              <span style={{ textTransform: 'capitalize' }}>{prop.property_type || 'Property'}{prop.bedrooms ? <> · <strong style={{ color: 'var(--ink)' }}>{prop.bedrooms} bed</strong></> : ''}{prop.bathrooms ? <> · <strong style={{ color: 'var(--ink)' }}>{prop.bathrooms} bath</strong></> : ''}</span>
+              {prop.building_size ? <span>Size <strong style={{ color: 'var(--ink)' }}>{prop.building_size}</strong></span> : null}
+              <span>Approved rent <strong style={{ color: 'var(--ink)' }}>{money(prop.approved_monthly_rent || prop.price)}</strong></span>
+              {prop.management_fee_pct ? <span>Mgmt fee <strong style={{ color: 'var(--ink)' }}>{prop.management_fee_pct}%</strong></span> : null}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button icon={Plus} onClick={openTenancyDrawer}>Add Tenant</Button>
-            <Button variant="ghost" icon={Edit} onClick={openKycDrawer}>Edit Owner KYC</Button>
-            <Button variant="ghost" icon={Upload} onClick={() => setShowDocDrawer(true)}>Upload Document</Button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            <Button
+              variant="secondary"
+              icon={Edit}
+              onClick={() => nav(`/property-management/rentals/new/${prop.id}?listing_type=rent&category=${encodeURIComponent(prop.category || 'residential')}`)}
+            >
+              Edit property &amp; website
+            </Button>
+            <Button variant="ghost" icon={Edit} onClick={() => goTab('owner')}>Owner operations</Button>
+            {!prop.owner_contact_id && <Button icon={Plus} onClick={() => setShowOwnerChooser(true)}>Add owner</Button>}
+            <Button icon={Users} onClick={() => setShowManageTenants(true)}>Manage tenants</Button>
+            <Button variant="ghost" className="btn-icon" onClick={() => setShowDocDrawer(true)} title="Upload document"><Upload size={16} /></Button>
           </div>
         </div>
 
-        {/* Next Action banner — the primary CTA for the current lifecycle state */}
-        {state?.next_action && (
-          <NextActionBanner nextAction={state.next_action} onCta={(tab) => setDetailTab(tab)} />
-        )}
-
-        {/* Blockers strip — clickable, jumps to the tab that fixes each blocker */}
-        {state?.blockers?.length > 0 && (
-          <BlockersStrip blockers={state.blockers} onFix={(tab) => setDetailTab(tab)} />
-        )}
-
-        {/* Parties strip — who is legally attached + their agreement state */}
         <PropertyRoleStrip propertyId={selectedId} />
 
-        {/* Financial strip — six key numbers, computed from live folio + invoice + rental ledger */}
-        {state ? (
-          <FinancialStrip state={state} financial={state.financial} />
-        ) : (
-          /* Fallback for properties without state (unmanaged): show legacy financial strip */
-        <div className="card" style={{ background: 'var(--surface-2)' }}>
-          <div className="card-pad" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, padding: '16px 20px' }}>
-            <div>
-              <div style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 700 }}>Money In (Revenue)</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--success)', marginTop: 4 }}>{money(financials.money_in)}</div>
+        {/* Lease-expiry banner — alert only, no automatic change */}
+        {(() => {
+          if (!activeT?.lease_end) return null;
+          const d = Math.ceil((new Date(activeT.lease_end) - new Date()) / 86400000);
+          if (d > 90) return null;
+          const tone = d < 0 ? { bg: '#fef2f2', bd: '#fecaca', fg: '#b91c1c' } : d <= 30 ? { bg: '#fffbeb', bd: '#fde68a', fg: '#b45309' } : { bg: '#eff6ff', bd: '#bfdbfe', fg: '#1e40af' };
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', borderRadius: 12, background: tone.bg, border: `1px solid ${tone.bd}`, margin: '4px 0 14px' }}>
+              <Clock size={17} color={tone.fg} />
+              <div style={{ flex: 1, fontSize: 13.5, color: tone.fg, fontWeight: 600 }}>
+                {d < 0 ? `This lease ended ${-d} day${-d === 1 ? '' : 's'} ago and is still running.` : `This lease ends in ${d} day${d === 1 ? '' : 's'} (${activeT.lease_end}).`}
+                <span style={{ fontWeight: 400 }}> Renew it, or start ending the tenancy.</span>
+              </div>
+              <Button size="sm" icon={RefreshCw} onClick={() => setRenewTarget(activeT)}>Renew</Button>
+              <Button size="sm" variant="ghost" icon={LogOut} onClick={() => setSettleTarget({ tenancy: activeT, mode: 'end' })}>End</Button>
             </div>
-            <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: 16 }}>
-              <div style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 700 }}>Money Out (Paid)</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', marginTop: 4 }}>{money(financials.money_out)}</div>
+          );
+        })()}
+
+        {/* Arrears alert — tenant has an outstanding balance */}
+        {to.total > 0 && activeTenancyId && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', borderRadius: 12, background: '#fef2f2', border: '1px solid #fecaca', margin: '4px 0 14px' }}>
+            <Receipt size={17} color="#b91c1c" />
+            <div style={{ flex: 1, fontSize: 13.5, color: '#b91c1c', fontWeight: 600 }}>
+              Tenant outstanding: {money(to.total)}
+              <span style={{ fontWeight: 400 }}> — rent {bdt(to.rent_arrears || 0)} · utility/service {bdt(to.service_utility || 0)}.</span>
             </div>
-            <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: 16 }}>
-              <div style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 700 }}>Pending Bills</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--danger)', marginTop: 4 }}>{money(financials.bills_pending)}</div>
-            </div>
-            <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: 16 }}>
-              <div style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 700 }}>Pending Invoices</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--warning)', marginTop: 4 }}>{money(financials.invoices_pending)}</div>
-            </div>
-            <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: 16, background: 'var(--surface)', padding: '6px 12px', borderRadius: 8 }}>
-              <div style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--primary-700)', fontWeight: 800 }}>Owner Balance</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--primary-600)', marginTop: 4 }}>{money(financials.balance)}</div>
-            </div>
+            <Button size="sm" icon={Wallet} onClick={() => handleRaiseInvoice(activeTenancyId)} variant="ghost">Raise invoice</Button>
+            <Button size="sm" icon={Mail} onClick={() => handleSendReminder(activeTenancyId)}>Send reminder</Button>
           </div>
-        </div>
         )}
 
-        {/* Two-Column Detail Container */}
-        <div style={{ display: 'grid', gridTemplateColumns: '7fr 4fr', gap: 20, alignItems: 'start' }}>
-          
-          {/* Left Column — Detailed Information Tabs */}
-          <div className="card">
-            <div className="tabs" style={{ padding: '0 20px', marginBottom: 0 }}>
-              <button className={`tab ${detailTab === 'details' ? 'active' : ''}`} onClick={() => setDetailTab('details')}>Property Details</button>
-              <button className={`tab ${detailTab === 'tenants' ? 'active' : ''}`} onClick={() => setDetailTab('tenants')}>Active Tenants</button>
-              <button className={`tab ${detailTab === 'owner' ? 'active' : ''}`} onClick={() => setDetailTab('owner')}>Owners & KYC</button>
-              <button className={`tab ${detailTab === 'applications' ? 'active' : ''}`} onClick={() => setDetailTab('applications')}>Tenant Applications</button>
-              <button className={`tab ${detailTab === 'assessment' ? 'active' : ''}`} onClick={() => setDetailTab('assessment')}>Rental Assessment</button>
-              <button className={`tab ${detailTab === 'onboarding' ? 'active' : ''}`} onClick={() => setDetailTab('onboarding')}>Onboarding & Workflow</button>
-              <button className={`tab ${detailTab === 'statements' ? 'active' : ''}`} onClick={() => setDetailTab('statements')}>Owner Statements</button>
-              <button className={`tab ${detailTab === 'communications' ? 'active' : ''}`} onClick={() => setDetailTab('communications')}>Communications{communications?.length ? ` (${communications.length})` : ''}</button>
-              <button className={`tab ${detailTab === 'audit' ? 'active' : ''}`} onClick={() => setDetailTab('audit')}>Audit Log{auditLog?.length ? ` (${auditLog.length})` : ''}</button>
-            </div>
-            <div className="card-pad" style={{ minHeight: 320 }}>
+        {/* KPI summary */}
+        <div className="pm-kpis" style={{ gridTemplateColumns: 'repeat(5,1fr)' }}>
+          <div className="pm-kpi"><div className="top"><span className="lab">Lease status</span></div><div className="val" style={{ fontSize: 18, textTransform: 'capitalize' }}>{activeT ? (activeT.lease_status || activeT.status) : 'No tenancy'}</div><div className="pm-kpi-label">{leaseDays != null ? `Ends in ${leaseDays}d` : (activeT ? 'Active lease' : 'Vacant')}</div></div>
+          <div className="pm-kpi pm-kpi--navy"><div className="top"><span className="lab">Owner held (net)</span></div><div className="val pm-num" style={{ fontSize: 20 }}>{money(fin.owner_disbursable || 0)}</div><div className="pm-kpi-label">Ready to disburse</div></div>
+          <div className={`pm-kpi ${to.total > 0 ? 'pm-kpi--red' : 'pm-kpi--green'}`}><div className="top"><span className="lab">Tenant outstanding</span></div><div className="val pm-num" style={{ fontSize: 20, color: to.total > 0 ? 'var(--bad)' : undefined }}>{money(to.total || 0)}</div><div className="pm-kpi-label">Rent {bdt(to.rent_arrears || 0)} · Util {bdt(to.service_utility || 0)}</div></div>
+          <div className="pm-kpi pm-kpi--amber"><div className="top"><span className="lab">Next rent due</span></div><div className="val pm-num" style={{ fontSize: 18 }}>{fin.next_rent_due?.due_date ? new Date(fin.next_rent_due.due_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '—'}</div><div className="pm-kpi-label">{money(prop.approved_monthly_rent || activeT?.monthly_rent || 0)} monthly</div></div>
+          <div className="pm-kpi pm-kpi--cyan"><div className="top"><span className="lab">Readiness</span></div><div className="val pm-num" style={{ fontSize: 20 }}>{fin.readiness_pct != null ? fin.readiness_pct + '%' : '—'}</div><div className="pm-kpi-label">Onboarding progress</div></div>
+        </div>
+
+        {/* Attention bar */}
+        {attn && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 12, background: 'var(--warn-bg)', border: '1px solid #f2dca6' }}>
+            <div style={{ width: 30, height: 30, borderRadius: 9, background: 'var(--warn)', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}><AlertTriangle size={16} /></div>
+            <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 700, fontSize: 13, color: '#7a5300' }}>{attn.title}</div>{attn.sub && <div style={{ fontSize: 12, color: '#9a6f14' }}>{attn.sub}</div>}</div>
+            {attn.tab && <button onClick={() => goTab(attn.tab)} style={{ background: 'var(--warn)', color: '#fff', border: 'none', borderRadius: 9, padding: '8px 14px', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{attn.cta}</button>}
+          </div>
+        )}
+
+        {/* Section tabs */}
+        <div className="pm-segment" style={{ overflowX: 'auto', width: '100%' }}>
+          {SECTIONS.map((S) => { const Ic = S.icon; const active = sec === S.key; const badge = S.key === 'documents' ? (detail.documents?.length || 0) : null; return (
+            <button key={S.key} className={active ? 'on' : ''} onClick={() => { setSection(S.key); setSubTab(null); }} style={{ whiteSpace: 'nowrap' }}><Ic size={15} /> {S.label}{badge ? <span style={{ fontSize: 10.5, background: 'var(--cyan-weak)', color: 'var(--navy)', padding: '1px 6px', borderRadius: 10, fontWeight: 700, marginLeft: 4 }}>{badge}</span> : null}</button>
+          ); })}
+        </div>
+
+        {/* Sub-tabs for the active section */}
+        {curSecDef.subs && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: -6 }}>
+            {curSecDef.subs.map(([k, label]) => (
+              <button key={k} className={`pm-pill ${effSub === k ? 'active' : ''}`} onClick={() => setSubTab(k)}>{label}</button>
+            ))}
+          </div>
+        )}
+
+        {/* Working grid: main + rail */}
+        <div className="pm-detail-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 340px', gap: 16, alignItems: 'start' }}>
+          <div className="pm-col" style={{ minWidth: 0 }}>
               
               {/* Tab 1: Property Details */}
-              {detailTab === 'details' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {isSec('overview') && (
+                <div className="pm-card" style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: 18 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 24px' }}>
                     <div>
                       <h4 className="form-section-title" style={{ marginTop: 0 }}>Basic Attributes</h4>
@@ -452,11 +578,11 @@ export default function RentalProperties() {
               )}
 
               {/* Tab 2: Active Tenants */}
-              {detailTab === 'tenants' && (
-                <div>
+              {isSec('tenancy','tenants') && (
+                <div className="pm-card" style={{ padding: 18 }}>
                   <div className="between" style={{ marginBottom: 14 }}>
                     <h4 className="form-section-title" style={{ margin: 0, border: 'none', padding: 0 }}>Lease Agreements</h4>
-                    <Button size="sm" icon={Plus} onClick={openTenancyDrawer}>Add Tenant</Button>
+                    <Button size="sm" icon={Users} onClick={() => setShowManageTenants(true)}>Manage tenants</Button>
                   </div>
 
                   {tenancies?.length ? (
@@ -467,10 +593,8 @@ export default function RentalProperties() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                               <span className="code-chip">{t.tenancy_code}</span>
                               <StatusBadge status={t.status} />
-                              {t.lease_status && (
-                                <Badge tone={t.lease_status === 'active' ? 'green' : t.lease_status === 'sent_for_signature' ? 'blue' : t.lease_status === 'signed' ? 'green' : 'amber'} dot>
-                                  Agreement: {t.lease_status.replace(/_/g, ' ')}
-                                </Badge>
+                              {t.copy_of_lease_url && (
+                                <Badge tone="blue" dot>Lease Scanned</Badge>
                               )}
                             </div>
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -513,8 +637,8 @@ export default function RentalProperties() {
               )}
 
               {/* Tab 3: Owners & KYC */}
-              {detailTab === 'owner' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {isSec('onboarding','owner') && (
+                <div className="pm-card" style={{ display: 'flex', flexDirection: 'column', gap: 24, padding: 18 }}>
                   {/* Owner basic card */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 24px' }}>
                     <div>
@@ -548,7 +672,7 @@ export default function RentalProperties() {
                       <KV k="Routing Code" v={ownerProfile?.bank_routing_number || '—'} />
                       <KV k="bKash Personal" v={ownerProfile?.bkash_number || '—'} />
                       <KV k="Nagad Personal" v={ownerProfile?.nagad_number || '—'} />
-                      <KV k="Preferred Transfer Method" v={
+                      <KV k="Preferred Payment" v={
                         <span style={{ textTransform: 'uppercase', fontSize: 11, fontWeight: 700 }}>
                           {ownerProfile?.preferred_payment?.replace('_', ' ') || '—'}
                         </span>
@@ -564,16 +688,35 @@ export default function RentalProperties() {
                       <KV k="Opening Balance" v={money(ownerProfile?.opening_balance)} />
                     </div>
                     <div>
-                      <h4 className="form-section-title">Folio Notes</h4>
-                      <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)' }}>{ownerProfile?.notes || 'No owner notes recorded.'}</p>
+                      <h4 className="form-section-title">Agreement Terms</h4>
+                      <KV k="Security / deposit" v={money(ownerProfile?.security_money_amount)} />
+                      <KV k="Advance rent" v={money(ownerProfile?.advance_rent_amount)} />
+                      <KV k="Repair budget cap" v={money(ownerProfile?.repair_budget_max)} />
+                      <KV k="Termination notice" v={ownerProfile?.termination_notice_days ? `${ownerProfile.termination_notice_days} days` : '—'} />
+                      <KV k="Agreement start" v={ownerProfile?.agreement_start_date || '—'} />
                     </div>
+                  </div>
+                  {ownerProfile?.ownership_status === 'joint' && (
+                    <div style={{ marginTop: 8 }}>
+                      <h4 className="form-section-title">Joint Owner</h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 24px' }}>
+                        <KV k="Name" v={ownerProfile?.joint_owner_name || '—'} />
+                        <KV k="Phone" v={ownerProfile?.joint_owner_phone || '—'} />
+                        <KV k="NID" v={ownerProfile?.joint_owner_nid || '—'} />
+                        <KV k="Consent collected" v={ownerProfile?.joint_consent_collected ? 'Yes' : 'No'} />
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ marginTop: 8 }}>
+                    <h4 className="form-section-title">Folio Notes</h4>
+                    <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)' }}>{ownerProfile?.notes || 'No owner notes recorded.'}</p>
                   </div>
 
                   {/* Fee schedule template charges */}
                   <div>
                     <div className="between" style={{ marginBottom: 10 }}>
                       <h4 className="form-section-title" style={{ margin: 0, border: 'none', padding: 0 }}>Agency Charges (Our Fees)</h4>
-                      <Button size="sm" variant="ghost" icon={Settings} onClick={openKycDrawer}>Manage Fees</Button>
+                      <Button size="sm" variant="ghost" icon={Settings} onClick={() => setShowOwnerWizard(true)}>Manage Fees</Button>
                     </div>
                     {fees?.length ? (
                       <table className="tbl" style={{ border: '1px solid var(--border)', borderRadius: 8 }}>
@@ -606,121 +749,256 @@ export default function RentalProperties() {
                       <p className="cell-sub">No fee schedules mapped to this folio. Set up owner profile to configure fees.</p>
                     )}
                   </div>
-
                 </div>
               )}
 
-              {detailTab === 'applications' && (
+              {/* Tab 4: Tenant Applications */}
+              {isSec('tenancy','applications') && (
                 <TenantApplications propertyId={selectedId} embedded />
               )}
 
-              {detailTab === 'assessment' && (
+              {/* Tab 5: Rental Assessment */}
+              {isSec('onboarding','assessment') && (
                 <PropertyAssessmentPanel propertyId={selectedId} ownerContactId={prop.owner_contact_id} />
               )}
 
-              {detailTab === 'onboarding' && (
+              {isSec('onboarding','compliance') && (
+                <DocumentVerification propertyId={selectedId} documents={detail.documents || []} onReload={() => loadDetail(selectedId)} />
+              )}
+
+              {/* Tab 6: Onboarding SOP */}
+              {isSec('onboarding','workflow') && (
                 <PropertyOnboarding propertyId={selectedId} onChanged={() => loadDetail(selectedId)} />
               )}
 
-              {detailTab === 'statements' && (
+              {/* Tab 7: Owner Statements */}
+              {isSec('financials','statements') && (
                 <OwnerStatements propertyId={selectedId} ownerContactId={prop.owner_contact_id} embedded />
               )}
 
-              {detailTab === 'communications' && (
+              {/* Payouts & Balances — owner disbursement + tenant outstanding */}
+              {isSec('financials','payouts') && (
+                <PropertyPayouts property={prop} ownerContactId={prop.owner_contact_id} tenancy={tenancies?.find((t) => t.status === 'active') || tenancies?.[0]} />
+              )}
+
+              {isSec('financials','transactions') && (
+                <PropertyTransactions propertyId={selectedId} tenancies={tenancies} />
+              )}
+
+              {isSec('operations','owner') && (
+                <OwnerOperations
+                  property={prop}
+                  ownerProfile={ownerProfile}
+                  fees={fees}
+                  documents={detail.documents || []}
+                  ownerHeld={fin.owner_disbursable || 0}
+                  onEditOwner={() => { setOwnerPrefill(null); setShowOwnerWizard(true); }}
+                  onReload={() => loadDetail(selectedId)}
+                />
+              )}
+
+              {/* Tab 8: Communications */}
+              {isSec('activity','communications') && (
                 <CommunicationsTab propertyId={selectedId} communications={communications} onReload={() => loadDetail(selectedId)} />
               )}
 
-              {detailTab === 'audit' && (
+              {/* Tab 9: Audit Log */}
+              {isSec('activity','audit') && (
                 <AuditLogTab auditLog={auditLog} />
               )}
 
-            </div>
-          </div>
+              {/* Tab 10: Utilities & Bills */}
+              {isSec('operations','utilities') && (
+                <PropertyUtilitiesTab 
+                  propertyId={selectedId} 
+                  ownerContactId={prop.owner_contact_id} 
+                  tenantContactId={prop.tenant_contact_id} 
+                  activeTenancyId={activeTenancyId} 
+                  items={utilityBills} 
+                  onReload={() => loadDetail(selectedId)} 
+                />
+              )}
 
-          {/* Right Sidebar — Documents & Activity Logs */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div className="card">
-              <div className="tabs" style={{ padding: '0 16px', marginBottom: 0 }}>
-                <button className={`tab ${sidebarTab === 'documents' ? 'active' : ''}`} onClick={() => setSidebarTab('documents')}>Documents Feed</button>
-                <button className={`tab ${sidebarTab === 'activity' ? 'active' : ''}`} onClick={() => setSidebarTab('activity')}>Activity</button>
-              </div>
-              <div className="card-pad" style={{ maxHeight: 520, overflowY: 'auto', padding: 16 }}>
-                
-                {/* Sidebar 1: Documents Feed */}
-                {sidebarTab === 'documents' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                      <Button size="sm" style={{ width: '100%' }} icon={Upload} onClick={() => setShowDocDrawer(true)}>Upload File</Button>
+              {/* Tab 11: Tenant Requests */}
+              {isSec('operations','requests') && (
+                <PropertyRequestsTab 
+                  propertyId={selectedId} 
+                  tenantContactId={prop.tenant_contact_id} 
+                  activeTenancyId={activeTenancyId} 
+                  items={tenantRequests} 
+                  onReload={() => loadDetail(selectedId)} 
+                />
+              )}
+
+              {/* Tab 12: Expense Approvals */}
+              {isSec('operations','expenses') && (
+                <PropertyExpensesTab 
+                  propertyId={selectedId} 
+                  ownerContactId={prop.owner_contact_id} 
+                  items={expenseApprovals} 
+                  onReload={() => loadDetail(selectedId)} 
+                />
+              )}
+
+              {/* Tab 13: Arrears Actions */}
+              {isSec('operations','arrears') && (
+                <PropertyArrearsTab
+                  propertyId={selectedId}
+                  tenancyId={activeTenancyId}
+                  tenantContactId={prop.tenant_contact_id}
+                  ownerContactId={prop.owner_contact_id}
+                  items={arrearsActions}
+                  onReload={() => loadDetail(selectedId)}
+                />
+              )}
+
+              {/* Tab 14: Rental Marketing */}
+              {isSec('operations','marketing') && (
+                <PropertyMarketingTab 
+                  propertyId={selectedId} 
+                  ownerContactId={prop.owner_contact_id} 
+                  items={marketingActivities} 
+                  onReload={() => loadDetail(selectedId)} 
+                />
+              )}
+
+              {/* Tab 15: Risk Register */}
+              {isSec('operations','risks') && (
+                <PropertyRisksTab 
+                  propertyId={selectedId} 
+                  tenancyId={activeTenancyId} 
+                  tenantContactId={prop.tenant_contact_id} 
+                  ownerContactId={prop.owner_contact_id} 
+                  items={propertyRisks} 
+                  onReload={() => loadDetail(selectedId)} 
+                />
+              )}
+
+              {/* Documents */}
+              {isSec('documents') && (
+                <div className="pm-card" style={{ padding: 18 }}>
+                  <div className="between" style={{ marginBottom: 12 }}>
+                    <h4 className="form-section-title" style={{ margin: 0, border: 'none', padding: 0 }}>Documents</h4>
+                    <Button size="sm" icon={Upload} onClick={() => setShowDocDrawer(true)}>Upload file</Button>
+                  </div>
+                  {detail.documents?.length ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 10 }}>
+                      {detail.documents.map((doc, idx) => (
+                        <div key={doc.id || idx} className="pm-row" style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
+                          <FileText size={18} color="var(--navy)" />
+                          <div className="grow"><div className="title">{doc.title}</div><div className="sub">{doc.date ? new Date(doc.date).toLocaleDateString() : '—'}{doc.amount ? ` · ${money(doc.amount)}` : ''}</div></div>
+                          {doc.file_url && <a href={doc.file_url} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm btn-icon"><ExternalLink size={13} /></a>}
+                        </div>
+                      ))}
                     </div>
+                  ) : <div className="pm-empty"><div className="ic"><FileText size={22} /></div>No documents uploaded yet.</div>}
+                </div>
+              )}
+            </div>
 
-                    {detail.documents?.length ? (
-                      detail.documents.map((doc, idx) => (
-                        <div key={doc.id || idx} className="nav-item" style={{ margin: 0, padding: 10, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-                          <div style={{ color: doc.icon_type === 'receipt' ? 'var(--success)' : doc.icon_type === 'invoice' ? 'var(--warning)' : 'var(--primary)' }}>
-                            <FileText size={18} />
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {doc.title}
-                            </div>
-                            <div style={{ fontSize: 11, color: 'var(--muted)', display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
-                              <span>{doc.date ? new Date(doc.date).toLocaleDateString() : '—'}</span>
-                              {doc.amount && <strong>{money(doc.amount)}</strong>}
-                            </div>
-                          </div>
-                          {doc.file_url && (
-                            <a href={doc.file_url} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm btn-icon" title="View document">
-                              <ExternalLinkIcon size={12} />
-                            </a>
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <p className="cell-sub" style={{ textAlign: 'center', padding: '20px 0' }}>No property-related documents or statements found.</p>
-                    )}
+            {/* RIGHT RAIL — persistent context */}
+            <div className="pm-col" style={{ gap: 16 }}>
+              {/* Parties */}
+              <div className="pm-card">
+                <div className="pm-card-h"><div className="ic"><Users size={16} /></div><h3>Parties</h3></div>
+                <div style={{ padding: '0 16px 12px' }}>
+                  <div className="pm-row" style={{ padding: '11px 0' }}>
+                    <div className="pm-avatar" style={{ background: avGrad(prop.owner?.full_name) }}>{initials(prop.owner?.full_name || 'NA')}</div>
+                    <div className="grow"><div className="title">{prop.owner?.full_name || 'No owner assigned'}</div><div className="sub">Landlord</div>{prop.owner && <div className="sub" style={{ marginTop: 3 }}>{prop.owner.primary_phone || 'No phone'}{prop.owner.email ? ` · ${prop.owner.email}` : ''}</div>}</div>
+                    {ownerProfile?.agreement_status === 'signed' ? <span className="pm-chip good"><span className="d" />Signed</span> : prop.owner ? <span className="pm-chip warn"><span className="d" />Draft</span> : null}
                   </div>
-                )}
-
-                {/* Sidebar 2: Activity Log */}
-                {sidebarTab === 'activity' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {activity?.length ? (
-                      activity.map((act, idx) => (
-                        <div key={idx} style={{ display: 'flex', gap: 10, fontSize: 12.5 }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <div style={{
-                              width: 24, height: 24, borderRadius: '50%', display: 'grid', placeItems: 'center',
-                              background: act.type === 'payment' ? 'var(--success-bg)' : act.type === 'invoice' ? 'var(--warning-bg)' : 'var(--primary-50)',
-                              color: act.type === 'payment' ? 'var(--success)' : act.type === 'invoice' ? 'var(--warning)' : 'var(--primary)'
-                            }}>
-                              <Activity size={12} />
-                            </div>
-                            <div style={{ flex: 1, width: 1, background: 'var(--border)', margin: '4px 0' }} />
-                          </div>
-                          <div style={{ flex: 1, paddingBottom: 10 }}>
-                            <div style={{ fontWeight: 700 }}>{act.title}</div>
-                            <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2, display: 'flex', justifyContent: 'space-between' }}>
-                              <span>Code: {act.code || '—'} · Status: {act.status}</span>
-                              <span>{act.date ? new Date(act.date).toLocaleDateString() : ''}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="cell-sub" style={{ textAlign: 'center', padding: '20px 0' }}>No recorded operational activities.</p>
-                    )}
+                  <div className="pm-row" style={{ padding: '11px 0' }}>
+                    <div className="pm-avatar" style={{ background: avGrad(activeTenant?.full_name) }}>{initials(activeTenant?.full_name || 'NA')}</div>
+                    <div className="grow"><div className="title">{activeTenant?.full_name || 'No active tenant'}</div><div className="sub">Active tenant</div>{activeTenant && <div className="sub" style={{ marginTop: 3 }}>{activeTenant.primary_phone || 'No phone'}{activeTenant.email ? ` · ${activeTenant.email}` : ''}</div>}</div>
+                    {activeT ? <span className="pm-chip good"><span className="d" />Active</span> : null}
                   </div>
-                )}
+                  <button className="pm-pill" style={{ marginTop: 10 }} onClick={() => nav('/role-onboarding')}><Plus size={13} /> Add / manage parties</button>
+                </div>
+              </div>
 
+              {/* Needs attention */}
+              {state?.blockers?.length ? (
+                <div className="pm-card">
+                  <div className="pm-card-h"><div className="ic" style={{ background: 'var(--warn-bg)', color: 'var(--warn)' }}><AlertTriangle size={16} /></div><h3>Needs attention</h3></div>
+                  <div style={{ padding: '0 16px 12px' }}>
+                    {state.blockers.map((b, i) => (
+                      <div key={i} onClick={() => b.tab && goTab(b.tab)} className="pm-row" style={{ padding: '9px 0', cursor: b.tab ? 'pointer' : 'default' }}>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: b.severity === 'critical' ? 'var(--bad)' : 'var(--warn)', flexShrink: 0 }} />
+                        <div className="grow"><div style={{ fontSize: 12.5, fontWeight: 600 }}>{b.label || b.title}</div></div>
+                        {b.tab && <ChevronRight size={14} color="var(--muted-2)" />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Quick facts */}
+              <div className="pm-card">
+                <div className="pm-card-h"><div className="ic"><Clock size={16} /></div><h3>Quick facts</h3></div>
+                <div style={{ padding: '0 16px 14px' }}>
+                  <div className="kv"><span className="k">Lifecycle</span><span className="v" style={{ textTransform: 'capitalize' }}>{state?.lifecycle_state || '—'}</span></div>
+                  <div className="kv"><span className="k">Lease start</span><span className="v">{activeT?.lease_start ? new Date(activeT.lease_start).toLocaleDateString() : '—'}</span></div>
+                  <div className="kv"><span className="k">Deposit held</span><span className="v">{money(activeT?.security_deposit || 0)}</span></div>
+                  <div className="kv"><span className="k">Disburse cycle</span><span className="v" style={{ textTransform: 'capitalize' }}>{ownerProfile?.disbursement_frequency || 'Monthly'}</span></div>
+                  <div className="kv" style={{ borderBottom: 'none' }}><span className="k">Readiness</span><span className="v">{fin.readiness_pct != null ? fin.readiness_pct + '%' : '—'}</span></div>
+                </div>
+              </div>
+
+              {/* Recent activity */}
+              <div className="pm-card">
+                <div className="pm-card-h"><div className="ic"><Activity size={16} /></div><h3>Recent activity</h3></div>
+                <div style={{ padding: '4px 16px 16px' }}>
+                  {activity?.length ? activity.slice(0, 6).map((act, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: 10, paddingBottom: 12 }}>
+                      <div style={{ width: 9, height: 9, borderRadius: '50%', marginTop: 4, flexShrink: 0, background: act.type === 'payment' ? 'var(--good)' : act.type === 'invoice' ? 'var(--warn)' : 'var(--cyan)', boxShadow: '0 0 0 3px var(--cyan-weak)' }} />
+                      <div style={{ minWidth: 0 }}><div style={{ fontSize: 12.5, fontWeight: 600 }}>{act.title}</div><div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{act.code ? act.code + ' · ' : ''}{act.date ? new Date(act.date).toLocaleDateString() : ''}</div></div>
+                    </div>
+                  )) : <div className="pm-empty" style={{ padding: 24 }}><div className="ic"><Activity size={20} /></div>No recent activity.</div>}
+                </div>
               </div>
             </div>
           </div>
-
-        </div>
 
         {/* ── DRAWERS & DIALOGS ── */}
 
         {/* 1. Owner KYC & Fee Settings Drawer */}
+        {showOwnerChooser && detail && (
+          <AddOwnerChooser property={detail.data}
+            onManual={() => { setOwnerPrefill(null); setShowOwnerWizard(true); }}
+            onPrefill={(prefill) => { setShowOwnerChooser(false); setOwnerPrefill(prefill); setShowOwnerWizard(true); }}
+            onSentLink={() => loadDetail(selectedId)}
+            onClose={() => setShowOwnerChooser(false)} />
+        )}
+        {showOwnerWizard && detail && (
+          <OwnerWizard property={detail.data} ownerProfile={ownerPrefill || detail.ownerProfile} fees={detail.fees}
+            onClose={() => { setShowOwnerWizard(false); setOwnerPrefill(null); }} onSaved={() => loadDetail(selectedId)} />
+        )}
+        {renewTarget && (
+          <RenewDrawer tenancy={renewTarget}
+            onClose={() => setRenewTarget(null)}
+            onDone={() => { setRenewTarget(null); loadDetail(selectedId); }} />
+        )}
+        {settleTarget && (
+          <SettlementWizard tenancy={settleTarget.tenancy} mode={settleTarget.mode}
+            onClose={() => setSettleTarget(null)}
+            onDone={() => { setSettleTarget(null); loadDetail(selectedId); }} />
+        )}
+        {showManageTenants && detail && (
+          <ManageTenants tenancies={tenancies} hasOwner={!!prop.owner_contact_id}
+            onAddNew={() => { setShowManageTenants(false); setShowTenantChooser(true); }}
+            onRenew={(t) => { setShowManageTenants(false); setRenewTarget(t); }}
+            onEnd={(t) => { setShowManageTenants(false); setSettleTarget({ tenancy: t, mode: 'end' }); }}
+            onTerminate={(t) => { setShowManageTenants(false); setSettleTarget({ tenancy: t, mode: 'terminate' }); }}
+            onSendAgreement={(id) => handleStartTenancyAgreement(id)}
+            onRaiseInvoice={(id) => handleRaiseInvoice(id)}
+            onClose={() => setShowManageTenants(false)} />
+        )}
+        {showTenantChooser && (
+          <AddTenantChooser propertyId={selectedId}
+            onManual={openTenancyDrawer}
+            onClose={() => setShowTenantChooser(false)}
+            onDone={() => { setShowTenantChooser(false); loadDetail(selectedId); }} />
+        )}
         {showKycDrawer && (
           <Drawer title="Configure Property Owner & Charges" onClose={() => setShowKycDrawer(false)} width={680}
             footer={
@@ -744,8 +1022,8 @@ export default function RentalProperties() {
               </div>
 
               <div className="form-grid">
-                <Field label="NID Front URL"><Input value={kycForm.nid_front_url} onChange={(e) => setKycForm(s => ({ ...s, nid_front_url: e.target.value }))} placeholder="Paste document url or file-url..." /></Field>
-                <Field label="NID Back URL"><Input value={kycForm.nid_back_url} onChange={(e) => setKycForm(s => ({ ...s, nid_back_url: e.target.value }))} placeholder="Paste document url or file-url..." /></Field>
+                <Field label="NID Front"><FileUpload value={kycForm.nid_front_url} onChange={(url) => setKycForm(s => ({ ...s, nid_front_url: url }))} label="Upload NID front (image/PDF)" /></Field>
+                <Field label="NID Back"><FileUpload value={kycForm.nid_back_url} onChange={(url) => setKycForm(s => ({ ...s, nid_back_url: url }))} label="Upload NID back (image/PDF)" /></Field>
               </div>
 
               <h4 className="form-section-title">Disbursement & Settlements</h4>
@@ -928,8 +1206,8 @@ export default function RentalProperties() {
                 <Input value={docForm.file_name} onChange={(e) => setDocForm(s => ({ ...s, file_name: e.target.value }))} placeholder="e.g. rent-receipt.pdf" />
               </Field>
 
-              <Field label="Document File URL" required>
-                <Input value={docForm.file_url} onChange={(e) => setDocForm(s => ({ ...s, file_url: e.target.value }))} placeholder="Paste hosted file URL (pdf, png, jpg)..." />
+              <Field label="Document File" required>
+                <FileUpload value={docForm.file_url} onChange={(url) => setDocForm(s => ({ ...s, file_url: url, file_name: s.file_name || (url ? url.split('/').pop().split('?')[0] : '') }))} label="Upload a document, scan or photo (PDF/JPG/PNG)" />
               </Field>
 
               <div className="form-grid">
@@ -964,7 +1242,7 @@ export default function RentalProperties() {
         title="Rental Properties" 
         desc="Bangladesh property care & rental folios. Track advanced security deposits, automate owner commissions, and manage tenancy ledgers." 
         actions={
-          <Button icon={Plus} onClick={() => setShowCreateModal(true)}>New Rental Property</Button>
+          <Button icon={Plus} onClick={() => nav('/property-management/rentals/new')}>New Rental Property</Button>
         }
       />
 

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Check, AlertTriangle, Plus, Trash2, FileText } from 'lucide-react';
 import axios from 'axios';
 import { Spinner, Button, Field, Input, Textarea } from '../ui/kit';
+import FileUpload from '../ui/FileUpload';
 
 // Public page — vendor/buyer/supplier/landlord opens /register/:token, no login.
 const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || '/api' });
@@ -24,7 +25,7 @@ export default function RoleRegistration() {
   const [error, setError] = useState(null);
   const [form, setForm] = useState({});
   const [docs, setDocs] = useState([]);
-  const [newDoc, setNewDoc] = useState({ title: '', file_url: '' });
+  const [newDoc, setNewDoc] = useState({ document_type: '', title: '', file_url: '', file_url_back: '', reference_no: '' });
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
@@ -54,9 +55,14 @@ export default function RoleRegistration() {
   };
 
   const addDoc = () => {
-    if (!newDoc.title || !newDoc.file_url) return;
-    setDocs((d) => [...d, { ...newDoc, doc_type: newDoc.title.toLowerCase().replace(/[^a-z0-9]+/g, '_') }]);
-    setNewDoc({ title: '', file_url: '' });
+    const requirement = (cfg.document_requirements || []).find((item) => item.document_type === newDoc.document_type);
+    if (!newDoc.document_type || !newDoc.file_url || (requirement?.front_back && !newDoc.file_url_back)) return;
+    setDocs((current) => [...current.filter((item) => item.document_type !== newDoc.document_type), {
+      ...newDoc,
+      title: requirement?.label || newDoc.title || newDoc.document_type,
+      is_required: requirement?.required !== false,
+    }]);
+    setNewDoc({ document_type: '', title: '', file_url: '', file_url_back: '', reference_no: '' });
   };
 
   const Shell = ({ children }) => (
@@ -118,24 +124,37 @@ export default function RoleRegistration() {
       <div className="card" style={{ padding: 20, marginBottom: 14 }}>
         <h4 className="form-section-title" style={{ marginTop: 0 }}>Documents</h4>
         <div className="cell-sub" style={{ fontSize: 12.5, marginBottom: 10 }}>
-          Required: {cfg.required_documents.join(' · ')}<br />
-          Upload your files to Google Drive / Dropbox and paste the share links below.
+          Required: {(cfg.document_requirements || []).filter((item) => item.required).map((item) => item.label).join(' · ') || cfg.required_documents.join(' · ')}<br />
+          Choose each document type, upload the file (front and back where requested), then add it.
         </div>
         {docs.map((d, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px dashed var(--border)', fontSize: 13 }}>
             <FileText size={14} color="var(--primary)" />
-            <span style={{ flex: 1 }}>{d.title}</span>
+            <span style={{ flex: 1 }}>{d.title}{d.file_url_back ? ' · front & back' : ''}</span>
             <button className="btn btn-ghost btn-icon btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setDocs((x) => x.filter((_, idx) => idx !== i))}><Trash2 size={13} /></button>
           </div>
         ))}
-        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-          <select className="select" style={{ minWidth: 170 }} value={newDoc.title} onChange={(e) => setNewDoc((s) => ({ ...s, title: e.target.value }))}>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <select className="select" style={{ minWidth: 190 }} value={newDoc.document_type} onChange={(e) => {
+            const requirement = (cfg.document_requirements || []).find((item) => item.document_type === e.target.value);
+            setNewDoc((current) => ({ ...current, document_type: e.target.value, title: requirement?.label || e.target.value }));
+          }}>
             <option value="">Document type…</option>
-            {cfg.required_documents.map((d) => <option key={d} value={d}>{d}</option>)}
-            <option value="Other">Other</option>
+            {(cfg.document_requirements || []).map((item) => <option key={item.document_type} value={item.document_type}>{item.label}{item.required ? ' *' : ' (optional)'}</option>)}
+            {!(cfg.document_requirements || []).length && cfg.required_documents.map((label) => <option key={label} value={label.toLowerCase().replace(/[^a-z0-9]+/g, '_')}>{label}</option>)}
+            <option value="other">Other</option>
           </select>
-          <Input style={{ flex: 1, minWidth: 200 }} placeholder="Paste file link…" value={newDoc.file_url} onChange={(e) => setNewDoc((s) => ({ ...s, file_url: e.target.value }))} />
-          <Button size="sm" icon={Plus} onClick={addDoc}>Add</Button>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <FileUpload compact value={newDoc.file_url} onChange={(url) => setNewDoc((s) => ({ ...s, file_url: url }))}
+              uploader={async (file) => { const fd = new FormData(); fd.append('file', file); const { data } = await api.post(`/uploads/registration/${token}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }); return data.data.url; }}
+              label="Upload ID / KYC / photo (image or PDF)" />
+          </div>
+          {(cfg.document_requirements || []).find((item) => item.document_type === newDoc.document_type)?.front_back && <div style={{ flex: 1, minWidth: 220 }}>
+            <FileUpload compact value={newDoc.file_url_back} onChange={(url) => setNewDoc((current) => ({ ...current, file_url_back: url }))}
+              uploader={async (file) => { const fd = new FormData(); fd.append('file', file); const { data } = await api.post(`/uploads/registration/${token}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }); return data.data.url; }}
+              label="Upload back side (required)" />
+          </div>}
+          <Button size="sm" icon={Plus} onClick={addDoc} disabled={!newDoc.document_type || !newDoc.file_url || ((cfg.document_requirements || []).find((item) => item.document_type === newDoc.document_type)?.front_back && !newDoc.file_url_back)}>Add</Button>
         </div>
       </div>
 

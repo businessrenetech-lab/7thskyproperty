@@ -117,7 +117,7 @@ self.__SERVER_FILES_MANIFEST={
         "transform": "lodash/{{member}}"
       }
     },
-    "outputFileTracingRoot": "C:\\Users\\ADMIN\\OneDrive\\Documents\\PERSONAL\\DEVELOPMENTS\\LA FINAL\\website",
+    "outputFileTracingRoot": "C:\\Users\\ADMIN\\OneDrive\\Documents\\PERSONAL\\DEVELOPMENTS\\Seventh Sky Properties\\website",
     "cacheComponents": false,
     "cacheLife": {
       "default": {
@@ -318,7 +318,7 @@ self.__SERVER_FILES_MANIFEST={
     "configFileName": "next.config.mjs",
     "skipTrailingSlashRedirect": true,
     "turbopack": {
-      "root": "C:\\Users\\ADMIN\\OneDrive\\Documents\\PERSONAL\\DEVELOPMENTS\\LA FINAL\\website"
+      "root": "C:\\Users\\ADMIN\\OneDrive\\Documents\\PERSONAL\\DEVELOPMENTS\\Seventh Sky Properties\\website"
     },
     "distDirRoot": ".next",
     "_originalRewrites": {
@@ -327,7 +327,7 @@ self.__SERVER_FILES_MANIFEST={
       "fallback": []
     }
   },
-  "appDir": "C:\\Users\\ADMIN\\OneDrive\\Documents\\PERSONAL\\DEVELOPMENTS\\LA FINAL\\website",
+  "appDir": "C:\\Users\\ADMIN\\OneDrive\\Documents\\PERSONAL\\DEVELOPMENTS\\Seventh Sky Properties\\website",
   "relativeAppDir": "",
   "files": [
     ".next\\routes-manifest.json",

@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Trash2, RefreshCw, Wallet, Check } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Wallet, Check, Send, ShieldCheck } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 import { PageHead, DataTable, StatusBadge, Spinner, Button, Field, Input, Textarea, Select, Drawer, Badge } from '../ui/kit';
 import { Combo } from '../ui/pickers';
 
@@ -159,6 +160,7 @@ function CreateSettlement({ init, onClose, onCreated }) {
 // ─── DETAIL / DECIDE / REFUND ────────────────────────────────────────────────
 function SettlementDetail({ id, onClose, onChanged }) {
   const toast = useToast();
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [refundForm, setRefundForm] = useState({ refund_method: 'bank_transfer', refund_reference: '' });
   const [busy, setBusy] = useState(null);
@@ -175,10 +177,18 @@ function SettlementDetail({ id, onClose, onChanged }) {
     catch (e) { toast.error(e.response?.data?.error || 'Failed'); } finally { setBusy(null); }
   };
 
-  const decide = (decision) => act(() => api.post(`/deposit-settlements/${id}/decide`, { decision }), `Settlement ${decision}`);
+  const decide = (decision) => act(() => api.post(`/deposit-settlements/${id}/decide`, { decision }), `Owner decision recorded: ${decision}`);
   const refund = () => act(() => api.post(`/deposit-settlements/${id}/mark-refunded`, refundForm), 'Refund recorded, tenancy closed');
+  // The control chain — one recorded action per stage, each by a different person.
+  const stage = (path, body, msg) => act(() => api.post(`/deposit-settlements/${id}/${path}`, body), msg);
 
   if (!data) return <Drawer title="Loading…" onClose={onClose}><div style={{ padding: 40, textAlign: 'center' }}><Spinner /></div></Drawer>;
+
+  const st = data.status;
+  const isDraft = ['computing', 'pending_owner', 'disputed'].includes(st);
+  const mine = (who) => who && who === user?.id;
+  const cannotReview = mine(data.submitted_by);
+  const cannotApprove = mine(data.reviewed_by) || mine(data.submitted_by);
 
   const lines = Array.isArray(data.deduction_lines) ? data.deduction_lines : (() => { try { return JSON.parse(data.deduction_lines || '[]'); } catch { return []; } })();
 
@@ -186,14 +196,26 @@ function SettlementDetail({ id, onClose, onChanged }) {
     <Drawer title={`Settlement ${data.settlement_code}`} width={720} onClose={onClose}
       footer={<>
         <Button variant="ghost" onClick={onClose}>Close</Button>
-        {data.status === 'pending_owner' && (
+        {isDraft && (
           <>
-            <Button variant="ghost" style={{ color: 'var(--danger)' }} onClick={() => decide('disputed')} disabled={busy}>Mark Disputed</Button>
-            <Button icon={Check} onClick={() => decide('approved')} disabled={busy}>Owner Approved</Button>
+            <Button variant="ghost" style={{ color: 'var(--danger)' }} onClick={() => decide('disputed')} disabled={busy}>Owner disputed</Button>
+            {!data.owner_approved && <Button variant="ghost" onClick={() => decide('approved')} disabled={busy}>Owner signed off</Button>}
+            <Button icon={Send} onClick={() => stage('submit', {}, 'Submitted for independent review')} disabled={busy}>Submit for review</Button>
           </>
         )}
-        {data.status === 'approved' && (
-          <Button icon={Wallet} onClick={refund} disabled={busy}>Record Refund</Button>
+        {st === 'pending_review' && (
+          <>
+            <Button variant="ghost" onClick={() => stage('review', { decision: 'rejected' }, 'Sent back to the preparer')} disabled={busy}>Send back</Button>
+            <Button icon={ShieldCheck} onClick={() => stage('review', { decision: 'reviewed' }, 'Independent review recorded')} disabled={busy || cannotReview}
+              title={cannotReview ? 'You submitted this — someone else must review it.' : undefined}>Record review</Button>
+          </>
+        )}
+        {st === 'reviewed' && (
+          <Button icon={Check} onClick={() => stage('approve', {}, 'Settlement approved')} disabled={busy || cannotApprove}
+            title={cannotApprove ? 'You submitted or reviewed this — someone else must approve it.' : undefined}>Approve</Button>
+        )}
+        {st === 'approved' && (
+          <Button icon={Wallet} onClick={refund} disabled={busy}>Finalise &amp; lock</Button>
         )}
       </>}
     >

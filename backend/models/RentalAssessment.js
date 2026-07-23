@@ -19,6 +19,7 @@ const RentalAssessment = sequelize.define('RentalAssessment', {
   ready_for_marketing: { type: DataTypes.BOOLEAN, defaultValue: false },
   summary: DataTypes.TEXT,
   status: { type: DataTypes.ENUM('draft', 'in_progress', 'completed'), defaultValue: 'draft' },
+  report_url: DataTypes.STRING,
   created_by: DataTypes.INTEGER,
 }, { tableName: 'rental_assessments', underscored: true });
 
@@ -36,6 +37,14 @@ const RentalAssessmentItem = sequelize.define('RentalAssessmentItem', {
   maintenance_recommendation: DataTypes.TEXT,
   safety_observation: DataTypes.TEXT,
   condition_rating: { type: DataTypes.ENUM('good', 'fair', 'poor', 'damaged', 'na'), defaultValue: 'na' },
+  // Room-checklist verdicts (null = not assessed / N/A)
+  is_clean: DataTypes.BOOLEAN,
+  is_undamaged: DataTypes.BOOLEAN,
+  is_working: DataTypes.BOOLEAN,
+  photos: {
+    type: DataTypes.JSON, defaultValue: [],
+    get() { const v = this.getDataValue('photos'); if (typeof v === 'string') { try { return JSON.parse(v); } catch { return []; } } return v || []; },
+  },
   photo_url: DataTypes.STRING,
   work_order_id: DataTypes.INTEGER,
   notes: DataTypes.TEXT,

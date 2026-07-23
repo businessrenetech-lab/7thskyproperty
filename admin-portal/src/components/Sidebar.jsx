@@ -3,7 +3,8 @@ import {
   LayoutDashboard, Users, BookOpen, DollarSign, Settings, LogOut, Map as RoomMap,
   FileText, BarChart3, Calendar, Layers, GraduationCap, CreditCard, Package, Zap,
   ChevronRight, ChevronDown, Sun, Moon, Wallet, PieChart, TrendingUp, BookOpenCheck,
-  Receipt, Shield, Scale, Globe, Lock, Clock, Briefcase, Award, Network, UserCheck, X
+  Receipt, Shield, Scale, Globe, Lock, Clock, Briefcase, Award, Network, UserCheck, X,
+  Fingerprint
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -55,6 +56,7 @@ const ALL_SECTIONS = [
     items: [
       { name: 'HR Dashboard',      icon: <UserCheck size={18} />,  id: 'hrm-dashboard' },
       { name: 'Staff Attendance',  icon: <Clock size={18} />,      id: 'staff-attendance' },
+      { name: 'Biometric',          icon: <Fingerprint size={18} />, id: 'biometric' },
       { name: 'Staff & Payroll',   icon: <Users size={18} />,      id: 'payroll' },
       { name: 'Leave Manager',     icon: <Calendar size={18} />,   id: 'leave-management' },
       { name: 'Recruitment',       icon: <Briefcase size={18} />,  id: 'recruitment' },
@@ -116,14 +118,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   return (
     <aside className={`sidebar glass-morphism ${isOpen ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       {/* Logo */}
-      <div style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid var(--border)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
-          <img src="/logo.png" alt="Language Academy" style={{ width: '40px', height: '40px', objectFit: 'contain', flexShrink: 0 }} />
-          <div>
-            <h2 style={{ color: 'var(--text-main)', fontSize: '1rem', fontWeight: '800', letterSpacing: '0.5px', margin: 0, fontFamily: 'var(--font-heading)' }}>LANGUAGE ACADEMY</h2>
-            <p style={{ fontSize: '10px', color: 'var(--accent)', margin: 0, textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '700' }}>Executive Cloud</p>
-          </div>
-        </div>
+      <div style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid var(--border)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
         {/* Close button — visible only on mobile */}
         <button className="sidebar-close-btn" onClick={(e) => { e.stopPropagation(); onClose(); }} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', padding: '8px', cursor: 'pointer', zIndex: 10, position: 'relative', minWidth: '40px', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent' }}>
           <X size={22} />

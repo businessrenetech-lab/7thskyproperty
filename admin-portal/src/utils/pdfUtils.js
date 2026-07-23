@@ -61,21 +61,21 @@ export const buildPdfHeaderHtml = async (reportTitle, periodText) => {
   return `
     <div style="margin-bottom:0; padding:0;">
       <!-- Top Accent Bar -->
-      <div style="height:5px; background:linear-gradient(90deg, #275fa7, #7bc62e); border-radius:3px 3px 0 0;"></div>
+      <div style="height:5px; background:linear-gradient(90deg, #003768, #1bbdf1); border-radius:3px 3px 0 0;"></div>
       
       <!-- Header Row -->
       <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 24px 14px; background:#fafbfc; border-bottom:1px solid #e2e8f0;">
         <div style="display:flex; align-items:center; gap:12px;">
           ${logo ? `<img src="${logo}" style="height:44px;" />` : ''}
           <div>
-            <div style="font-size:17px; font-weight:800; color:#275fa7; letter-spacing:0.5px; font-family:'Outfit','Inter',sans-serif;">LANGUAGE ACADEMY BANGLADESH</div>
+            <div style="font-size:17px; font-weight:800; color:#003768; letter-spacing:0.5px; font-family:'Outfit','Inter',sans-serif;">LANGUAGE ACADEMY BANGLADESH</div>
             <div style="font-size:9px; color:#64748b; margin-top:2px;">${info.address}</div>
             <div style="font-size:9px; color:#64748b;">Phone: ${info.phone} | ${info.email} | ${info.website}</div>
           </div>
         </div>
         ${reportTitle ? `
         <div style="text-align:right;">
-          <div style="font-size:15px; font-weight:700; color:#275fa7; border:2px solid #275fa7; padding:5px 18px; border-radius:6px; letter-spacing:1px; text-transform:uppercase;">${reportTitle}</div>
+          <div style="font-size:15px; font-weight:700; color:#003768; border:2px solid #003768; padding:5px 18px; border-radius:6px; letter-spacing:1px; text-transform:uppercase;">${reportTitle}</div>
           ${periodText ? `<div style="font-size:10px; color:#64748b; margin-top:6px;">${periodText}</div>` : ''}
         </div>
         ` : ''}
@@ -126,9 +126,9 @@ export const buildReportTableHtml = (columns, rows, formatCell, reportTitle, per
   let footerRow = '';
   if (hasTotals) {
     const footCells = columns.map((key, i) => {
-      if (i === 0) return `<td style="padding:10px 12px; font-size:12px; font-weight:800; color:#1e293b; border-top:2px solid #275fa7; background:#f0f7ff;">Total (${rows.length} records)</td>`;
-      if (sumKeys.includes(key)) return `<td style="padding:10px 12px; font-size:12px; font-weight:800; color:#275fa7; text-align:right; border-top:2px solid #275fa7; background:#f0f7ff; font-variant-numeric:tabular-nums;">${money(totals[key])}</td>`;
-      return `<td style="padding:10px 12px; border-top:2px solid #275fa7; background:#f0f7ff;"></td>`;
+      if (i === 0) return `<td style="padding:10px 12px; font-size:12px; font-weight:800; color:#1e293b; border-top:2px solid #003768; background:#f0f7ff;">Total (${rows.length} records)</td>`;
+      if (sumKeys.includes(key)) return `<td style="padding:10px 12px; font-size:12px; font-weight:800; color:#003768; text-align:right; border-top:2px solid #003768; background:#f0f7ff; font-variant-numeric:tabular-nums;">${money(totals[key])}</td>`;
+      return `<td style="padding:10px 12px; border-top:2px solid #003768; background:#f0f7ff;"></td>`;
     }).join('');
     footerRow = `<tr>${footCells}</tr>`;
   }
@@ -136,7 +136,7 @@ export const buildReportTableHtml = (columns, rows, formatCell, reportTitle, per
   return `
     <table style="width:100%; border-collapse:collapse; margin-top:0; border:1px solid #e2e8f0; border-radius:6px;">
       <thead>
-        <tr style="background:linear-gradient(135deg, #275fa7 0%, #1e4d8a 100%);">${headerCells}</tr>
+        <tr style="background:linear-gradient(135deg, #003768 0%, #1e4d8a 100%);">${headerCells}</tr>
       </thead>
       <tbody>${bodyRows}</tbody>
       ${footerRow ? `<tfoot>${footerRow}</tfoot>` : ''}
@@ -211,20 +211,20 @@ export const generateReceiptHtml = async (tx) => {
     <div style="width:100%; font-family:'Inter','Segoe UI',sans-serif; position:relative; overflow:hidden; background:#ffffff; padding:0;">
       
       <!-- Top Accent Bar -->
-      <div style="height:4px; background:linear-gradient(90deg, #275fa7, #7bc62e);"></div>
+      <div style="height:4px; background:linear-gradient(90deg, #003768, #1bbdf1);"></div>
       
       <!-- Header -->
       <div style="padding:20px 28px 14px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0;">
         <div style="display:flex; align-items:center; gap:12px;">
           ${logo ? `<img src="${logo}" style="height:48px;" />` : ''}
           <div>
-            <div style="font-size:18px; font-weight:800; color:#275fa7; font-family:'Outfit',sans-serif;">LANGUAGE ACADEMY BANGLADESH</div>
+            <div style="font-size:18px; font-weight:800; color:#003768; font-family:'Outfit',sans-serif;">LANGUAGE ACADEMY BANGLADESH</div>
             <div style="font-size:9px; color:#64748b;">${info.address}</div>
             <div style="font-size:9px; color:#64748b;">Phone: ${info.phone} | ${info.email} | ${info.website}</div>
           </div>
         </div>
         <div style="text-align:right;">
-          <div style="font-size:16px; font-weight:800; color:#275fa7; letter-spacing:2px; border:2px solid #275fa7; padding:4px 14px; border-radius:6px;">MONEY RECEIPT</div>
+          <div style="font-size:16px; font-weight:800; color:#003768; letter-spacing:2px; border:2px solid #003768; padding:4px 14px; border-radius:6px;">MONEY RECEIPT</div>
         </div>
       </div>
 
@@ -237,7 +237,7 @@ export const generateReceiptHtml = async (tx) => {
           <div style="display:flex; gap:28px;">
             <div>
               <div style="font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px;">Receipt No</div>
-              <div style="font-size:13px; font-weight:700; color:#275fa7;">${receiptNo}</div>
+              <div style="font-size:13px; font-weight:700; color:#003768;">${receiptNo}</div>
             </div>
             <div>
               <div style="font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px;">Date / Time</div>
@@ -266,7 +266,7 @@ export const generateReceiptHtml = async (tx) => {
           </tr>
           <tr>
             <td style="padding:10px 14px; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; border:1px solid #e2e8f0;">Amount (BDT)</td>
-            <td style="padding:10px 14px; font-size:20px; font-weight:800; color:#275fa7; border:1px solid #e2e8f0;">৳${amount.toLocaleString()}</td>
+            <td style="padding:10px 14px; font-size:20px; font-weight:800; color:#003768; border:1px solid #e2e8f0;">৳${amount.toLocaleString()}</td>
           </tr>
           <tr style="background:#f8fafc;">
             <td style="padding:10px 14px; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; border:1px solid #e2e8f0;">Amount in Words</td>
@@ -283,7 +283,7 @@ export const generateReceiptHtml = async (tx) => {
       </div>
 
       <!-- Bottom Accent Bar -->
-      <div style="height:3px; background:linear-gradient(90deg, #7bc62e, #275fa7); margin-top:8px;"></div>
+      <div style="height:3px; background:linear-gradient(90deg, #1bbdf1, #003768); margin-top:8px;"></div>
     </div>
   `;
 };
@@ -339,21 +339,21 @@ export const generateInvoiceHtml = async (inv) => {
     <div style="width:100%; font-family:'Inter','Segoe UI',sans-serif; position:relative; overflow:hidden; background:#ffffff; padding:0;">
       
       <!-- Top Accent Bar -->
-      <div style="height:4px; background:linear-gradient(90deg, #275fa7, #7bc62e);"></div>
+      <div style="height:4px; background:linear-gradient(90deg, #003768, #1bbdf1);"></div>
       
       <!-- Header -->
       <div style="padding:24px 32px 16px; display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid #e2e8f0;">
         <div style="display:flex; align-items:center; gap:14px;">
           ${logo ? `<img src="${logo}" style="height:52px;" />` : ''}
           <div>
-            <div style="font-size:20px; font-weight:800; color:#275fa7; font-family:'Outfit',sans-serif;">LANGUAGE ACADEMY BANGLADESH</div>
+            <div style="font-size:20px; font-weight:800; color:#003768; font-family:'Outfit',sans-serif;">LANGUAGE ACADEMY BANGLADESH</div>
             <div style="font-size:10px; color:#64748b; margin-top:2px;">${info.address}</div>
             <div style="font-size:10px; color:#64748b;">Phone: ${info.phone} | ${info.email}</div>
             <div style="font-size:10px; color:#64748b;">Web: ${info.website}</div>
           </div>
         </div>
         <div style="text-align:right;">
-          <div style="font-size:20px; font-weight:800; color:#275fa7; letter-spacing:3px; border:2px solid #275fa7; padding:6px 18px; border-radius:6px;">INVOICE</div>
+          <div style="font-size:20px; font-weight:800; color:#003768; letter-spacing:3px; border:2px solid #003768; padding:6px 18px; border-radius:6px;">INVOICE</div>
           <div style="margin-top:10px; font-size:12px; color:#64748b;">Invoice #: <strong style="color:#1e293b;">${inv.invoice_no || 'N/A'}</strong></div>
           <div style="font-size:12px; color:#64748b;">Date: <strong style="color:#1e293b;">${issuedAt}</strong></div>
           <div style="font-size:12px; color:#64748b;">Due: <strong style="color:#1e293b;">${dueDate}</strong></div>
@@ -378,7 +378,7 @@ export const generateInvoiceHtml = async (inv) => {
         <!-- Items Table -->
         <table style="width:100%; border-collapse:collapse; margin-bottom:20px; position:relative; z-index:1;">
           <thead>
-            <tr style="background:#275fa7;">
+            <tr style="background:#003768;">
               <th style="padding:10px 14px; font-size:10px; font-weight:700; color:#fff; text-align:left; text-transform:uppercase; letter-spacing:0.5px; border:1px solid #1e4d8a;">#</th>
               <th style="padding:10px 14px; font-size:10px; font-weight:700; color:#fff; text-align:left; text-transform:uppercase; letter-spacing:0.5px; border:1px solid #1e4d8a;">Description</th>
               <th style="padding:10px 14px; font-size:10px; font-weight:700; color:#fff; text-align:right; text-transform:uppercase; letter-spacing:0.5px; border:1px solid #1e4d8a;">Amount</th>
@@ -408,8 +408,8 @@ export const generateInvoiceHtml = async (inv) => {
               <td style="padding:8px 14px; font-size:13px; font-weight:600; text-align:right; color:#10b981; border:1px solid #e2e8f0;">৳${paid.toLocaleString()}</td>
             </tr>
             <tr style="background:#f0f9ff;">
-              <td style="padding:10px 14px; font-size:13px; font-weight:800; color:#275fa7; border:1px solid #e2e8f0;">Balance Due</td>
-              <td style="padding:10px 14px; font-size:16px; font-weight:800; text-align:right; color:#275fa7; border:1px solid #e2e8f0;">৳${due.toLocaleString()}</td>
+              <td style="padding:10px 14px; font-size:13px; font-weight:800; color:#003768; border:1px solid #e2e8f0;">Balance Due</td>
+              <td style="padding:10px 14px; font-size:16px; font-weight:800; text-align:right; color:#003768; border:1px solid #e2e8f0;">৳${due.toLocaleString()}</td>
             </tr>
           </table>
         </div>
@@ -430,7 +430,7 @@ export const generateInvoiceHtml = async (inv) => {
       </div>
       
       <!-- Bottom Accent Bar -->
-      <div style="height:3px; background:linear-gradient(90deg, #7bc62e, #275fa7);"></div>
+      <div style="height:3px; background:linear-gradient(90deg, #1bbdf1, #003768);"></div>
     </div>
   `;
 };
@@ -474,20 +474,20 @@ export const generateVoucherHtml = async (expense) => {
     <div style="width:100%; font-family:'Inter','Segoe UI',sans-serif; position:relative; overflow:hidden; background:#ffffff; padding:0;">
       
       <!-- Top Accent Bar -->
-      <div style="height:4px; background:linear-gradient(90deg, #275fa7, #7bc62e);"></div>
+      <div style="height:4px; background:linear-gradient(90deg, #003768, #1bbdf1);"></div>
       
       <!-- Header -->
       <div style="padding:20px 28px 14px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0;">
         <div style="display:flex; align-items:center; gap:12px;">
           ${logo ? `<img src="${logo}" style="height:48px;" />` : ''}
           <div>
-            <div style="font-size:18px; font-weight:800; color:#275fa7; font-family:'Outfit',sans-serif;">LANGUAGE ACADEMY BANGLADESH</div>
+            <div style="font-size:18px; font-weight:800; color:#003768; font-family:'Outfit',sans-serif;">LANGUAGE ACADEMY BANGLADESH</div>
             <div style="font-size:9px; color:#64748b;">${info.address}</div>
             <div style="font-size:9px; color:#64748b;">Phone: ${info.phone} | ${info.email} | ${info.website}</div>
           </div>
         </div>
         <div style="text-align:right;">
-          <div style="font-size:16px; font-weight:800; color:#275fa7; letter-spacing:2px; border:2px solid #275fa7; padding:4px 14px; border-radius:6px;">MONEY VOUCHER</div>
+          <div style="font-size:16px; font-weight:800; color:#003768; letter-spacing:2px; border:2px solid #003768; padding:4px 14px; border-radius:6px;">MONEY VOUCHER</div>
         </div>
       </div>
 
@@ -500,7 +500,7 @@ export const generateVoucherHtml = async (expense) => {
           <div style="display:flex; gap:28px;">
             <div>
               <div style="font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px;">Voucher No</div>
-              <div style="font-size:13px; font-weight:700; color:#275fa7;">${voucherNo}</div>
+              <div style="font-size:13px; font-weight:700; color:#003768;">${voucherNo}</div>
             </div>
             <div>
               <div style="font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px;">Date</div>
@@ -525,7 +525,7 @@ export const generateVoucherHtml = async (expense) => {
           </tr>
           <tr style="background:#f8fafc;">
             <td style="padding:10px 14px; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; border:1px solid #e2e8f0;">Amount (BDT)</td>
-            <td style="padding:10px 14px; font-size:20px; font-weight:800; color:#275fa7; border:1px solid #e2e8f0;">৳${amount.toLocaleString()}</td>
+            <td style="padding:10px 14px; font-size:20px; font-weight:800; color:#003768; border:1px solid #e2e8f0;">৳${amount.toLocaleString()}</td>
           </tr>
           <tr>
             <td style="padding:10px 14px; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; border:1px solid #e2e8f0;">Amount in Words</td>
@@ -542,7 +542,7 @@ export const generateVoucherHtml = async (expense) => {
       </div>
 
       <!-- Bottom Accent Bar -->
-      <div style="height:3px; background:linear-gradient(90deg, #7bc62e, #275fa7); margin-top:8px;"></div>
+      <div style="height:3px; background:linear-gradient(90deg, #1bbdf1, #003768); margin-top:8px;"></div>
     </div>
   `;
 };
@@ -607,7 +607,7 @@ export const downloadExpenseListPdf = async (expenses, dateRange) => {
       <div style="padding:18px 24px 24px;">
         <table style="width:100%; border-collapse:collapse; border:1px solid #e2e8f0;">
           <thead>
-            <tr style="background:linear-gradient(135deg, #275fa7 0%, #1e4d8a 100%);">
+            <tr style="background:linear-gradient(135deg, #003768 0%, #1e4d8a 100%);">
               <th style="${thStyle} text-align:left;">Date</th>
               <th style="${thStyle} text-align:left;">Description</th>
               <th style="${thStyle} text-align:left;">Category</th>
@@ -619,9 +619,9 @@ export const downloadExpenseListPdf = async (expenses, dateRange) => {
           <tbody>${tableRows}</tbody>
           <tfoot>
             <tr>
-              <td colspan="3" style="padding:10px 12px; font-size:12px; font-weight:800; color:#1e293b; text-align:right; border-top:2px solid #275fa7; background:#f0f7ff;">Total (${expenses.filter(e => e.status !== 'deleted').length} active records)</td>
-              <td style="padding:10px 12px; font-size:13px; font-weight:800; color:#275fa7; text-align:right; border-top:2px solid #275fa7; background:#f0f7ff; font-variant-numeric:tabular-nums;">৳${totalAmount.toLocaleString()}</td>
-              <td colspan="2" style="border-top:2px solid #275fa7; background:#f0f7ff;"></td>
+              <td colspan="3" style="padding:10px 12px; font-size:12px; font-weight:800; color:#1e293b; text-align:right; border-top:2px solid #003768; background:#f0f7ff;">Total (${expenses.filter(e => e.status !== 'deleted').length} active records)</td>
+              <td style="padding:10px 12px; font-size:13px; font-weight:800; color:#003768; text-align:right; border-top:2px solid #003768; background:#f0f7ff; font-variant-numeric:tabular-nums;">৳${totalAmount.toLocaleString()}</td>
+              <td colspan="2" style="border-top:2px solid #003768; background:#f0f7ff;"></td>
             </tr>
           </tfoot>
         </table>
@@ -633,7 +633,7 @@ export const downloadExpenseListPdf = async (expenses, dateRange) => {
         </div>
       </div>
       <!-- Bottom Accent Bar -->
-      <div style="height:4px; background:linear-gradient(90deg, #7bc62e, #275fa7); border-radius:0 0 3px 3px;"></div>
+      <div style="height:4px; background:linear-gradient(90deg, #1bbdf1, #003768); border-radius:0 0 3px 3px;"></div>
     </div>
   `;
 

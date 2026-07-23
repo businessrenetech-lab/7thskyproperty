@@ -120,7 +120,7 @@ exports.startAgreement = asyncHandler(async (req, res) => {
     }
 
     await t.update({ lease_status: 'sent_for_signature', status: t.status === 'active' ? 'active' : 'upcoming', agreement_sent_date: new Date().toISOString().slice(0, 10) }, { transaction: tx });
-    const [role] = await PartyRoleProfile.findOrCreate({
+    const [role, roleCreated] = await PartyRoleProfile.findOrCreate({
       where: { contact_id: t.tenant_contact_id, role_type: 'tenant', tenancy_id: t.id },
       defaults: {
         branch_id: t.branch_id,
@@ -138,6 +138,9 @@ exports.startAgreement = asyncHandler(async (req, res) => {
       },
       transaction: tx,
     });
+    // A returning tenant's verified KYC carries over from their previous
+    // tenancy — this agreement still has to be signed for the new property.
+    if (roleCreated) { try { await require('../services/kycReuse.service').applyKycReuse(role, { transaction: tx, actorId: req.user?.id }); } catch { /* non-fatal */ } }
     await role.update({ agreement_id: agreement?.id || role.agreement_id, envelope_id: envelope.id, status: 'agreement_pending', next_action: 'Send tenancy agreement for signing' }, { transaction: tx });
     return envelope;
   });

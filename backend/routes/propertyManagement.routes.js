@@ -7,6 +7,7 @@ const ROLES = ['super_admin', 'branch_admin', 'property_manager', 'sales_executi
 router.use(authMiddleware, roleMiddleware(ROLES));
 
 router.get('/action-center', ctrl.actionCenter);
+router.get('/dashboard-metrics', ctrl.dashboardMetrics);
 
 // Renewals dashboard (Phase 7)
 const lifecycleCtrl = require('../controllers/tenancyLifecycle.controller');

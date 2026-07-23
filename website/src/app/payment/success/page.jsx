@@ -23,7 +23,7 @@ function CelebrationDots() {
             height: `${4 + Math.random() * 8}px`,
             left: `${Math.random() * 100}%`,
             top: `${-10 + Math.random() * 30}%`,
-            background: ['#7bc62e', '#275fa7', '#f59e0b', '#06b6d4', '#ec4899'][Math.floor(Math.random() * 5)],
+            background: ['#1bbdf1', '#003768', '#f59e0b', '#06b6d4', '#ec4899'][Math.floor(Math.random() * 5)],
             opacity: 0.15 + Math.random() * 0.35,
             animation: `float ${3 + Math.random() * 4}s ease-in-out infinite`,
             animationDelay: `${Math.random() * 3}s`,

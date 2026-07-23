@@ -33,7 +33,7 @@ const MoveInChecklistItem = require('../models/MoveInChecklistItem');
 const FIELDS = [
   'title', 'slug', 'category', 'property_type', 'listing_type', 'status', 'price', 'price_unit', 'currency', 'is_negotiable',
   'address', 'area', 'city', 'district', 'postal_code', 'country', 'latitude', 'longitude', 'map_url', 'nearby_places',
-  'bedrooms', 'bathrooms', 'parking', 'land_size', 'building_size', 'floor_number', 'total_floors', 'year_built',
+  'bedrooms', 'bathrooms', 'balconies', 'parking', 'land_size', 'building_size', 'floor_number', 'total_floors', 'total_units', 'building_height', 'year_built', 'unit_floor_plans',
   'furnishing', 'features', 'description', 'featured_image_url', 'video_tour_url', 'drone_video_url', 'floor_plan_url',
   'virtual_tour_url', 'owner_contact_id', 'tenant_contact_id', 'listing_agent_id', 'manager_id', 'is_published', 'is_featured',
   'seo_title', 'seo_description',
@@ -41,7 +41,18 @@ const FIELDS = [
   'occupancy_status', 'utilities_active', 'market_rent_min', 'market_rent_max', 'approved_monthly_rent', 'rent_due_day',
   'management_fee_pct', 'lease_min_period_months', 'property_condition', 'access_contact', 'remarks',
   'pm_status', 'rental_readiness_status', 'listing_status',
+  // Property wizard (0038)
+  'utilities', 'access_contacts', 'ownership_type', 'drawing_rooms', 'dining_rooms',
 ];
+
+// Keep the legacy utilities_active flag in sync with the per-utility toggles.
+function deriveUtilitiesActive(data) {
+  if (data.utilities === undefined) return data;
+  let u = data.utilities;
+  if (typeof u === 'string') { try { u = JSON.parse(u); } catch { u = []; } }
+  if (Array.isArray(u)) data.utilities_active = u.some((x) => x && x.active);
+  return data;
+}
 const { createLeasingProject, seedOwnerOnboardingItems } = require('../services/rentalWorkflow.service');
 const Project = require('../models/Project');
 const ProjectStage = require('../models/ProjectStage');
@@ -51,6 +62,14 @@ const ownerInc = { model: Contact, as: 'owner', attributes: contactAttrs };
 const tenantInc = { model: Contact, as: 'tenant', attributes: contactAttrs };
 const managerInc = { model: Contact, as: 'manager', attributes: contactAttrs };
 const num = (v) => Number(v || 0);
+const optionalDetail = async (label, fallback, fn) => {
+  try {
+    return await fn();
+  } catch (err) {
+    console.warn(`[PropertyDetail] ${label} skipped: ${err.message}`);
+    return fallback;
+  }
+};
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 
@@ -135,53 +154,67 @@ exports.list = asyncHandler(async (req, res) => {
 exports.getOne = asyncHandler(async (req, res) => {
   const p = await Property.findOne({
     where: { id: req.params.id, ...branchScope(req) },
-    include: [ownerInc, tenantInc, managerInc, { model: PropertyMedia, as: 'media' }, { model: PropertyDocument, as: 'documents' }],
+    include: [ownerInc, tenantInc, managerInc],
   });
   if (!p) return res.status(404).json({ error: 'Property not found.' });
 
+  const pid = p.id;
+
+  const [media, documents] = await Promise.all([
+    optionalDetail('media', [], () => PropertyMedia.findAll({ where: { property_id: pid }, order: [['sort_order', 'ASC'], ['created_at', 'DESC']] })),
+    optionalDetail('documents', [], () => PropertyDocument.findAll({ where: { property_id: pid }, order: [['created_at', 'DESC']] })),
+  ]);
+  p.setDataValue('media', media);
+  p.setDataValue('documents', documents);
+
   // Tenancies
-  const tenancies = await Tenancy.findAll({
+  const tenancies = await optionalDetail('tenancies', [], () => Tenancy.findAll({
     where: { property_id: p.id },
     include: [
       { model: Contact, as: 'owner', attributes: contactAttrs },
       { model: Contact, as: 'tenant', attributes: contactAttrs },
     ],
     order: [['created_at', 'DESC']],
-  });
+  }));
   // Attach outstanding per tenancy
   const tenancyData = await Promise.all(tenancies.map(async (t) => {
     const json = t.toJSON();
-    const [[agg]] = await sequelize.query(
+    const agg = await optionalDetail('tenancy outstanding', { outstanding: 0 }, async () => {
+      const [[row]] = await sequelize.query(
       'SELECT COALESCE(SUM(rent_due - rent_received),0) AS outstanding FROM rental_ledger WHERE property_id = :pid AND status IN ("due","partial","overdue","arrears")',
       { replacements: { pid: t.property_id || 0 } }
-    );
+      );
+      return row || { outstanding: 0 };
+    });
     json.outstanding = num(agg?.outstanding || 0);
     return json;
   }));
 
   // Owner profile + fees
-  const ownerProfile = await PropertyOwnerProfile.findOne({
+  const ownerProfile = await optionalDetail('owner profile', null, () => PropertyOwnerProfile.findOne({
     where: { property_id: p.id },
     include: [{ model: Contact, as: 'contact', attributes: contactAttrs }],
-  });
+  }));
   const fees = ownerProfile
-    ? await OwnerFeeSchedule.findAll({ where: { owner_profile_id: ownerProfile.id }, order: [['id', 'ASC']] })
+    ? await optionalDetail('owner fees', [], () => OwnerFeeSchedule.findAll({ where: { owner_profile_id: ownerProfile.id }, order: [['id', 'ASC']] }))
     : [];
 
   // Owner financials
-  const pid = p.id;
-  const [[finIn]] = await sequelize.query(`SELECT COALESCE(SUM(py.amount),0) AS total FROM payments py JOIN invoices inv ON py.invoice_id = inv.id WHERE inv.property_id = :pid AND py.direction = 'incoming' AND py.status = 'completed'`, { replacements: { pid } });
-  const [[finOut]] = await sequelize.query(`SELECT COALESCE(SUM(py.amount),0) AS total FROM payments py JOIN invoices inv ON py.invoice_id = inv.id WHERE inv.property_id = :pid AND py.direction = 'outgoing' AND py.status = 'completed'`, { replacements: { pid } });
-  const [[billsPend]] = await sequelize.query(`SELECT COALESCE(SUM(balance),0) AS total FROM invoices WHERE property_id = :pid AND invoice_kind = 'provider' AND status NOT IN ('paid','cancelled')`, { replacements: { pid } });
-  const [[invPend]] = await sequelize.query(`SELECT COALESCE(SUM(balance),0) AS total FROM invoices WHERE property_id = :pid AND invoice_kind = 'client' AND status NOT IN ('paid','cancelled')`, { replacements: { pid } });
-  const financials = {
-    money_in: num(finIn?.total), money_out: num(finOut?.total),
-    bills_pending: num(billsPend?.total), invoices_pending: num(invPend?.total),
-    balance: num(finIn?.total) - num(finOut?.total) - num(billsPend?.total),
-  };
+  const financials = await optionalDetail('financials', { money_in: 0, money_out: 0, bills_pending: 0, invoices_pending: 0, balance: 0 }, async () => {
+    const [[finIn]] = await sequelize.query(`SELECT COALESCE(SUM(py.amount),0) AS total FROM payments py JOIN invoices inv ON py.invoice_id = inv.id WHERE inv.property_id = :pid AND py.direction = 'incoming' AND py.status = 'completed'`, { replacements: { pid } });
+    const [[finOut]] = await sequelize.query(`SELECT COALESCE(SUM(py.amount),0) AS total FROM payments py JOIN invoices inv ON py.invoice_id = inv.id WHERE inv.property_id = :pid AND py.direction = 'outgoing' AND py.status = 'completed'`, { replacements: { pid } });
+    const [[billsPend]] = await sequelize.query(`SELECT COALESCE(SUM(balance),0) AS total FROM invoices WHERE property_id = :pid AND invoice_kind = 'provider' AND status NOT IN ('paid','cancelled')`, { replacements: { pid } });
+    const [[invPend]] = await sequelize.query(`SELECT COALESCE(SUM(balance),0) AS total FROM invoices WHERE property_id = :pid AND invoice_kind = 'client' AND status NOT IN ('paid','cancelled')`, { replacements: { pid } });
+    return {
+      money_in: num(finIn?.total), money_out: num(finOut?.total),
+      bills_pending: num(billsPend?.total), invoices_pending: num(invPend?.total),
+      balance: num(finIn?.total) - num(finOut?.total) - num(billsPend?.total),
+    };
+  });
 
   // Recent activity (last 20 events)
-  const [activity] = await sequelize.query(`
+  const activity = await optionalDetail('activity', [], async () => {
+    const [rows] = await sequelize.query(`
     (SELECT 'invoice' AS type, invoice_code AS code, title, status, created_at AS date FROM invoices WHERE property_id = :pid ORDER BY created_at DESC LIMIT 10)
     UNION ALL
     (SELECT 'payment' AS type, py.payment_code AS code, inv.title, py.status, py.paid_at AS date FROM payments py JOIN invoices inv ON py.invoice_id = inv.id WHERE inv.property_id = :pid ORDER BY py.paid_at DESC LIMIT 5)
@@ -189,18 +222,20 @@ exports.getOne = asyncHandler(async (req, res) => {
     (SELECT 'inspection' AS type, inspection_code AS code, summary AS title, status, scheduled_date AS date FROM inspections WHERE property_id = :pid ORDER BY scheduled_date DESC LIMIT 5)
     ORDER BY date DESC LIMIT 20
   `, { replacements: { pid } });
+    return rows;
+  });
 
-  const communications = await Communication.findAll({
+  const communications = await optionalDetail('communications', [], () => Communication.findAll({
     where: { entity_type: 'property', entity_id: p.id },
     order: [['created_at', 'DESC']],
-  });
+  }));
 
-  const registerEntries = await RegisterEntry.findAll({
+  const registerEntries = await optionalDetail('register entries', [], () => RegisterEntry.findAll({
     where: { property_id: p.id },
     order: [['created_at', 'DESC']],
-  });
+  }));
 
-  const deals = await PropertyDeal.findAll({
+  const deals = await optionalDetail('deals', [], () => PropertyDeal.findAll({
     where: { property_id: p.id },
     include: [
       { model: Contact, as: 'owner', attributes: contactAttrs },
@@ -208,16 +243,16 @@ exports.getOne = asyncHandler(async (req, res) => {
       { model: Client, as: 'buyer', include: [{ model: Contact, attributes: contactAttrs }] },
     ],
     order: [['created_at', 'DESC']],
-  });
+  }));
 
   const [utilityBills, tenantRequests, arrearsActions, marketingActivities, expenseApprovals, propertyRisks, moveInChecklist] = await Promise.all([
-    UtilityBill.findAll({ where: { property_id: pid }, order: [['created_at', 'DESC']] }).catch(() => []),
-    TenantRequest.findAll({ where: { property_id: pid }, order: [['created_at', 'DESC']] }).catch(() => []),
-    ArrearsAction.findAll({ where: { property_id: pid }, order: [['created_at', 'DESC']] }).catch(() => []),
-    MarketingActivity.findAll({ where: { property_id: pid }, order: [['created_at', 'DESC']] }).catch(() => []),
-    ExpenseApproval.findAll({ where: { property_id: pid }, order: [['created_at', 'DESC']] }).catch(() => []),
-    PropertyRisk.findAll({ where: { property_id: pid }, order: [['review_date', 'ASC'], ['created_at', 'DESC']] }).catch(() => []),
-    MoveInChecklistItem.findAll({ where: { property_id: pid }, order: [['sort_order', 'ASC'], ['created_at', 'ASC']] }).catch(() => []),
+    optionalDetail('utility bills', [], () => UtilityBill.findAll({ where: { property_id: pid }, order: [['created_at', 'DESC']] })),
+    optionalDetail('tenant requests', [], () => TenantRequest.findAll({ where: { property_id: pid }, order: [['created_at', 'DESC']] })),
+    optionalDetail('arrears actions', [], () => ArrearsAction.findAll({ where: { property_id: pid }, order: [['created_at', 'DESC']] })),
+    optionalDetail('marketing activities', [], () => MarketingActivity.findAll({ where: { property_id: pid }, order: [['created_at', 'DESC']] })),
+    optionalDetail('expense approvals', [], () => ExpenseApproval.findAll({ where: { property_id: pid }, order: [['created_at', 'DESC']] })),
+    optionalDetail('property risks', [], () => PropertyRisk.findAll({ where: { property_id: pid }, order: [['review_date', 'ASC'], ['created_at', 'DESC']] })),
+    optionalDetail('move-in checklist', [], () => MoveInChecklistItem.findAll({ where: { property_id: pid }, order: [['sort_order', 'ASC'], ['created_at', 'ASC']] })),
   ]);
 
   // Lifecycle state + next-action + blockers + financial strip (Phase 2)
@@ -239,7 +274,7 @@ exports.getOne = asyncHandler(async (req, res) => {
   } catch { /* audit optional — table may be missing */ }
 
   res.json({
-    data: p, tenancies: tenancyData, ownerProfile, fees, financials, activity,
+    data: p, media, documents, tenancies: tenancyData, ownerProfile, fees, financials, activity,
     communications, registerEntries, deals,
     utilityBills, tenantRequests, arrearsActions, marketingActivities, expenseApprovals, propertyRisks, moveInChecklist,
     state, auditLog,
@@ -257,7 +292,7 @@ exports.getState = asyncHandler(async (req, res) => {
 // ─── CREATE / UPDATE / DELETE ───────────────────────────────────────────────
 
 exports.create = asyncHandler(async (req, res) => {
-  const data = pick(req.body, FIELDS);
+  const data = deriveUtilitiesActive(pick(req.body, FIELDS));
   if (!data.title || !data.category || !data.listing_type) return res.status(400).json({ error: 'title, category and listing_type are required.' });
   data.branch_id = resolveBranchId(req, req.body.branch_id);
   data.created_by = req.user?.id || null;
@@ -277,7 +312,13 @@ exports.create = asyncHandler(async (req, res) => {
     if (manage) {
       project = await createLeasingProject(p, req, { transaction: tx });
       await p.update({ pm_project_id: project.id }, { transaction: tx });
-      await seedOwnerOnboardingItems(p, p.owner_contact_id, null, { transaction: tx });
+      // Progressive SOP: only seed the owner onboarding checklist once an owner
+      // is actually linked (either now or later via saveOwnerProfile).
+      if (p.owner_contact_id) {
+        await seedOwnerOnboardingItems(p, p.owner_contact_id, null, { transaction: tx });
+        const { unlockForEvent } = require('../services/progressiveSop.service');
+        await unlockForEvent(p.id, 'owner_assigned', { transaction: tx });
+      }
     }
     return { property: p, project };
   });
@@ -339,8 +380,59 @@ exports.updateOnboardingItem = asyncHandler(async (req, res) => {
 exports.update = asyncHandler(async (req, res) => {
   const p = await Property.findOne({ where: { id: req.params.id, ...branchScope(req) } });
   if (!p) return res.status(404).json({ error: 'Property not found.' });
-  await p.update(pick(req.body, FIELDS));
+  await p.update(deriveUtilitiesActive(pick(req.body, FIELDS)));
   res.json({ data: p, message: 'Property updated.' });
+});
+
+// ─── PROPERTY MEDIA (photos / videos gallery) ───────────────────────────────
+exports.addMedia = asyncHandler(async (req, res) => {
+  const p = await Property.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!p) return res.status(404).json({ error: 'Property not found.' });
+
+  let file_url = req.body?.file_url || null;
+  let media_type = req.body?.media_type || null;
+  if (req.file) {
+    file_url = `/uploads/properties/${require('path').basename(req.file.path)}`;
+    if (!media_type) media_type = req.file.mimetype?.startsWith('video/') ? 'video' : 'image';
+  }
+  if (!file_url) return res.status(400).json({ error: 'Attach a file or provide file_url.' });
+  if (!media_type) media_type = 'image';
+
+  const count = await PropertyMedia.count({ where: { property_id: p.id } });
+  const row = await PropertyMedia.create({
+    property_id: p.id, media_type, file_url,
+    caption: req.body?.caption || null, sort_order: count,
+  });
+  // First image becomes the featured image automatically.
+  if (media_type === 'image' && !p.featured_image_url) await p.update({ featured_image_url: file_url });
+  res.status(201).json({ data: row, message: 'Media added.' });
+});
+
+exports.updateMedia = asyncHandler(async (req, res) => {
+  const p = await Property.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!p) return res.status(404).json({ error: 'Property not found.' });
+  const row = await PropertyMedia.findOne({ where: { id: req.params.mediaId, property_id: p.id } });
+  if (!row) return res.status(404).json({ error: 'Media not found.' });
+  await row.update(pick(req.body, ['caption', 'sort_order', 'media_type']));
+  if (req.body.set_featured && row.media_type === 'image') await p.update({ featured_image_url: row.file_url });
+  res.json({ data: row, message: 'Media updated.' });
+});
+
+exports.removeMedia = asyncHandler(async (req, res) => {
+  const p = await Property.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!p) return res.status(404).json({ error: 'Property not found.' });
+  const row = await PropertyMedia.findOne({ where: { id: req.params.mediaId, property_id: p.id } });
+  if (!row) return res.status(404).json({ error: 'Media not found.' });
+  // Best-effort remove of the physical file (public properties folder only).
+  try {
+    const path = require('path'); const fs = require('fs');
+    if (String(row.file_url || '').startsWith('/uploads/properties/')) {
+      fs.unlinkSync(path.join(__dirname, '..', 'uploads', 'properties', path.basename(row.file_url)));
+    }
+  } catch { /* non-fatal */ }
+  if (p.featured_image_url === row.file_url) await p.update({ featured_image_url: null });
+  await row.destroy();
+  res.json({ message: 'Media removed.' });
 });
 
 exports.remove = asyncHandler(async (req, res) => {
@@ -394,6 +486,9 @@ exports.createPropertyTenancy = asyncHandler(async (req, res) => {
       status: 'occupied'
     }, { transaction: tx });
 
+    // Progressive SOP: creating a tenancy unlocks the lease phase.
+    try { await require('../services/progressiveSop.service').unlockForEvent(p.id, 'tenancy_created', { transaction: tx }); } catch {}
+
     const folios = await ensureFoliosForTenancy(t, { transaction: tx });
     if (folios.tenantFolio && Number(t.security_deposit || 0) > 0) {
       const depositCategory = await AccountCategory.findOne({ where: { code: 'DEPOSIT' }, transaction: tx });
@@ -417,7 +512,9 @@ exports.createPropertyTenancy = asyncHandler(async (req, res) => {
 // ─── PROPERTY FINANCIALS ────────────────────────────────────────────────────
 
 exports.propertyFinancials = asyncHandler(async (req, res) => {
-  const pid = req.params.id;
+  const property = await Property.findOne({ where: { id: req.params.id, ...branchScope(req) }, attributes: ['id', 'branch_id'] });
+  if (!property) return res.status(404).json({ error: 'Property not found.' });
+  const pid = property.id;
   const [[finIn]] = await sequelize.query(`SELECT COALESCE(SUM(py.amount),0) AS total FROM payments py JOIN invoices inv ON py.invoice_id = inv.id WHERE inv.property_id = :pid AND py.direction = 'incoming' AND py.status = 'completed'`, { replacements: { pid } });
   const [[finOut]] = await sequelize.query(`SELECT COALESCE(SUM(py.amount),0) AS total FROM payments py JOIN invoices inv ON py.invoice_id = inv.id WHERE inv.property_id = :pid AND py.direction = 'outgoing' AND py.status = 'completed'`, { replacements: { pid } });
   const [[billsPend]] = await sequelize.query(`SELECT COALESCE(SUM(balance),0) AS total FROM invoices WHERE property_id = :pid AND invoice_kind = 'provider' AND status NOT IN ('paid','cancelled')`, { replacements: { pid } });
@@ -428,6 +525,89 @@ exports.propertyFinancials = asyncHandler(async (req, res) => {
       bills_pending: num(billsPend?.total), invoices_pending: num(invPend?.total),
       balance: num(finIn?.total) - num(finOut?.total) - num(billsPend?.total),
     },
+  });
+});
+
+exports.propertyTransactions = asyncHandler(async (req, res) => {
+  const property = await Property.findOne({ where: { id: req.params.id, ...branchScope(req) }, attributes: ['id', 'branch_id'] });
+  if (!property) return res.status(404).json({ error: 'Property not found.' });
+
+  const { limit, offset, page } = getPagination(req, 50, 100);
+  const tenancyId = req.query.tenancy_id ? Number(req.query.tenancy_id) : null;
+  const folioType = ['tenant', 'landlord'].includes(req.query.folio_type) ? req.query.folio_type : null;
+  const replacements = {
+    propertyId: property.id,
+    branchId: property.branch_id,
+    tenancyId,
+    folioType,
+    limit,
+    offset,
+  };
+  const effectiveProperty = 'COALESCE(ft.property_id, inv.property_id, f.property_id, ten.property_id)';
+  const filters = `ft.branch_id = :branchId
+    AND ${effectiveProperty} = :propertyId
+    AND (:tenancyId IS NULL OR COALESCE(ft.tenancy_id, inv.tenancy_id, f.tenancy_id) = :tenancyId)
+    AND (:folioType IS NULL OR f.folio_type = :folioType)`;
+
+  const [transactionResult, countResult, summaryResult] = await Promise.all([
+    sequelize.query(
+      `SELECT ft.id, ft.transaction_type, ft.bucket, ft.description, ft.debit, ft.credit,
+              ft.balance_after, ft.transaction_date, ft.created_at, ft.invoice_id, ft.payment_id,
+              f.id AS folio_id, f.folio_code, f.folio_type,
+              inv.invoice_code, inv.title AS invoice_title,
+              py.payment_code, py.amount AS payment_amount, py.method AS payment_method,
+              py.reference AS payment_reference, py.paid_at,
+              ten.id AS tenancy_id, ten.tenancy_code, ten.status AS tenancy_status,
+              ten.lease_start, ten.lease_end,
+              tenant.id AS tenant_id, tenant.full_name AS tenant_name,
+              tenant.primary_phone AS tenant_phone, tenant.email AS tenant_email,
+              owner.id AS owner_id, owner.full_name AS owner_name,
+              owner.primary_phone AS owner_phone, owner.email AS owner_email
+         FROM folio_transactions ft
+         JOIN folios f ON f.id = ft.folio_id
+         LEFT JOIN invoices inv ON inv.id = ft.invoice_id
+         LEFT JOIN payments py ON py.id = ft.payment_id
+         LEFT JOIN tenancies ten ON ten.id = COALESCE(ft.tenancy_id, inv.tenancy_id, f.tenancy_id)
+         LEFT JOIN contacts tenant ON tenant.id = COALESCE(ten.tenant_contact_id, f.tenant_contact_id)
+         LEFT JOIN contacts owner ON owner.id = COALESCE(ten.owner_contact_id, f.owner_contact_id)
+        WHERE ${filters}
+        ORDER BY COALESCE(py.paid_at, ft.transaction_date, ft.created_at) DESC, ft.id DESC
+        LIMIT :limit OFFSET :offset`,
+      { replacements }
+    ),
+    sequelize.query(
+      `SELECT COUNT(*) AS total
+         FROM folio_transactions ft
+         JOIN folios f ON f.id = ft.folio_id
+         LEFT JOIN invoices inv ON inv.id = ft.invoice_id
+         LEFT JOIN tenancies ten ON ten.id = COALESCE(ft.tenancy_id, inv.tenancy_id, f.tenancy_id)
+        WHERE ${filters}`,
+      { replacements }
+    ),
+    sequelize.query(
+      `SELECT
+          COALESCE(SUM(CASE WHEN f.folio_type = 'landlord' THEN ft.debit - ft.credit ELSE 0 END), 0) AS owner_held,
+          COALESCE(SUM(CASE WHEN f.folio_type = 'tenant' THEN ft.debit - ft.credit ELSE 0 END), 0) AS tenant_balance
+         FROM folio_transactions ft
+         JOIN folios f ON f.id = ft.folio_id
+         LEFT JOIN invoices inv ON inv.id = ft.invoice_id
+         LEFT JOIN tenancies ten ON ten.id = COALESCE(ft.tenancy_id, inv.tenancy_id, f.tenancy_id)
+        WHERE ft.branch_id = :branchId AND ${effectiveProperty} = :propertyId`,
+      { replacements }
+    ),
+  ]);
+
+  const rows = transactionResult[0];
+  const countRow = countResult[0][0];
+  const summaryRow = summaryResult[0][0];
+  const total = Number(countRow?.total || 0);
+  res.json({
+    data: rows,
+    summary: {
+      owner_held: Math.max(0, num(summaryRow?.owner_held)),
+      tenant_balance: num(summaryRow?.tenant_balance),
+    },
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   });
 });
 
@@ -474,15 +654,47 @@ exports.propertyDocuments = asyncHandler(async (req, res) => {
 });
 
 exports.uploadDocument = asyncHandler(async (req, res) => {
-  // For now accept JSON body with file_url (actual multipart upload can be added later)
-  const { title, file_url, file_name, doc_type, is_private } = req.body;
+  const p = await Property.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!p) return res.status(404).json({ error: 'Property not found.' });
+  const { title, file_url, file_name, doc_type, is_private, entity_type, entity_id, description, visibility, required_for } = req.body;
   if (!file_url) return res.status(400).json({ error: 'file_url is required.' });
   const doc = await PropertyDocument.create({
-    property_id: req.params.id, doc_type: doc_type || 'other',
+    property_id: p.id, doc_type: doc_type || 'other',
     title: title || file_name || 'Document', file_url, file_name: file_name || title,
+    entity_type: entity_type || 'property', entity_id: entity_id || null,
+    description: description || null, visibility: visibility || 'staff', required_for: required_for || null,
     is_private: is_private !== false, uploaded_by: req.user?.id || null,
   });
   res.status(201).json({ data: doc, message: 'Document uploaded.' });
+});
+
+// PATCH /:id/documents/:docId/verify  { action: verify|reject|reset, reason? }
+exports.verifyDocument = asyncHandler(async (req, res) => {
+  const p = await Property.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!p) return res.status(404).json({ error: 'Property not found.' });
+  const doc = await PropertyDocument.findOne({ where: { id: req.params.docId, property_id: p.id } });
+  if (!doc) return res.status(404).json({ error: 'Document not found.' });
+  const map = { verify: 'verified', reject: 'rejected', reset: 'pending' };
+  const status = map[req.body.action];
+  if (!status) return res.status(400).json({ error: 'action must be verify | reject | reset.' });
+  await doc.update({
+    verification_status: status,
+    verified_by: status === 'pending' ? null : req.user?.id || null,
+    verified_at: status === 'pending' ? null : new Date(),
+    rejection_reason: status === 'rejected' ? (req.body.reason || null) : null,
+  });
+  if ((doc.entity_type || 'property') === 'owner' && doc.entity_id) {
+    const PartyRoleProfile = require('../models/PartyRoleProfile');
+    const ownerDocs = await PropertyDocument.findAll({ where: { property_id: p.id, entity_type: 'owner', entity_id: doc.entity_id } });
+    const allVerified = ownerDocs.length > 0 && ownerDocs.every((item) => item.verification_status === 'verified');
+    await PartyRoleProfile.update({
+      documents_status: allVerified ? 'complete' : 'pending',
+      kyc_status: allVerified ? 'complete' : 'pending',
+      next_action: allVerified ? 'Generate and send management agreement' : 'Review owner KYC documents',
+      ...(allVerified ? { status: 'agreement_pending' } : {}),
+    }, { where: { property_id: p.id, contact_id: doc.entity_id, role_type: 'landlord' } });
+  }
+  res.json({ data: doc, message: `Document ${status}.` });
 });
 
 // ─── OWNER PROFILE (KYC + banking) ─────────────────────────────────────────
@@ -498,11 +710,17 @@ const PROFILE_FIELDS = [
   'tax_responsibility_ack', 'owner_obligations_accepted', 'indemnity_accepted', 'management_commission',
   'onboarding_fee', 'maintenance_responsibility', 'assigned_officer_id', 'next_action', 'next_follow_up',
   'agreement_status', 'onboarding_status',
+  // Agreement commercials + joint owner (0040)
+  'repair_budget_max', 'termination_notice_days', 'security_money_amount', 'advance_rent_amount',
+  'service_charge_amount', 'agreement_start_date',
+  'joint_owner_name', 'joint_owner_phone', 'joint_owner_email', 'joint_owner_nid', 'joint_owner_address',
 ];
 
 exports.getOwnerProfile = asyncHandler(async (req, res) => {
+  const p = await Property.findOne({ where: { id: req.params.id, ...branchScope(req) }, attributes: ['id'] });
+  if (!p) return res.status(404).json({ error: 'Property not found.' });
   const profile = await PropertyOwnerProfile.findOne({
-    where: { property_id: req.params.id },
+    where: { property_id: p.id },
     include: [{ model: Contact, as: 'contact', attributes: contactAttrs }],
   });
   const fees = profile
@@ -512,9 +730,13 @@ exports.getOwnerProfile = asyncHandler(async (req, res) => {
 });
 
 exports.saveOwnerProfile = asyncHandler(async (req, res) => {
+  const p = await Property.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!p) return res.status(404).json({ error: 'Property not found.' });
   const data = pick(req.body, PROFILE_FIELDS);
-  data.property_id = parseInt(req.params.id, 10);
+  data.property_id = p.id;
   if (!data.contact_id) return res.status(400).json({ error: 'contact_id is required.' });
+  const ownerContact = await Contact.findOne({ where: { id: data.contact_id, ...branchScope(req) } });
+  if (!ownerContact) return res.status(400).json({ error: 'Owner contact not found in this branch.' });
 
   let profile = await PropertyOwnerProfile.findOne({ where: { property_id: data.property_id } });
   if (profile) {
@@ -524,9 +746,21 @@ exports.saveOwnerProfile = asyncHandler(async (req, res) => {
   }
 
   // Update parent property owner_contact_id
-  const p = await Property.findByPk(data.property_id);
   if (p) {
     await p.update({ owner_contact_id: data.contact_id });
+    await ownerContact.update({
+      national_id: data.nid_number || ownerContact.national_id,
+      passport_no: data.passport_number || ownerContact.passport_no,
+      tin: data.tin_number || ownerContact.tin,
+    });
+    // Progressive SOP: assigning an owner unlocks the owner-onboarding phase +
+    // seeds the owner checklist (once).
+    try {
+      const existingItems = await OwnerOnboardingItem.count({ where: { property_id: p.id } });
+      if (!existingItems) await seedOwnerOnboardingItems(p, data.contact_id, profile.id);
+      const { unlockForEvent } = require('../services/progressiveSop.service');
+      await unlockForEvent(p.id, 'owner_assigned');
+    } catch (e) { console.warn('[progressiveSop] owner_assigned:', e.message); }
   }
 
   // Save fees if provided

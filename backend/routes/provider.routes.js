@@ -13,5 +13,14 @@ router.put('/:id', ctrl.update);
 router.post('/:id/compliance', ctrl.addCompliance);
 router.delete('/:id/compliance/:complianceId', ctrl.removeCompliance);
 router.post('/:id/portal-access', ctrl.enablePortal);
+// Phase 2 — onboarding & verification
+router.post('/:id/documents', ctrl.addDocument);
+router.patch('/:id/documents/:docId/verify', ctrl.verifyDocument);
+router.put('/:id/capabilities', ctrl.setCapabilities);
+router.patch('/:id/verify', ctrl.verify);
+router.post('/:id/activate', ctrl.activate);
+router.post('/:id/send-agreement', ctrl.sendAgreement);
+router.get('/:id/statement', ctrl.statement);
+router.post('/:id/registration-link', ctrl.registrationLink);
 
 module.exports = router;

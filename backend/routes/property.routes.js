@@ -19,13 +19,22 @@ router.post('/:id/tenancies', ctrl.createPropertyTenancy);
 
 // Financials
 router.get('/:id/financials', ctrl.propertyFinancials);
+router.get('/:id/transactions', ctrl.propertyTransactions);
 
 // Lifecycle state + next action + blockers (Phase 2)
 router.get('/:id/state', ctrl.getState);
 
+// Media gallery (photos/videos — public assets)
+const uploadAny = require('../utils/uploadAny');
+const forcePublicFolder = (req, res, next) => { req.uploadFolder = 'properties'; next(); };
+router.post('/:id/media', forcePublicFolder, uploadAny.single('file'), ctrl.addMedia);
+router.patch('/:id/media/:mediaId', ctrl.updateMedia);
+router.delete('/:id/media/:mediaId', ctrl.removeMedia);
+
 // Unified documents
 router.get('/:id/documents', ctrl.propertyDocuments);
 router.post('/:id/documents', ctrl.uploadDocument);
+router.patch('/:id/documents/:docId/verify', ctrl.verifyDocument);
 
 // Owner profile (KYC + banking + fees)
 router.get('/:id/owner-profile', ctrl.getOwnerProfile);

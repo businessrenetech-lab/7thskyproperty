@@ -22,7 +22,7 @@ const STATUS_META = {
   approval_pending: { tone: 'amber', label: 'Approval pending', cta: 'Awaiting approval' },
   rejected: { tone: 'red', label: 'Rejected', cta: null },
   declined: { tone: 'red', label: 'Agreement declined', cta: 'Review & resend' },
-  expired: { tone: 'red', label: 'Link expired', cta: 'Resend agreement' },
+  expired: { tone: 'grey', label: 'Relationship ended', cta: null },
   voided: { tone: 'grey', label: 'Voided', cta: null },
 };
 

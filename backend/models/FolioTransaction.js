@@ -22,6 +22,10 @@ const FolioTransaction = sequelize.define('FolioTransaction', {
   balance_after: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
   transaction_date: DataTypes.DATEONLY,
   created_by: DataTypes.INTEGER,
+  // Memo rows (e.g. tenant paid a supplier directly): shown in the ledger +
+  // reports for visibility but do NOT move the folio balance.
+  is_memo: { type: DataTypes.BOOLEAN, defaultValue: false },
+  memo_amount: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
 }, { tableName: 'folio_transactions', underscored: true });
 
 Folio.hasMany(FolioTransaction, { as: 'transactions', foreignKey: 'folio_id' });

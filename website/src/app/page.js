@@ -1,119 +1,100 @@
 import React from "react";
-import HomepageClient from "./HomepageClient";
-import JsonLd, { faqSchema, breadcrumbSchema } from "@/components/JsonLd";
-import { getApiBase } from "@/lib/api";
-import { COURSE_FALLBACKS } from "@/lib/courseFallbacks";
+import { Home as HomeIcon, ShieldCheck, Hammer, Sparkles, Phone, Mail, MapPin, KeyRound, Receipt } from "lucide-react";
 
-export const revalidate = 300;
-
-const HOMEPAGE_REVALIDATE_SECONDS = 300;
-const isProductionBuild = process.env.NEXT_PHASE === "phase-production-build";
-
-/* ─── Homepage SEO Metadata ────────────────────────────────── */
-export const metadata = {
-  title: "Best PTE Coaching Centre in Dhaka | PTE Practice Online — Language Academy",
-  description:
-    "Score 79+ with the best PTE coaching centre in Dhaka. PTE practice online with AI-scored mock tests, expert trainers & small batches. IELTS preparation & online PTE course available. Book free consultation!",
-  keywords: [
-    "PTE practice online",
-    "best PTE coaching centre Dhaka",
-    "PTE coaching centre Dhaka",
-    "PTE course Dhaka",
-    "online PTE course Bangladesh",
-    "best PTE coaching",
-    "PTE Academic preparation Dhaka",
-    "PTE mock test online Bangladesh",
-    "IELTS coaching Dhaka",
-    "IELTS preparation Bangladesh",
-    "best IELTS coaching centre Bangladesh",
-    "Spoken English course Dhaka",
-    "study abroad Bangladesh",
-    "PTE classes online Bangladesh",
-    "PTE coaching near me Dhanmondi",
-    "PTE vs IELTS Bangladesh",
-    "PTE score for Australia migration",
-    "study abroad from Bangladesh",
-    "English proficiency test Dhaka",
-    "PTE training centre Dhaka",
-    "IELTS 7 band preparation Bangladesh",
-    "PTE score requirement Australia PR",
-    "PTE exam preparation Bangladesh",
-    "affordable PTE coaching Dhaka",
-    "PTE weekend batch Dhaka",
-    "PTE online classes AI feedback",
-    "Language Academy Bangladesh",
-    "language institute Dhanmondi Dhaka",
-    "how to get 79+ in PTE",
-    "PTE coaching with mock tests Dhaka",
-  ],
-  alternates: {
-    canonical: "https://languageacademy.com.bd",
-  },
-  openGraph: {
-    title: "Best PTE Coaching Centre Dhaka | PTE Practice Online — Language Academy",
-    description:
-      "Score 79+ with the best PTE coaching in Dhaka. AI mock tests, expert trainers, small batches & online PTE courses. IELTS preparation available. Enroll now!",
-    url: "https://languageacademy.com.bd",
-    images: [{ url: "/hero_banner.webp", width: 1200, height: 630, alt: "PTE Practice Online - Best PTE Coaching Centre Dhaka - Language Academy Bangladesh" }],
-  },
-};
-
-/* ─── Homepage FAQ data (for structured data) ──────────────── */
-const homeFaqs = [
-  ["What is the best PTE coaching centre in Dhaka?", "Language Academy Bangladesh in Dhanmondi, Dhaka is a top-rated PTE coaching centre offering AI-scored mock tests, expert trainers, and small batches of max 12 students. We offer both online and offline PTE courses for students and professionals."],
-  ["Can I practice PTE online from Bangladesh?", "Yes! Language Academy offers PTE practice online with AI-scored full-length mock tests, detailed analytics, and expert-led review sessions. Our online PTE course gives you the same curriculum, AI mock tests, and trainer support as in-person learners."],
-  ["How do I choose the right PTE or IELTS course?", "Start with a free consultation. Our academic advisors assess your current English level, timeline, and target score to recommend the perfect PTE or IELTS course and batch for you."],
-  ["Do you offer flexible PTE coaching schedules?", "Yes. We run weekday morning, afternoon, and weekend PTE batches so you can fit serious PTE preparation into your busy routine. Both online and offline classes are available."],
-  ["Is AI mock test support included in PTE coaching?", "Absolutely. All PTE courses at Language Academy include unlimited AI-scored full-length mock tests, detailed analytics, and trainer-led review sessions — the best PTE practice online experience in Bangladesh."],
-  ["What is the class size in your PTE coaching centre?", "We maintain a maximum of 12 students per cohort to ensure personalized PTE coaching attention, stronger accountability, and faster score improvement."],
-  ["What is the difference between PTE and IELTS?", "PTE Academic is fully computer-based with AI scoring and results in 1\u20132 days, while IELTS has a face-to-face speaking test with results in 3\u201313 days. Both are accepted worldwide. PTE is especially popular for Australia and New Zealand immigration. Language Academy prepares you for both."],
-  ["What PTE score do I need to study abroad in Australia?", "For Australian student visas, you typically need a PTE score of 50\u201365 depending on the course. For Skilled Migration (PR), a PTE score of 65+ is generally required. Language Academy's PTE coaching is designed to help you achieve 79+ for maximum migration points."],
-  ["Do you offer study abroad consulting from Bangladesh?", "Yes. Along with PTE coaching and IELTS preparation, Language Academy provides study abroad guidance for Australia, Canada, UK, New Zealand, and more. Our advisors help with university selection, visa requirements, and score targets."],
-  ["How long does PTE or IELTS preparation take?", "Most students at Language Academy achieve their target PTE or IELTS score within 4\u20138 weeks of focused preparation. The exact timeline depends on your current English level and target score. Our online PTE course offers the same intensive experience."],
-];
-
-async function getFeaturedCourses() {
-  try {
-    const res = await fetch(`${getApiBase()}/api/public/courses`, {
-      next: { revalidate: HOMEPAGE_REVALIDATE_SECONDS },
-    });
-    if (!res.ok) return COURSE_FALLBACKS.slice(0, 6);
-    const data = await res.json();
-    return (Array.isArray(data) && data.length > 0 ? data : COURSE_FALLBACKS).slice(0, 6);
-  } catch (error) {
-    if (!isProductionBuild) console.error("Error fetching courses:", error);
-    return COURSE_FALLBACKS.slice(0, 6);
-  }
-}
-
-async function getRecentBlogs() {
-  try {
-    const res = await fetch(`${getApiBase()}/api/public/blog`, {
-      next: { revalidate: HOMEPAGE_REVALIDATE_SECONDS },
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.slice(0, 3);
-  } catch (error) {
-    if (!isProductionBuild) console.error("Error fetching blogs:", error);
-    return [];
-  }
-}
-
-export default async function Home() {
-  const [featuredCourses, recentBlogs] = await Promise.all([
-    getFeaturedCourses(),
-    getRecentBlogs(),
-  ]);
+export default function Home() {
+  const services = [
+    {
+      icon: KeyRound,
+      title: "Folio & Rental Management",
+      desc: "Hassle-free tenancy management, rent collection, automated invoicing, arrears tracking, and direct disbursements to owners via DBBL/bKash/Nagad."
+    },
+    {
+      icon: Hammer,
+      title: "Property Maintenance & Care",
+      desc: "On-demand facility repairs, plumbing, electrical checks, paint touch-ups, utility bill settlements, and complete property health checks."
+    },
+    {
+      icon: ShieldCheck,
+      title: "Tenant KYC & Placement",
+      desc: "Comprehensive tenant background checks (NID & TIN registry), legally compliant tenancy agreements, and advance/security money management."
+    },
+    {
+      icon: Sparkles,
+      title: "Interior & Renovations",
+      desc: "Complete interior design, fits-out, painting, remodeling, and post-tenancy renovation services managed by our expert teams."
+    }
+  ];
 
   return (
-    <>
-      {/* FAQ Schema for AI Search — this is what ChatGPT/Perplexity/Google AI Overview parse */}
-      <JsonLd data={faqSchema(homeFaqs)} />
-      <JsonLd data={breadcrumbSchema([
-        { name: "Home", url: "https://languageacademy.com.bd" },
-      ])} />
-      <HomepageClient courses={featuredCourses} blogs={recentBlogs} />
-    </>
+    <div className="flex-1 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 text-slate-100 flex flex-col justify-center items-center py-16 px-6">
+      
+      {/* Hero Banner Section */}
+      <div className="max-w-4xl w-full text-center mb-16">
+        <span className="inline-flex items-center rounded-full bg-blue-500/10 border border-blue-500/20 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-blue-400 mb-6">
+          Premium Real Estate Care
+        </span>
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-none tracking-tight text-white mb-6">
+          Property Management <br/>
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">Made Actionable.</span>
+        </h1>
+        <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+          Seventh Sky Properties offers comprehensive care, rental ledgers, landlord auditing, and facility repairs for properties in Dhaka, Bangladesh. Enjoy hassle-free real estate folios.
+        </p>
+      </div>
+
+      {/* Services Grid */}
+      <div className="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-6 mb-20">
+        {services.map((item, index) => (
+          <div key={index} className="group relative rounded-3xl border border-slate-800 bg-slate-900/50 p-8 hover:bg-slate-900/80 hover:border-slate-700 transition duration-300">
+            <div className="h-12 w-12 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center mb-6 group-hover:bg-blue-600 group-hover:text-white transition duration-300">
+              <item.icon size={22} />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
+            <p className="text-slate-400 text-sm leading-relaxed">{item.desc}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Contact Panel Card */}
+      <div className="max-w-3xl w-full rounded-[32px] border border-slate-800 bg-slate-950 p-8 sm:p-12 text-center relative overflow-hidden shadow-2xl">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+        
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-4">Contact Our Offices</h2>
+        <p className="text-slate-400 text-sm sm:text-base max-w-lg mx-auto mb-8">
+          Get in touch with our team for leasing inquiries, property onboarding, or facility management solutions in Dhaka.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-left max-w-2xl mx-auto">
+          <div className="flex gap-3">
+            <MapPin size={20} className="text-blue-400 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-bold text-white text-sm">Address</h4>
+              <p className="text-xs text-slate-500 leading-normal mt-1">
+                SEL Sufi Square, Unit: 1104, Level: 11, Dhanmondi R/A, Dhaka 1209
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Phone size={20} className="text-blue-400 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-bold text-white text-sm">Phone</h4>
+              <p className="text-xs text-slate-500 leading-normal mt-1">
+                +880 1913-373581
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Mail size={20} className="text-blue-400 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-bold text-white text-sm">Email</h4>
+              <p className="text-xs text-slate-500 leading-normal mt-1">
+                info@seventhskybd.com
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
   );
 }

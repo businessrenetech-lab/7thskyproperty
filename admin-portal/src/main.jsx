@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import './theme.css'
+import './styles/pm-design.css'
 
 ReactDOM.createRoot(document.getElementById('app')).render(
   <React.StrictMode>

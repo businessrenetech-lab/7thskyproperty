@@ -4,7 +4,7 @@ const Property = require('../models/Property');
 const WorkOrder = require('../models/WorkOrder');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
-const { ASSESSMENT_ITEMS, computeReadiness } = require('../services/rentalWorkflow.service');
+const { ASSESSMENT_ITEMS, ROOM_ASSESSMENT_ITEMS, computeReadiness } = require('../services/rentalWorkflow.service');
 
 const propInc = { model: Property, as: 'property', attributes: ['id', 'property_code', 'title', 'area', 'district'] };
 const itemsInc = { model: RentalAssessmentItem, as: 'items', separate: true, order: [['sort_order', 'ASC']] };
@@ -61,7 +61,7 @@ exports.create = asyncHandler(async (req, res) => {
     const prop = await Property.findByPk(data.property_id, { transaction: tx });
     if (prop && !data.owner_contact_id) data.owner_contact_id = prop.owner_contact_id;
     const a = await RentalAssessment.create(data, { transaction: tx });
-    const seed = Array.isArray(req.body.items) && req.body.items.length ? req.body.items : ASSESSMENT_ITEMS;
+    const seed = Array.isArray(req.body.items) && req.body.items.length ? req.body.items : ROOM_ASSESSMENT_ITEMS;
     await RentalAssessmentItem.bulkCreate(
       seed.map((it, i) => ({
         assessment_id: a.id, section: it.section || null, assessment_item: it.assessment_item,
@@ -81,7 +81,7 @@ exports.create = asyncHandler(async (req, res) => {
 exports.update = asyncHandler(async (req, res) => {
   const a = await RentalAssessment.findOne({ where: { id: req.params.id, ...branchScope(req) } });
   if (!a) return res.status(404).json({ error: 'Assessment not found.' });
-  await a.update(pick(req.body, ['assessment_date', 'inspector_id', 'market_rent_min', 'market_rent_max', 'recommended_rent', 'approved_rent', 'summary', 'status']));
+  await a.update(pick(req.body, ['assessment_date', 'inspector_id', 'market_rent_min', 'market_rent_max', 'recommended_rent', 'approved_rent', 'summary', 'status', 'report_url']));
   // If approved_rent set, reflect onto property
   if (req.body.approved_rent != null && a.property_id) {
     const p = await Property.findByPk(a.property_id);
@@ -91,13 +91,32 @@ exports.update = asyncHandler(async (req, res) => {
 });
 
 // ─── ITEM CRUD ──────────────────────────────────────────────────────────────
+const ITEM_FIELDS = ['section', 'assessment_item', 'finding', 'required_action', 'responsible_id', 'due_date', 'status', 'is_blocking',
+  'maintenance_recommendation', 'safety_observation', 'condition_rating', 'photo_url', 'notes', 'is_clean', 'is_undamaged', 'is_working', 'photos'];
+
+// Room-checklist verdicts drive item status unless the caller sets it explicitly:
+// any "No" → in_progress (action needed); all three answered (true) → done.
+function deriveItemStatus(patch, existing) {
+  if (patch.status !== undefined) return patch;
+  const merged = {
+    is_clean: patch.is_clean !== undefined ? patch.is_clean : existing?.is_clean,
+    is_undamaged: patch.is_undamaged !== undefined ? patch.is_undamaged : existing?.is_undamaged,
+    is_working: patch.is_working !== undefined ? patch.is_working : existing?.is_working,
+  };
+  const vals = Object.values(merged);
+  if (!vals.some((v) => v !== undefined && v !== null)) return patch;
+  if (vals.some((v) => v === false)) patch.status = 'in_progress';
+  else if (vals.every((v) => v === true)) patch.status = 'done';
+  return patch;
+}
+
 exports.addItem = asyncHandler(async (req, res) => {
   const a = await RentalAssessment.findOne({ where: { id: req.params.id, ...branchScope(req) } });
   if (!a) return res.status(404).json({ error: 'Assessment not found.' });
   const count = await RentalAssessmentItem.count({ where: { assessment_id: a.id } });
   const it = await RentalAssessmentItem.create({
     assessment_id: a.id, sort_order: count,
-    ...pick(req.body, ['section', 'assessment_item', 'finding', 'required_action', 'responsible_id', 'due_date', 'status', 'is_blocking', 'maintenance_recommendation', 'safety_observation', 'condition_rating', 'photo_url', 'notes']),
+    ...deriveItemStatus(pick(req.body, ITEM_FIELDS), null),
   });
   await sequelize.transaction((tx) => recompute(a.id, tx));
   res.status(201).json({ data: it });
@@ -106,7 +125,7 @@ exports.addItem = asyncHandler(async (req, res) => {
 exports.updateItem = asyncHandler(async (req, res) => {
   const it = await RentalAssessmentItem.findOne({ where: { id: req.params.itemId, assessment_id: req.params.id } });
   if (!it) return res.status(404).json({ error: 'Assessment item not found.' });
-  await it.update(pick(req.body, ['section', 'assessment_item', 'finding', 'required_action', 'responsible_id', 'due_date', 'status', 'is_blocking', 'maintenance_recommendation', 'safety_observation', 'condition_rating', 'photo_url', 'notes']));
+  await it.update(deriveItemStatus(pick(req.body, ITEM_FIELDS), it));
   const result = await sequelize.transaction((tx) => recompute(req.params.id, tx));
   res.json({ data: it, readiness: result });
 });
@@ -156,6 +175,8 @@ exports.complete = asyncHandler(async (req, res) => {
   if (a.property_id) {
     const p = await Property.findByPk(a.property_id);
     if (p) await p.update({ rental_readiness_status: 'ready_for_marketing', pm_status: 'marketing', listing_status: p.listing_status === 'not_listed' ? 'drafting' : p.listing_status });
+    // Progressive SOP: readiness unlocks the marketing phase.
+    try { await require('../services/progressiveSop.service').unlockForEvent(a.property_id, 'assessment_ready'); } catch {}
   }
   res.json({ data: a, message: override ? 'Assessment completed (manager override).' : 'Assessment completed — property ready for marketing.' });
 });

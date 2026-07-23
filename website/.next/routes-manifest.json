@@ -28,14 +28,6 @@
         "nxtPslug": "nxtPslug"
       },
       "namedRegex": "^/branches/(?<nxtPslug>[^/]+?)(?:/)?$"
-    },
-    {
-      "page": "/courses/[slug]",
-      "regex": "^/courses/([^/]+?)(?:/)?$",
-      "routeKeys": {
-        "nxtPslug": "nxtPslug"
-      },
-      "namedRegex": "^/courses/(?<nxtPslug>[^/]+?)(?:/)?$"
     }
   ],
   "staticRoutes": [
@@ -88,34 +80,10 @@
       "namedRegex": "^/contact(?:/)?$"
     },
     {
-      "page": "/courses",
-      "regex": "^/courses(?:/)?$",
-      "routeKeys": {},
-      "namedRegex": "^/courses(?:/)?$"
-    },
-    {
-      "page": "/enroll",
-      "regex": "^/enroll(?:/)?$",
-      "routeKeys": {},
-      "namedRegex": "^/enroll(?:/)?$"
-    },
-    {
-      "page": "/enroll/success",
-      "regex": "^/enroll/success(?:/)?$",
-      "routeKeys": {},
-      "namedRegex": "^/enroll/success(?:/)?$"
-    },
-    {
       "page": "/icon.png",
       "regex": "^/icon\\.png(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/icon\\.png(?:/)?$"
-    },
-    {
-      "page": "/materials",
-      "regex": "^/materials(?:/)?$",
-      "routeKeys": {},
-      "namedRegex": "^/materials(?:/)?$"
     },
     {
       "page": "/payment/success",
@@ -134,18 +102,6 @@
       "regex": "^/sitemap\\.xml(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/sitemap\\.xml(?:/)?$"
-    },
-    {
-      "page": "/student-booking",
-      "regex": "^/student\\-booking(?:/)?$",
-      "routeKeys": {},
-      "namedRegex": "^/student\\-booking(?:/)?$"
-    },
-    {
-      "page": "/trial-class",
-      "regex": "^/trial\\-class(?:/)?$",
-      "routeKeys": {},
-      "namedRegex": "^/trial\\-class(?:/)?$"
     }
   ],
   "dataRoutes": [],

@@ -1,0 +1,41 @@
+[dotenv@17.3.1] injecting env (15) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+[BIOMETRIC] Initializing background direct TCP pull scheduler (Interval: 30m)
+Executing (default): SELECT 1+1 AS result
+✓ Database connected
+✓ Seventh Sky API running on port 5000 (db: up)
+  mounted: /api/auth, /api/rbac, /api/settings, /api/notifications, /api/biometric, /api/hrm, /api/assets, /api/expenses, /api/budget, /api/accounting, /api/contacts, /api/clients, /api/properties, /api/tenancies, /api/deals, /api/services, /api/leads, /api/providers, /api/agreements
+  skipped (to be rebuilt): 
+   - /api/branches (MODULE_NOT_FOUND: Cannot find module '../models/Student')
+   - /api/automation (MODULE_NOT_FOUND: Cannot find module '../models/Student')
+   - /api/dashboard (MODULE_NOT_FOUND: Cannot find module '../models/Batch')
+   - /api/payment (MODULE_NOT_FOUND: Cannot find module './Enrollment')
+   - /api/payroll (MODULE_NOT_FOUND: Cannot find module '../models/TeacherSession')
+   - /api/invoices (MODULE_NOT_FOUND: Cannot find module './Enrollment')
+   - /api/finance (MODULE_NOT_FOUND: Cannot find module './Enrollment')
+   - /api/reconciliation (MODULE_NOT_FOUND: Cannot find module './Enrollment')
+   - /api/projects (MODULE_NOT_FOUND: Cannot find module './routes/project.routes')
+   - /api/work-orders (MODULE_NOT_FOUND: Cannot find module './routes/workOrder.routes')
+   - /api/inspections (MODULE_NOT_FOUND: Cannot find module './routes/inspection.routes')
+   - /api/documents (MODULE_NOT_FOUND: Cannot find module './routes/document.routes')
+   - /api/signing (MODULE_NOT_FOUND: Cannot find module './routes/signing.routes')
+   - /api/public (MODULE_NOT_FOUND: Cannot find module '../models/Course')
+[0mPOST /api/mt5/candles [33m404[0m 2.299 ms - 155[0m
+[0mPOST /api/mt5/candles [33m404[0m 0.697 ms - 155[0m
+Executing (default): SHOW FULL COLUMNS FROM `users`;
+Executing (default): SELECT `id`, `name`, `email`, `role`, `branch_id`, `status`, `password` FROM `users` AS `User` WHERE `User`.`email` = 'admin@seventhskyproperty.com';
+Executing (default): SELECT `id`, `name`, `email`, `role`, `branch_id`, `status` FROM `users` AS `User` WHERE `User`.`id` = 1;
+[0mPOST /api/auth/login [32m200[0m 406.639 ms - 278[0m
+Executing (default): SHOW FULL COLUMNS FROM `branches`;
+Executing (default): SELECT `User`.`id`, `User`.`name`, `User`.`email`, `User`.`role`, `User`.`branch_id`, `User`.`status`, `Branch`.`id` AS `Branch.id`, `Branch`.`name` AS `Branch.name`, `Branch`.`code` AS `Branch.code`, `Branch`.`type` AS `Branch.type` FROM `users` AS `User` LEFT OUTER JOIN `branches` AS `Branch` ON `User`.`branch_id` = `Branch`.`id` WHERE `User`.`id` = 1;
+Executing (default): SELECT `provider_code` FROM `service_providers` AS `ServiceProvider` WHERE `ServiceProvider`.`provider_code` LIKE 'SSPC-SP-%' ORDER BY `ServiceProvider`.`provider_code` DESC LIMIT 1;
+Executing (default): INSERT INTO `service_providers` (`id`,`branch_id`,`provider_code`,`company_name`,`contact_person`,`phone`,`specialisations`,`service_categories`,`coverage_areas`,`availability`,`portal_enabled`,`rate_card`,`bank_details`,`non_circumvention_agreed`,`status`,`onboarded_at`,`created_by`,`created_at`,`updated_at`) VALUES (DEFAULT,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
+[0mPOST /api/providers [32m201[0m 329.841 ms - 534[0m
+Executing (default): SELECT `User`.`id`, `User`.`name`, `User`.`email`, `User`.`role`, `User`.`branch_id`, `User`.`status`, `Branch`.`id` AS `Branch.id`, `Branch`.`name` AS `Branch.name`, `Branch`.`code` AS `Branch.code`, `Branch`.`type` AS `Branch.type` FROM `users` AS `User` LEFT OUTER JOIN `branches` AS `Branch` ON `User`.`branch_id` = `Branch`.`id` WHERE `User`.`id` = 1;
+Executing (default): SELECT `id`, `branch_id`, `provider_code`, `contact_id`, `company_name`, `contact_person`, `phone`, `email`, `address`, `specialisations`, `service_categories`, `coverage_areas`, `availability`, `portal_enabled`, `portal_user_id`, `rate_card`, `bank_details`, `rating`, `internal_notes`, `non_circumvention_agreed`, `status`, `onboarded_at`, `created_by`, `created_at` AS `createdAt`, `updated_at` AS `updatedAt` FROM `service_providers` AS `ServiceProvider` WHERE `ServiceProvider`.`id` = '1';
+Executing (default): INSERT INTO `provider_compliance` (`id`,`provider_id`,`doc_type`,`reference_no`,`expiry_date`,`status`,`uploaded_by`,`created_at`,`updated_at`) VALUES (DEFAULT,?,?,?,?,?,?,?,?);
+[0mPOST /api/providers/1/compliance [32m201[0m 260.791 ms - 222[0m
+Executing (default): SELECT `User`.`id`, `User`.`name`, `User`.`email`, `User`.`role`, `User`.`branch_id`, `User`.`status`, `Branch`.`id` AS `Branch.id`, `Branch`.`name` AS `Branch.name`, `Branch`.`code` AS `Branch.code`, `Branch`.`type` AS `Branch.type` FROM `users` AS `User` LEFT OUTER JOIN `branches` AS `Branch` ON `User`.`branch_id` = `Branch`.`id` WHERE `User`.`id` = 1;
+Executing (default): SELECT count(`ServiceProvider`.`id`) AS `count` FROM `service_providers` AS `ServiceProvider` LEFT OUTER JOIN `provider_compliance` AS `compliance` ON `ServiceProvider`.`id` = `compliance`.`provider_id`;
+Executing (default): SELECT `ServiceProvider`.*, `compliance`.`id` AS `compliance.id`, `compliance`.`expiry_date` AS `compliance.expiry_date`, `compliance`.`status` AS `compliance.status` FROM (SELECT `ServiceProvider`.`id`, `ServiceProvider`.`branch_id`, `ServiceProvider`.`provider_code`, `ServiceProvider`.`contact_id`, `ServiceProvider`.`company_name`, `ServiceProvider`.`contact_person`, `ServiceProvider`.`phone`, `ServiceProvider`.`email`, `ServiceProvider`.`address`, `ServiceProvider`.`specialisations`, `ServiceProvider`.`service_categories`, `ServiceProvider`.`coverage_areas`, `ServiceProvider`.`availability`, `ServiceProvider`.`portal_enabled`, `ServiceProvider`.`portal_user_id`, `ServiceProvider`.`rate_card`, `ServiceProvider`.`bank_details`, `ServiceProvider`.`rating`, `ServiceProvider`.`internal_notes`, `ServiceProvider`.`non_circumvention_agreed`, `ServiceProvider`.`status`, `ServiceProvider`.`onboarded_at`, `ServiceProvider`.`created_by`, `ServiceProvider`.`created_at` AS `createdAt`, `ServiceProvider`.`updated_at` AS `updatedAt` FROM `service_providers` AS `ServiceProvider` ORDER BY `ServiceProvider`.`created_at` DESC LIMIT 0, 1) AS `ServiceProvider` LEFT OUTER JOIN `provider_compliance` AS `compliance` ON `ServiceProvider`.`id` = `compliance`.`provider_id` ORDER BY `createdAt` DESC;
+[0mGET /api/providers?limit=1 [32m200[0m 197.380 ms - 746[0m

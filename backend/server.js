@@ -140,6 +140,13 @@ mount('/api/tenant', './routes/tenant.routes');
 mount('/api/vacancy-notices', './routes/vacancyNotice.routes');
 mount('/api/deposit-settlements', './routes/depositSettlement.routes');
 mount('/api/rental-reports', './routes/rentalReports.routes');
+mount('/api/disbursements', './routes/disbursement.routes');
+mount('/api/uploads', './routes/upload.routes');
+mount('/api/service-catalog', './routes/serviceCatalog.routes');
+mount('/api/public-provider', './routes/publicProvider.routes');
+mount('/api/care', './routes/care.routes');
+mount('/api/agreement-templates', './routes/agreementTemplate.routes');
+mount('/api/kyc', './routes/kyc.routes');
 mount('/api/utility-bills', './routes/utilityBill.routes');
 mount('/api/tenant-requests', './routes/tenantRequest.routes');
 mount('/api/arrears-actions', './routes/arrearsAction.routes');
@@ -149,6 +156,8 @@ mount('/api/property-risks', './routes/propertyRisk.routes');
 mount('/api/move-in-checklist', './routes/moveInChecklist.routes');
 mount('/api/public-party', './routes/publicParty.routes');
 mount('/api/deals', './routes/deal.routes');
+mount('/api/sales', './routes/sales.routes');
+mount('/api/sales-payments', './routes/salesPayment.routes');
 mount('/api/services', './routes/service.routes');
 mount('/api/leads', './routes/lead.routes');
 mount('/api/providers', './routes/provider.routes');
@@ -160,6 +169,7 @@ mount('/api/documents', './routes/document.routes');
 mount('/api/signing', './routes/signing.routes');
 mount('/api/agreements', './routes/agreement.routes');
 mount('/api/sign', './routes/sign.routes');
+mount('/api/intake', './routes/intake.routes');
 mount('/api/portal', './routes/portal.routes');
 mount('/api/public', './routes/public.routes');
 
@@ -195,6 +205,16 @@ const PORT = process.env.PORT || 5000;
           require('./services/rentalReceiptScheduler.service').startRentalReceiptScheduler();
         } catch (err) {
           console.warn(`[RentalReceiptScheduler] not started: ${err.message}`);
+        }
+        try {
+          require('./services/tenancyExpiry.scheduler').startTenancyExpiryScheduler();
+        } catch (err) {
+          console.warn(`[TenancyExpiry] not started: ${err.message}`);
+        }
+        try {
+          require('./services/arrearsReminder.scheduler').startArrearsReminderScheduler();
+        } catch (err) {
+          console.warn(`[ArrearsReminder] not started: ${err.message}`);
         }
       }
     });

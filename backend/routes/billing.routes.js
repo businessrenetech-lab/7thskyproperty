@@ -12,5 +12,6 @@ router.post('/landlord-bills', ctrl.createLandlordBill);
 router.get('/rental-receipts', ctrl.listRentalReceipts);
 router.post('/rental-receipts/generate', ctrl.generateRentalReceipts);
 router.post('/rental-receipts/:id/payments', ctrl.recordRentalReceiptPayment);
+router.post('/rental-receipts/:id/email', ctrl.emailRentalReceipt);
 
 module.exports = router;

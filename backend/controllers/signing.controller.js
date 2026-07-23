@@ -105,6 +105,13 @@ exports.sendEnvelope = asyncHandler(async (req, res) => {
   const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req) }, include: [{ model: EnvelopeSigner, as: 'signers' }] });
   if (!env) return res.status(404).json({ error: 'Envelope not found.' });
   if (!['draft', 'pending_approval'].includes(env.status)) return res.status(400).json({ error: `Cannot send an envelope in '${env.status}' state.` });
+  if (env.related_type === 'party_role') {
+    const role = await PartyRoleProfile.findOne({ where: { id: env.related_id, branch_id: env.branch_id } });
+    if (!role) return res.status(400).json({ error: 'Linked role profile is missing or belongs to another branch.' });
+    if (role.role_type === 'landlord' && role.status !== 'active' && (role.kyc_status !== 'complete' || role.documents_status !== 'complete')) {
+      return res.status(400).json({ error: 'Verify the owner KYC and required documents before sending this agreement.' });
+    }
+  }
 
   const expires = new Date(Date.now() + 14 * 86400000);
   const ordered = [...env.signers].sort((a, b) => a.signer_order - b.signer_order);
@@ -117,20 +124,47 @@ exports.sendEnvelope = asyncHandler(async (req, res) => {
   await env.update({ status: 'sent', sent_at: new Date(), expires_at: expires });
   if (env.related_type === 'party_role') {
     await PartyRoleProfile.update({ status: 'signing_sent', envelope_id: env.id, next_action: 'Waiting for signatures' }, { where: { id: env.related_id } });
+    const role = await PartyRoleProfile.findByPk(env.related_id);
+    if (role?.role_type === 'landlord' && role.property_id) {
+      const PropertyOwnerProfile = require('../models/PropertyOwnerProfile');
+      await PropertyOwnerProfile.update({ agreement_status: 'sent' }, { where: { property_id: role.property_id } });
+    }
+    if (role?.role_type === 'vendor' && role.property_id) {
+      const { SaleProfile } = require('../models/SalesModels');
+      await SaleProfile.update(
+        { agreement_status: 'sent', updated_by: req.user?.id || null },
+        { where: { property_id: role.property_id, branch_id: role.branch_id } },
+      );
+    }
   }
   await audit(env.id, 'sent', req, null, req.user?.email, { signers: ordered.length });
 
   const base = process.env.SIGN_BASE_URL || `${req.protocol}://${req.get('host')}/admin/sign`;
   const links = ordered.map((s) => ({ name: s.name, email: s.email, order: s.signer_order, link: `${base}/${s.access_token}` }));
+  try {
+    const { sendEmail } = require('../services/communication.service');
+    for (const link of links) {
+      if (!link.email) continue;
+      await sendEmail(link.email, `Please sign: ${env.title}`,
+        `<p>Dear ${link.name},</p><p>Please review and sign:</p><p><a href="${link.link}">${link.link}</a></p><p>This link expires in 14 days.</p><p>— Seventh Sky Property Care</p>`
+      ).catch(() => {});
+    }
+  } catch { /* best-effort */ }
   res.json({ message: 'Envelope sent.', links });
 });
 
 exports.voidEnvelope = asyncHandler(async (req, res) => {
   const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req) } });
   if (!env) return res.status(404).json({ error: 'Envelope not found.' });
+  if (!['draft', 'pending_approval', 'sent', 'viewed', 'partially_signed'].includes(env.status)) return res.status(400).json({ error: `Cannot void an envelope in '${env.status}' state.` });
   await env.update({ status: 'voided', voided_reason: req.body.reason || 'Voided by admin' });
   if (env.related_type === 'party_role') {
     await PartyRoleProfile.update({ status: 'voided', next_action: 'Agreement envelope voided' }, { where: { id: env.related_id } });
+    const role = await PartyRoleProfile.findByPk(env.related_id);
+    if (role?.role_type === 'landlord' && role.property_id) {
+      const PropertyOwnerProfile = require('../models/PropertyOwnerProfile');
+      await PropertyOwnerProfile.update({ agreement_status: 'draft' }, { where: { property_id: role.property_id } });
+    }
   }
   await audit(env.id, 'voided', req, null, req.user?.email, { reason: req.body.reason });
   res.json({ message: 'Envelope voided.' });

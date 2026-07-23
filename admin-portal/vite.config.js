@@ -31,16 +31,21 @@ export default defineConfig({
   },
   server: {
     host: '127.0.0.1',
-    port: 5174,
+    port: 3005,
     strictPort: true,
     hmr: {
       protocol: 'ws',
       host: '127.0.0.1',
-      port: 5174,
+      port: 3005,
     },
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5000',
+        target: 'http://127.0.0.1:50001',
+        changeOrigin: true,
+      },
+      // Uploaded files (KYC, docs, photos) are served by the backend under /uploads.
+      '/uploads': {
+        target: 'http://127.0.0.1:50001',
         changeOrigin: true,
       }
     }

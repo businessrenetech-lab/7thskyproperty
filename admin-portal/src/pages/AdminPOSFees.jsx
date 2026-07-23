@@ -199,8 +199,8 @@ const POSFees = () => {
                               </div>
                             )}
                           </td>
-                          <td style={{ fontWeight: 700, color: '#275fa7' }}>৳{due.toLocaleString()}</td>
-                          <td><span className="sb2 sb2-amber" style={{ background: 'rgba(39,95,167,0.1)', color: '#275fa7', borderColor: 'rgba(39,95,167,0.3)' }}>{inv.status}</span></td>
+                          <td style={{ fontWeight: 700, color: '#003768' }}>৳{due.toLocaleString()}</td>
+                          <td><span className="sb2 sb2-amber" style={{ background: 'rgba(0,55,104,0.1)', color: '#003768', borderColor: 'rgba(0,55,104,0.3)' }}>{inv.status}</span></td>
                           <td>
                             <div style={{ display: 'flex', gap: '4px' }}>
                               <button onClick={() => {
@@ -217,7 +217,7 @@ const POSFees = () => {
                                   referral_amount: referral.amount
                                 }));
                                 setShowCollectModal(true);
-                              }} className="btn-stitch" style={{ padding: '4px 10px', fontSize: '11px', background: '#7bc62e' }}>Collect</button>
+                              }} className="btn-stitch" style={{ padding: '4px 10px', fontSize: '11px', background: '#1bbdf1' }}>Collect</button>
                               <button onClick={() => { setSelectedInvoice(inv); setRejectNote(''); setShowRejectModal(true); }} className="btn-ghost" style={{ padding: '4px 10px', fontSize: '11px', borderColor: 'rgba(71,85,105,0.3)', color: '#475569' }}>Reject</button>
                             </div>
                           </td>

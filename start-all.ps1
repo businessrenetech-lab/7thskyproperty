@@ -1,24 +1,17 @@
 # start-all.ps1
-# Starts the Language Academy platform (4 services only)
+# Starts the Seventh Sky Property Care app
 
 Write-Host ""
 Write-Host "  ========================================================" -ForegroundColor Cyan
-Write-Host "    STARTING LANGUAGE ACADEMY PLATFORM" -ForegroundColor Cyan
+Write-Host "    STARTING SEVENTH SKY PROPERTY CARE" -ForegroundColor Cyan
 Write-Host "  ========================================================" -ForegroundColor Cyan
 Write-Host ""
 
 $baseDir = $PSScriptRoot
 
 $components = @(
-    @{ Name = "Backend API";     Dir = "backend";        Cmd = "node server.js"; Port = 5000 },
-    @{ Name = "Website";         Dir = "website";        Cmd = "npm run dev";    Port = 3001 },
-    @{ Name = "Admin Portal";    Dir = "admin-portal";   Cmd = "npm run dev";    Port = 5174 },
-    @{ Name = "Student Portal";  Dir = "student-portal"; Cmd = "npm run dev";    Port = 5173 },
-    @{ Name = "Teacher Portal";  Dir = "teacher-portal"; Cmd = "npm run dev";    Port = 5175 },
-    @{ Name = "Accounting Portal"; Dir = "accounting-portal"; Cmd = "npm run dev"; Port = 5176 },
-    @{ Name = "HR Portal";       Dir = "hr-portal";      Cmd = "npm run dev";    Port = 5177 },
-    @{ Name = "CRM Portal";      Dir = "crm-portal";     Cmd = "npm run dev";    Port = 5178 },
-    @{ Name = "Gateway";         Dir = "gateway";        Cmd = "node server.js"; Port = 3000 }
+    @{ Name = "Backend API";  Dir = "backend";      Cmd = '$env:PORT = "50001"; node server.js';              Port = 50001 },
+    @{ Name = "Admin Portal"; Dir = "admin-portal"; Cmd = "npm run dev -- --host 127.0.0.1 --port 3005"; Port = 3005 }
 )
 
 foreach ($comp in $components) {
@@ -39,11 +32,6 @@ Write-Host "  ========================================================" -Foregro
 Write-Host "    ALL SERVICES LAUNCHED" -ForegroundColor Cyan
 Write-Host "  ========================================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  Website  : http://localhost:3000" -ForegroundColor White
-Write-Host "  Admin    : http://localhost:3000/admin" -ForegroundColor White
-Write-Host "  Student  : http://localhost:3000/student" -ForegroundColor White
-Write-Host "  Teacher  : http://localhost:3000/teacher" -ForegroundColor White
-Write-Host "  HRM      : http://localhost:3000/hrm" -ForegroundColor White
-Write-Host "  Accounts : http://localhost:3000/accounting" -ForegroundColor White
-Write-Host "  CRM      : http://localhost:3000/brandmanager" -ForegroundColor White
+Write-Host "  Admin    : http://127.0.0.1:3005/admin/" -ForegroundColor White
+Write-Host "  Backend  : http://127.0.0.1:50001" -ForegroundColor White
 Write-Host ""

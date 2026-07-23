@@ -172,27 +172,38 @@ exports.recordPayment = asyncHandler(async (req, res) => {
       }
     }
     if (inv.folio_id) {
-      await postFolioTransaction({
-        folio_id: inv.folio_id,
-        transaction_type: 'payment',
-        bucket: 'adjustment',
-        payment_id: payment.id,
-        invoice_id: inv.id,
-        property_id: inv.property_id,
-        tenancy_id: inv.tenancy_id,
-        description: `Payment for ${inv.invoice_code}`,
-        credit: amount,
-        created_by: req.user?.id || null,
+      // Allocate across the tenant folio's outstanding buckets (rent → service →
+      // utility → remainder) so bucket balances reconcile with current_balance.
+      // This keeps the 3-way outstanding split accurate.
+      const { allocatePaymentToBuckets } = require('../services/folio.service');
+      await allocatePaymentToBuckets(inv.folio_id, amount, {
+        payment_id: payment.id, invoice_id: inv.id,
+        property_id: inv.property_id, tenancy_id: inv.tenancy_id,
+        description: `Payment for ${inv.invoice_code}`, created_by: req.user?.id || null,
       }, { transaction: t });
     }
+    // Resolve the rent period once (PropertyInvoice has no period_label column).
+    let rentPeriod = null;
+    if (inv.tenancy_id) {
+      if (inv.rental_ledger_id) {
+        const RL = require('../models/RentalLedger');
+        const led = await RL.findByPk(inv.rental_ledger_id, { transaction: t });
+        rentPeriod = led?.period_label || null;
+      }
+      if (!rentPeriod && inv.issue_date) rentPeriod = String(inv.issue_date).slice(0, 7);
+    }
+
     if (inv.invoice_kind === 'client' && inv.tenancy_id) {
       const tenancy = await Tenancy.findByPk(inv.tenancy_id, { transaction: t });
       const landlordFolio = tenancy ? await findBestLandlordFolio(tenancy.owner_contact_id, tenancy.property_id, { transaction: t }) : null;
+      // Rent-type receipts credit the landlord folio as 'rent' so owner statements
+      // classify them correctly; other tenant invoices post as 'adjustment'.
+      const isRent = inv.invoice_type === 'rental_receipt' || inv.source_receipt_id || inv.service_for === 'tenancy';
       if (landlordFolio) {
         await postFolioTransaction({
           folio_id: landlordFolio.id,
           transaction_type: 'payment',
-          bucket: inv.source_receipt_id ? 'rent' : 'adjustment',
+          bucket: isRent ? 'rent' : 'adjustment',
           payment_id: payment.id,
           invoice_id: inv.id,
           property_id: inv.property_id,
@@ -202,14 +213,45 @@ exports.recordPayment = asyncHandler(async (req, res) => {
           created_by: req.user?.id || null,
         }, { transaction: t });
       }
-    }
-    if (inv.source_receipt_id) {
-      const receipt = await RentalReceipt.findByPk(inv.source_receipt_id, { transaction: t });
-      if (receipt) {
-        const amount_paid = num(receipt.amount_paid) + amount;
-        const balance = num(receipt.total_amount) - amount_paid;
-        await receipt.update({ amount_paid, balance, status: balance <= 0 ? 'paid' : 'partial' }, { transaction: t });
+      // Seventh Sky earns its fees the moment rent is received: deduct from the
+      // owner balance + book our income. Only for rent-type receipts.
+      if (tenancy && isRent) {
+        try {
+          const { applyOwnerFeesOnRent } = require('../services/ownerFees.service');
+          await applyOwnerFeesOnRent({
+            tenancy, rentReceived: amount, period_label: rentPeriod,
+            source_id: payment.id, source_type: 'rent_receipt', user_id: req.user?.id || null,
+          }, { transaction: t });
+        } catch (e) { console.warn('[ownerFees] apply failed:', e.message); }
       }
+    }
+    // Reconcile the rental receipt for this rent — whether the invoice was
+    // created by the monthly scheduler (source_receipt_id) OR by the rent
+    // collection form (rental_ledger_id / same tenancy+period). This fixes the
+    // "receipt still shows outstanding after rent collected" bug.
+    let receipt = null;
+    if (inv.source_receipt_id) {
+      receipt = await RentalReceipt.findByPk(inv.source_receipt_id, { transaction: t });
+    } else if (inv.tenancy_id && rentPeriod) {
+      receipt = await RentalReceipt.findOne({ where: { tenancy_id: inv.tenancy_id, period_label: rentPeriod }, transaction: t });
+      // Link the invoice to the receipt so future payments reconcile directly.
+      if (receipt) await inv.update({ source_receipt_id: receipt.id }, { transaction: t });
+    }
+    if (receipt) {
+      const rAmountPaid = num(receipt.amount_paid) + amount;
+      const rBalance = num(receipt.total_amount) - rAmountPaid;
+      await receipt.update({ amount_paid: rAmountPaid, balance: rBalance, status: rBalance <= 0 ? 'paid' : 'partial' }, { transaction: t });
+    }
+
+    // Property Care billing automation: a paid SERVICE invoice books our fee as
+    // income and accrues the provider's charge to their folio.
+    if (inv.invoice_type === 'service') {
+      try {
+        const CareWorkOrder = require('../models/CareWorkOrder');
+        const { onClientPayment } = require('../services/careBilling.service');
+        const wo = await CareWorkOrder.findOne({ where: { invoice_id: inv.id }, transaction: t });
+        if (wo) await onClientPayment(wo, amount_paid, { transaction: t, user_id: req.user?.id });
+      } catch (e) { console.warn('[careBilling] service settlement:', e.message); }
     }
     return payment;
   });

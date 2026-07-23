@@ -1,14 +1,14 @@
 :root {
-    /* Language Academy - Professional SaaS Design Tokens */
+    /* Real estate platform design tokens */
     --bg-deep: #0f172a;
     --bg-card: rgba(30, 41, 59, 0.6);
     --surface: #1e293b;
     --canvas: #0f172a;
-    --primary: #7bc62e;
-    --primary-glow: rgba(123, 198, 46, 0.3);
-    --accent: #275fa7;
-    --accent-glow: rgba(39, 95, 167, 0.3);
-    --success: #7bc62e;
+    --primary: #1bbdf1;
+    --primary-glow: rgba(27, 189, 241, 0.3);
+    --accent: #003768;
+    --accent-glow: rgba(0, 55, 104, 0.3);
+    --success: #1bbdf1;
     --warning: #f59e0b;
     --danger: #ef4444;
     --text-main: #FBFCFC;
@@ -29,10 +29,10 @@
     --bg-card: rgba(255, 255, 255, 1);
     --surface: #ffffff;
     --canvas: #f8fafc;
-    --primary: #7bc62e;
-    --primary-glow: rgba(123, 198, 46, 0.1);
-    --accent: #275fa7;
-    --accent-glow: rgba(39, 95, 167, 0.1);
+    --primary: #1bbdf1;
+    --primary-glow: rgba(27, 189, 241, 0.1);
+    --accent: #003768;
+    --accent-glow: rgba(0, 55, 104, 0.1);
     --text-main: #010203;
     --text-dim: #64748b;
     --border: rgba(0, 0, 0, 0.1);
@@ -371,7 +371,7 @@ select option {
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 2px;
-  background: var(--pc-line, linear-gradient(90deg, var(--primary), #275fa7));
+  background: var(--pc-line, linear-gradient(90deg, var(--primary), #003768));
 }
 
 /* Pulse card color variants */
@@ -506,7 +506,7 @@ table.stitch tbody tr:hover td { background: rgba(255,255,255,0.03); }
 :root.light table.stitch tbody tr:hover td {
   background: rgba(0,0,0,0.02);
 }
-:root.light .td-mono { color: #275fa7; }
+:root.light .td-mono { color: #003768; }
 
 /* ── Stitch Badge ── */
 .sb2 {
@@ -924,7 +924,7 @@ table.stitch tbody tr:hover td { background: rgba(255,255,255,0.03); }
   .bottom-nav-checkin span { font-size: 9.5px !important; font-weight: 700; color: var(--primary); }
   .bottom-nav-checkin-circle {
     width: 50px; height: 50px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary), #275fa7);
+    background: linear-gradient(135deg, var(--primary), #003768);
     color: #fff; display: flex; align-items: center; justify-content: center;
     box-shadow: 0 4px 18px rgba(123,198,46,0.4);
     transition: all 0.2s;
@@ -1767,10 +1767,10 @@ table.stitch tbody tr:hover td { background: rgba(255,255,255,0.03); }
   background: linear-gradient(
     90deg,
     transparent 0%,
-    var(--primary, #7bc62e) 15%,
-    var(--accent, #275fa7) 50%,
+    var(--primary, #1bbdf1) 15%,
+    var(--accent, #003768) 50%,
     #9B6DFF 75%,
-    var(--primary, #7bc62e) 100%
+    var(--primary, #1bbdf1) 100%
   );
   background-size: 300% 100%;
   animation: topBarSlide 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;

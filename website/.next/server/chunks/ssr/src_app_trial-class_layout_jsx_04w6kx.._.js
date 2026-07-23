@@ -1,3 +1,0 @@
-module.exports=[39196,a=>{"use strict";var b=a.i(7997);a.s(["default",0,function({children:a}){return(0,b.jsx)(b.Fragment,{children:a})},"metadata",0,{title:"Book Free Trial Class | Best PTE Coaching Centre in Dhaka",description:"Reserve your seat for a free PTE or IELTS trial class at Language Academy Bangladesh. Meet our certified trainers and explore our AI mock test labs.",alternates:{canonical:"/trial-class"},robots:{index:!0,follow:!0}}])},94173,a=>{a.n(a.i(39196))}];
-
-//# sourceMappingURL=src_app_trial-class_layout_jsx_04w6kx.._.js.map

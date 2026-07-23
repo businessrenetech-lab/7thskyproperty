@@ -1,5 +1,5 @@
 /**
- * Quick test script to send a test email from the Language Academy system.
+ * Quick test script to send a test email from the application system.
  * Usage: node scripts/send-test-email.js
  */
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
@@ -11,10 +11,14 @@ const sequelize = require('../config/db.config');
 const SystemSetting = require('../models/SystemSetting');
 const { sendEmail, brandedEmailWrapper } = require('../services/communication.service');
 
-const TO_EMAIL = 'redowansayem73@gmail.com';
+const TO_EMAIL = process.env.TEST_EMAIL_TO || process.env.SMTP_USER;
 
 async function main() {
   try {
+    if (!TO_EMAIL) {
+      throw new Error('Set TEST_EMAIL_TO or SMTP_USER before sending a test email.');
+    }
+
     // Connect to DB
     await sequelize.authenticate();
     console.log('✅ Database connected');
@@ -42,12 +46,12 @@ async function main() {
     const bodyContent = `
       <h2 class="hero-title" style="margin:0 0 6px 0;font-size:24px;font-weight:700;color:#1a1a2e;">✅ Email System Test</h2>
       <p style="margin:0 0 24px 0;font-size:15px;color:#495057;line-height:1.7;">
-        This is a <strong>test email</strong> from the Language Academy system to verify that your SMTP configuration is working correctly.
+        This is a <strong>test email</strong> from the Seventh Sky Property Care system to verify that your SMTP configuration is working correctly.
       </p>
 
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e9ecef;border-radius:10px;overflow:hidden;margin-bottom:24px;">
         <tr>
-          <td style="background-color:#32619A;padding:14px 20px;">
+          <td style="background-color:#003768;padding:14px 20px;">
             <h3 style="margin:0;font-size:15px;font-weight:700;color:#ffffff;">SMTP Test Details</h3>
           </td>
         </tr>
@@ -75,20 +79,20 @@ async function main() {
         <tr>
           <td style="background-color:#e8f5e9;border-left:4px solid #2e7d32;padding:16px 20px;border-radius:0 8px 8px 0;">
             <p style="margin:0 0 6px 0;font-size:15px;color:#2e7d32;font-weight:700;">Configuration Verified</p>
-            <p style="margin:0;font-size:14px;color:#1b5e20;line-height:1.6;">If you're reading this email, it means the Language Academy Hostinger SMTP email system is fully functional.</p>
+            <p style="margin:0;font-size:14px;color:#1b5e20;line-height:1.6;">If you're reading this email, it means the Hostinger SMTP email system is fully functional.</p>
           </td>
         </tr>
       </table>
 
       <p style="margin:0;font-size:14px;color:#6c757d;">
-        — Language Academy System
+        — Seventh Sky Property Care System
       </p>
     `;
 
-    const html = brandedEmailWrapper('SMTP Test — Language Academy', bodyContent);
+    const html = brandedEmailWrapper('SMTP Test — Seventh Sky Property Care', bodyContent);
 
     console.log(`\n📤 Sending test email to: ${TO_EMAIL}...`);
-    const result = await sendEmail(TO_EMAIL, '✅ Test Email — Language Academy (Hostinger SMTP)', html, [], 'info');
+    const result = await sendEmail(TO_EMAIL, 'Test Email — Seventh Sky Property Care (Hostinger SMTP)', html, [], 'info');
 
     if (result.success) {
       console.log(`\n✅ SUCCESS: ${result.message}`);

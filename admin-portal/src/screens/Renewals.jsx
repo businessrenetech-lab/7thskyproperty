@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { CalendarClock, Play, Check, X, RefreshCw, Send } from 'lucide-react';
+import { CalendarClock, RefreshCw, Send } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { PageHead, Spinner, Badge, Button, Field, Input, Textarea, Drawer } from '../ui/kit';
@@ -7,9 +7,9 @@ import { PageHead, Spinner, Badge, Button, Field, Input, Textarea, Drawer } from
 const money = (v) => 'BDT ' + Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
 
 const IN_FLIGHT_META = {
-  proposed: { label: 'Owner Approval', tone: 'amber', next: 'Wait for owner decision' },
-  owner_approved: { label: 'Tenant to Accept', tone: 'blue', next: 'Send offer to tenant' },
-  tenant_accepted: { label: 'Ready to Activate', tone: 'green', next: 'Activate — apply new terms' },
+  proposed: { label: 'Proposed', tone: 'amber', next: 'Send renewal agreement' },
+  owner_approved: { label: 'Owner approved', tone: 'blue', next: 'Send renewal agreement' },
+  tenant_accepted: { label: 'Tenant accepted', tone: 'green', next: 'Send renewal agreement' },
   activated: { label: 'Activated', tone: 'green', next: 'Complete' },
   declined: { label: 'Declined', tone: 'red', next: '—' },
 };
@@ -38,9 +38,13 @@ export default function Renewals() {
     } catch (e) { toast.error(e.response?.data?.error || 'Failed'); } finally { setSaving(false); }
   };
 
-  const action = async (id, path, msg) => {
-    try { const { data } = await api.post(`/tenancies/${id}/renewal/${path}`); toast.success(data.message || msg); await load(); }
-    catch (e) { toast.error(e.response?.data?.error || 'Failed'); }
+  const sendAgreement = async (id) => {
+    try {
+      const tenancy = data.data.in_flight.find((item) => item.id === id);
+      if (tenancy?.renewal_status === 'proposed') await api.post(`/tenancies/${id}/renewal/decide`, { decision: 'approved', note: 'Approved by staff from the renewals dashboard.' });
+      const { data: response } = await api.post(`/tenancies/${id}/send-agreement`, { renewal: true }); toast.success(response.message); await load();
+    }
+    catch (e) { toast.error(e.response?.data?.error || 'Could not send renewal agreement'); }
   };
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spinner /></div>;
@@ -74,12 +78,7 @@ export default function Renewals() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                       <Badge tone={meta.tone} dot>{meta.label}</Badge>
-                      {t.renewal_status === 'owner_approved' && (
-                        <Button size="sm" variant="ghost" icon={Send} onClick={() => action(t.id, 'tenant-accept', 'Tenant accepted')}>Mark Tenant Accepted</Button>
-                      )}
-                      {t.renewal_status === 'tenant_accepted' && (
-                        <Button size="sm" icon={Play} onClick={() => action(t.id, 'activate', 'Activated')}>Activate</Button>
-                      )}
+                      <Button size="sm" icon={Send} onClick={() => sendAgreement(t.id)}>{t.agreement_sent_date ? 'Resend renewal agreement' : 'Send renewal agreement'}</Button>
                     </div>
                   </div>
                 </div>
@@ -134,6 +133,7 @@ function ProposeDrawer({ tenancy, onClose, onSubmit, saving }) {
     new_rent: tenancy.monthly_rent,
     new_service_charge: tenancy.service_charge || 0,
     new_lease_end: '',
+    effective_date: '',
     notes: '',
   });
   return (
@@ -149,8 +149,9 @@ function ProposeDrawer({ tenancy, onClose, onSubmit, saving }) {
           <Field label="New service charge (BDT)"><Input type="number" value={form.new_service_charge} onChange={(e) => setForm((s) => ({ ...s, new_service_charge: e.target.value }))} /></Field>
         </div>
         <Field label="New lease end date" required><Input type="date" value={form.new_lease_end} onChange={(e) => setForm((s) => ({ ...s, new_lease_end: e.target.value }))} /></Field>
+        <Field label="New terms effective date"><Input type="date" value={form.effective_date} onChange={(e) => setForm((s) => ({ ...s, effective_date: e.target.value }))} /></Field>
         <Field label="Notes"><Textarea rows={3} value={form.notes} onChange={(e) => setForm((s) => ({ ...s, notes: e.target.value }))} placeholder="Reason for the proposed rate, any concessions…" /></Field>
-        <p className="cell-sub" style={{ fontSize: 12, margin: 0 }}>Owner will see this in their approvals inbox. Once approved, the tenant sees the offer in their portal.</p>
+        <p className="cell-sub" style={{ fontSize: 12, margin: 0 }}>An increase creates a formal notice. New terms are applied only after the renewal agreement is fully signed.</p>
       </div>
     </Drawer>
   );

@@ -248,9 +248,9 @@ const Invoices = () => {
                     <p style={{ fontSize: '1.15rem', fontWeight: '800' }}>৳{parseFloat(inv.amount).toLocaleString()}</p>
                     <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
                       <span style={{ padding: '3px 10px', borderRadius: '12px', fontSize: '0.63rem', fontWeight: '700', background: `${statusColor(inv.status)}20`, color: statusColor(inv.status), textTransform: 'capitalize' }}>{inv.status}</span>
-                      <button onClick={() => downloadInvoicePdf(inv)} style={{ padding: '3px 10px', fontSize: '0.68rem', borderRadius: '6px', background: 'rgba(39,95,167,0.1)', color: '#275fa7', border: '1px solid rgba(39,95,167,0.2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}><Download size={12} /> Export</button>
+                      <button onClick={() => downloadInvoicePdf(inv)} style={{ padding: '3px 10px', fontSize: '0.68rem', borderRadius: '6px', background: 'rgba(0,55,104,0.1)', color: '#003768', border: '1px solid rgba(0,55,104,0.2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}><Download size={12} /> Export</button>
                       {inv.status !== 'paid' && (
-                        <button onClick={() => openEditModal(inv)} style={{ padding: '3px 10px', fontSize: '0.68rem', borderRadius: '6px', background: 'rgba(123,198,46,0.1)', color: '#7bc62e', border: '1px solid rgba(123,198,46,0.2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}><Edit2 size={12} /> Edit</button>
+                        <button onClick={() => openEditModal(inv)} style={{ padding: '3px 10px', fontSize: '0.68rem', borderRadius: '6px', background: 'rgba(27,189,241,0.1)', color: '#1bbdf1', border: '1px solid rgba(27,189,241,0.2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}><Edit2 size={12} /> Edit</button>
                       )}
                     </div>
                   </div>
@@ -368,7 +368,7 @@ const Invoices = () => {
                         <div style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           padding: '0.7rem 0.9rem', borderRadius: '8px', border: '1px solid var(--primary)',
-                          background: 'rgba(123,198,46,0.08)', cursor: 'pointer'
+                          background: 'rgba(27,189,241,0.08)', cursor: 'pointer'
                         }} onClick={() => { setCustomerDropdownOpen(!customerDropdownOpen); setCustomerSearch(''); }}>
                           <div>
                             <span style={{ fontWeight: 600, fontSize: '0.88rem' }}>{invoiceData.customer_name}</span>
@@ -423,7 +423,7 @@ const Invoices = () => {
                                 borderBottom: '1px solid var(--border)',
                                 transition: 'background 0.15s'
                               }}
-                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(123,198,46,0.1)'}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(27,189,241,0.1)'}
                               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                               >
                                 <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{c.name} {c.company ? <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>· {c.company}</span> : ''}</div>
@@ -484,7 +484,7 @@ const Invoices = () => {
               {/* ── STEP 2: Invoice Details ── */}
               {invoiceStep === 2 && (
                 <form onSubmit={handleCreateInvoice} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div style={{ padding: '0.8rem', background: 'rgba(123,198,46,0.08)', borderRadius: '8px', border: '1px solid rgba(123,198,46,0.2)' }}>
+                  <div style={{ padding: '0.8rem', background: 'rgba(27,189,241,0.08)', borderRadius: '8px', border: '1px solid rgba(27,189,241,0.2)' }}>
                     <p style={{ fontSize: '0.72rem', color: 'var(--text-dim)', margin: 0 }}>BILLING TO</p>
                     <p style={{ fontWeight: '700', margin: '2px 0 0', fontSize: '0.95rem' }}>{invoiceData.customer_name}{invoiceData.customer_company ? ` · ${invoiceData.customer_company}` : ''}</p>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', margin: 0 }}>{[invoiceData.customer_phone, invoiceData.customer_email].filter(Boolean).join(' · ')}</p>

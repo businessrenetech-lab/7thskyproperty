@@ -19,10 +19,40 @@ async function generateMonthlyRentalReceipts({ period_label = currentPeriod(), r
   let created = 0;
   let skipped = 0;
 
+  const RentalLedger = require('../models/RentalLedger');
+
   for (const tenancy of tenancies) {
     const existing = await RentalReceipt.findOne({ where: { tenancy_id: tenancy.id, period_label } });
     const total = num(tenancy.monthly_rent) + num(tenancy.service_charge);
     if (existing || !tenancy.tenant_contact_id || total <= 0) { skipped++; continue; }
+
+    // If rent for this period was already charged via the collection form
+    // (rental ledger + invoice exist), DON'T create a second charge. Instead
+    // create a receipt that mirrors the existing invoice's paid/balance so the
+    // receipt list is accurate without double-charging the tenant folio.
+    const ledger = await RentalLedger.findOne({ where: { property_id: tenancy.property_id, period_label } });
+    if (ledger && ledger.invoice_id) {
+      const existingInv = await PropertyInvoice.findByPk(ledger.invoice_id);
+      const paid = num(existingInv?.amount_paid ?? ledger.rent_received);
+      const bal = Math.max(0, total - paid);
+      const landlordFolio = await findBestLandlordFolio(tenancy.owner_contact_id, tenancy.property_id);
+      const tenantFolio = (await ensureFoliosForTenancy(tenancy)).tenantFolio;
+      await RentalReceipt.create({
+        branch_id: tenancy.branch_id,
+        receipt_code: await generateCode(RentalReceipt, 'receipt_code', 'SSPC-RR-'),
+        period_label, tenancy_id: tenancy.id, tenant_contact_id: tenancy.tenant_contact_id,
+        landlord_contact_id: tenancy.owner_contact_id, property_id: tenancy.property_id,
+        tenant_folio_id: tenantFolio?.id || null, landlord_folio_id: landlordFolio?.id || null,
+        invoice_id: existingInv?.id || null,
+        rent_amount: num(tenancy.monthly_rent), service_charge: num(tenancy.service_charge),
+        total_amount: total, amount_paid: paid, balance: bal,
+        due_date: `${period_label}-${String(receipt_day).padStart(2, '0')}`,
+        status: bal <= 0 ? 'paid' : paid > 0 ? 'partial' : 'sent',
+        created_by,
+      });
+      created++;
+      continue;
+    }
 
     await sequelize.transaction(async (tx) => {
       const folios = await ensureFoliosForTenancy(tenancy, { transaction: tx });

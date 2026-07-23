@@ -54,14 +54,14 @@ app.use('/brandmanager', createProxyMiddleware({
 
 // ─── Backend API ───────────────────────────────────────────────────────────────
 app.use('/api', createProxyMiddleware({
-  target: 'http://127.0.0.1:5000',
+  target: 'http://127.0.0.1:5001',
   changeOrigin: true,
   pathRewrite: (p, req) => req.originalUrl,
 }));
 
 // ─── Uploads (backend-served files) ────────────────────────────────────────────
 app.use('/uploads', createProxyMiddleware({
-  target: 'http://127.0.0.1:5000',
+  target: 'http://127.0.0.1:5001',
   changeOrigin: true,
   pathRewrite: (p, req) => req.originalUrl,
 }));

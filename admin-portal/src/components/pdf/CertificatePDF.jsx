@@ -19,13 +19,13 @@ const CertificatePDF = forwardRef(({ student }, ref) => {
         background: '#f8fafc',
         width: '1123px', // A4 landscape width approx
         minHeight: '794px', // A4 landscape height approx
-        border: '15px solid #275fa7',
+        border: '15px solid #003768',
         boxSizing: 'border-box',
         position: 'relative'
       }}>
         {/* Inner Border */}
         <div style={{
-          border: '5px solid #7bc62e',
+          border: '5px solid #1bbdf1',
           position: 'absolute',
           top: '30px',
           bottom: '30px',
@@ -39,8 +39,8 @@ const CertificatePDF = forwardRef(({ student }, ref) => {
         }}>
           {/* Header with Branding */}
           <div style={{ marginBottom: '30px' }}>
-            <h1 style={{ color: '#275fa7', margin: '0 0 10px 0', fontSize: '48px', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 800 }}>Language Academy</h1>
-            <h2 style={{ color: '#7bc62e', margin: '0', fontSize: '24px', fontWeight: '600', letterSpacing: '4px', textTransform: 'uppercase' }}>Certificate of Achievement</h2>
+            <h1 style={{ color: '#003768', margin: '0 0 10px 0', fontSize: '48px', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 800 }}>Language Academy</h1>
+            <h2 style={{ color: '#1bbdf1', margin: '0', fontSize: '24px', fontWeight: '600', letterSpacing: '4px', textTransform: 'uppercase' }}>Certificate of Achievement</h2>
           </div>
 
           <p style={{ fontSize: '18px', color: '#64748b', marginTop: '20px' }}>This is to certify that</p>
@@ -61,7 +61,7 @@ const CertificatePDF = forwardRef(({ student }, ref) => {
           <p style={{ fontSize: '18px', color: '#64748b', maxWidth: '800px', lineHeight: '1.6', margin: '20px 0' }}>
             has successfully completed the course 
             <br />
-            <strong style={{ fontSize: '24px', color: '#275fa7', display: 'block', margin: '15px 0' }}>{student.Batch?.Course?.title || 'Unknown Course'}</strong>
+            <strong style={{ fontSize: '24px', color: '#003768', display: 'block', margin: '15px 0' }}>{student.Batch?.Course?.title || 'Unknown Course'}</strong>
             (Batch: {student.Batch?.code || 'N/A'}) with a course duration of <strong>{student.Batch?.Course?.duration_weeks ? `${student.Batch?.Course?.duration_weeks} Weeks` : 'N/A'}</strong>.
           </p>
 
@@ -71,22 +71,22 @@ const CertificatePDF = forwardRef(({ student }, ref) => {
 
           <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', width: '100%', padding: '0 50px', boxSizing: 'border-box' }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ borderBottom: '2px solid #275fa7', width: '200px', marginBottom: '10px' }}></div>
-              <p style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#275fa7' }}>Course Instructor</p>
+              <div style={{ borderBottom: '2px solid #003768', width: '200px', marginBottom: '10px' }}></div>
+              <p style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#003768' }}>Course Instructor</p>
             </div>
             
             <div style={{ 
               width: '100px', 
               height: '100px', 
               borderRadius: '50%', 
-              background: '#275fa7', 
+              background: '#003768', 
               color: 'white', 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center',
               fontWeight: 800,
               fontSize: '24px',
-              border: '4px solid #7bc62e',
+              border: '4px solid #1bbdf1',
               transform: 'rotate(-15deg)',
               boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
             }}>
@@ -94,8 +94,8 @@ const CertificatePDF = forwardRef(({ student }, ref) => {
             </div>
 
             <div style={{ textAlign: 'center' }}>
-              <div style={{ borderBottom: '2px solid #275fa7', width: '200px', marginBottom: '10px' }}></div>
-              <p style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#275fa7' }}>Managing Director</p>
+              <div style={{ borderBottom: '2px solid #003768', width: '200px', marginBottom: '10px' }}></div>
+              <p style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#003768' }}>Managing Director</p>
             </div>
           </div>
         </div>

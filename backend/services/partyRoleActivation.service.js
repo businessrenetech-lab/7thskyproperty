@@ -19,6 +19,9 @@
  */
 const sequelize = require('../config/db.config');
 const PartyRoleProfile = require('../models/PartyRoleProfile');
+const SigningEnvelope = require('../models/SigningEnvelope');
+const KycDocument = require('../models/KycDocument');
+const { evaluate } = require('./kycRequirements.service');
 const Tenancy = require('../models/Tenancy');
 const Property = require('../models/Property');
 const PropertyOwnerProfile = require('../models/PropertyOwnerProfile');
@@ -105,6 +108,21 @@ async function syncLandlordTerms(profile, terms, tx) {
 /** Sync vendor (sales agency) terms into the property listing. */
 async function syncVendorTerms(profile, terms, tx) {
   if (!profile?.property_id) return;
+  const { SaleProfile } = require('../models/SalesModels');
+  const saleProfile = await SaleProfile.findOne({
+    where: { property_id: profile.property_id, branch_id: profile.branch_id },
+    transaction: tx,
+  });
+  if (saleProfile) {
+    const patch = { agreement_status: 'signed' };
+    if (num(terms.listing_price) != null && num(terms.listing_price) > 0) {
+      patch.asking_price = num(terms.listing_price);
+    }
+    if (num(terms.commission_pct) != null) {
+      patch.commission_percent = num(terms.commission_pct);
+    }
+    await saleProfile.update(patch, { transaction: tx });
+  }
   if (num(terms.listing_price) != null && num(terms.listing_price) > 0) {
     await Property.update({ price: num(terms.listing_price) }, { where: { id: profile.property_id }, transaction: tx });
   }
@@ -131,6 +149,8 @@ async function activateTenancyFromSignedAgreement(tenancyId, terms = {}, options
   if (terms.lease_start) patch.lease_start = terms.lease_start;
   if (terms.lease_end) patch.lease_end = terms.lease_end;
   if (num(terms.minimum_lease_period_months) != null) patch.minimum_lease_period_months = num(terms.minimum_lease_period_months);
+  // Renewal: the new terms are now live — close out the renewal cycle.
+  if (terms.renewal) { patch.renewal_status = 'none'; patch.renewal_activated_at = new Date(); }
   await tenancy.update(patch, { transaction: tx });
 
   // 2. Folios + property occupancy
@@ -151,6 +171,11 @@ async function activateTenancyFromSignedAgreement(tenancyId, terms = {}, options
     transaction: tx,
   });
   if (tenantRole) await activatePartyRole(tenantRole, { transaction: tx });
+
+  // 4. Progressive SOP: a signed tenancy unlocks the move-in + ongoing phases.
+  if (tenancy.property_id) {
+    try { await require('./progressiveSop.service').unlockForEvent(tenancy.property_id, 'tenancy_signed', { transaction: tx }); } catch (e) { /* non-fatal */ }
+  }
 
   return tenancy;
 }
@@ -201,6 +226,45 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
       }
     }
 
+    if (envelope.related_type === 'care_quotation') {
+      const CareQuotation = require('../models/CareQuotation');
+      const { convertToWorkOrder } = require('../controllers/careQuotation.controller');
+      const q = await CareQuotation.findByPk(envelope.related_id, { transaction: tx });
+      if (q) {
+        // Auto-raise the work order on the signed customer agreement (in-transaction).
+        try { if (!q.work_order_id) await convertToWorkOrder(q, null, { transaction: tx }); } catch (e) { console.warn('[careQuotation] convert on sign:', e.message); }
+        await q.update({ agreement_status: 'signed' }, { transaction: tx });
+      }
+    }
+
+    if (envelope.related_type === 'service_provider') {
+      const ServiceProvider = require('../models/ServiceProvider');
+      const ProviderCompliance = require('../models/ProviderCompliance');
+      const provider = await ServiceProvider.findByPk(envelope.related_id, { transaction: tx });
+      if (provider) {
+        const patch = { agreement_status: 'signed', non_circumvention_agreed: true };
+        // If verification already complete, the signed agreement completes onboarding.
+        const allChecked = provider.kyc_verified && provider.compliance_verified && provider.insurance_verified && provider.capability_verified && provider.payment_verified;
+        if (allChecked) { patch.onboarding_stage = 'active'; patch.status = 'approved'; if (!provider.verified_at) patch.verified_at = new Date(); }
+        if (terms.commission_pct != null) {
+          // rate_card can arrive double-encoded (stored as a JSON string). Parse
+          // defensively and drop any junk numeric keys before writing.
+          let rc = provider.rate_card;
+          for (let i = 0; i < 3 && typeof rc === 'string'; i++) { try { rc = JSON.parse(rc); } catch { rc = {}; } }
+          const clean = {};
+          if (rc && typeof rc === 'object' && !Array.isArray(rc)) for (const k of Object.keys(rc)) if (!/^\d+$/.test(k)) clean[k] = rc[k];
+          patch.rate_card = { ...clean, commission_pct: num(terms.commission_pct) };
+        }
+        await provider.update(patch, { transaction: tx });
+        // File the executed agreement against the provider.
+        await ProviderCompliance.create({
+          provider_id: provider.id, doc_category: 'other', doc_type: 'Signed Master Agreement',
+          title: envelope.title, reference_no: envelope.envelope_code, status: 'valid', verified: true,
+        }, { transaction: tx }).catch(() => {});
+        await logPropertyEvent(null, provider.branch_id, `Provider agreement signed — ${envelope.envelope_code}`, `${provider.company_name} master agreement executed.`);
+      }
+    }
+
     if (envelope.related_type === 'party_role') {
       const profile = await PartyRoleProfile.findByPk(envelope.related_id, { transaction: tx });
       if (profile) {
@@ -208,13 +272,28 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
         if (profile.role_type === 'landlord') await syncLandlordTerms(profile, terms, tx);
         if (profile.role_type === 'vendor') await syncVendorTerms(profile, terms, tx);
         await profile.update({ status: 'signed' }, { transaction: tx });
-        await activatePartyRole(profile, { transaction: tx });
-        await logPropertyEvent(profile.property_id, profile.branch_id,
-          `${profile.role_type} agreement signed — ${envelope.envelope_code}`,
-          `Role ${profile.profile_code} activated automatically.${profile.role_type === 'landlord' && terms.management_fee_pct != null ? ` Management fee ${terms.management_fee_pct}% synced to property + fee schedule.` : ''}`);
-        // If a tenancy is linked to this role profile (tenant flows), activate it too.
-        if (profile.role_type === 'tenant' && profile.tenancy_id) {
-          await activateTenancyFromSignedAgreement(profile.tenancy_id, terms, { transaction: tx });
+
+        // KYC gate: when this envelope collects KYC, hold activation until the
+        // required documents are verified. kycAutomation completes it on verify.
+        const gated = envelope.kyc_role && envelope.kyc_policy && envelope.kyc_policy !== 'none';
+        let kycOk = true;
+        if (gated) {
+          const docs = await KycDocument.findAll({ where: { related_type: 'party_role', related_id: profile.id, role: envelope.kyc_role }, raw: true, transaction: tx });
+          kycOk = evaluate(envelope.kyc_role, docs).all_verified;
+        }
+        if (kycOk) {
+          await activatePartyRole(profile, { transaction: tx });
+          if (profile.role_type === 'tenant' && profile.tenancy_id) {
+            await activateTenancyFromSignedAgreement(profile.tenancy_id, terms, { transaction: tx });
+          }
+          await logPropertyEvent(profile.property_id, profile.branch_id,
+            `${profile.role_type} agreement signed — ${envelope.envelope_code}`,
+            `Role ${profile.profile_code} activated automatically.${profile.role_type === 'landlord' && terms.management_fee_pct != null ? ` Management fee ${terms.management_fee_pct}% synced to property + fee schedule.` : ''}`);
+        } else {
+          await profile.update({ next_action: 'Awaiting KYC verification' }, { transaction: tx });
+          await logPropertyEvent(profile.property_id, profile.branch_id,
+            `${profile.role_type} agreement signed — ${envelope.envelope_code}`,
+            `Role ${profile.profile_code} signed. Activation held until KYC documents are verified.`);
         }
       }
     }
@@ -224,8 +303,34 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
   await notifyCompletion(envelope);
 }
 
+/**
+ * Called by kycAutomation once a party role's KYC is fully verified. If the
+ * agreement is already signed, this completes the previously-held activation
+ * (role + linked tenancy), applying the signed envelope's terms.
+ */
+async function activatePartyRoleAfterKyc(profileId) {
+  const profile = await PartyRoleProfile.findByPk(profileId);
+  if (!profile || profile.status === 'active') return null;
+  if (profile.status !== 'signed') return null; // only after the agreement is signed
+  const env = profile.envelope_id ? await SigningEnvelope.findByPk(profile.envelope_id) : null;
+  const terms = parseTerms(env || {});
+  await sequelize.transaction(async (tx) => {
+    if (profile.role_type === 'landlord') await syncLandlordTerms(profile, terms, tx);
+    if (profile.role_type === 'vendor') await syncVendorTerms(profile, terms, tx);
+    await activatePartyRole(profile, { transaction: tx });
+    if (profile.role_type === 'tenant' && profile.tenancy_id) {
+      await activateTenancyFromSignedAgreement(profile.tenancy_id, terms, { transaction: tx });
+    }
+  });
+  await logPropertyEvent(profile.property_id, profile.branch_id,
+    `${profile.role_type} KYC verified — role activated`,
+    `Role ${profile.profile_code} activated after KYC verification.`);
+  return profile;
+}
+
 module.exports = {
   activatePartyRole,
   activateTenancyFromSignedAgreement,
+  activatePartyRoleAfterKyc,
   handleEnvelopeCompleted,
 };

@@ -15,4 +15,12 @@ router.post('/owner-approval/:token/decide', ctrl.decideOwnerApproval);
 router.get('/register/:token', ctrl.viewRegistration);
 router.post('/register/:token', ctrl.submitRegistration);
 
+// Public tenant application form
+router.get('/apply/:token', ctrl.viewApplication);
+router.post('/apply/:token', ctrl.submitApplication);
+
+// Employer reference (fixed Yes/No questions — optional, adds credibility)
+router.get('/reference/:token', ctrl.viewEmployerReference);
+router.post('/reference/:token', ctrl.submitEmployerReference);
+
 module.exports = router;

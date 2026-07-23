@@ -23,6 +23,13 @@ const MOVE_IN_ITEMS = [
   ['Occupant declaration completed', 'Occupant list/IDs'],
 ];
 
+const moneyValue = (...values) => {
+  for (const value of values) {
+    if (value !== undefined && value !== null && value !== '') return Number(value || 0);
+  }
+  return 0;
+};
+
 const nextCodesFrom = (baseCode, count) => {
   const match = String(baseCode).match(/^(.*?)(\d+)$/);
   if (!match) return Array.from({ length: count }, (_, i) => `${baseCode}-${i + 1}`);
@@ -34,11 +41,20 @@ const nextCodesFrom = (baseCode, count) => {
 const FIELDS = [
   'property_id', 'tenant_contact_id', 'enquiry_id', 'applicant_name', 'mobile', 'email', 'occupation', 'employer',
   'monthly_income', 'application_date', 'preferred_move_in', 'lease_period', 'occupancy_requirement', 'budget', 'source',
+  'proposed_monthly_rent', 'proposed_service_charge', 'proposed_security_deposit', 'proposed_advance_rent',
+  'proposed_lease_term_months', 'proposed_lease_start', 'current_address', 'permanent_address', 'current_landlord_name',
+  'current_landlord_phone', 'current_tenancy_address', 'current_tenancy_rent', 'current_tenancy_duration', 'reason_for_moving',
+  'employment_type', 'job_title', 'work_address', 'employment_duration', 'other_income', 'income_source_notes',
+  'references', 'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relationship', 'emergency_contact_address',
+  'date_of_birth', 'nationality', 'nid_number', 'passport_number', 'kyc_documents', 'kyc_notes',
   'id_received', 'employment_verified', 'income_verified', 'references_checked', 'background_check_status', 'status',
   'recommendation', 'owner_approval_required', 'owner_decision', 'approved_rent', 'lease_start_target', 'risk_level',
   'screening_notes', 'assigned_officer_id', 'notes',
+  // Public application content (0041) — tokens are NEVER client-settable.
+  'business_name', 'business_location', 'photo_url', 'nid_url', 'has_pets', 'pet_types',
+  'employer_ref_name', 'employer_ref_email', 'employer_ref_phone', 'employer_ref_role', 'employer_ref_company',
 ];
-const propInc = { model: Property, as: 'property', attributes: ['id', 'property_code', 'title', 'address', 'area', 'district', 'approved_monthly_rent', 'owner_contact_id'] };
+const propInc = { model: Property, as: 'property', attributes: ['id', 'property_code', 'title', 'address', 'area', 'district', 'approved_monthly_rent', 'lease_min_period_months', 'rent_due_day', 'owner_contact_id'] };
 const tenantInc = { model: Contact, as: 'tenant', attributes: ['id', 'full_name', 'primary_phone', 'email'] };
 
 // ─── LIST (global + per-property, with filters) ─────────────────────────────
@@ -126,6 +142,11 @@ exports.create = asyncHandler(async (req, res) => {
     return app;
   });
 
+  // Progressive SOP: a tenant application unlocks the tenant phase.
+  if (result.property_id) {
+    try { await require('../services/progressiveSop.service').unlockForEvent(result.property_id, 'application_created'); } catch {}
+  }
+
   const fresh = await TenantApplication.findByPk(result.id, {
     include: [propInc, tenantInc, { model: TenantVerification, as: 'verifications', separate: true, order: [['sort_order', 'ASC']] }, { model: TenantOccupant, as: 'occupants', separate: true }],
   });
@@ -208,26 +229,56 @@ exports.convertToTenancy = asyncHandler(async (req, res) => {
   if (app.converted_tenancy_id) return res.status(409).json({ error: 'This application is already converted to a tenancy.' });
   if (app.status !== 'approved') return res.status(400).json({ error: 'Only approved applications can be converted to a tenancy.' });
   if (!app.property_id) return res.status(400).json({ error: 'Application has no property assigned.' });
-  if (!app.tenant_contact_id) return res.status(400).json({ error: 'Link a tenant contact before converting (set tenant_contact_id).' });
+
+  // Auto-link the tenant contact: dedupe by email, then by normalized phone
+  // (digits only, last-11 match — handles +880 vs 0 prefixes). Never cross-branch.
+  if (!app.tenant_contact_id) {
+    if (!app.email && !app.mobile) return res.status(400).json({ error: 'Add the applicant\'s email or mobile before converting.' });
+    let contact = null;
+    if (app.email) contact = await Contact.findOne({ where: { branch_id: app.branch_id, [Op.or]: [{ email: app.email }, { alt_email: app.email }] } });
+    if (!contact && app.mobile) {
+      const digits = String(app.mobile).replace(/\D/g, '').slice(-11);
+      if (digits.length >= 10) {
+        const candidates = await Contact.findAll({ where: { branch_id: app.branch_id, primary_phone: { [Op.like]: `%${digits.slice(-8)}` } }, limit: 10 });
+        contact = candidates.find((c) => String(c.primary_phone || '').replace(/\D/g, '').slice(-11) === digits) || null;
+      }
+    }
+    if (!contact) {
+      contact = await Contact.create({
+        branch_id: app.branch_id, contact_code: await generateCode(Contact, 'contact_code', 'SSPC-CT-'),
+        contact_type: 'individual', full_name: app.applicant_name, primary_phone: app.mobile || null,
+        email: app.email || null, national_id: app.nid_number || null, source: 'tenant_application',
+      });
+    }
+    await app.update({ tenant_contact_id: contact.id });
+  }
 
   const b = req.body || {};
-  const monthlyRent = Number(b.monthly_rent ?? app.approved_rent ?? app.property?.approved_monthly_rent ?? 0);
+  const monthlyRent = moneyValue(b.monthly_rent, app.proposed_monthly_rent, app.approved_rent, app.property?.approved_monthly_rent);
+  const serviceCharge = moneyValue(b.service_charge, app.proposed_service_charge);
+  const advanceRent = moneyValue(b.advance_rent, app.proposed_advance_rent, monthlyRent);
+  const securityDeposit = moneyValue(b.security_deposit, app.proposed_security_deposit, monthlyRent * 2);
+  const minimumLeaseMonths = Number(b.minimum_lease_period_months || app.proposed_lease_term_months || app.property?.lease_min_period_months || 6);
   const result = await sequelize.transaction(async (tx) => {
     const t = await Tenancy.create({
       branch_id: app.branch_id, tenancy_code: await generateCode(Tenancy, 'tenancy_code', 'SSPC-TN-'),
       property_id: app.property_id, owner_contact_id: app.property?.owner_contact_id || null,
       tenant_contact_id: app.tenant_contact_id, application_id: app.id,
-      lease_start: b.lease_start || app.lease_start_target || null,
+      lease_start: b.lease_start || app.proposed_lease_start || app.lease_start_target || null,
       move_in_date: b.move_in_date || app.preferred_move_in || null,
       lease_end: b.lease_end || null,
       monthly_rent: monthlyRent,
-      service_charge: Number(b.service_charge || 0),
-      advance_rent: Number(b.advance_rent || monthlyRent),
-      security_deposit: Number(b.security_deposit || monthlyRent * 2),
+      service_charge: serviceCharge,
+      advance_rent: advanceRent,
+      security_deposit: securityDeposit,
       rent_due_day: Number(b.rent_due_day || app.property?.rent_due_day || 5),
       payment_frequency: b.payment_frequency || 'monthly',
+      minimum_lease_period_months: minimumLeaseMonths,
       lease_status: 'draft', status: 'upcoming', created_by: req.user?.id || null,
     }, { transaction: tx });
+
+    // Progressive SOP: creating a tenancy unlocks the lease phase.
+    if (app.property_id) { try { await require('../services/progressiveSop.service').unlockForEvent(app.property_id, 'tenancy_created', { transaction: tx }); } catch {} }
 
     // Copy approved occupants onto the tenancy
     const occupants = await TenantOccupant.findAll({ where: { application_id: app.id }, transaction: tx });
@@ -268,7 +319,7 @@ exports.convertToTenancy = asyncHandler(async (req, res) => {
     }
 
     await app.update({ status: 'converted', converted_tenancy_id: t.id, owner_decision: 'approved' }, { transaction: tx });
-    await PartyRoleProfile.findOrCreate({
+    const [tenantRole, tenantRoleCreated] = await PartyRoleProfile.findOrCreate({
       where: { contact_id: app.tenant_contact_id, role_type: 'tenant', tenancy_id: t.id },
       defaults: {
         branch_id: app.branch_id,
@@ -287,6 +338,8 @@ exports.convertToTenancy = asyncHandler(async (req, res) => {
       },
       transaction: tx,
     });
+    // Returning tenant: verified KYC from a previous tenancy carries over.
+    if (tenantRoleCreated) { try { await require('../services/kycReuse.service').applyKycReuse(tenantRole, { transaction: tx, actorId: req.user?.id }); } catch { /* non-fatal */ } }
     return t;
   });
 
@@ -343,4 +396,73 @@ exports.sendOwnerApproval = asyncHandler(async (req, res) => {
       ? `Approval link emailed to ${owner.email}. You can also share the link directly.`
       : 'Approval link generated — share it with the owner via WhatsApp/SMS/email.',
   });
+});
+
+// ─── PUBLIC APPLICATION LINK ─────────────────────────────────────────────────
+// POST /api/tenant-applications/send-link { property_id, email?, mobile?, applicant_name? }
+// Creates a draft application with a public token; the applicant fills the rest
+// at /admin/apply/:token. Always returns the link (email is best-effort).
+exports.sendApplicationLink = asyncHandler(async (req, res) => {
+  const { property_id, email, mobile, applicant_name } = req.body || {};
+  if (!property_id) return res.status(400).json({ error: 'property_id is required.' });
+  const property = await Property.findOne({ where: { id: property_id, ...branchScope(req) } });
+  if (!property) return res.status(404).json({ error: 'Property not found.' });
+
+  const token = crypto.randomBytes(24).toString('hex');
+  const expires = new Date(Date.now() + 14 * 86400000);
+  const app = await TenantApplication.create({
+    branch_id: property.branch_id,
+    application_code: await generateCode(TenantApplication, 'application_code', 'SSPC-TA-'),
+    property_id: property.id,
+    applicant_name: applicant_name || 'Pending applicant',
+    email: email || null, mobile: mobile || null,
+    application_date: new Date().toISOString().slice(0, 10),
+    status: 'draft', source: 'application_link', created_by: req.user?.id || null,
+    application_token: token, application_token_expires_at: expires,
+  });
+
+  const base = process.env.APPLY_BASE_URL || `${req.protocol}://${req.get('host')}/admin/apply`;
+  const link = `${base}/${token}`;
+  let emailed = false;
+  if (email) {
+    try {
+      const { sendEmail } = require('../services/communication.service');
+      await sendEmail(email, `Tenant application — ${property.title}`,
+        `<p>Dear ${applicant_name || 'applicant'},</p>
+         <p>Thank you for your interest in <b>${property.title}</b>${property.area ? `, ${property.area}` : ''}.</p>
+         <p>Please complete your tenant application using your secure link:</p>
+         <p><a href="${link}">${link}</a></p>
+         <p>The link expires in 14 days.</p><p>— Seventh Sky Property Care</p>`);
+      emailed = true;
+    } catch { /* best-effort */ }
+  }
+  res.status(201).json({ data: { application_id: app.id, link, expires_at: expires, emailed }, message: emailed ? `Application link emailed to ${email}.` : 'Application link generated — share it with the applicant.' });
+});
+
+// ─── EMPLOYER REFERENCE ──────────────────────────────────────────────────────
+// POST /api/tenant-applications/:id/send-employer-reference
+exports.sendEmployerReference = asyncHandler(async (req, res) => {
+  const app = await TenantApplication.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!app) return res.status(404).json({ error: 'Application not found.' });
+  const patch = pick(req.body || {}, ['employer_ref_name', 'employer_ref_email', 'employer_ref_phone', 'employer_ref_role', 'employer_ref_company']);
+  Object.assign(app, patch);
+  if (!app.employer_ref_email) return res.status(400).json({ error: 'Add the employer reference email first.' });
+
+  const token = app.employer_ref_token || crypto.randomBytes(24).toString('hex');
+  await app.update({ ...patch, employer_ref_token: token, employer_ref_sent_at: new Date() });
+
+  const base = process.env.REFERENCE_BASE_URL || `${req.protocol}://${req.get('host')}/admin/reference`;
+  const link = `${base}/${token}`;
+  let emailed = false;
+  try {
+    const { sendEmail } = require('../services/communication.service');
+    await sendEmail(app.employer_ref_email, `Employment reference request — ${app.applicant_name}`,
+      `<p>Dear ${app.employer_ref_name || 'Sir/Madam'},</p>
+       <p><b>${app.applicant_name}</b> has applied for a rental property managed by <b>Seventh Sky Property Care</b> and has listed you as their employment reference at ${app.employer_ref_company || app.employer || 'your company'}.</p>
+       <p>We would be grateful if you could take one minute to answer a few short questions. Your response strengthens the applicant's application; it is optional and treated confidentially.</p>
+       <p><a href="${link}">${link}</a></p>
+       <p>Thank you for your time.</p><p>— Seventh Sky Property Care</p>`);
+    emailed = true;
+  } catch { /* best-effort */ }
+  res.json({ data: { link, emailed }, message: emailed ? `Reference request emailed to ${app.employer_ref_email}.` : 'Reference link generated — share it with the employer.' });
 });

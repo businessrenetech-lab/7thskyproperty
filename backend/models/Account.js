@@ -18,7 +18,6 @@ const Account = sequelize.define('Account', {
   },
   code: {
     type: DataTypes.STRING,
-    unique: true,
     allowNull: false,
   },
   name: {

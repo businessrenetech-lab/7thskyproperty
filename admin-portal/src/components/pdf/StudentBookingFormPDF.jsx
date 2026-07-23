@@ -33,11 +33,11 @@ const StudentBookingFormPDF = forwardRef(({ student }, ref) => {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          borderBottom: '3px solid #7bc62e',
+          borderBottom: '3px solid #1bbdf1',
           paddingBottom: '20px',
           marginBottom: '30px'
         }}>
-          <h1 style={{ color: '#275fa7', margin: '0 0 4px 0', fontSize: '28px', textTransform: 'uppercase', letterSpacing: '1px' }}>Language Academy Bangladesh</h1>
+          <h1 style={{ color: '#003768', margin: '0 0 4px 0', fontSize: '28px', textTransform: 'uppercase', letterSpacing: '1px' }}>Language Academy Bangladesh</h1>
           <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px' }}>SEL SUFI SQUARE, Unit: 1104, Level: 11, Dhanmondi R/A, Dhaka 1209</div>
           <div style={{ fontSize: '11px', color: '#64748b' }}>Phone: 01820006677 | info@languageacademy.com.bd | languageacademy.com.bd</div>
           <h2 style={{ color: '#64748b', margin: '0', fontSize: '18px', fontWeight: '500' }}>Student Admission Form</h2>
@@ -81,7 +81,7 @@ const StudentBookingFormPDF = forwardRef(({ student }, ref) => {
           {/* Right Column (Details) */}
           <div style={{ width: '75%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <section>
-              <h3 style={{ color: '#275fa7', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px', marginTop: 0 }}>Personal Details</h3>
+              <h3 style={{ color: '#003768', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px', marginTop: 0 }}>Personal Details</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '10px' }}>
                 <div><strong style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Full Name</strong><div style={{ fontSize: '14px', fontWeight: 600 }}>{student.User?.name || 'N/A'}</div></div>
                 <div><strong style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Mobile No</strong><div style={{ fontSize: '14px' }}>{student.mobile_no || 'N/A'}</div></div>
@@ -99,7 +99,7 @@ const StudentBookingFormPDF = forwardRef(({ student }, ref) => {
             </section>
 
             <section>
-              <h3 style={{ color: '#275fa7', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px', marginTop: 0 }}>Emergency Contact</h3>
+              <h3 style={{ color: '#003768', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px', marginTop: 0 }}>Emergency Contact</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginTop: '10px' }}>
                 <div><strong style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Contact Name</strong><div style={{ fontSize: '14px' }}>{student.emergency_contact_name || 'N/A'}</div></div>
                 <div><strong style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Relation</strong><div style={{ fontSize: '14px' }}>{student.emergency_contact_relation || 'N/A'}</div></div>
@@ -109,7 +109,7 @@ const StudentBookingFormPDF = forwardRef(({ student }, ref) => {
 
             {educationalDetails.length > 0 && (
             <section>
-              <h3 style={{ color: '#275fa7', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px', marginTop: 0 }}>Educational Qualifications</h3>
+              <h3 style={{ color: '#003768', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px', marginTop: 0 }}>Educational Qualifications</h3>
               <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px', fontSize: '13px' }}>
                 <thead>
                   <tr style={{ background: '#f1f5f9', color: '#475569', textAlign: 'left' }}>
@@ -134,7 +134,7 @@ const StudentBookingFormPDF = forwardRef(({ student }, ref) => {
             )}
 
             <section>
-              <h3 style={{ color: '#275fa7', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px', marginTop: 0 }}>Course Information</h3>
+              <h3 style={{ color: '#003768', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px', marginTop: 0 }}>Course Information</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '10px' }}>
                 <div><strong style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Enrolled Course</strong><div style={{ fontSize: '14px', fontWeight: 600 }}>{student.Batch?.Course?.title || 'Not Assigned'}</div></div>
                 <div><strong style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Batch Code</strong><div style={{ fontSize: '14px' }}>{student.Batch?.code || 'Not Assigned'}</div></div>
@@ -144,7 +144,7 @@ const StudentBookingFormPDF = forwardRef(({ student }, ref) => {
             </section>
 
             <section>
-              <h3 style={{ color: '#275fa7', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px', marginTop: 0 }}>Passport & Travel</h3>
+              <h3 style={{ color: '#003768', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px', marginTop: 0 }}>Passport & Travel</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginTop: '10px' }}>
                 <div><strong style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Passport No</strong><div style={{ fontSize: '14px' }}>{student.passport_no || 'N/A'}</div></div>
                 <div><strong style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Expiry Date</strong><div style={{ fontSize: '14px' }}>{formatDate(student.passport_expiry)}</div></div>
@@ -153,7 +153,7 @@ const StudentBookingFormPDF = forwardRef(({ student }, ref) => {
             </section>
 
             <section>
-              <h3 style={{ color: '#275fa7', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px', marginTop: 0 }}>Addresses</h3>
+              <h3 style={{ color: '#003768', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px', marginTop: 0 }}>Addresses</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                 <div><strong style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Present Address</strong><div style={{ fontSize: '14px' }}>{student.current_address || 'N/A'}</div></div>
                 <div><strong style={{ display: 'block', fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Permanent Address</strong><div style={{ fontSize: '14px' }}>{student.permanent_address || 'N/A'}</div></div>

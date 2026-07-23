@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 
 const AUTO_THRESHOLD = 5000;
 
-const catColors = ['#275fa7', '#7bc62e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+const catColors = ['#003768', '#1bbdf1', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
 const statusConfig = {
   approved: { label: 'Approved', cls: 'sb2-mint', icon: <CheckCircle size={12} /> },
@@ -251,22 +251,22 @@ const ExpenseManager = () => {
           <div className="view-sub">Track, categorize, approve & export expenses with smart auto-approval</div>
         </div>
         <div className="view-actions">
-          <button className="btn-ghost" onClick={() => setActiveTab(activeTab === 'categories' ? 'expenses' : 'categories')} style={{ color: '#275fa7', borderColor: 'rgba(39,95,167,0.3)' }}>
+          <button className="btn-ghost" onClick={() => setActiveTab(activeTab === 'categories' ? 'expenses' : 'categories')} style={{ color: '#003768', borderColor: 'rgba(0,55,104,0.3)' }}>
             <FolderOpen size={14} />
             {activeTab === 'categories' ? 'Expenses' : 'Categories'}
           </button>
           {activeTab === 'expenses' && (
             <>
-              <button className="btn-ghost" onClick={() => downloadExpenseListPdf(filteredExpenses, buildDateQuery())} style={{ color: '#275fa7', borderColor: 'rgba(39,95,167,0.3)' }}>
+              <button className="btn-ghost" onClick={() => downloadExpenseListPdf(filteredExpenses, buildDateQuery())} style={{ color: '#003768', borderColor: 'rgba(0,55,104,0.3)' }}>
                 <Download size={14} /> Export PDF
               </button>
-              <button className="btn-stitch" onClick={() => setIsModalOpen(true)} style={{ background: '#7bc62e' }}>
+              <button className="btn-stitch" onClick={() => setIsModalOpen(true)} style={{ background: '#1bbdf1' }}>
                 + Record Expense
               </button>
             </>
           )}
           {activeTab === 'categories' && (
-            <button className="btn-stitch" onClick={() => setShowCatForm(!showCatForm)} style={{ background: '#7bc62e' }}>
+            <button className="btn-stitch" onClick={() => setShowCatForm(!showCatForm)} style={{ background: '#1bbdf1' }}>
               + Add Category
             </button>
           )}
@@ -274,16 +274,16 @@ const ExpenseManager = () => {
       </div>
 
       <div className="pulse-grid pg-4">
-        <div className="pulse-card c-amber" style={{ background: 'linear-gradient(135deg, rgba(39,95,167,0.1), rgba(39,95,167,0.05))', border: '1px solid rgba(39,95,167,0.2)' }}>
-          <div className="pc-label" style={{ color: '#275fa7' }}>Total Expenses</div>
-          <div className="pc-value" style={{ color: '#275fa7' }}>৳{(split.grandTotal || 0).toLocaleString()}</div>
+        <div className="pulse-card c-amber" style={{ background: 'linear-gradient(135deg, rgba(0,55,104,0.1), rgba(0,55,104,0.05))', border: '1px solid rgba(0,55,104,0.2)' }}>
+          <div className="pc-label" style={{ color: '#003768' }}>Total Expenses</div>
+          <div className="pc-value" style={{ color: '#003768' }}>৳{(split.grandTotal || 0).toLocaleString()}</div>
           <div className="pc-meta">{expenses.length} transactions</div>
         </div>
-        <div className="pulse-card c-mint" style={{ background: 'linear-gradient(135deg, rgba(123,198,46,0.1), rgba(123,198,46,0.05))', border: '1px solid rgba(123,198,46,0.2)' }}>
-          <div className="pc-label" style={{ color: '#7bc62e' }}>Approved</div>
-          <div className="pc-value" style={{ color: '#7bc62e' }}>{approvedCount}</div>
+        <div className="pulse-card c-mint" style={{ background: 'linear-gradient(135deg, rgba(27,189,241,0.1), rgba(27,189,241,0.05))', border: '1px solid rgba(27,189,241,0.2)' }}>
+          <div className="pc-label" style={{ color: '#1bbdf1' }}>Approved</div>
+          <div className="pc-value" style={{ color: '#1bbdf1' }}>{approvedCount}</div>
           <div className="pc-meta">
-            <span className="pc-change up" style={{ color: '#7bc62e' }}>✓</span> entries recorded
+            <span className="pc-change up" style={{ color: '#1bbdf1' }}>✓</span> entries recorded
           </div>
         </div>
         <div className="pulse-card c-amber">
@@ -312,7 +312,7 @@ const ExpenseManager = () => {
               </div>
               <div className="row" style={{ gap: '6px' }}>
                 {['all', 'today', 'week', 'month', 'custom'].map(p => (
-                  <button key={p} onClick={() => setDatePreset(p)} className={datePreset === p ? 'btn-stitch' : 'btn-ghost'} style={{ padding: '5px 12px', fontSize: '11px', background: datePreset === p ? '#275fa7' : 'var(--glass)', color: datePreset === p ? '#fff' : 'var(--text-dim)' }}>
+                  <button key={p} onClick={() => setDatePreset(p)} className={datePreset === p ? 'btn-stitch' : 'btn-ghost'} style={{ padding: '5px 12px', fontSize: '11px', background: datePreset === p ? '#003768' : 'var(--glass)', color: datePreset === p ? '#fff' : 'var(--text-dim)' }}>
                     {p === 'all' ? 'All Time' : p.charAt(0).toUpperCase() + p.slice(1)}
                   </button>
                 ))}
@@ -335,7 +335,7 @@ const ExpenseManager = () => {
                 <span className="sc-title">Expense Records</span>
                 <div className="row" style={{ gap: '4px' }}>
                   {['all', 'pending', 'verified', 'approved', 'rejected', 'deleted'].map(s => (
-                    <button key={s} onClick={() => setFilterStatus(s)} className={filterStatus === s ? 'btn-stitch' : 'btn-ghost'} style={{ padding: '4px 10px', fontSize: '10px', background: filterStatus === s ? '#7bc62e' : 'var(--glass)', color: filterStatus === s ? '#fff' : 'var(--text-dim)' }}>
+                    <button key={s} onClick={() => setFilterStatus(s)} className={filterStatus === s ? 'btn-stitch' : 'btn-ghost'} style={{ padding: '4px 10px', fontSize: '10px', background: filterStatus === s ? '#1bbdf1' : 'var(--glass)', color: filterStatus === s ? '#fff' : 'var(--text-dim)' }}>
                       {s === 'deleted' ? 'REVERSED' : s.toUpperCase()}
                     </button>
                   ))}
@@ -375,29 +375,29 @@ const ExpenseManager = () => {
                         <tr key={exp.id}>
                           <td>
                             <div style={{ fontSize: '13px' }}>{new Date(exp.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</div>
-                            {exp.receipt_url && <a href={exp.receipt_url} target="_blank" rel="noreferrer" style={{ fontSize: '10px', color: '#275fa7', textDecoration: 'none' }}>📎 Receipt</a>}
+                            {exp.receipt_url && <a href={exp.receipt_url} target="_blank" rel="noreferrer" style={{ fontSize: '10px', color: '#003768', textDecoration: 'none' }}>📎 Receipt</a>}
                           </td>
                           <td className="td-name">
-                            {isPayroll && <span style={{ display: 'inline-flex', padding: '2px 7px', borderRadius: '999px', background: 'rgba(39,95,167,0.12)', color: '#275fa7', fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', marginRight: '6px' }}>Payroll</span>}
+                            {isPayroll && <span style={{ display: 'inline-flex', padding: '2px 7px', borderRadius: '999px', background: 'rgba(0,55,104,0.12)', color: '#003768', fontSize: '9px', fontWeight: 800, textTransform: 'uppercase', marginRight: '6px' }}>Payroll</span>}
                             {exp.status === 'deleted' ? (
                               <span style={{ textDecoration: 'line-through', color: '#64748b' }}>{exp.description || '-'}</span>
                             ) : (
                               exp.description || '-'
                             )}
-                            {isPayroll && <div style={{ fontSize: '11px', color: '#275fa7', marginTop: '4px' }}>Salary payment request · Payroll #{exp.payroll_id || 'N/A'}</div>}
+                            {isPayroll && <div style={{ fontSize: '11px', color: '#003768', marginTop: '4px' }}>Salary payment request · Payroll #{exp.payroll_id || 'N/A'}</div>}
                             {isPayroll && !sourceSelected && <div style={{ fontSize: '11px', color: '#9B6DFF', marginTop: '4px', fontWeight: 700 }}>Admin must choose cash, bank, or mobile wallet before accounting action.</div>}
                             {exp.status === 'deleted' && <div style={{ fontSize: '11px', color: '#475569', marginTop: '4px' }}>Reversal Reason: {exp.deletion_reason || 'N/A'}</div>}
                           </td>
                           <td><span className="exp-cat">{exp.category || 'Uncategorized'}</span></td>
                           <td>
-                            <span style={{ fontWeight: 700, color: exp.status === 'deleted' ? '#94a3b8' : '#275fa7', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', textDecoration: exp.status === 'deleted' ? 'line-through' : 'none' }}>
+                            <span style={{ fontWeight: 700, color: exp.status === 'deleted' ? '#94a3b8' : '#003768', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', textDecoration: exp.status === 'deleted' ? 'line-through' : 'none' }}>
                               ৳{amt.toLocaleString()}
                             </span>
                             {needsApproval && exp.status === 'approved' && (
-                              <div style={{ fontSize: '9px', color: '#275fa7', marginTop: '2px' }}>Admin Approved</div>
+                              <div style={{ fontSize: '9px', color: '#003768', marginTop: '2px' }}>Admin Approved</div>
                             )}
                             {!needsApproval && exp.status === 'approved' && (
-                              <div style={{ fontSize: '9px', color: '#7bc62e', marginTop: '2px' }}>Auto-Approved</div>
+                              <div style={{ fontSize: '9px', color: '#1bbdf1', marginTop: '2px' }}>Auto-Approved</div>
                             )}
                           </td>
                           <td style={{ fontSize: '12px', textTransform: 'capitalize' }}>
@@ -565,8 +565,8 @@ const ExpenseManager = () => {
           
           {/* Auto-approval hint */}
           <div style={{
-            background: 'rgba(123,198,46,0.08)', border: '1px solid rgba(123,198,46,0.2)',
-            borderRadius: '10px', padding: '10px 14px', fontSize: '11px', color: '#7bc62e'
+            background: 'rgba(27,189,241,0.08)', border: '1px solid rgba(27,189,241,0.2)',
+            borderRadius: '10px', padding: '10px 14px', fontSize: '11px', color: '#1bbdf1'
           }}>
             <CheckCircle size={12} style={{ verticalAlign: 'middle', marginRight: '6px' }} />
             Expenses below <strong>BDT 5,000</strong> are auto-approved. Above BDT 5,000 requires receipt upload + branch admin approval.
@@ -682,7 +682,7 @@ const ExpenseManager = () => {
               Receipt Upload (PDF/Image)
               {parseFloat(editForm.amount) >= AUTO_THRESHOLD && !editModal.existingReceipt && <span style={{ color: '#FF7088', marginLeft: '4px' }}>* Required</span>}
             </label>
-            {editModal.existingReceipt && <div style={{ fontSize: '10px', color: '#7bc62e', marginBottom: '6px' }}>Existing receipt attached. Upload a new file only if replacing it.</div>}
+            {editModal.existingReceipt && <div style={{ fontSize: '10px', color: '#1bbdf1', marginBottom: '6px' }}>Existing receipt attached. Upload a new file only if replacing it.</div>}
             <input type="file" accept="image/*,.pdf" onChange={e => setEditSelectedFile(e.target.files[0])} className="glass-input" style={{ padding: '8px' }} />
           </div>
 

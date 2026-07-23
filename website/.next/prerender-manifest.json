@@ -13,8 +13,7 @@
           "value": "multipart/form-data;.*"
         }
       ],
-      "initialRevalidateSeconds": 300,
-      "initialExpireSeconds": 31536000,
+      "initialRevalidateSeconds": false,
       "srcRoute": "/",
       "dataRoute": "/index.rsc",
       "allowHeader": [
@@ -147,30 +146,6 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/enroll": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/enroll",
-      "dataRoute": "/enroll.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
     "/icon.png": {
       "initialHeaders": {
         "cache-control": "public, max-age=0, must-revalidate",
@@ -191,30 +166,6 @@
       "initialRevalidateSeconds": false,
       "srcRoute": "/icon.png",
       "dataRoute": null,
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/materials": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/materials",
-      "dataRoute": "/materials.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -306,61 +257,13 @@
         "x-next-revalidated-tags",
         "x-next-revalidate-tag-token"
       ]
-    },
-    "/student-booking": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/student-booking",
-      "dataRoute": "/student-booking.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/trial-class": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/trial-class",
-      "dataRoute": "/trial-class.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
     }
   },
   "dynamicRoutes": {},
   "notFoundRoutes": [],
   "preview": {
-    "previewModeId": "f1d7d13dade66f156b4f2dc3b853476f",
-    "previewModeSigningKey": "e947c8fda8dcc3215d8d730ef7e1581dfb11c2fea356ce45e48624eee9f1b04a",
-    "previewModeEncryptionKey": "ded1c2600f2dea898de07a671d5da4b2645c78bb5ad09438ab282eeef6826794"
+    "previewModeId": "c8cb72eb6de5f8069c28a630665663ee",
+    "previewModeSigningKey": "d3e05426683e06a534977f69f3ba5eda4a39515d130d818be10b106758061bd3",
+    "previewModeEncryptionKey": "2376ac29c13f3728ecd672200cb3ab38501dd1af0d928cabb013de9a82680b74"
   }
 }

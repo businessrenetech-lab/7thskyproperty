@@ -105,7 +105,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
   );
 
   // ── 6/7/8. Leases expiring in 30 / 60 / 90 days ──
-  async function expiringLeases(days) {
+  async function expiringLeases(fromDays, toDays) {
     return cohort(
       `SELECT t.id, t.tenancy_code, t.property_id, t.tenant_contact_id, t.lease_end,
               DATEDIFF(t.lease_end, CURDATE()) AS days_remaining,
@@ -115,15 +115,15 @@ exports.actionCenter = asyncHandler(async (req, res) => {
          LEFT JOIN properties p ON p.id = t.property_id
          LEFT JOIN contacts tc ON tc.id = t.tenant_contact_id
         WHERE t.status = 'active'
-          AND t.lease_end BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL ${days} DAY)
+          AND t.lease_end BETWEEN DATE_ADD(CURDATE(), INTERVAL ${fromDays} DAY) AND DATE_ADD(CURDATE(), INTERVAL ${toDays} DAY)
           ${bw.sql.replace('branch_id', 't.branch_id')}
         ORDER BY t.lease_end ASC`,
       bw.params
     );
   }
-  const expiring30 = await expiringLeases(30);
-  const expiring60 = await expiringLeases(60);
-  const expiring90 = await expiringLeases(90);
+  const expiring30 = await expiringLeases(0, 30);
+  const expiring60 = await expiringLeases(31, 60);
+  const expiring90 = await expiringLeases(61, 90);
 
   // ── 9. Work orders overdue (past scheduled_date, not completed) ──
   const woOverdue = await cohort(
@@ -332,6 +332,73 @@ exports.actionCenter = asyncHandler(async (req, res) => {
       missing_bank: missingBank,
       missing_access: missingAccess,
     },
+    generated_at: new Date().toISOString(),
+  });
+});
+
+// ─── DASHBOARD METRICS (for the redesigned cockpit) ─────────────────────────
+// GET /api/property-management/dashboard-metrics
+// Everything the cockpit charts need, from live data: occupancy split,
+// 12-month rent-collection trend, arrears aging, owner held balance + income.
+exports.dashboardMetrics = asyncHandler(async (req, res) => {
+  const bw = branchWhere(req);
+  const q = (sql, extra = {}) => sequelize.query(sql, { replacements: { ...bw.params, ...extra } }).then(([r]) => r);
+
+  // Occupancy — managed rental properties split by state.
+  const [occ] = await q(
+    `SELECT
+       COUNT(*) AS managed,
+       COALESCE(SUM(CASE WHEN status IN ('occupied','rented') THEN 1 ELSE 0 END),0) AS occupied,
+       COALESCE(SUM(CASE WHEN status='available' THEN 1 ELSE 0 END),0) AS vacant
+     FROM properties WHERE listing_type='rent'${bw.sql}`);
+  const [[notice]] = [await q(
+    `SELECT COUNT(DISTINCT vn.property_id) AS c FROM vacancy_notices vn WHERE vn.status IN ('submitted','acknowledged','scheduled')${bw.sql ? bw.sql.replace('branch_id', 'vn.branch_id') : ''}`)];
+  const managed = Number(occ?.managed || 0);
+  const occupied = Number(occ?.occupied || 0);
+  const underNotice = Number(notice?.c || 0);
+  const vacant = Math.max(0, managed - occupied);
+  const occupancy = {
+    managed, occupied: Math.max(0, occupied - underNotice), under_notice: underNotice, vacant,
+    rate: managed ? Math.round((occupied / managed) * 100) : 0,
+  };
+
+  // 12-month rent-collection trend from the rental ledger.
+  const trendRows = await q(
+    `SELECT period_label AS period,
+            COALESCE(SUM(rent_due),0) AS billed,
+            COALESCE(SUM(rent_received),0) AS collected
+       FROM rental_ledger
+      WHERE period_label IS NOT NULL${bw.sql}
+      GROUP BY period_label ORDER BY period_label DESC LIMIT 12`);
+  const rent_trend = trendRows.reverse().map((r) => ({ period: r.period, billed: Number(r.billed), collected: Number(r.collected) }));
+
+  // Arrears aging (outstanding rent by age of due date).
+  const [aging] = await q(
+    `SELECT
+       COALESCE(SUM(CASE WHEN DATEDIFF(CURDATE(), due_date) <= 30 THEN (rent_due-rent_received) ELSE 0 END),0) AS b0_30,
+       COALESCE(SUM(CASE WHEN DATEDIFF(CURDATE(), due_date) BETWEEN 31 AND 60 THEN (rent_due-rent_received) ELSE 0 END),0) AS b31_60,
+       COALESCE(SUM(CASE WHEN DATEDIFF(CURDATE(), due_date) BETWEEN 61 AND 90 THEN (rent_due-rent_received) ELSE 0 END),0) AS b61_90,
+       COALESCE(SUM(CASE WHEN DATEDIFF(CURDATE(), due_date) > 90 THEN (rent_due-rent_received) ELSE 0 END),0) AS b90
+     FROM rental_ledger WHERE (rent_due-rent_received) > 0 AND due_date IS NOT NULL${bw.sql}`);
+  const arrears_aging = {
+    b0_30: Number(aging?.b0_30 || 0), b31_60: Number(aging?.b31_60 || 0),
+    b61_90: Number(aging?.b61_90 || 0), b90: Number(aging?.b90 || 0),
+  };
+
+  // Owner held balance + our earned income.
+  const [held] = await q(`SELECT COALESCE(SUM(current_balance),0) AS t, COUNT(*) AS n FROM folios WHERE folio_type='landlord'${bw.sql}`);
+  const [inc] = await q(`SELECT COALESCE(SUM(amount),0) AS t FROM pm_income_entries WHERE 1=1${bw.sql}`);
+
+  // This-month collected vs billed.
+  const [month] = await q(
+    `SELECT COALESCE(SUM(rent_due),0) AS billed, COALESCE(SUM(rent_received),0) AS collected
+       FROM rental_ledger WHERE period_label = DATE_FORMAT(CURDATE(),'%Y-%m')${bw.sql}`);
+
+  res.json({
+    occupancy, rent_trend, arrears_aging,
+    held_for_owners: Number(held?.t || 0), owner_folios: Number(held?.n || 0),
+    income_total: Number(inc?.t || 0),
+    this_month: { billed: Number(month?.billed || 0), collected: Number(month?.collected || 0) },
     generated_at: new Date().toISOString(),
   });
 });

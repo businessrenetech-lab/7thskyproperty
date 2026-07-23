@@ -43,6 +43,28 @@ const ASSESSMENT_ITEMS = [
   { section: 'Approved rent', assessment_item: 'Approved rent confirmed with owner', is_blocking: false },
 ];
 
+// ── Room-by-room assessment template (checklist style) ──
+// section = room; each item is verdicted Clean / Undamaged / Working + comment + photos.
+// Teams add custom rooms/items freely from the UI.
+const STANDARD_AREA_ITEMS = ['Doors & doorway frames', 'Floor coverings', 'Walls & paint', 'Windows & screens', 'Lights & fans', 'Switches & power sockets'];
+const roomItems = (section, extra = []) => [...STANDARD_AREA_ITEMS, ...extra].map((assessment_item) => ({ section, assessment_item, is_blocking: false }));
+const ROOM_ASSESSMENT_ITEMS = [
+  ...roomItems('Bedroom 1'),
+  ...roomItems('Bedroom 2'),
+  ...roomItems('Bedroom 3'),
+  ...roomItems('Living room'),
+  ...roomItems('Dining'),
+  ...roomItems('Kitchen', ['Cabinets & benchtop', 'Sink & taps', 'Stove / hob & hood']),
+  ...roomItems('Bathroom 1', ['Toilet, basin & shower', 'Taps & drainage', 'Exhaust fan']),
+  ...roomItems('Bathroom 2', ['Toilet, basin & shower', 'Taps & drainage', 'Exhaust fan']),
+  ...roomItems('Balcony'),
+  ...roomItems('Outdoor'),
+  // Safety/utility gates: blocking — must be resolved before marketing.
+  { section: 'Utilities & safety', assessment_item: 'Electrical, gas & water safety', is_blocking: true },
+  { section: 'Utilities & safety', assessment_item: 'Meters & connections active', is_blocking: true },
+  { section: 'Utilities & safety', assessment_item: 'Fire safety / smoke detection', is_blocking: false },
+];
+
 // ── Owner onboarding checklist (Owner Onboarding Checklist sheet) ──
 const OWNER_ONBOARDING_ITEMS = [
   { checklist_item: 'Owner identity / KYC collected', evidence_required: 'NID / Passport / Company document', action_required: 'Collect documents' },
@@ -81,11 +103,19 @@ async function createLeasingProject(property, req, options = {}) {
   let stages = [];
   try { stages = tpl[0] ? (typeof tpl[0].stages === 'string' ? JSON.parse(tpl[0].stages) : tpl[0].stages) : []; } catch { stages = []; }
 
+  // Progressive SOP: only the property phase (and owner phase, if an owner is
+  // already linked) start unlocked; later phases are 'blocked' until their
+  // lifecycle event fires. See progressiveSop.service.
+  const { initialStatusFor } = require('./progressiveSop.service');
+  const ownerLinked = !!property.owner_contact_id;
+  let firstActiveKey = null;
   for (let i = 0; i < stages.length; i++) {
     const s = stages[i];
+    let status = initialStatusFor(s.key, { ownerLinked });
+    if (status === 'pending' && !firstActiveKey) { status = 'in_progress'; firstActiveKey = s.key; }
     await ProjectStage.create({
       project_id: project.id, stage_key: s.key, stage_name: s.name, sort_order: s.order ?? i + 1,
-      status: i === 0 ? 'in_progress' : 'pending',
+      status,
       checklist: (s.checklist || []).map((c) => ({
         label: c.label,
         required: !!c.required,
@@ -102,7 +132,7 @@ async function createLeasingProject(property, req, options = {}) {
       required_documents: s.required_docs || [],
     }, { transaction: tx });
   }
-  if (stages[0]) await project.update({ current_stage_key: stages[0].key }, { transaction: tx });
+  if (firstActiveKey) await project.update({ current_stage_key: firstActiveKey }, { transaction: tx });
   return project;
 }
 
@@ -141,6 +171,7 @@ function computeReadiness(items = []) {
 module.exports = {
   VERIFICATION_ITEMS,
   ASSESSMENT_ITEMS,
+  ROOM_ASSESSMENT_ITEMS,
   OWNER_ONBOARDING_ITEMS,
   createLeasingProject,
   seedOwnerOnboardingItems,

@@ -24,8 +24,8 @@ module.exports = {
           foreground: "hsl(var(--muted-foreground))",
         },
         academy: {
-          blue: "#32619A",
-          green: "#95C04D",
+          blue: "#003768",
+          green: "#1bbdf1",
           light: "#FBFCFC",
           dark: "#010203",
           muted: "#B3C8C0"

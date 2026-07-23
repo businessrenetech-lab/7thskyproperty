@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Check, Circle, ChevronDown, ChevronRight, Play, ListChecks } from 'lucide-react';
+import { Check, Circle, ChevronDown, ChevronRight, Play, ListChecks, Lock } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { Spinner, Badge, Button, Select } from '../ui/kit';
@@ -82,7 +82,11 @@ export default function PropertyOnboarding({ propertyId, onChanged }) {
   }
 
   const stages = project.stages || [];
-  const stagesDone = stages.filter((s) => s.status === 'done').length;
+  // Progressive SOP: only "unlocked" stages are measured. Locked stages wait
+  // for their lifecycle event and don't count toward progress.
+  const unlockedStages = stages.filter((s) => !s.locked);
+  const lockedCount = stages.length - unlockedStages.length;
+  const stagesDone = unlockedStages.filter((s) => s.status === 'done').length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -90,17 +94,31 @@ export default function PropertyOnboarding({ propertyId, onChanged }) {
       <div>
         <div className="between" style={{ marginBottom: 8 }}>
           <h4 className="form-section-title" style={{ margin: 0, border: 'none', padding: 0 }}>Rental-Management Workflow</h4>
-          <Badge tone="blue">{stagesDone}/{stages.length} stages</Badge>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <Badge tone="blue">{stagesDone}/{unlockedStages.length} active</Badge>
+            {lockedCount > 0 && <Badge tone="grey"><Lock size={10} style={{ verticalAlign: 'middle', marginRight: 3 }} />{lockedCount} locked</Badge>}
+          </div>
         </div>
         <div style={{ height: 8, background: 'var(--border)', borderRadius: 5, overflow: 'hidden', marginBottom: 12 }}>
-          <div style={{ width: `${stages.length ? (stagesDone / stages.length) * 100 : 0}%`, height: '100%', background: 'var(--success)' }} />
+          <div style={{ width: `${unlockedStages.length ? (stagesDone / unlockedStages.length) * 100 : 0}%`, height: '100%', background: 'var(--success)' }} />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {stages.map((s) => {
             const { done, total } = stageProgress(s);
-            const open = openStage === s.id;
+            const open = openStage === s.id && !s.locked;
             const isCurrent = s.status === 'in_progress';
+            if (s.locked) {
+              return (
+                <div key={s.id} className="card" style={{ border: '1px dashed var(--border)', overflow: 'hidden', opacity: 0.62 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--surface-2)' }}>
+                    <Lock size={14} color="var(--muted-2)" />
+                    <span style={{ fontWeight: 600, fontSize: 13, flex: 1, color: 'var(--muted)' }}>{s.sort_order}. {s.stage_name}</span>
+                    <span className="cell-sub" style={{ fontSize: 11.5, fontStyle: 'italic' }}>{s.unlock_hint}</span>
+                  </div>
+                </div>
+              );
+            }
             return (
               <div key={s.id} className="card" style={{ border: `1px solid ${isCurrent ? 'var(--primary)' : 'var(--border)'}`, overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', cursor: 'pointer', background: s.status === 'done' ? 'var(--success-bg)' : isCurrent ? 'var(--primary-50)' : 'var(--surface)' }}

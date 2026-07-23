@@ -20,8 +20,12 @@ router.post('/bulk-raise-invoices', ctrl.bulkRaiseInvoices);
 const lifecycleCtrl = require('../controllers/tenancyLifecycle.controller');
 router.post('/:id/send-agreement', lifecycleCtrl.sendTenancyAgreement);
 router.post('/:id/renewal/propose', lifecycleCtrl.proposeRenewal);
+router.post('/:id/renewal/quick', lifecycleCtrl.quickRenewal);
 router.post('/:id/renewal/decide', lifecycleCtrl.decideRenewal);
 router.post('/:id/renewal/tenant-accept', lifecycleCtrl.tenantAcceptRenewal);
 router.post('/:id/renewal/activate', lifecycleCtrl.activateRenewal);
+router.post('/:id/end', lifecycleCtrl.endTenancy);
+router.post('/:id/terminate', lifecycleCtrl.terminateTenancy);
+router.post('/:id/send-rent-reminder', lifecycleCtrl.sendRentReminder);
 
 module.exports = router;

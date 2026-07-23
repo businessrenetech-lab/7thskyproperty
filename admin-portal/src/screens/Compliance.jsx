@@ -16,12 +16,13 @@ export default function Compliance() {
   const [searchParams] = useSearchParams();
   const categoryFilter = searchParams.get('category');
   const listingTypeFilter = searchParams.get('listing_type');
+  const propertyIdFilter = Number(searchParams.get('property_id') || 0);
   
   // Properties lists
   const [properties, setProperties] = useState([]);
   const [loadingProps, setLoadingProps] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedPropId, setSelectedPropId] = useState(null);
+  const [selectedPropId, setSelectedPropId] = useState(propertyIdFilter || null);
   const [selectedProperty, setSelectedProperty] = useState(null);
   
   // Property details & documents log

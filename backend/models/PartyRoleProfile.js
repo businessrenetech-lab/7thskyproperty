@@ -39,6 +39,8 @@ const PartyRoleProfile = sequelize.define('PartyRoleProfile', {
   registration_token: { type: DataTypes.STRING(120), unique: true },
   registration_expires_at: DataTypes.DATE,
   registration_submitted_at: DataTypes.DATE,
+  // How the profile's data arrived: staff (manual) | website (self-registered) | application
+  source: { type: DataTypes.STRING(20), defaultValue: 'staff' },
 }, { tableName: 'party_role_profiles', underscored: true });
 
 PartyRoleProfile.belongsTo(Contact, { as: 'contact', foreignKey: 'contact_id' });

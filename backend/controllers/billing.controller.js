@@ -296,3 +296,47 @@ exports.recordRentalReceiptPayment = asyncHandler(async (req, res) => {
   req.params.id = receipt.invoice_id;
   return require('./invoicing.controller').recordPayment(req, res);
 });
+
+// POST /api/billing/rental-receipts/:id/email — email a branded rent receipt to the tenant.
+const Communication = require('../models/Communication');
+exports.emailRentalReceipt = asyncHandler(async (req, res) => {
+  const receipt = await RentalReceipt.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!receipt) return res.status(404).json({ error: 'Rental receipt not found.' });
+  const [tenancy, tenant, property] = await Promise.all([
+    receipt.tenancy_id ? Tenancy.findByPk(receipt.tenancy_id) : null,
+    receipt.tenant_contact_id ? Contact.findByPk(receipt.tenant_contact_id) : null,
+    receipt.property_id ? Property.findByPk(receipt.property_id) : null,
+  ]);
+  if (!tenant?.email) return res.status(400).json({ error: `Tenant ${tenant?.full_name || ''} has no email on file.` });
+
+  const bdt = (v) => '৳' + Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const paidBadge = receipt.status === 'paid' ? '<span style="background:#dcfce7;color:#15803d;padding:2px 10px;border-radius:6px;font-weight:700;font-size:12px;">PAID</span>'
+    : Number(receipt.amount_paid) > 0 ? '<span style="background:#fef3c7;color:#b45309;padding:2px 10px;border-radius:6px;font-weight:700;font-size:12px;">PARTIAL</span>'
+    : '<span style="background:#fee2e2;color:#b91c1c;padding:2px 10px;border-radius:6px;font-weight:700;font-size:12px;">DUE</span>';
+  const html = `
+    <div style="font-family:Arial;max-width:560px;">
+      <div style="display:flex;align-items:center;gap:10px;border-bottom:4px solid #12b6f3;padding-bottom:10px;">
+        <div style="width:40px;height:40px;border-radius:9px;background:linear-gradient(135deg,#003768,#12b6f3);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;">7S</div>
+        <div><div style="font-weight:800;color:#003768;">Seventh Sky Property Care</div><div style="font-size:11px;color:#64748b;">Rent receipt</div></div>
+        <div style="margin-left:auto;text-align:right;"><div style="font-weight:800;color:#003768;">${receipt.receipt_code || ''}</div><div style="font-size:11px;color:#64748b;">${receipt.period_label || ''}</div></div>
+      </div>
+      <p style="font-size:13px;">Dear ${tenant.full_name || 'Tenant'},</p>
+      <p style="font-size:13px;">This is your rent receipt for <b>${property?.title || 'your property'}</b> — period <b>${receipt.period_label || ''}</b> ${paidBadge}</p>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;margin:8px 0;">
+        <tr><td style="padding:6px 8px;border:1px solid #e2e8f0;">Monthly rent</td><td style="padding:6px 8px;border:1px solid #e2e8f0;text-align:right;">${bdt(receipt.rent_amount)}</td></tr>
+        <tr><td style="padding:6px 8px;border:1px solid #e2e8f0;">Service charge</td><td style="padding:6px 8px;border:1px solid #e2e8f0;text-align:right;">${bdt(receipt.service_charge)}</td></tr>
+        <tr><td style="padding:6px 8px;border:1px solid #e2e8f0;font-weight:700;">Total</td><td style="padding:6px 8px;border:1px solid #e2e8f0;text-align:right;font-weight:700;">${bdt(receipt.total_amount)}</td></tr>
+        <tr><td style="padding:6px 8px;border:1px solid #e2e8f0;color:#15803d;">Amount paid</td><td style="padding:6px 8px;border:1px solid #e2e8f0;text-align:right;color:#15803d;">${bdt(receipt.amount_paid)}</td></tr>
+        <tr><td style="padding:6px 8px;border:1px solid #e2e8f0;color:${Number(receipt.balance) > 0 ? '#b91c1c' : '#64748b'};">Balance</td><td style="padding:6px 8px;border:1px solid #e2e8f0;text-align:right;color:${Number(receipt.balance) > 0 ? '#b91c1c' : '#64748b'};">${bdt(receipt.balance)}</td></tr>
+      </table>
+      ${Number(receipt.balance) > 0 ? `<p style="font-size:12.5px;color:#b45309;">A balance of ${bdt(receipt.balance)} remains due${receipt.due_date ? ` (due ${receipt.due_date})` : ''}.</p>` : '<p style="font-size:12.5px;color:#15803d;">Thank you — this period is fully paid.</p>'}
+      <p style="font-size:12.5px;margin-top:18px;">— Seventh Sky Property Care</p>
+    </div>`;
+
+  let emailed = false;
+  try { const { sendEmail } = require('../services/communication.service'); await sendEmail(tenant.email, `Rent receipt ${receipt.receipt_code || ''} — ${receipt.period_label || ''}`, html); emailed = true; } catch { /* best-effort */ }
+  if (property?.id) {
+    await Communication.create({ branch_id: receipt.branch_id, entity_type: 'property', entity_id: property.id, channel: 'email', direction: 'outbound', subject: `Rent receipt emailed — ${receipt.receipt_code}`, body: `Receipt for ${receipt.period_label} emailed to ${tenant.email}.`, user_id: req.user?.id || null }).catch(() => {});
+  }
+  res.json({ data: { emailed, to: tenant.email }, message: emailed ? `Receipt emailed to ${tenant.email}.` : 'Receipt prepared (email not configured).' });
+});

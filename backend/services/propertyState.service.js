@@ -60,7 +60,33 @@ async function computePropertyState(propertyId) {
       const [[billsPend]] = await sequelize.query(`SELECT COALESCE(SUM(balance),0) AS t FROM invoices WHERE property_id = :pid AND invoice_kind = 'provider' AND status NOT IN ('paid','cancelled')`, { replacements: { pid } });
       const [[invPend]] = await sequelize.query(`SELECT COALESCE(SUM(balance),0) AS t FROM invoices WHERE property_id = :pid AND invoice_kind = 'client' AND status NOT IN ('paid','cancelled')`, { replacements: { pid } });
       const [[nextRent]] = await sequelize.query(`SELECT due_date, (rent_due - rent_received) AS outstanding, period_label FROM rental_ledger WHERE property_id = :pid AND (rent_due - rent_received) > 0 ORDER BY due_date ASC LIMIT 1`, { replacements: { pid } });
-      return { money_in: num(rin?.t), money_out: num(rout?.t), bills_pending: num(billsPend?.t), tenant_balance: num(invPend?.t), next_rent_due: nextRent || null };
+      // Attribute the owner balance by transaction, including portfolio-level landlord folios.
+      const [[lf]] = await sequelize.query(
+        `SELECT COALESCE(SUM(ft.debit - ft.credit),0) AS t
+           FROM folio_transactions ft
+           JOIN folios f ON f.id = ft.folio_id
+          WHERE f.folio_type='landlord' AND ft.property_id = :pid`,
+        { replacements: { pid } });
+      // Tenant 3-way outstanding from actual unpaid invoice balances (drift-proof).
+      const [[to]] = await sequelize.query(
+        `SELECT
+           COALESCE(SUM(CASE WHEN service_for='tenancy' OR invoice_type='rental_receipt' THEN balance ELSE 0 END),0) AS rent,
+           COALESCE(SUM(CASE WHEN service_for IN ('utility','property') THEN balance ELSE 0 END),0) AS su,
+           COALESCE(SUM(CASE WHEN service_for NOT IN ('tenancy','utility','property') AND invoice_type <> 'rental_receipt' THEN balance ELSE 0 END),0) AS other,
+           COALESCE(SUM(balance),0) AS total
+           FROM invoices WHERE property_id = :pid AND invoice_kind='client' AND status NOT IN ('paid','cancelled','voided')`,
+        { replacements: { pid } });
+      return {
+        money_in: num(rin?.t), money_out: num(rout?.t), bills_pending: num(billsPend?.t),
+        tenant_balance: num(invPend?.t), next_rent_due: nextRent || null,
+        owner_disbursable: Math.max(0, num(lf?.t)),
+        tenant_outstanding: {
+          rent_arrears: num(to?.rent),
+          service_utility: num(to?.su),
+          invoices: num(to?.other),
+          total: num(to?.total),
+        },
+      };
     })(),
   ]);
 
@@ -177,7 +203,9 @@ async function computePropertyState(propertyId) {
     },
     financial: {
       owner_balance,
+      owner_disbursable: financialAgg.owner_disbursable,
       tenant_balance: financialAgg.tenant_balance,
+      tenant_outstanding: financialAgg.tenant_outstanding,
       money_in: financialAgg.money_in,
       money_out: financialAgg.money_out,
       bills_pending: financialAgg.bills_pending,

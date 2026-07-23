@@ -1,11 +1,11 @@
 :root {
-    /* Language Academy - Professional SaaS Design Tokens */
+    /* Real estate platform design tokens */
     --bg-deep: #010203;
     --bg-card: rgba(15, 23, 42, 0.6);
-    --primary: #32619A;
-    --primary-glow: rgba(50, 97, 154, 0.3);
-    --accent: #95C04D;
-    --success: #95C04D;
+    --primary: #1bbdf1;
+    --primary-glow: rgba(27, 189, 241, 0.3);
+    --accent: #003768;
+    --success: #1bbdf1;
     --warning: #f59e0b;
     --danger: #ef4444;
     --text-main: #FBFCFC;
@@ -24,9 +24,9 @@
 :root.light {
     --bg-deep: #FBFCFC;
     --bg-card: rgba(255, 255, 255, 0.9);
-    --primary: #32619A;
-    --primary-glow: rgba(50, 97, 154, 0.1);
-    --accent: #95C04D;
+    --primary: #1bbdf1;
+    --primary-glow: rgba(27, 189, 241, 0.1);
+    --accent: #003768;
     --text-main: #010203;
     --text-dim: #64748b;
     --border: rgba(0, 0, 0, 0.06);

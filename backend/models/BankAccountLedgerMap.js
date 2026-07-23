@@ -11,7 +11,7 @@ const BankAccountLedgerMap = sequelize.define('BankAccountLedgerMap', {
     primaryKey: true,
   },
   bank_account_id: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     allowNull: false,
     references: { model: BankAccount, key: 'id' },
   },

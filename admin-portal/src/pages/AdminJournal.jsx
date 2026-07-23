@@ -157,7 +157,7 @@ const Journal = () => {
         <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--glass)', padding: '0.8rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
           <div style={{ display: 'flex', gap: '4px' }}>
             {['all', 'daily', 'weekly', 'monthly', 'custom'].map(p => (
-              <button key={p} onClick={() => setDatePreset(p)} className={datePreset === p ? 'btn-stitch' : 'btn-ghost'} style={{ padding: '0.6rem 0.8rem', fontSize: '0.75rem', background: datePreset === p ? '#7bc62e' : 'transparent', color: datePreset === p ? '#fff' : 'var(--text-dim)', border: datePreset !== p ? '1px solid var(--border)' : 'none' }}>
+              <button key={p} onClick={() => setDatePreset(p)} className={datePreset === p ? 'btn-stitch' : 'btn-ghost'} style={{ padding: '0.6rem 0.8rem', fontSize: '0.75rem', background: datePreset === p ? '#1bbdf1' : 'transparent', color: datePreset === p ? '#fff' : 'var(--text-dim)', border: datePreset !== p ? '1px solid var(--border)' : 'none' }}>
                 {p.toUpperCase()}
               </button>
             ))}
@@ -194,7 +194,7 @@ const Journal = () => {
         </div>
 
         {loading ? (
-          <div style={{ padding: '3rem', textAlign: 'center' }}><Loader2 size={32} className="animate-spin" color="#7bc62e" style={{ margin: '0 auto' }}/></div>
+          <div style={{ padding: '3rem', textAlign: 'center' }}><Loader2 size={32} className="animate-spin" color="#1bbdf1" style={{ margin: '0 auto' }}/></div>
         ) : enriched.length === 0 ? (
           <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-dim)' }}>No journal entries found. Create your first entry to see transactions here.</p>
         ) : enriched.map((line, i) => {
@@ -207,7 +207,7 @@ const Journal = () => {
               <span style={{ fontWeight: '500', color: isReversal ? '#475569' : 'inherit' }}>{line.JournalEntry?.description || '—'}</span>
               {line.notes && <p style={{ fontSize: '0.7rem', color: isReversal ? '#64748b' : 'var(--text-dim)', margin: '2px 0 0' }}>{line.notes}</p>}
             </div>
-            <span style={{ color: isReversal ? '#475569' : '#275fa7', fontSize: '0.8rem' }}>{line.Account?.name || '—'}</span>
+            <span style={{ color: isReversal ? '#475569' : '#003768', fontSize: '0.8rem' }}>{line.Account?.name || '—'}</span>
             <span style={{ fontWeight: '600', color: isReversal ? '#475569' : parseFloat(line.debit) > 0 ? '#06b6d4' : 'var(--text-dim)' }}>{parseFloat(line.debit) > 0 ? `৳${parseFloat(line.debit).toLocaleString()}` : '—'}</span>
             <span style={{ fontWeight: '600', color: isReversal ? '#475569' : parseFloat(line.credit) > 0 ? '#10b981' : 'var(--text-dim)' }}>{parseFloat(line.credit) > 0 ? `৳${parseFloat(line.credit).toLocaleString()}` : '—'}</span>
             <span style={{ fontWeight: '700', fontSize: '0.85rem', color: isReversal ? '#475569' : 'inherit' }}>৳{Math.abs(line.balance).toLocaleString()}</span>
@@ -283,7 +283,7 @@ const Journal = () => {
 
               {/* Totals */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'rgba(123, 198, 46, 0.05)', border: '1px solid rgba(123, 198, 46, 0.2)', borderRadius: '8px', fontWeight: 'bold' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: calculateTotals().balanced ? '#7bc62e' : 'var(--danger)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: calculateTotals().balanced ? '#1bbdf1' : 'var(--danger)' }}>
                   {calculateTotals().balanced ? '✔ Journal balances correctly' : '✖ Debit and Credit amounts must match'}
                 </div>
                 <div style={{ display: 'flex', gap: '2rem', fontSize: '1.1rem' }}>

@@ -36,11 +36,17 @@ const Tenancy = sequelize.define('Tenancy', {
   renewal_offer_rent: DataTypes.DECIMAL(15, 2),
   renewal_offer_service: DataTypes.DECIMAL(15, 2),
   renewal_offer_lease_end: DataTypes.DATEONLY,
+  renewal_effective_date: DataTypes.DATEONLY,
   renewal_proposed_at: DataTypes.DATE,
   renewal_owner_approved_at: DataTypes.DATE,
   renewal_tenant_accepted_at: DataTypes.DATE,
   renewal_activated_at: DataTypes.DATE,
   renewal_notes: DataTypes.TEXT,
+  // End / termination metadata (0043)
+  end_type: DataTypes.ENUM('expiry', 'termination'),
+  termination_reason: DataTypes.STRING,
+  termination_effective_date: DataTypes.DATEONLY,
+  planned_move_out_date: DataTypes.DATEONLY,
 }, { tableName: 'tenancies', underscored: true });
 
 Tenancy.belongsTo(Property, { foreignKey: 'property_id' });

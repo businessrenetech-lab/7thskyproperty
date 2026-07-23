@@ -8,16 +8,9 @@
   "/branches/[slug]/page": "/branches/[slug]",
   "/branches/page": "/branches",
   "/contact/page": "/contact",
-  "/courses/[slug]/page": "/courses/[slug]",
-  "/courses/page": "/courses",
-  "/enroll/page": "/enroll",
-  "/enroll/success/page": "/enroll/success",
   "/icon.png/route": "/icon.png",
-  "/materials/page": "/materials",
   "/page": "/",
   "/payment/success/page": "/payment/success",
   "/robots.txt/route": "/robots.txt",
-  "/sitemap.xml/route": "/sitemap.xml",
-  "/student-booking/page": "/student-booking",
-  "/trial-class/page": "/trial-class"
+  "/sitemap.xml/route": "/sitemap.xml"
 }

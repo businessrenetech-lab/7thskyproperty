@@ -8,16 +8,16 @@
     --foreground: 0 0% 10%; /* Very dark grey/black for text */
     --card: 0 0% 100%;
     --card-foreground: 0 0% 10%;
-    --primary: 90 62% 48%; /* #7bc62e */
+    --primary: 195 88% 53%; /* #1bbdf1 */
     --primary-foreground: 0 0% 100%;
     --secondary: 210 28% 96%;
     --secondary-foreground: 0 0% 10%;
-    --accent: 214 62% 40%; /* #275fa7 */
+    --accent: 208 100% 20%; /* #003768 */
     --accent-foreground: 0 0% 100%;
     --muted: 210 24% 95%;
     --muted-foreground: 215 16% 42%;
     --border: 214 24% 88%;
-    --ring: 90 62% 48%; /* Match primary */
+    --ring: 195 88% 53%; /* Match primary */
     --radius: 1rem;
   }
 

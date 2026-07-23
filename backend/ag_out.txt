@@ -1,0 +1,61 @@
+[dotenv@17.3.1] injecting env (15) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[BIOMETRIC] Initializing background direct TCP pull scheduler (Interval: 30m)
+Executing (default): SELECT 1+1 AS result
+✓ Database connected
+✓ Seventh Sky API running on port 5000 (db: up)
+  mounted: /api/auth, /api/rbac, /api/settings, /api/notifications, /api/biometric, /api/hrm, /api/assets, /api/expenses, /api/budget, /api/accounting, /api/contacts, /api/clients, /api/agreements
+  skipped (to be rebuilt): 
+   - /api/branches (MODULE_NOT_FOUND: Cannot find module '../models/Student')
+   - /api/automation (MODULE_NOT_FOUND: Cannot find module '../models/Student')
+   - /api/dashboard (MODULE_NOT_FOUND: Cannot find module '../models/Batch')
+   - /api/payment (MODULE_NOT_FOUND: Cannot find module './Enrollment')
+   - /api/payroll (MODULE_NOT_FOUND: Cannot find module '../models/TeacherSession')
+   - /api/invoices (MODULE_NOT_FOUND: Cannot find module './Enrollment')
+   - /api/finance (MODULE_NOT_FOUND: Cannot find module './Enrollment')
+   - /api/reconciliation (MODULE_NOT_FOUND: Cannot find module './Enrollment')
+   - /api/properties (MODULE_NOT_FOUND: Cannot find module './routes/property.routes')
+   - /api/services (MODULE_NOT_FOUND: Cannot find module './routes/service.routes')
+   - /api/leads (MODULE_NOT_FOUND: Cannot find module './routes/lead.routes')
+   - /api/providers (MODULE_NOT_FOUND: Cannot find module './routes/provider.routes')
+   - /api/projects (MODULE_NOT_FOUND: Cannot find module './routes/project.routes')
+   - /api/work-orders (MODULE_NOT_FOUND: Cannot find module './routes/workOrder.routes')
+   - /api/inspections (MODULE_NOT_FOUND: Cannot find module './routes/inspection.routes')
+   - /api/documents (MODULE_NOT_FOUND: Cannot find module './routes/document.routes')
+   - /api/signing (MODULE_NOT_FOUND: Cannot find module './routes/signing.routes')
+   - /api/public (MODULE_NOT_FOUND: Cannot find module '../models/Course')
+Executing (default): SHOW FULL COLUMNS FROM `users`;
+Executing (default): SELECT `id`, `name`, `email`, `role`, `branch_id`, `status`, `password` FROM `users` AS `User` WHERE `User`.`email` = 'admin@seventhskyproperty.com';
+Executing (default): SELECT `id`, `name`, `email`, `role`, `branch_id`, `status` FROM `users` AS `User` WHERE `User`.`id` = 1;
+[0mPOST /api/auth/login [32m200[0m 405.239 ms - 278[0m
+Executing (default): SHOW FULL COLUMNS FROM `branches`;
+Executing (default): SELECT `User`.`id`, `User`.`name`, `User`.`email`, `User`.`role`, `User`.`branch_id`, `User`.`status`, `Branch`.`id` AS `Branch.id`, `Branch`.`name` AS `Branch.name`, `Branch`.`code` AS `Branch.code`, `Branch`.`type` AS `Branch.type` FROM `users` AS `User` LEFT OUTER JOIN `branches` AS `Branch` ON `User`.`branch_id` = `Branch`.`id` WHERE `User`.`id` = 1;
+Executing (ef27ed89-8b32-40dd-b3a1-d3efb89f2b0b): START TRANSACTION;
+[0mGET /api/notifications/logs?limit=100 [33m401[0m 0.278 ms - 35[0m
+[0mGET /api/mt5/signals?limit=100&candleLimit=5000&tradeLimit=200 [33m404[0m 2.063 ms - 154[0m
+[0mGET /api/mt5/indicators/latest [33m404[0m 0.747 ms - 164[0m
+[0mGET /api/ai/decisions/latest [33m404[0m 1.019 ms - 162[0m
+[0mGET /api/mt5/history/coverage [33m404[0m 1.214 ms - 163[0m
+[0mGET /api/mt5/signals?limit=100&candleLimit=5000&tradeLimit=200 [33m404[0m 0.459 ms - 154[0m
+[0mGET /api/notifications/logs?limit=100 [33m401[0m 0.304 ms - 35[0m
+[0mGET /api/mt5/indicators/latest [33m404[0m 1.154 ms - 164[0m
+[0mGET /api/ai/decisions/latest [33m404[0m 1.252 ms - 162[0m
+[0mGET /api/mt5/history/coverage [33m404[0m 1.695 ms - 163[0m
+Executing (default): SELECT `agreement_code` FROM `agreements` AS `Agreement` WHERE `Agreement`.`agreement_code` LIKE 'SSPC-AGR-%' ORDER BY `Agreement`.`agreement_code` DESC LIMIT 1;
+Executing (ef27ed89-8b32-40dd-b3a1-d3efb89f2b0b): INSERT INTO `agreements` (`id`,`branch_id`,`agreement_code`,`title`,`category`,`vertical_key`,`current_version`,`status`,`created_by`,`created_at`,`updated_at`) VALUES (DEFAULT,?,?,?,?,?,?,?,?,?,?);
+Executing (ef27ed89-8b32-40dd-b3a1-d3efb89f2b0b): INSERT INTO `agreement_versions` (`id`,`agreement_id`,`version`,`file_url`,`file_name`,`mime_type`,`effective_date`,`change_note`,`is_current`,`uploaded_by`,`created_at`) VALUES (DEFAULT,?,?,?,?,?,?,?,?,?,?);
+Executing (ef27ed89-8b32-40dd-b3a1-d3efb89f2b0b): UPDATE `agreements` SET `current_version`=?,`current_effective_date`=?,`current_file_url`=?,`updated_at`=? WHERE `id` = ?
+Executing (ef27ed89-8b32-40dd-b3a1-d3efb89f2b0b): COMMIT;
+Executing (default): SELECT `Agreement`.`id`, `Agreement`.`branch_id`, `Agreement`.`agreement_code`, `Agreement`.`title`, `Agreement`.`category`, `Agreement`.`vertical_key`, `Agreement`.`description`, `Agreement`.`purpose`, `Agreement`.`current_version`, `Agreement`.`current_effective_date`, `Agreement`.`current_file_url`, `Agreement`.`status`, `Agreement`.`created_by`, `Agreement`.`created_at` AS `createdAt`, `Agreement`.`updated_at` AS `updatedAt`, `versions`.`id` AS `versions.id`, `versions`.`agreement_id` AS `versions.agreement_id`, `versions`.`version` AS `versions.version`, `versions`.`file_url` AS `versions.file_url`, `versions`.`file_name` AS `versions.file_name`, `versions`.`mime_type` AS `versions.mime_type`, `versions`.`effective_date` AS `versions.effective_date`, `versions`.`change_note` AS `versions.change_note`, `versions`.`is_current` AS `versions.is_current`, `versions`.`uploaded_by` AS `versions.uploaded_by`, `versions`.`created_at` AS `versions.createdAt` FROM `agreements` AS `Agreement` LEFT OUTER JOIN `agreement_versions` AS `versions` ON `Agreement`.`id` = `versions`.`agreement_id` WHERE `Agreement`.`id` = 1;
+[0mPOST /api/agreements [32m201[0m 1042.135 ms - 810[0m
+Executing (default): SELECT `User`.`id`, `User`.`name`, `User`.`email`, `User`.`role`, `User`.`branch_id`, `User`.`status`, `Branch`.`id` AS `Branch.id`, `Branch`.`name` AS `Branch.name`, `Branch`.`code` AS `Branch.code`, `Branch`.`type` AS `Branch.type` FROM `users` AS `User` LEFT OUTER JOIN `branches` AS `Branch` ON `User`.`branch_id` = `Branch`.`id` WHERE `User`.`id` = 1;
+Executing (default): SELECT `id`, `branch_id`, `agreement_code`, `title`, `category`, `vertical_key`, `description`, `purpose`, `current_version`, `current_effective_date`, `current_file_url`, `status`, `created_by`, `created_at` AS `createdAt`, `updated_at` AS `updatedAt` FROM `agreements` AS `Agreement` WHERE `Agreement`.`id` = '1';
+Executing (f3c98ab1-9739-495a-a41e-13773c2039d9): START TRANSACTION;
+Executing (f3c98ab1-9739-495a-a41e-13773c2039d9): UPDATE `agreement_versions` SET `is_current`=? WHERE `agreement_id` = ?
+Executing (f3c98ab1-9739-495a-a41e-13773c2039d9): INSERT INTO `agreement_versions` (`id`,`agreement_id`,`version`,`file_url`,`file_name`,`mime_type`,`effective_date`,`change_note`,`is_current`,`uploaded_by`,`created_at`) VALUES (DEFAULT,?,?,?,?,?,?,?,?,?,?);
+Executing (f3c98ab1-9739-495a-a41e-13773c2039d9): UPDATE `agreements` SET `current_version`=?,`current_effective_date`=?,`current_file_url`=?,`updated_at`=? WHERE `id` = ?
+Executing (f3c98ab1-9739-495a-a41e-13773c2039d9): COMMIT;
+[0mPOST /api/agreements/1/versions [32m201[0m 515.708 ms - 385[0m
+Executing (default): SELECT `User`.`id`, `User`.`name`, `User`.`email`, `User`.`role`, `User`.`branch_id`, `User`.`status`, `Branch`.`id` AS `Branch.id`, `Branch`.`name` AS `Branch.name`, `Branch`.`code` AS `Branch.code`, `Branch`.`type` AS `Branch.type` FROM `users` AS `User` LEFT OUTER JOIN `branches` AS `Branch` ON `User`.`branch_id` = `Branch`.`id` WHERE `User`.`id` = 1;
+Executing (default): SELECT `Agreement`.`id`, `Agreement`.`branch_id`, `Agreement`.`agreement_code`, `Agreement`.`title`, `Agreement`.`category`, `Agreement`.`vertical_key`, `Agreement`.`description`, `Agreement`.`purpose`, `Agreement`.`current_version`, `Agreement`.`current_effective_date`, `Agreement`.`current_file_url`, `Agreement`.`status`, `Agreement`.`created_by`, `Agreement`.`created_at` AS `createdAt`, `Agreement`.`updated_at` AS `updatedAt`, `versions`.`id` AS `versions.id`, `versions`.`agreement_id` AS `versions.agreement_id`, `versions`.`version` AS `versions.version`, `versions`.`file_url` AS `versions.file_url`, `versions`.`file_name` AS `versions.file_name`, `versions`.`mime_type` AS `versions.mime_type`, `versions`.`effective_date` AS `versions.effective_date`, `versions`.`change_note` AS `versions.change_note`, `versions`.`is_current` AS `versions.is_current`, `versions`.`uploaded_by` AS `versions.uploaded_by`, `versions`.`created_at` AS `versions.createdAt` FROM `agreements` AS `Agreement` LEFT OUTER JOIN `agreement_versions` AS `versions` ON `Agreement`.`id` = `versions`.`agreement_id` WHERE `Agreement`.`id` = '1' ORDER BY `versions`.`version` DESC;
+[0mGET /api/agreements/1 [32m200[0m 135.215 ms - 1083[0m

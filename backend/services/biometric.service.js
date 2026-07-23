@@ -587,7 +587,15 @@ exports.syncDeviceLogsById = async (deviceId) => {
  * Background Scheduler
  * Runs periodically to pull logs from all active devices
  */
-const startScheduler = () => {
+const startScheduler = async () => {
+  // Check if biometric_devices table exists first to avoid database query crashes
+  try {
+    await sequelize.query("SELECT 1 FROM biometric_devices LIMIT 1");
+  } catch (err) {
+    console.warn("[BIOMETRIC] biometric_devices table not found. Skipping biometric background scheduler.");
+    return;
+  }
+
   const intervalMins = 30; // Polling interval
   console.log(`[BIOMETRIC] Initializing background direct TCP pull scheduler (Interval: ${intervalMins}m)`);
 

@@ -95,6 +95,32 @@ function bucketField(bucket) {
 async function postFolioTransaction(input, opts = {}) {
   const folio = await Folio.findByPk(input.folio_id, { transaction: opts.transaction });
   if (!folio) return null;
+
+  // Memo rows are informational (e.g. tenant paid a supplier directly): they
+  // appear in the ledger + reports but never move the balance.
+  if (input.is_memo) {
+    return FolioTransaction.create({
+      branch_id: folio.branch_id,
+      folio_id: folio.id,
+      transaction_type: input.transaction_type || 'adjustment',
+      bucket: input.bucket || 'adjustment',
+      account_category_id: input.account_category_id || null,
+      invoice_id: input.invoice_id || null,
+      payment_id: input.payment_id || null,
+      provider_id: input.provider_id || null,
+      property_id: input.property_id || folio.property_id,
+      tenancy_id: input.tenancy_id || folio.tenancy_id,
+      description: input.description || null,
+      debit: 0,
+      credit: 0,
+      balance_after: num(folio.current_balance),
+      is_memo: true,
+      memo_amount: num(input.memo_amount ?? input.debit ?? input.credit),
+      transaction_date: input.transaction_date || new Date(),
+      created_by: input.created_by || null,
+    }, { transaction: opts.transaction });
+  }
+
   const debit = num(input.debit);
   const credit = num(input.credit);
   const currentBalance = num(folio.current_balance) + debit - credit;
@@ -125,6 +151,38 @@ async function postFolioTransaction(input, opts = {}) {
   }, { transaction: opts.transaction });
 }
 
+/**
+ * Allocate a tenant payment across the outstanding buckets in priority order
+ * (rent → service_charge → utility → remainder as adjustment), so the folio's
+ * bucket balances stay reconciled with its current_balance. Returns the txns.
+ */
+async function allocatePaymentToBuckets(folioId, amount, meta = {}, opts = {}) {
+  const folio = await Folio.findByPk(folioId, { transaction: opts.transaction });
+  if (!folio) return [];
+  let remaining = num(amount);
+  const order = ['rent', 'service_charge', 'utility'];
+  const txns = [];
+  for (const bucket of order) {
+    if (remaining <= 0) break;
+    const bal = num(folio[bucketField(bucket)]);
+    if (bal <= 0) continue;
+    const applied = Math.min(bal, remaining);
+    txns.push(await postFolioTransaction({
+      folio_id: folioId, transaction_type: 'payment', bucket,
+      ...meta, credit: applied,
+    }, opts));
+    remaining -= applied;
+  }
+  // Anything left over (overpayment / non-bucketed invoice) → adjustment.
+  if (remaining > 0.001) {
+    txns.push(await postFolioTransaction({
+      folio_id: folioId, transaction_type: 'payment', bucket: 'adjustment',
+      ...meta, credit: remaining,
+    }, opts));
+  }
+  return txns;
+}
+
 function folioWhereForBranch(req) {
   if (req.user?.role === 'super_admin') return {};
   return { branch_id: req.branchId ?? req.user?.branch_id ?? null };
@@ -140,5 +198,6 @@ module.exports = {
   findTenantFolioForTenancy,
   findBestLandlordFolio,
   postFolioTransaction,
+  allocatePaymentToBuckets,
   folioWhereForBranch,
 };

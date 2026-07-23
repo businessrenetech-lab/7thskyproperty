@@ -126,7 +126,7 @@ const Table = ({ tab, rows }) => {
         </tbody>
         {hasTotals && (
           <tfoot>
-            <tr style={{ borderTop: '2px solid #32619A' }}>
+            <tr style={{ borderTop: '2px solid #003768' }}>
               {columns.map((key, i) => (
                 <td key={key} style={{
                   padding: '1rem',
@@ -231,7 +231,7 @@ export default function AdminReportsHub() {
           </div>
         </div>
         <!-- Bottom Accent Bar -->
-        <div style="height:4px; background:linear-gradient(90deg, #7bc62e, #275fa7); border-radius:0 0 3px 3px;"></div>
+        <div style="height:4px; background:linear-gradient(90deg, #1bbdf1, #003768); border-radius:0 0 3px 3px;"></div>
       </div>
     `;
 
@@ -291,8 +291,8 @@ export default function AdminReportsHub() {
                 style={{
                   padding: '0.6rem 1.25rem',
                   borderRadius: '999px',
-                  border: `2px solid ${preset === p ? '#32619A' : '#cbd5e1'}`,
-                  background: preset === p ? 'linear-gradient(135deg, #32619A 0%, #2a5282 100%)' : '#ffffff',
+                  border: `2px solid ${preset === p ? '#003768' : '#cbd5e1'}`,
+                  background: preset === p ? 'linear-gradient(135deg, #003768 0%, #2a5282 100%)' : '#ffffff',
                   color: preset === p ? '#fff' : '#475569',
                   fontWeight: 600,
                   fontSize: '0.875rem',
@@ -346,7 +346,7 @@ export default function AdminReportsHub() {
             style={{
               background: loading || error
                 ? '#94a3b8'
-                : 'linear-gradient(135deg, #32619A 0%, #2a5282 100%)',
+                : 'linear-gradient(135deg, #003768 0%, #2a5282 100%)',
               color: '#fff',
               padding: '0.75rem 1.5rem',
               border: 'none',
@@ -381,7 +381,7 @@ export default function AdminReportsHub() {
               borderRadius: '999px',
               border: 'none',
               background: tab === key
-                ? 'linear-gradient(135deg, #32619A 0%, #2a5282 100%)'
+                ? 'linear-gradient(135deg, #003768 0%, #2a5282 100%)'
                 : 'transparent',
               color: tab === key ? '#fff' : '#64748b',
               fontWeight: tab === key ? 700 : 600,
