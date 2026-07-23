@@ -134,6 +134,8 @@ mount('/api/tenancies', './routes/tenancy.routes');
 mount('/api/tenant-applications', './routes/tenantApplication.routes');
 mount('/api/rental-assessments', './routes/rentalAssessment.routes');
 mount('/api/rental-enquiries', './routes/rentalEnquiry.routes');
+mount('/api/sales-enquiries', './routes/salesEnquiry.routes');
+mount('/api/public', './routes/publicSales.routes');
 mount('/api/property-management', './routes/propertyManagement.routes');
 mount('/api/owner-statements', './routes/ownerStatement.routes');
 mount('/api/landlord', './routes/landlord.routes');

@@ -2,12 +2,16 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   Building2,
+  CalendarClock,
   CheckCircle2,
   Clock3,
   Edit,
+  FileSearch,
   HandCoins,
   Plus,
+  Scale,
   Search,
+  Users,
   WalletCards,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -46,6 +50,7 @@ const metric = (metrics, ...keys) =>
 
 const KPI_DEFS = [
   ["active_listings", "Listings", Building2, "pm-kpi--cyan"],
+  ["open_enquiries", "Open buyer enquiries", HandCoins, "pm-kpi--cyan"],
   ["offers_awaiting_review", "Pending offers", Clock3, "pm-kpi--amber"],
   ["under_contract", "Accepted / under contract", CheckCircle2, "pm-kpi--navy"],
   [
@@ -123,7 +128,9 @@ export default function PropertySellDashboard({ category, title, desc }) {
         num(metrics.settlements_needing_approval),
     payout_exceptions: metric(metrics, "payout_exceptions", "exceptions"),
     completed_sales: metric(metrics, "completed_sales", "completed"),
+    open_enquiries: metric(metrics, "open_enquiries", "enquiries"),
   };
+  const activity = dashboard.activity || {};
 
   const statuses = useMemo(
     () =>
@@ -289,6 +296,191 @@ export default function PropertySellDashboard({ category, title, desc }) {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* ── What's happening in sales ─────────────────────────────────────── */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
+          gap: 16,
+        }}
+      >
+        {/* Recent buyer enquiries — name links to the buyer client */}
+        <div className="pm-card" style={{ overflow: "hidden" }}>
+          <div
+            className="pm-card-h"
+            style={{ cursor: "pointer" }}
+            onClick={() => navigate(`/${category}/enquiry`)}
+          >
+            <div className="ic">
+              <Users size={16} />
+            </div>
+            <div>
+              <h3>Buyer enquiries</h3>
+              <div className="hsub">Latest interest in your listings</div>
+            </div>
+            <div className="sp" />
+            <span className="cell-sub">{num(values.open_enquiries)} open</span>
+          </div>
+          <div className="pm-card-body" style={{ paddingTop: 0 }}>
+            {(activity.enquiries || []).length ? (
+              (activity.enquiries || []).slice(0, 6).map((e) => (
+                <div
+                  key={e.id}
+                  className="pm-row"
+                  style={{ padding: "9px 0", cursor: "default" }}
+                >
+                  <div className="grow">
+                    <button
+                      type="button"
+                      className="title"
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        color: "var(--primary)",
+                        cursor: "pointer",
+                        fontWeight: 700,
+                      }}
+                      onClick={() =>
+                        e.client_id
+                          ? navigate(`/clients?client=${e.client_id}`)
+                          : navigate(`/contacts?contact=${e.contact_id}`)
+                      }
+                    >
+                      {e.enquirer_name}
+                    </button>
+                    <div className="sub">
+                      {e.phone || e.email || "—"}
+                      {e.property_title ? ` · ${e.property_title}` : ""}
+                    </div>
+                  </div>
+                  <StatusBadge status={e.stage} />
+                </div>
+              ))
+            ) : (
+              <div className="cell-sub" style={{ padding: "10px 0" }}>
+                No buyer enquiries yet.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Upcoming appointments / viewings */}
+        <div className="pm-card" style={{ overflow: "hidden" }}>
+          <div className="pm-card-h">
+            <div className="ic">
+              <CalendarClock size={16} />
+            </div>
+            <div>
+              <h3>Appointments</h3>
+              <div className="hsub">Scheduled viewings</div>
+            </div>
+            <div className="sp" />
+            <span className="cell-sub">
+              {num(values.upcoming_appointments ?? (activity.appointments || []).length)}
+            </span>
+          </div>
+          <div className="pm-card-body" style={{ paddingTop: 0 }}>
+            {(activity.appointments || []).length ? (
+              (activity.appointments || []).slice(0, 6).map((a) => (
+                <div key={a.id} className="pm-row" style={{ padding: "9px 0" }}>
+                  <div className="grow">
+                    <div className="title">{a.enquirer_name}</div>
+                    <div className="sub">{a.property_title || "—"}</div>
+                  </div>
+                  <span className="cell-sub">
+                    {new Date(a.when).toLocaleString("en-BD", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className="cell-sub" style={{ padding: "10px 0" }}>
+                No upcoming appointments.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Appraisals / assessments */}
+        <div className="pm-card" style={{ overflow: "hidden" }}>
+          <div className="pm-card-h">
+            <div className="ic">
+              <FileSearch size={16} />
+            </div>
+            <div>
+              <h3>Appraisals</h3>
+              <div className="hsub">Assessment &amp; valuation</div>
+            </div>
+          </div>
+          <div className="pm-card-body" style={{ paddingTop: 0 }}>
+            {(activity.appraisals || []).length ? (
+              (activity.appraisals || []).slice(0, 6).map((a) => (
+                <div
+                  key={a.id}
+                  className="pm-row"
+                  style={{ padding: "9px 0", cursor: "pointer" }}
+                  onClick={() => navigate(`/sales/property/${a.property_id}`)}
+                >
+                  <div className="grow">
+                    <div className="title">{a.property_title || "Property"}</div>
+                    <div className="sub">
+                      {a.overall_score != null
+                        ? `Score ${a.overall_score}`
+                        : "In progress"}
+                    </div>
+                  </div>
+                  <StatusBadge status={a.status} />
+                </div>
+              ))
+            ) : (
+              <div className="cell-sub" style={{ padding: "10px 0" }}>
+                No appraisals yet.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Current sales in progress */}
+        <div className="pm-card" style={{ overflow: "hidden" }}>
+          <div className="pm-card-h">
+            <div className="ic">
+              <Scale size={16} />
+            </div>
+            <div>
+              <h3>Current sales</h3>
+              <div className="hsub">Under contract &amp; settling</div>
+            </div>
+          </div>
+          <div className="pm-card-body" style={{ paddingTop: 0 }}>
+            {(activity.current_sales || []).length ? (
+              (activity.current_sales || []).slice(0, 6).map((s) => (
+                <div
+                  key={s.transaction_id}
+                  className="pm-row"
+                  style={{ padding: "9px 0", cursor: "pointer" }}
+                  onClick={() => navigate(`/sales/property/${s.property_id}`)}
+                >
+                  <div className="grow">
+                    <div className="title">{s.property_title || "Property"}</div>
+                    <div className="sub">
+                      {s.funds_held ? `${bdt(s.funds_held)} held` : "In progress"}
+                    </div>
+                  </div>
+                  <StatusBadge status={s.settlement_status || s.status} />
+                </div>
+              ))
+            ) : (
+              <div className="cell-sub" style={{ padding: "10px 0" }}>
+                No sales in progress.
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="pm-card" style={{ padding: 14 }}>

@@ -248,7 +248,7 @@ exports.dashboard = asyncHandler(async (req, res) => {
   const propertyWhere = { listing_type: 'sale', ...branchScope(req), ...(category ? { category } : {}) };
   const properties = await Property.findAll({ where: propertyWhere, attributes: ['id', 'branch_id', 'property_code', 'title', 'category', 'property_type', 'status', 'price', 'area', 'district'], order: [['updated_at', 'DESC']] });
   const propertyIds = properties.map((property) => property.id);
-  if (!propertyIds.length) return res.json({ counters: { properties: 0, available: 0, reserved: 0, sold: 0, offers_open: 0, transactions_active: 0, settlements_pending: 0 }, metrics: { active_listings: 0, offers_awaiting_review: 0, under_contract: 0, client_funds_held: 0, settlements_review: 0, payout_exceptions: 0, completed_sales: 0 }, properties: [] });
+  if (!propertyIds.length) return res.json({ counters: { properties: 0, available: 0, reserved: 0, sold: 0, offers_open: 0, transactions_active: 0, settlements_pending: 0 }, metrics: { active_listings: 0, offers_awaiting_review: 0, under_contract: 0, client_funds_held: 0, settlements_review: 0, payout_exceptions: 0, completed_sales: 0, open_enquiries: 0, upcoming_appointments: 0 }, activity: { enquiries: [], appointments: [], appraisals: [], current_sales: [] }, properties: [] });
   const [profiles, offerCounts, transactions, settlements] = await Promise.all([
     SaleProfile.findAll({ where: { property_id: { [Op.in]: propertyIds }, ...branchScope(req) }, raw: true }),
     SaleOffer.findAll({ attributes: ['property_id', [sequelize.fn('COUNT', sequelize.col('id')), 'count']], where: { property_id: { [Op.in]: propertyIds }, status: { [Op.in]: ['draft', 'submitted', 'countered'] }, ...branchScope(req) }, group: ['property_id'], raw: true }),
@@ -271,6 +271,44 @@ exports.dashboard = asyncHandler(async (req, res) => {
     if (calculations.pending_disbursements || calculations.unpaid_obligations > 0.01 || Math.abs(calculations.residual) > 0.01) payoutExceptions += 1;
   }
   const settlementsPending = settlements.filter((settlement) => ['submitted', 'reviewed', 'approved'].includes(settlement.status)).length;
+
+  // ─── Activity feed: what's happening in sales for this category ────────────
+  const SalesEnquiry = require('../models/SalesEnquiry');
+  const { SaleAssessment } = require('../models/SalesAssessmentModels');
+  const propertyTitle = new Map(properties.map((property) => [property.id, property.title]));
+  const [enquiries, openEnquiryCount, appraisals] = await Promise.all([
+    SalesEnquiry.findAll({
+      where: { property_id: { [Op.in]: propertyIds }, ...branchScope(req) },
+      attributes: ['id', 'enquiry_code', 'enquirer_name', 'phone', 'email', 'property_id', 'contact_id', 'client_id', 'stage', 'viewing_date', 'created_at'],
+      order: [['created_at', 'DESC']], limit: 12,
+    }),
+    SalesEnquiry.count({ where: { property_id: { [Op.in]: propertyIds }, stage: { [Op.in]: ['new', 'contacted', 'viewing_scheduled', 'viewed'] }, ...branchScope(req) } }),
+    SaleAssessment.findAll({
+      where: { property_id: { [Op.in]: propertyIds }, ...branchScope(req) },
+      attributes: ['id', 'property_id', 'status', 'overall_score', 'created_at'],
+      order: [['created_at', 'DESC']], limit: 8,
+    }).catch(() => []),
+  ]);
+  // Upcoming viewings/appointments = enquiries with a future viewing_date.
+  const now = new Date();
+  const appointments = enquiries
+    .filter((e) => e.viewing_date && new Date(e.viewing_date) >= now)
+    .map((e) => ({ id: e.id, enquirer_name: e.enquirer_name, property_id: e.property_id, property_title: propertyTitle.get(e.property_id) || null, when: e.viewing_date }));
+  const currentSales = transactions.map((t) => {
+    const s = settlementByProperty.get(t.property_id);
+    return { transaction_id: t.id, property_id: t.property_id, property_title: propertyTitle.get(t.property_id) || null, status: t.status, settlement_status: s?.settlement?.status || null, funds_held: s?.calculations?.funds_held || 0 };
+  });
+  const activity = {
+    enquiries: enquiries.map((e) => ({
+      id: e.id, enquiry_code: e.enquiry_code, enquirer_name: e.enquirer_name, phone: e.phone, email: e.email,
+      property_id: e.property_id, property_title: propertyTitle.get(e.property_id) || null,
+      contact_id: e.contact_id, client_id: e.client_id, stage: e.stage, created_at: e.created_at,
+    })),
+    appointments,
+    appraisals: appraisals.map((a) => ({ id: a.id, property_id: a.property_id, property_title: propertyTitle.get(a.property_id) || null, status: a.status, overall_score: a.overall_score, created_at: a.created_at })),
+    current_sales: currentSales,
+  };
+
   const metrics = {
     active_listings: properties.filter((property) => ['available', 'reserved', 'draft'].includes(property.status)).length,
     offers_awaiting_review: offerCounts.reduce((sum, count) => sum + Number(count.count), 0),
@@ -279,6 +317,8 @@ exports.dashboard = asyncHandler(async (req, res) => {
     settlements_review: settlementsPending,
     payout_exceptions: payoutExceptions,
     completed_sales: properties.filter((property) => property.status === 'sold').length,
+    open_enquiries: openEnquiryCount,
+    upcoming_appointments: appointments.length,
   };
   res.json({
     counters: {
@@ -287,6 +327,7 @@ exports.dashboard = asyncHandler(async (req, res) => {
       offers_open: offerCounts.reduce((sum, count) => sum + Number(count.count), 0), transactions_active: transactions.length, settlements_pending: settlementsPending,
     },
     metrics,
+    activity,
     properties: properties.map((property) => {
       const profile = profileMap.get(property.id) || null;
       const activeTransaction = txMap.get(property.id) || null;

@@ -14,6 +14,7 @@ const NAV = [
   { key: 'residential', label: 'Residential', icon: Home, children: [
     { to: '/residential/buy', label: 'Buy' },
     { to: '/residential/sell', label: 'Sell' },
+    { to: '/residential/enquiry', label: 'Buyer Enquiries' },
     { to: '/compliance?category=residential', label: 'Compliance' },
     { to: '/projects?vertical_key=properties', label: 'Checklists / Workflows' },
   ] },
@@ -51,12 +52,14 @@ const NAV = [
   { key: 'commercial', label: 'Commercial', icon: Building2, children: [
     { to: '/commercial/buy', label: 'Buy' },
     { to: '/commercial/sell', label: 'Sell' },
+    { to: '/commercial/enquiry', label: 'Buyer Enquiries' },
     { to: '/compliance?category=commercial', label: 'Compliance' },
     { to: '/projects?vertical_key=commercial_rent,commercial_sale', label: 'Checklists / Workflows' },
   ] },
   { key: 'rural', label: 'Rural Properties', icon: Trees, children: [
     { to: '/rural/buy', label: 'Buy' },
     { to: '/rural/sell', label: 'Sell' },
+    { to: '/rural/enquiry', label: 'Buyer Enquiries' },
     { to: '/compliance?category=rural', label: 'Compliance' },
     { to: '/projects?vertical_key=rural_rent,rural_sale', label: 'Checklists / Workflows' },
   ] },

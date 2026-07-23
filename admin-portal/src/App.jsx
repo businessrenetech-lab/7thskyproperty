@@ -15,6 +15,7 @@ import Agreements from './screens/Agreements';
 import AgreementTemplates from './screens/AgreementTemplates';
 import DealsBoard from './screens/DealsBoard';
 import PropertySellDashboard from './screens/PropertySellDashboard';
+import SalesEnquiries from './screens/SalesEnquiries';
 import SalesPropertyFile from './screens/sales/SalesPropertyFile';
 import RentalProperties from './screens/RentalProperties';
 import PropertyWizard from './screens/PropertyWizard';
@@ -112,6 +113,7 @@ export default function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/residential/buy" element={<DealsBoard category="residential" dealType="buy" title="Residential · Buy" desc="Buyer service — properties, buyers, agreements, commission, expenses and status." />} />
               <Route path="/residential/sell" element={<PropertySellDashboard category="residential" title="Residential · Sell" desc="Seller service — listings, owners, agreements, commission and settlement." />} />
+              <Route path="/residential/enquiry" element={<SalesEnquiries category="residential" title="Residential · Buyer Enquiries" desc="Every buyer who enquired on a residential sale property." />} />
               <Route path="/sales/property/:id" element={<SalesPropertyFile />} />
               <Route path="/sales/properties/new" element={<PropertyWizard />} />
               <Route path="/sales/properties/new/:id" element={<PropertyWizard />} />
@@ -139,8 +141,10 @@ export default function App() {
               </Route>
               <Route path="/commercial/buy" element={<DealsBoard category="commercial" dealType="buy" title="Commercial · Buy" desc="Commercial buyer service — deals, buyers, agreements, commission and expenses." />} />
               <Route path="/commercial/sell" element={<PropertySellDashboard category="commercial" title="Commercial · Sell" desc="Commercial seller service — listings, owners, agreements and settlement." />} />
+              <Route path="/commercial/enquiry" element={<SalesEnquiries category="commercial" title="Commercial · Buyer Enquiries" desc="Every buyer who enquired on a commercial sale property." />} />
               <Route path="/rural/buy" element={<DealsBoard category="rural" dealType="buy" title="Rural · Buy" desc="Rural buyer service — farms, lands, buyers, agreements, commission and expenses." />} />
               <Route path="/rural/sell" element={<PropertySellDashboard category="rural" title="Rural · Sell" desc="Rural seller service — farms, lands, owners, agreements, commission and settlement." />} />
+              <Route path="/rural/enquiry" element={<SalesEnquiries category="rural" title="Rural · Buyer Enquiries" desc="Every buyer who enquired on a rural sale property." />} />
               <Route path="/services" element={<ServiceCatalog />} />
               <Route path="/services/lines" element={<Services />} />
               <Route path="/projects" element={<Projects />} />

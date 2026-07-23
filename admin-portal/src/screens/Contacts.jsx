@@ -46,6 +46,11 @@ export default function Contacts() {
   }, [page, search, filters, toast]);
 
   useEffect(() => { load(); }, [load]);
+  // Deep link: /contacts?contact=<id> opens that contact directly.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('contact');
+    if (id) setActiveContactId(Number(id));
+  }, []);
 
   const openCreate = () => { setForm(BLANK); setDrawer('create'); };
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
