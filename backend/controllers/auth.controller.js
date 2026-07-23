@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Branch = require('../models/Branch');
 const RbacConfig = require('../models/RbacConfig');
@@ -143,6 +144,53 @@ exports.register = async (req, res) => {
     console.error('[Register Error]:', error.message);
     // H1 Fix: Generic error message in production
     res.status(500).json({ error: 'Registration failed. Please try again.' });
+  }
+};
+
+// Google Sign-In (Google Identity Services). The client ID is public and safe
+// to embed; override via env if you rotate it.
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
+  || '82959977221-3k1ag8ofcgrp9kuvtbj9ld4dvhhmpobm.apps.googleusercontent.com';
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+// POST /api/auth/google  { credential }  — verify a Google ID token, then log
+// in the EXISTING user with that email. Unknown Google accounts are rejected
+// (no self-signup on a role-based staff system).
+exports.googleLogin = async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) return res.status(400).json({ error: 'Google credential is required.' });
+
+    let payload;
+    try {
+      const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: GOOGLE_CLIENT_ID });
+      payload = ticket.getPayload();
+    } catch {
+      return res.status(401).json({ error: 'Invalid Google sign-in. Please try again.' });
+    }
+    if (!payload?.email || payload.email_verified !== true) {
+      return res.status(401).json({ error: 'This Google account has no verified email.' });
+    }
+
+    const email = String(payload.email).trim();
+    // Match the existing account (case-insensitive), like the password login.
+    let user = await User.findOne({ where: { email }, attributes: await getSafeUserAttributes(false) });
+    if (!user && email !== email.toLowerCase()) {
+      user = await User.findOne({ where: { email: email.toLowerCase() }, attributes: await getSafeUserAttributes(false) });
+    }
+    if (!user) {
+      return res.status(403).json({ error: `No account exists for ${email}. Ask an administrator to add you first.` });
+    }
+    if (Object.prototype.hasOwnProperty.call(user.toJSON(), 'status') && user.status && user.status !== 'active') {
+      return res.status(403).json({ error: 'Account is suspended. Contact your administrator.' });
+    }
+
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: AUTH_TOKEN_TTL });
+    res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions());
+    res.json({ token, user });
+  } catch (error) {
+    console.error('[Google Login Error]:', error.message);
+    res.status(500).json({ error: 'Google sign-in failed. Please try again.' });
   }
 };
 

@@ -25,6 +25,7 @@ const registerLimiter = rateLimit({
 
 router.post('/register', registerLimiter, authMiddleware, roleMiddleware(['super_admin', 'branch_admin']), authController.register);
 router.post('/login', loginLimiter, authController.login);
+router.post('/google', loginLimiter, authController.googleLogin);
 router.post('/logout', authController.logout);
 router.get('/me', authMiddleware, authController.getMe);
 router.get('/staff', authMiddleware, roleMiddleware(['super_admin', 'branch_admin']), authController.getStaff);
