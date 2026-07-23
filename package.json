@@ -1,19 +1,14 @@
 {
-  "name": "language-academy",
+  "name": "seventh-sky-properties",
   "version": "1.0.0",
-  "description": "Language Academy Monolith — Backend + Admin + Student + Website",
+  "description": "Seventh Sky Properties — Backend API + Admin Portal + Website",
   "main": "production-server.js",
   "scripts": {
     "start": "node production-server.js",
     "build:admin": "cd admin-portal && npm install && npx vite build",
-    "build:student": "cd student-portal && npm install && npx vite build",
-    "build:teacher": "cd teacher-portal && npm install && npx vite build",
-    "build:accounting": "cd accounting-portal && npm install && npx vite build",
-    "build:hr": "cd hr-portal && npm install && npx vite build",
-    "build:crm": "cd crm-portal && npm install && npx vite build",
     "build:website": "cd website && npm install && npx next build",
-    "build:all": "npm run build:admin && npm run build:student && npm run build:teacher && npm run build:accounting && npm run build:hr && npm run build:crm && npm run build:website",
-    "postinstall": "cd backend && npm install && cd ../gateway && npm install && cd ../admin-portal && npm install && cd ../student-portal && npm install && cd ../teacher-portal && npm install && cd ../accounting-portal && npm install && cd ../hr-portal && npm install && cd ../crm-portal && npm install && cd ../website && npm install"
+    "build:all": "npm run build:admin && npm run build:website",
+    "postinstall": "node scripts/postinstall.js"
   },
   "dependencies": {
     "compression": "^1.8.1",
@@ -21,6 +16,7 @@
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "next": "^16.2.6",
     "react": "^18",
     "react-dom": "^18"

@@ -72,3 +72,4 @@ tmp/
 website/.next/
 **/.next/
 !*.hostinger.example
+startup-debug.log
