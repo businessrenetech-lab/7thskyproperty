@@ -21,7 +21,23 @@
 | 11 | Create sales profile + fee terms | ✅ 2% commission, trust/operating banks + ledgers saved |
 | 12 | Create completion settlement | ✅ Settlement statement created (purchase ৳34M prefilled from offer) |
 | 13 | Settlement approval lifecycle | ✅ draft→submit→review→approve enforced with separation of duties |
-| 14 | **Lock → Sold → Settled tab** | ⚠️ Correctly **gated** by accounting-integrity blockers (see below) |
+| 14 | **Lock → Sold → Settled tab** | ✅ Full legitimate close driven end-to-end (see below) |
+
+### Full settlement close — completed end-to-end (property #12)
+
+A complete legitimate accounting close was driven through the real API on settlement #4:
+
+1. Compliance marked **Clear**, assessment **Complete**, agency agreement **Signed**
+2. KYC verified for both buyer & vendor; vendor payout bank account verified
+3. Buyer receipt **৳34,000,000** recorded, posted to the ledger, reconciled against a trust-bank statement line
+4. Vendor-proceeds **৳33,320,000** and agency commission **৳680,000** disbursements prepared
+5. Settlement **submit → review → approve** (super-admin override for single-operator separation of duties) — trust allocated
+6. Vendor payout ৳33,320,000 and agency fee ৳680,000 paid, each reconciled to a trust-bank statement line
+7. Settlement **LOCKED** → `SaleTransaction=completed`, `PropertyDeal=completed`, `Property.status=sold`
+
+**Verified:** trust ledger nets to exactly **0** (clearing 0 / vendor 0 / agency 0); settlement status `locked`;
+the sell dashboard classifies the property as **Settled** (`lifecycle=completed`) and it appears live on the
+**Settled** tab with lifecycle stage "Completed" (Completed Sales KPI = 1).
 
 ## Bugs found & fixed
 
@@ -37,7 +53,7 @@ listed / under_offer / settled / withdrawn / draft, and honours `active_transact
 The list rendered empty even when the API returned enquiries. Now reads the
 unwrapped body directly (array-aware).
 
-## Settlement lock — working as designed (not a bug)
+## Settlement lock — guardrails (all confirmed enforcing correctly)
 
 The final **Lock & complete → property Sold → Settled tab** transition is correctly
 hard-gated. On property #12 (fresh) and #3 (approved) the engine enforces:
@@ -68,9 +84,7 @@ trust netted to zero → approve → lock).
 - Property #3's settlement is tangled prior-debugging test data (reversed payment
   pairs, mismatched outgoing totals, unlinked disbursements) — not a clean lock candidate.
 
-## Recommended next step
+## Outcome
 
-Drive one clean legitimate accounting close on #12 to produce a live "Settled" row:
-record the ৳34M buyer receipt → post → upload & reconcile the trust bank statement →
-allocate + pay the vendor payout → net trust to zero → approve → lock (super-admin
-override). Then screenshot the Settled tab.
+Full journey verified end-to-end, from listing through a locked settlement showing on the
+**Settled** tab. Two real bugs found and fixed. One product gap flagged (public sales-listing API).
