@@ -206,18 +206,23 @@ const SECTIONS = [
 function Panel({ icon: Icon, heading, sub, action, children }) {
   return (
     <section className="pm-card">
-      <div className="pm-card-h">
-        {Icon && (
-          <div className="ic">
-            <Icon size={17} />
+      <div className="pm-card-h" style={{ flexWrap: "nowrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
+          {Icon && (
+            <div className="ic">
+              <Icon size={17} />
+            </div>
+          )}
+          <div style={{ minWidth: 0 }}>
+            <h3>{heading}</h3>
+            {sub && <div className="hsub" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>}
+          </div>
+        </div>
+        {action && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap", flexShrink: 0 }}>
+            {action}
           </div>
         )}
-        <div>
-          <h3>{heading}</h3>
-          {sub && <div className="hsub">{sub}</div>}
-        </div>
-        <div className="sp" />
-        {action}
       </div>
       <div className="pm-card-body">{children}</div>
     </section>
@@ -327,6 +332,8 @@ export default function SalesPropertyFile({
   const [buyerDestination, setBuyerDestination] = useState("offer");
   const [statement, setStatement] = useState(null);
   const [settleTab, setSettleTab] = useState("statement");
+  const [fundsSubTab, setFundsSubTab] = useState("ledger");
+  const [showInlineBlockers, setShowInlineBlockers] = useState(false);
   const [accountingOptions, setAccountingOptions] = useState({
     ledger_accounts: [],
     bank_accounts: [],
@@ -341,7 +348,10 @@ export default function SalesPropertyFile({
       const response = await api.get(
         `/sales-enquiries?property_id=${propertyId}&limit=200`,
       );
-      setEnquiries(unwrap(response)?.data || []);
+      // The list endpoint returns { data: [...], pagination }. unwrap() already
+      // collapses response.data.data to the array, so use it directly.
+      const body = unwrap(response);
+      setEnquiries(Array.isArray(body) ? body : body?.data || []);
     } catch {
       setEnquiries([]);
     }
@@ -381,6 +391,47 @@ export default function SalesPropertyFile({
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleBlockerAction = useCallback(
+    (blocker) => {
+      const code = String(blocker?.key || blocker || "");
+      setDrawer(null);
+      if (code.includes("compliance") || code.includes("onboarding")) {
+        openSection("onboarding");
+      } else if (
+        code.includes("kyc") ||
+        code.includes("party") ||
+        code.includes("vendor") ||
+        code.includes("buyer")
+      ) {
+        openSection("parties");
+      } else if (code.includes("agreement")) {
+        openSection("documents");
+      } else if (code.includes("assessment")) {
+        openSection("assessment");
+      } else if (code.includes("reconciled") || code.includes("bank")) {
+        openSection("settlement");
+        setSettleTab("bank_recon");
+      } else if (code.includes("trust") || code.includes("beneficiary")) {
+        openSection("settlement");
+        setSettleTab("beneficiaries");
+      } else if (
+        code.includes("payout") ||
+        code.includes("disbursement") ||
+        code.includes("obligation") ||
+        code.includes("refund")
+      ) {
+        openSection("settlement");
+        setSettleTab("payouts");
+      } else if (code.includes("residual") || code.includes("line")) {
+        openSection("settlement");
+        setSettleTab("statement");
+      } else {
+        openSection("settlement");
+      }
+    },
+    [openSection],
+  );
 
   useEffect(() => {
     loadEnquiries();
@@ -3032,30 +3083,83 @@ export default function SalesPropertyFile({
                   </span>
                 </div>
               )}
-              {/* Visual 5-Stage Settlement Workflow Stepper */}
+              {/* Visual 5-Stage Settlement Workflow Stepper & Controls */}
               <div style={{
                 background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
                 border: "1px solid var(--line)",
                 borderRadius: 14,
-                padding: "14px 18px",
+                padding: "16px 20px",
                 marginBottom: 16,
                 boxShadow: "0 2px 8px rgba(13,27,47,0.03)"
               }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Scale size={18} style={{ color: "var(--cyan)" }} />
-                    <span style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)" }}>Settlement &amp; Trust Control Hub</span>
-                    <Badge tone={settlement.status === 'locked' ? 'green' : settlement.status === 'approved' ? 'navy' : 'amber'}>
-                      {title(settlement.status)}
-                    </Badge>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <Scale size={20} style={{ color: "var(--cyan)" }} />
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontWeight: 800, fontSize: 15, color: "var(--ink)" }}>Settlement &amp; Trust Control Hub</span>
+                        <Badge tone={settlement.status === 'locked' ? 'green' : settlement.status === 'approved' ? 'navy' : settlement.status === 'returned' ? 'bad' : 'amber'}>
+                          {transactionCancelled ? "Cancelled" : settlement.status === "returned" ? "Returned" : title(settlement.status)}
+                        </Badge>
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                        {transactionCancelled
+                          ? "This transaction was cancelled and its records are read-only."
+                          : SETTLEMENT_GUIDE[settlement.status] || ""}
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Fast Action Buttons */}
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {canAccounts && unreconciledPaymentCount > 0 && (
+                  {/* Fast Action Buttons & State Transitions */}
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    {!transactionCancelled &&
+                      SETTLEMENT_NEXT[settlement.status] &&
+                      ((SETTLEMENT_NEXT[settlement.status].action === "submit" && canPrepare) ||
+                        (SETTLEMENT_NEXT[settlement.status].action === "review" && canAccounts) ||
+                        (["approve", "lock"].includes(SETTLEMENT_NEXT[settlement.status].action) && canAdmin)) && (
                       <Button
                         size="sm"
                         className="btn-primary"
+                        disabled={
+                          saving ||
+                          (settlement.status === "approved" && blockers.length > 0)
+                        }
+                        onClick={() =>
+                          settlementAction(
+                            SETTLEMENT_NEXT[settlement.status].action,
+                          )
+                        }
+                      >
+                        {SETTLEMENT_NEXT[settlement.status].label}
+                      </Button>
+                    )}
+                    {!transactionCancelled &&
+                      canAccounts &&
+                      ["submitted", "reviewed", "approved"].includes(settlement.status) && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => openDrawer("return", { reason: "" })}
+                      >
+                        Return to draft
+                      </Button>
+                    )}
+                    {!transactionCancelled &&
+                      canPrepare &&
+                      zeroFunds &&
+                      ["draft", "returned"].includes(settlement.status) && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => openDrawer("cancel-transaction", { reason: "" })}
+                      >
+                        Cancel — offer withdrawn
+                      </Button>
+                    )}
+                    {canAccounts && unreconciledPaymentCount > 0 && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
                         icon={CheckCircle2}
                         onClick={quickReconcileAll}
                         title="Auto-reconcile all cleared trust receipts"
@@ -3101,37 +3205,124 @@ export default function SalesPropertyFile({
                     );
                   })}
                 </div>
+
+                {/* Ultra-Compact Warning & Blocker Bar */}
+                {!transactionCancelled && blockers.length > 0 && settlement.status !== "locked" && (
+                  <div style={{
+                    marginTop: 10,
+                    padding: "8px 14px",
+                    borderRadius: 10,
+                    background: "#fff1f2",
+                    border: "1px solid #fecdd3",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    flexWrap: "wrap"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 600, color: "#9f1239" }}>
+                      <AlertTriangle size={15} style={{ flexShrink: 0, color: "#e11d48" }} />
+                      <span>
+                        <strong>{blockers.length} Settlement Blocker{blockers.length > 1 ? "s" : ""}:</strong> {blockerText(blockers[0])}
+                        {blockers.length > 1 ? ` (+${blockers.length - 1} more)` : ""}
+                      </span>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      style={{
+                        background: "#e11d48", color: "#ffffff", border: "none",
+                        fontSize: 12, fontWeight: 700, padding: "4px 12px", height: "auto",
+                        boxShadow: "0 2px 6px rgba(225,29,72,0.25)"
+                      }}
+                      icon={AlertTriangle}
+                      onClick={() => openDrawer("blockers", {})}
+                    >
+                      Resolve Blockers ({blockers.length}) →
+                    </Button>
+                  </div>
+                )}
+
+                {(() => {
+                  if (transactionCancelled) return null;
+                  const next = SETTLEMENT_NEXT[settlement.status]?.action;
+                  const mine = (value) => value != null && Number(value) === Number(user?.id);
+                  const conflict =
+                    (next === "review" && mine(settlement.prepared_by)) ||
+                    (["approve", "lock"].includes(next) &&
+                      (mine(settlement.prepared_by) || mine(settlement.reviewed_by)));
+                  return conflict ? (
+                    <div style={{
+                      marginTop: 10, display: "flex", alignItems: "center", gap: 8,
+                      padding: "8px 12px", borderRadius: 8,
+                      background: "#eff6ff", border: "1px solid #bfdbfe",
+                      color: "#1e40af", fontSize: 12
+                    }}>
+                      <ShieldCheck size={14} style={{ flexShrink: 0, color: "#2563eb" }} />
+                      <span>
+                        Separation of duties note: You {next === "review" ? "prepared this settlement" : "already acted on this settlement"}, so this step requires a different user (or super-admin override with reason).
+                      </span>
+                    </div>
+                  ) : null;
+                })()}
               </div>
 
               <div className="st-layout">
                 <div className="st-stack">
+                  {/* Single Compact Unified Settlement Segment Tabs */}
                   <div
                     className="pm-segment"
-                    style={{ alignSelf: "flex-start", flexWrap: "wrap" }}
+                    style={{ alignSelf: "flex-start", flexWrap: "wrap", gap: 2, padding: 3 }}
                   >
                     {[
-                      ["statement", "Statement", Scale],
+                      ["statement", "Statement", Scale, null],
                       [
                         "funds",
-                        `Trust account${pendingPaymentCount > 0 ? ` · ${pendingPaymentCount} pending` : unreconciledPaymentCount > 0 ? ` · ${unreconciledPaymentCount}` : ""}`,
+                        "Trust Ledger",
                         WalletCards,
+                        pendingPaymentCount > 0 ? `${pendingPaymentCount}` : null,
                       ],
-                      ["payouts", "Payouts", Banknote],
-                      ["audit", "Audit trail", FileText],
-                    ].map(([key, label, Icon]) => (
-                      <button
-                        key={key}
-                        className={settleTab === key ? "on" : ""}
-                        onClick={() => setSettleTab(key)}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 6,
-                        }}
-                      >
-                        <Icon size={14} /> {label}
-                      </button>
-                    ))}
+                      [
+                        "bank_recon",
+                        "Bank Recon",
+                        FileCheck2,
+                        unreconciledPaymentCount > 0 ? `${unreconciledPaymentCount}` : null,
+                      ],
+                      ["beneficiaries", "Beneficiary Ledgers", ShieldCheck, null],
+                      ["funding", "Funding Requests", Link2, fundingRequests.length ? `${fundingRequests.length}` : null],
+                      ["payouts", "Payouts", Banknote, null],
+                      ["audit", "Audit Trail", FileText, null],
+                    ].map(([key, label, Icon, badge]) => {
+                      const isActive = settleTab === key;
+                      return (
+                        <button
+                          key={key}
+                          className={isActive ? "on" : ""}
+                          onClick={() => setSettleTab(key)}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            padding: "6px 12px",
+                            fontSize: 12.5,
+                          }}
+                        >
+                          <Icon size={13} /> {label}
+                          {badge && (
+                            <span style={{
+                              fontSize: 10,
+                              fontWeight: 800,
+                              padding: "1px 5px",
+                              borderRadius: 8,
+                              background: isActive ? "var(--cyan-weak)" : "var(--surface-3)",
+                              color: isActive ? "var(--navy)" : "var(--muted)"
+                            }}>
+                              {badge}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {settleTab === "statement" && (
@@ -3209,39 +3400,15 @@ export default function SalesPropertyFile({
                   )}
 
                   {settleTab === "funds" && (
-                    <>
                     <Panel
                       icon={WalletCards}
                       heading="Trust account"
                       sub="The owner's trust account — every receipt in and payment out, with proof and bank reconciliation"
                       action={
                         <div
-                          style={{ display: "flex", gap: 6, flexWrap: "wrap" }}
+                          style={{ display: "flex", gap: 6, flexWrap: "nowrap", alignItems: "center" }}
                         >
-                          {pendingPaymentCount > 0 ? (
-                            <Badge tone="amber">
-                              {pendingPaymentCount} pending
-                            </Badge>
-                          ) : unreconciledPaymentCount > 0 ? (
-                            <>
-                              <Badge tone="amber">
-                                {unreconciledPaymentCount} to reconcile
-                              </Badge>
-                              {canAccounts && (
-                                <Button
-                                  size="sm"
-                                  className="btn-primary"
-                                  icon={CheckCircle2}
-                                  onClick={quickReconcileAll}
-                                  title="Auto-reconcile all cleared trust receipts"
-                                >
-                                  Quick Reconcile All ({unreconciledPaymentCount})
-                                </Button>
-                              )}
-                            </>
-                          ) : payments.length ? (
-                            <Badge tone="green">All reconciled</Badge>
-                          ) : null}
+                          {/* 1. Accounting Setup */}
                           {canAccounts && (
                             <Button
                               size="sm"
@@ -3252,6 +3419,8 @@ export default function SalesPropertyFile({
                               Accounting setup
                             </Button>
                           )}
+
+                          {/* 2. Add Receipt */}
                           {canAccounts && settlement.status !== "locked" && !transactionCancelled && (
                             <Button
                               size="sm"
@@ -3289,6 +3458,8 @@ export default function SalesPropertyFile({
                               Add receipt
                             </Button>
                           )}
+
+                          {/* 3. Add Payment */}
                           {canAccounts && settlement.status !== "locked" && !transactionCancelled && (
                             <Button
                               size="sm"
@@ -3327,6 +3498,44 @@ export default function SalesPropertyFile({
                               Add payment
                             </Button>
                           )}
+
+                          {/* 4. Quick Reconcile All with Red Badge Circle */}
+                          {canAccounts && unreconciledPaymentCount > 0 ? (
+                            <Button
+                              size="sm"
+                              icon={CheckCircle2}
+                              onClick={quickReconcileAll}
+                              title="Auto-reconcile all cleared trust receipts"
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 6,
+                              }}
+                            >
+                              <span>Quick Reconcile All</span>
+                              <span
+                                style={{
+                                  background: "#e11d48",
+                                  color: "#ffffff",
+                                  borderRadius: "50%",
+                                  width: 18,
+                                  height: 18,
+                                  fontSize: 11,
+                                  fontWeight: 800,
+                                  display: "inline-grid",
+                                  placeItems: "center",
+                                  lineHeight: 1,
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {unreconciledPaymentCount}
+                              </span>
+                            </Button>
+                          ) : pendingPaymentCount > 0 ? (
+                            <Badge tone="amber">{pendingPaymentCount} pending</Badge>
+                          ) : payments.length ? (
+                            <Badge tone="green">All reconciled</Badge>
+                          ) : null}
                         </div>
                       }
                     >
@@ -3542,7 +3751,9 @@ export default function SalesPropertyFile({
                         />
                       )}
                     </Panel>
+                  )}
 
+                  {settleTab === "funding" && (
                     <Panel
                       icon={Link2}
                       heading="Buyer funding requests"
@@ -3662,7 +3873,9 @@ export default function SalesPropertyFile({
                         />
                       )}
                     </Panel>
+                  )}
 
+                  {settleTab === "bank_recon" && (
                     <Panel
                       icon={FileCheck2}
                       heading="Trust-bank statement lines"
@@ -3728,7 +3941,9 @@ export default function SalesPropertyFile({
                         />
                       )}
                     </Panel>
+                  )}
 
+                  {settleTab === "beneficiaries" && (
                     <Panel
                       icon={WalletCards}
                       heading="Beneficiary trust ledgers"
@@ -3777,7 +3992,6 @@ export default function SalesPropertyFile({
                         />
                       )}
                     </Panel>
-                    </>
                   )}
 
                   {settleTab === "payouts" && (
@@ -4374,149 +4588,6 @@ export default function SalesPropertyFile({
                       )}
                     </>
                   )}
-                </div>
-
-                {/* ── Right rail: where we are + the one next step ── */}
-                <div className="st-rail">
-                  <div className="pm-eyebrow">Settlement process</div>
-                  <h3>
-                    {transactionCancelled
-                      ? "Cancelled"
-                      : settlement.status === "returned"
-                        ? "Returned — fix and resubmit"
-                        : title(settlement.status)}
-                  </h3>
-                  <div className="st-stages">
-                    {SETTLEMENT_STAGES.map(([stage, label], index) => {
-                      const currentIndex = SETTLEMENT_STAGES.findIndex(
-                        ([key]) =>
-                          key ===
-                          (settlement.status === "returned"
-                            ? "draft"
-                            : settlement.status),
-                      );
-                      const state =
-                        index < currentIndex
-                          ? "done"
-                          : index === currentIndex
-                            ? "current"
-                            : "todo";
-                      return (
-                        <div className={`st-stage ${state}`} key={stage}>
-                          <i />
-                          <span>{label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <p>
-                    {transactionCancelled
-                      ? "This transaction was cancelled and its records are read-only. Accept a new offer to start a fresh settlement cycle."
-                      : SETTLEMENT_GUIDE[settlement.status] || ""}
-                  </p>
-                  {!transactionCancelled && blockers.length > 0 && settlement.status !== "locked" && (
-                    <div className="st-blockers">
-                      {blockers.map((blocker) => (
-                        <div className="st-blocker" key={String(blocker)}>
-                          <AlertTriangle size={13} />
-                          <span>
-                            {blockerText(blocker)}
-                            {String(blocker) ===
-                              "settlement_residual_nonzero" &&
-                              ` (${money(residual)})`}
-                            {String(blocker) ===
-                              "outgoing_obligations_unpaid" &&
-                              ` (${money(unpaidObligations)})`}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {!transactionCancelled &&
-                    SETTLEMENT_NEXT[settlement.status] &&
-                    ((SETTLEMENT_NEXT[settlement.status].action === "submit" &&
-                      canPrepare) ||
-                      (SETTLEMENT_NEXT[settlement.status].action === "review" &&
-                        canAccounts) ||
-                      (["approve", "lock"].includes(
-                        SETTLEMENT_NEXT[settlement.status].action,
-                      ) && canAdmin)) && (
-                    <button
-                      type="button"
-                      className="st-rail-btn"
-                      disabled={
-                        saving ||
-                        (settlement.status === "approved" && blockers.length > 0)
-                      }
-                      onClick={() =>
-                        settlementAction(
-                          SETTLEMENT_NEXT[settlement.status].action,
-                        )
-                      }
-                    >
-                      {SETTLEMENT_NEXT[settlement.status].label}
-                    </button>
-                  )}
-                  {!transactionCancelled &&
-                    canAccounts &&
-                    ["submitted", "reviewed", "approved"].includes(
-                      settlement.status,
-                    ) && (
-                    <button
-                      type="button"
-                      className="st-rail-ghost"
-                      onClick={() => openDrawer("return", { reason: "" })}
-                    >
-                      Return to draft
-                    </button>
-                  )}
-                  {!transactionCancelled &&
-                    canPrepare &&
-                    zeroFunds &&
-                    ["draft", "returned"].includes(settlement.status) && (
-                      <button
-                        type="button"
-                        className="st-rail-ghost"
-                        onClick={() =>
-                          openDrawer("cancel-transaction", { reason: "" })
-                        }
-                      >
-                        Cancel — offer withdrawn
-                      </button>
-                    )}
-                  {(() => {
-                    if (transactionCancelled) return null;
-                    const next = SETTLEMENT_NEXT[settlement.status]?.action;
-                    const mine = (value) =>
-                      value != null && Number(value) === Number(user?.id);
-                    const conflict =
-                      (next === "review" && mine(settlement.prepared_by)) ||
-                      (["approve", "lock"].includes(next) &&
-                        (mine(settlement.prepared_by) ||
-                          mine(settlement.reviewed_by)));
-                    return conflict ? (
-                      <div className="st-blocker" style={{ marginTop: 12 }}>
-                        <ShieldCheck size={13} />
-                        <span>
-                          You{" "}
-                          {next === "review"
-                            ? "prepared this settlement"
-                            : "already acted on this settlement"}
-                          , so this step needs a different user. Clicking the
-                          button will offer the super-admin override with a
-                          written reason.
-                        </span>
-                      </div>
-                    ) : null;
-                  })()}
-                  <div className="st-note">
-                    <ShieldCheck size={14} />
-                    <span>
-                      Separation of duties: preparer, reviewer and approver
-                      must be different users. Every action is recorded on the
-                      audit trail.
-                    </span>
-                  </div>
                 </div>
               </div>
             </>
@@ -6679,34 +6750,27 @@ export default function SalesPropertyFile({
 
       {drawer === "blockers" && (
         <Drawer
-          title={`Blockers — ${blockers.length} step${blockers.length === 1 ? "" : "s"} to completion`}
+          title={`Settlement Blockers — ${blockers.length} step${blockers.length === 1 ? "" : "s"} to completion`}
           onClose={closeDrawer}
-          width={560}
+          width={600}
           footer={<Button onClick={closeDrawer}>Close</Button>}
         >
-          <div className="cell-sub" style={{ marginBottom: 14, lineHeight: 1.55 }}>
-            Work through these in order — each one must be cleared before the
-            settlement can be locked and the sale completed.
+          <div className="cell-sub" style={{ marginBottom: 16, lineHeight: 1.55, background: "var(--surface-2)", padding: "10px 14px", borderRadius: 10, border: "1px solid var(--line)" }}>
+            Review and clear each blocker before locking settlement and completing the sale. Tap <strong>"Resolve →"</strong> to jump directly to the required view.
           </div>
-          <div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {blockers.map((blocker, index) => {
-              const targetSection =
-                blocker.section ||
-                blocker.tab ||
-                (String(blocker).includes("settlement") ||
-                String(blocker).includes("payment") ||
-                String(blocker).includes("payout") ||
-                String(blocker).includes("posting") ||
-                String(blocker).includes("refund") ||
-                String(blocker).includes("withdrawal") ||
-                String(blocker).includes("disbursement") ||
-                String(blocker).includes("obligation") ||
-                String(blocker).includes("residual") ||
-                String(blocker).includes("allocation") ||
-                String(blocker).includes("reconciled") ||
-                String(blocker).includes("trust")
-                  ? "settlement"
-                  : "onboarding");
+              const code = String(blocker?.key || blocker || "");
+              const category =
+                code.includes("compliance") || code.includes("onboarding") ? "Compliance" :
+                code.includes("kyc") || code.includes("party") || code.includes("vendor") || code.includes("buyer") ? "KYC & Parties" :
+                code.includes("agreement") ? "Legal & Agency" :
+                code.includes("assessment") ? "Assessment" :
+                code.includes("reconciled") || code.includes("bank") ? "Bank Reconciliation" :
+                code.includes("trust") || code.includes("beneficiary") ? "Trust Accounts" :
+                code.includes("payout") || code.includes("disbursement") || code.includes("obligation") || code.includes("refund") ? "Payouts" :
+                "Settlement Balance";
+
               return (
                 <div
                   key={blocker.key || blocker || index}
@@ -6714,51 +6778,55 @@ export default function SalesPropertyFile({
                     display: "flex",
                     alignItems: "flex-start",
                     gap: 12,
-                    padding: "12px 0",
-                    borderBottom:
-                      index === blockers.length - 1
-                        ? "none"
-                        : "1px solid var(--line-soft)",
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    background: "linear-gradient(135deg, #ffffff 0%, #fdf2f2 100%)",
+                    border: "1px solid #fecdd3",
+                    boxShadow: "0 1px 3px rgba(13,27,47,0.03)"
                   }}
                 >
                   <span
                     style={{
-                      width: 26,
-                      height: 26,
+                      width: 28,
+                      height: 28,
                       borderRadius: 8,
-                      background: "var(--warn-bg)",
-                      color: "var(--warn)",
+                      background: "#ffe4e6",
+                      color: "#e11d48",
                       display: "grid",
                       placeItems: "center",
-                      fontSize: 12.5,
+                      fontSize: 13,
                       fontWeight: 800,
                       flexShrink: 0,
-                      marginTop: 1,
+                      marginTop: 2,
                     }}
                   >
                     {index + 1}
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 650 }}>
-                      {blocker.label || blocker.title || blockerText(blocker)}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
+                      <span style={{ fontSize: 13, fontWeight: 750, color: "#9f1239" }}>
+                        {blocker.label || blocker.title || blockerText(blocker)}
+                        {code === "settlement_residual_nonzero" && ` (${money(residual)})`}
+                        {code === "outgoing_obligations_unpaid" && ` (${money(unpaidObligations)})`}
+                      </span>
                     </div>
-                    <div className="cell-sub" style={{ marginTop: 2 }}>
-                      Resolve in the{" "}
-                      {targetSection === "settlement"
-                        ? "Settlement"
-                        : "Onboarding"}{" "}
-                      tab
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                      <Badge tone="warn">{category}</Badge>
+                      <span className="cell-sub" style={{ fontSize: 11.5 }}>Action required</span>
                     </div>
                   </div>
                   <Button
                     size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      closeDrawer();
-                      openSection(targetSection);
+                    className="btn-primary"
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      flexShrink: 0
                     }}
+                    onClick={() => handleBlockerAction(blocker)}
                   >
-                    Go
+                    Resolve →
                   </Button>
                 </div>
               );
