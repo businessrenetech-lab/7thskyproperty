@@ -195,6 +195,7 @@ const SECTIONS = [
   { key: "overview", label: "Overview", icon: LayoutGrid },
   { key: "parties", label: "Parties", icon: Users },
   { key: "assessment", label: "Assessment", icon: ClipboardCheck },
+  { key: "enquiries", label: "Enquiries", icon: Users },
   { key: "offers", label: "Offers", icon: HandCoins },
   { key: "settlement", label: "Settlement", icon: Scale },
   { key: "onboarding", label: "Onboarding", icon: ClipboardCheck },
@@ -332,6 +333,19 @@ export default function SalesPropertyFile({
   });
   const [bankLines, setBankLines] = useState([]);
   const [partyBankAccounts, setPartyBankAccounts] = useState([]);
+  const [enquiries, setEnquiries] = useState([]);
+
+  const loadEnquiries = useCallback(async () => {
+    if (!propertyId) return;
+    try {
+      const response = await api.get(
+        `/sales-enquiries?property_id=${propertyId}&limit=200`,
+      );
+      setEnquiries(unwrap(response)?.data || []);
+    } catch {
+      setEnquiries([]);
+    }
+  }, [propertyId]);
 
   const openSection = useCallback(
     (nextSection) => {
@@ -367,6 +381,10 @@ export default function SalesPropertyFile({
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    loadEnquiries();
+  }, [loadEnquiries]);
 
   // The trust account statement follows the settlement — refetched after every
   // reload so reversals and reconciliations appear immediately.
@@ -447,6 +465,47 @@ export default function SalesPropertyFile({
   };
   const set = (key, value) =>
     setForm((current) => ({ ...current, [key]: value }));
+  const saveEnquiry = async () => {
+    if (!form.enquirer_name?.trim()) {
+      setFormError("Buyer name is required.");
+      return false;
+    }
+    setSaving(true);
+    setFormError("");
+    try {
+      await api.post("/sales-enquiries", {
+        property_id: propertyId,
+        enquirer_name: form.enquirer_name,
+        phone: form.phone || null,
+        email: form.email || null,
+        source: form.source || "staff",
+        budget: form.budget || null,
+        viewing_date: form.viewing_date || null,
+        follow_up_date: form.follow_up_date || null,
+        message: form.message || null,
+      });
+      toast.success("Enquiry logged");
+      closeDrawer();
+      await loadEnquiries();
+      return true;
+    } catch (error) {
+      const message =
+        error.response?.data?.error || "Could not log the enquiry";
+      setFormError(message);
+      toast.error(message);
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+  const updateEnquiryStage = async (row, next) => {
+    try {
+      await api.patch(`/sales-enquiries/${row.id}/move`, { stage: next });
+      await loadEnquiries();
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Could not update stage");
+    }
+  };
   const perform = async (request, success, options = {}) => {
     if (options.confirm && !window.confirm(options.confirm)) return false;
     setSaving(true);
@@ -909,12 +968,38 @@ export default function SalesPropertyFile({
       : typeof nextAction === "string"
         ? title(nextAction)
         : nextAction?.title || nextAction?.label;
-  const completionConversionBlocked =
-    settlement?.settlement_type !== "withdrawal" &&
-    (payments.length > 0 ||
-      disbursements.length > 0 ||
-      array(settlement?.approvals).length > 0 ||
-      array(settlement?.vendorInvoices).length > 0);
+  const updatePropertyStatus = async (newStatus) => {
+    try {
+      await api.put(`/properties/${property.id}`, { status: newStatus });
+      toast.success(`Property status updated to "${title(newStatus)}"`);
+      await load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to update property status");
+    }
+  };
+
+  const quickReconcileAll = async () => {
+    const unreconciled = payments.filter(
+      (item) => !item.reversal_of_payment_id && !reversedPaymentIds.has(Number(item.id)) && item.status === "cleared" && item.reconciliation_status !== "reconciled"
+    );
+    if (!unreconciled.length) return toast.info("All payments are already reconciled.");
+    if (!window.confirm(`Auto-reconcile ${unreconciled.length} cleared payment(s)?`)) return;
+    setSaving(true);
+    try {
+      for (const payment of unreconciled) {
+        await api.post(`/sales/payments/${payment.id}/reconcile`, {
+          reconciliation_status: "reconciled",
+          note: "Auto-reconciled via Sales Cockpit quick action"
+        });
+      }
+      toast.success(`Successfully reconciled ${unreconciled.length} payment(s)!`);
+      await load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Reconciliation failed");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const saveProfile = () =>
     perform(
@@ -1895,6 +1980,36 @@ export default function SalesPropertyFile({
               {title(lifecycle)}
             </span>
           </div>
+
+          {/* Automated Property Status Switcher & Website Live Indicator */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+            <StatusBadge status={property.status || 'draft'} />
+            <span style={{
+              fontSize: 11,
+              fontWeight: 700,
+              padding: "2px 8px",
+              borderRadius: 12,
+              background: property.is_published ? "linear-gradient(135deg,#f0fdf4,#dcfce7)" : "linear-gradient(135deg,#fef2f2,#fee2e2)",
+              color: property.is_published ? "#16a34a" : "#dc2626",
+              border: property.is_published ? "1px solid #bbf7d0" : "1px solid #fca5a5"
+            }}>
+              {property.is_published ? "🟢 Live on Website (For Sale)" : "🔒 Hidden from Website"}
+            </span>
+            {canPrepare && (
+              <Select
+                value={property.status || 'draft'}
+                onChange={(e) => updatePropertyStatus(e.target.value)}
+                style={{ minWidth: 170, padding: "3px 8px", fontSize: 11.5, borderRadius: 8, height: 28 }}
+                title="Change property lifecycle status and automated website visibility"
+              >
+                <option value="listed">Listed & Live on Website</option>
+                <option value="under_offer">Under Offer (Website Card Banner)</option>
+                <option value="settled">Settled / Sold (Recently Sold)</option>
+                <option value="draft">Draft (Hidden from Website)</option>
+                <option value="withdrawn">Withdrawn (Hidden from Website)</option>
+              </Select>
+            )}
+          </div>
           <div className="cell-sub" style={{ marginTop: 5 }}>
             {[
               property.address,
@@ -2446,6 +2561,123 @@ export default function SalesPropertyFile({
         />
       )}
 
+      {section === "enquiries" && (
+        <Panel
+          icon={Users}
+          heading="Buyer enquiries"
+          sub="Everyone who enquired about this property. Click a name to open their buyer client."
+          action={
+            <Button
+              size="sm"
+              icon={Plus}
+              onClick={() =>
+                openDrawer("enquiry", {
+                  enquirer_name: "",
+                  phone: "",
+                  email: "",
+                  source: "walk_in",
+                  budget: "",
+                  viewing_date: "",
+                  follow_up_date: "",
+                  message: "",
+                })
+              }
+            >
+              Log an enquiry
+            </Button>
+          }
+        >
+          {enquiries.length ? (
+            <DataTable
+              columns={[
+                {
+                  key: "buyer",
+                  header: "Buyer",
+                  render: (row) => (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        row.client_id
+                          ? navigate(`/clients?client=${row.client_id}`)
+                          : row.contact_id
+                            ? navigate(`/contacts?contact=${row.contact_id}`)
+                            : toast.error("No linked buyer record.")
+                      }
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        textAlign: "left",
+                        cursor: "pointer",
+                      }}
+                      title="Open the buyer client"
+                    >
+                      <div
+                        className="cell-strong"
+                        style={{ color: "var(--navy)", fontWeight: 700 }}
+                      >
+                        {row.enquirer_name || "Unnamed buyer"}
+                      </div>
+                      <div className="cell-sub">{row.enquiry_code}</div>
+                    </button>
+                  ),
+                },
+                {
+                  key: "phone",
+                  header: "Contact number",
+                  render: (row) => row.phone || row.email || "—",
+                },
+                {
+                  key: "date",
+                  header: "Enquiry date / time",
+                  render: (row) => dateTime(row.created_at),
+                },
+                {
+                  key: "source",
+                  header: "Source",
+                  render: (row) => title(row.source || "—"),
+                },
+                {
+                  key: "stage",
+                  header: "Stage",
+                  render: (row) => (
+                    <Select
+                      value={row.stage}
+                      onClick={(event) => event.stopPropagation()}
+                      onChange={(event) =>
+                        updateEnquiryStage(row, event.target.value)
+                      }
+                      style={{ minWidth: 150 }}
+                    >
+                      {[
+                        "new",
+                        "contacted",
+                        "viewing_scheduled",
+                        "viewed",
+                        "offer_made",
+                        "converted",
+                        "rejected",
+                      ].map((s) => (
+                        <option key={s} value={s}>
+                          {title(s)}
+                        </option>
+                      ))}
+                    </Select>
+                  ),
+                },
+              ]}
+              rows={enquiries}
+            />
+          ) : (
+            <Empty
+              icon={Users}
+              heading="No enquiries yet"
+              text="Log a walk-in or phone enquiry with the button above. Website enquiries appear here automatically."
+            />
+          )}
+        </Panel>
+      )}
+
       {section === "offers" && (
         <Panel
           icon={HandCoins}
@@ -2800,6 +3032,76 @@ export default function SalesPropertyFile({
                   </span>
                 </div>
               )}
+              {/* Visual 5-Stage Settlement Workflow Stepper */}
+              <div style={{
+                background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+                border: "1px solid var(--line)",
+                borderRadius: 14,
+                padding: "14px 18px",
+                marginBottom: 16,
+                boxShadow: "0 2px 8px rgba(13,27,47,0.03)"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Scale size={18} style={{ color: "var(--cyan)" }} />
+                    <span style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)" }}>Settlement &amp; Trust Control Hub</span>
+                    <Badge tone={settlement.status === 'locked' ? 'green' : settlement.status === 'approved' ? 'navy' : 'amber'}>
+                      {title(settlement.status)}
+                    </Badge>
+                  </div>
+
+                  {/* Fast Action Buttons */}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {canAccounts && unreconciledPaymentCount > 0 && (
+                      <Button
+                        size="sm"
+                        className="btn-primary"
+                        icon={CheckCircle2}
+                        onClick={quickReconcileAll}
+                        title="Auto-reconcile all cleared trust receipts"
+                      >
+                        Quick Reconcile All ({unreconciledPaymentCount})
+                      </Button>
+                    )}
+                    {canPrepare && ["draft", "returned"].includes(settlement.status) && (
+                      <Button size="sm" variant="secondary" icon={RotateCcw} onClick={rebalanceSettlement}>
+                        1-Click Rebalance
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Stepper Progress Steps */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
+                  {SETTLEMENT_STAGES.map(([stKey, stLabel], idx) => {
+                    const isCurrent = settlement.status === stKey;
+                    const isPast = SETTLEMENT_STAGES.findIndex(([k]) => k === settlement.status) > idx;
+                    return (
+                      <div key={stKey} style={{
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        background: isCurrent ? "var(--cyan-weak)" : isPast ? "#f0fdf4" : "var(--surface-3)",
+                        border: isCurrent ? "1.5px solid var(--cyan)" : isPast ? "1px solid #bbf7d0" : "1px solid var(--line-soft)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6
+                      }}>
+                        <div style={{
+                          width: 20, height: 20, borderRadius: "50%",
+                          background: isCurrent ? "var(--cyan)" : isPast ? "#16a34a" : "#cbd5e1",
+                          color: "#ffffff", fontSize: 11, fontWeight: 800,
+                          display: "grid", placeItems: "center"
+                        }}>
+                          {isPast ? "✓" : idx + 1}
+                        </div>
+                        <div style={{ fontSize: 11.5, fontWeight: isCurrent ? 800 : 600, color: isCurrent ? "var(--navy)" : isPast ? "#15803d" : "var(--muted)" }}>
+                          {stLabel}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
               <div className="st-layout">
                 <div className="st-stack">
@@ -2921,9 +3223,22 @@ export default function SalesPropertyFile({
                               {pendingPaymentCount} pending
                             </Badge>
                           ) : unreconciledPaymentCount > 0 ? (
-                            <Badge tone="amber">
-                              {unreconciledPaymentCount} to reconcile
-                            </Badge>
+                            <>
+                              <Badge tone="amber">
+                                {unreconciledPaymentCount} to reconcile
+                              </Badge>
+                              {canAccounts && (
+                                <Button
+                                  size="sm"
+                                  className="btn-primary"
+                                  icon={CheckCircle2}
+                                  onClick={quickReconcileAll}
+                                  title="Auto-reconcile all cleared trust receipts"
+                                >
+                                  Quick Reconcile All ({unreconciledPaymentCount})
+                                </Button>
+                              )}
+                            </>
                           ) : payments.length ? (
                             <Badge tone="green">All reconciled</Badge>
                           ) : null}
@@ -4839,6 +5154,89 @@ export default function SalesPropertyFile({
               </Field>
             ))}
           </div>
+        </Drawer>
+      )}
+
+      {drawer === "enquiry" && (
+        <Drawer
+          title="Log a Buyer Enquiry"
+          width={560}
+          onClose={closeDrawer}
+          footer={
+            <DrawerActions
+              close={closeDrawer}
+              save={saveEnquiry}
+              saving={saving}
+              label="Log enquiry"
+            />
+          }
+        >
+          <ErrorBox error={formError} />
+          <div className="cell-sub" style={{ marginBottom: 14 }}>
+            Logged against <strong>{property.title || "this property"}</strong>.
+            The buyer is created as a Contact and a buyer Client automatically.
+          </div>
+          <div className="form-grid">
+            <Field label="Buyer name" required>
+              <Input
+                value={form.enquirer_name || ""}
+                onChange={(event) => set("enquirer_name", event.target.value)}
+              />
+            </Field>
+            <Field label="Contact number">
+              <Input
+                value={form.phone || ""}
+                onChange={(event) => set("phone", event.target.value)}
+              />
+            </Field>
+            <Field label="Email">
+              <Input
+                type="email"
+                value={form.email || ""}
+                onChange={(event) => set("email", event.target.value)}
+              />
+            </Field>
+            <Field label="Source">
+              <Select
+                value={form.source || "walk_in"}
+                onChange={(event) => set("source", event.target.value)}
+              >
+                <option value="walk_in">Walk-in</option>
+                <option value="phone">Phone</option>
+                <option value="website">Website</option>
+                <option value="referral">Referral</option>
+                <option value="staff">Staff</option>
+              </Select>
+            </Field>
+            <Field label="Budget (BDT)">
+              <Input
+                type="number"
+                value={form.budget || ""}
+                onChange={(event) => set("budget", event.target.value)}
+              />
+            </Field>
+            <Field label="Viewing / appointment">
+              <Input
+                type="datetime-local"
+                value={form.viewing_date || ""}
+                onChange={(event) => set("viewing_date", event.target.value)}
+              />
+            </Field>
+            <Field label="Follow-up date">
+              <Input
+                type="date"
+                value={form.follow_up_date || ""}
+                onChange={(event) => set("follow_up_date", event.target.value)}
+              />
+            </Field>
+          </div>
+          <Field label="Message / notes">
+            <Textarea
+              rows={3}
+              value={form.message || ""}
+              onChange={(event) => set("message", event.target.value)}
+            />
+          </Field>
         </Drawer>
       )}
 
