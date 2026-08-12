@@ -634,14 +634,14 @@ export default function ClientDashboard() {
                 {approvedQuote && (
                   <RowLine label={`Quotation ${approvedQuote.code} — ${bdt(approvedQuote.total)}`} status="Approved"
                     action="Raise agreement"
-                    onClick={() => nav(`/agreements/water-tank-customer?project=${encodeURIComponent(approvedQuote.project_id || '')}`)} />
+                    onClick={() => nav(`/water-tank/agreements/customer?project=${encodeURIComponent(approvedQuote.project_id || '')}`)} />
                 )}
               </div>
             )}
 
             {approvedQuote ? (
               <button className="wt-choice on" style={{ width: '100%' }}
-                onClick={() => nav(`/agreements/water-tank-customer?project=${encodeURIComponent(approvedQuote.project_id || '')}`)}>
+                onClick={() => nav(`/water-tank/agreements/customer?project=${encodeURIComponent(approvedQuote.project_id || '')}`)}>
                 <FileSignature size={18} />
                 <span className="t">Raise the agreement now</span>
                 <span className="h">

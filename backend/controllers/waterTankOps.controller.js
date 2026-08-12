@@ -619,6 +619,18 @@ const retiredMoneyRoute = (replacement) => (req, res) => res.status(410).json({
 exports.retiredMoneyRoute = retiredMoneyRoute;
 
 /**
+ * GET /wt-ops/work-queue — everything waiting on someone, and the sidebar badges.
+ *
+ * One query serves both, so a badge and the queue behind it can never disagree.
+ * Counts are actionable only: a badge that cannot reach zero by doing work is
+ * decoration, and stops being read.
+ */
+exports.workQueue = asyncHandler(async (req, res) => {
+  const wq = require('../services/wtWorkQueue.service');
+  res.json(await wq.summary(branchScope(req)));
+});
+
+/**
  * GET /wt-ops/money-journal — every receipt and payout that actually moved.
  *
  * The Payments screen previously derived "collected" and "disbursed" by summing

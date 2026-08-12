@@ -113,10 +113,10 @@ export default function AgreementsHub() {
         subtitle="Every Water Tank document out for signature — client, provider and work order"
       >
         <button className="wt-btn" onClick={load}><RefreshCw size={14} /> Refresh</button>
-        <button className="wt-btn" onClick={() => nav('/agreements/water-tank-customer')}>
+        <button className="wt-btn" onClick={() => nav('/water-tank/agreements/customer')}>
           <Users size={14} /> New client agreement
         </button>
-        <button className="wt-btn primary" onClick={() => nav('/agreements/water-tank-provider/new')}>
+        <button className="wt-btn primary" onClick={() => nav('/water-tank/agreements/provider/new')}>
           <HardHat size={14} /> New provider agreement
         </button>
       </WtHead>

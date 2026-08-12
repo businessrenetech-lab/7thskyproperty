@@ -454,7 +454,7 @@ export default function ProjectForm() {
                     <strong>Sec. 7 Step 6 —</strong> a signed Customer Service Agreement is required before work starts.
                     Create the project first, then raise the agreement from the project file, or go straight to{' '}
                     <span className="lnk" style={{ textDecoration: 'underline', cursor: 'pointer' }}
-                      onClick={() => window.open('/admin/agreements/water-tank-customer', '_blank')}>
+                      onClick={() => window.open('/admin/water-tank/agreements/customer', '_blank')}>
                       WT Customer Agreements
                     </span>.
                   </div>

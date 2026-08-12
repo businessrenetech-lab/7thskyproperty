@@ -34,6 +34,8 @@ router.get('/pipeline', canRead, ctrl.pipeline);
 router.get('/payments', canRead, ctrl.payments);
 // The money ledger itself — every receipt and payout, newest first
 router.get('/money-journal', canRead, ctrl.moneyJournal);
+// Everything waiting on someone — drives both the work queue and the sidebar badges
+router.get('/work-queue', canRead, ctrl.workQueue);
 
 // Site assessment reference data (checklist templates, equipment, categories)
 router.get('/assessment-reference', canRead, ctrl.assessmentReference);

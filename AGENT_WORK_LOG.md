@@ -2068,3 +2068,84 @@ runs; before the fix it passed once and failed once on identical input.
   reads as a partial snapshot. New agreements are protected via the archived-
   inclusive lookup; full snapshotting of those two builders is a follow-up.
 - Browser QA of the new editor screen.
+
+---
+
+## 2026-08-12 — Claude — COMPLETED: Water Tank Phase 4 (navigation + work queue)
+
+Branch `water-tank/phase-0-baseline`.
+
+### Grouped navigation with badges that mean something
+Eighteen flat sidebar links became **8 collapsible groups** (Home · Sales &
+Intake · Delivery · Contracts · Providers · Finance · Assurance ·
+Administration), collapsed state kept in localStorage, and a group containing the
+current page opens regardless of that state. A collapsed group surfaces its
+total on the header so nothing can hide behind it. `WT_NAV` is now DERIVED from
+the groups, so adding a screen is one edit, not two.
+
+Badges count **what is waiting on you**, never how many rows exist. "Invoices 48"
+is the same number tomorrow whether you worked or not, so it stops being read;
+"Invoices 9" that falls to zero as you send them is worth a glance.
+
+### New: `services/wtWorkQueue.service.js` + `/wt-ops/work-queue`
+Eleven queues across intake, signature, delivery, money and care — all built
+from data that already exists, no new status fields. One query serves both the
+sidebar badges and the new **My Work Queue** screen, so they cannot disagree.
+Live figures on this database: 69 records waiting, 26 of them past a promised date.
+
+**A bug I introduced and caught in the same sitting:** the first version summed
+each destination's queues, so a work order that is both unassigned AND overdue
+counted twice — the sidebar read 24 where 20 records need attention, and
+complaints read 3 for 2. Badges now count DISTINCT record ids. An inflated badge
+is worse than no badge, because it trains the operator to ignore it.
+
+**A second thing caught by looking rather than assuming:** I had written the
+envelope filter as `sent | partially_signed | in_progress`. `in_progress` is not
+a status this system uses, and `viewed` — the client opened the document and did
+not sign, precisely the state worth chasing — is. It would have hidden 12 of the
+30 live envelopes.
+
+### AMC detail route
+`/water-tank/amc/:code` — the register's rows, its row actions and the command
+palette now open a real page instead of a drawer, so a contract can be linked,
+bookmarked and sent to a colleague. Visit plan with overdue highlighting,
+derived billing against the invoices raised, contract/client/site/cover panels,
+and renewal.
+
+Two things I got wrong by assuming and fixed by reading the actual code:
+- The renew endpoint returns `amc` = the contract just SUPERSEDED and `renewed`
+  = the new one. Following `amc` would have left the operator staring at the
+  expired term. Now follows `renewed`.
+- `AmcForm` is create-only (`useSearchParams`, no `useParams`), so the
+  `/amc/:code/edit` route I had wired would have rendered a blank wizard.
+  Replaced with an edit drawer that PATCHes what actually changes mid-term
+  (status, dates, money, renewal intent) — deliberately NOT package or visit mix,
+  since regenerating a visit plan would rewrite work already delivered.
+
+### Agreement URLs canonicalised
+`/water-tank/agreements/customer` and `/water-tank/agreements/provider/*` are now
+canonical; the old `/agreements/water-tank-*` paths redirect. The redirect
+preserves the query string and substitutes route params — several links carry
+`?project=WTCM-P0022`, and a bare `<Navigate>` drops it, handing the user an
+empty agreement builder. 21 internal call sites updated to the canonical URLs.
+
+`ui/Layout.jsx` and `WtCustomerAgreements.jsx` were **left untouched** — another
+agent has them modified. Their old links keep working through the redirects.
+
+### Verified — 223 assertions, 0 failures
+- Phase 4: 41, including every queue count recomputed independently from raw rows
+  (unassigned 8, draft invoices 9, open complaints 2 — all matching), no settled
+  invoice reported overdue, all 20 nav destinations resolving to real routes, and
+  no screen still pointing at a legacy agreement URL.
+- Regression: Phase 1 30/30, Phase 2 30+25+31, Phase 3 36+30. All green.
+- Role guards: tenant and owner 403 on the work queue.
+- `npm run build` clean at 1973 modules.
+
+### NOT done
+- Detail ROUTES for complaints, warranties, incidents and service reports. They
+  have working drawers on their registers; AMC was the one whose contract, visit
+  plan and renewal genuinely needed a page. The rest are still not linkable.
+- Role-aware hiding of nav destinations. The API refuses what a role may not do
+  (verified in Phases 1–3), but the sidebar still shows every link to everyone.
+- The dashboard KPI rework (plan item 17) — deferred with the rest of Phase 5.
+- Browser QA of the grouped sidebar and the two new screens.

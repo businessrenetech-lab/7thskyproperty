@@ -189,7 +189,7 @@ export default function ProviderDirectory() {
       search={q} onSearch={setQ}
     >
       <button className="wt-btn" onClick={load}><RefreshCw size={14} /> Refresh</button>
-      <button className="wt-btn" onClick={() => nav('/agreements/water-tank-provider')}><FileSignature size={14} /> Master Agreement</button>
+      <button className="wt-btn" onClick={() => nav('/water-tank/agreements/provider')}><FileSignature size={14} /> Master Agreement</button>
       <button className="wt-btn primary" onClick={() => nav('/water-tank/providers/new')}><UserPlus size={15} /> Onboard Provider</button>
     </WtHead>
   );

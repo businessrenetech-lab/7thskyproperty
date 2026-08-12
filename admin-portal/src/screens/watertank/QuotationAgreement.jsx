@@ -214,7 +214,7 @@ export default function QuotationAgreement() {
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="wt-btn" onClick={() => nav(quotePath)}>Back to quotation</button>
             <button className="wt-btn" onClick={() => nav('/water-tank/clients')}>Client book</button>
-            <button className="wt-btn primary" onClick={() => nav('/agreements/water-tank-customer')}>All customer agreements</button>
+            <button className="wt-btn primary" onClick={() => nav('/water-tank/agreements/customer')}>All customer agreements</button>
           </div>
         </div>
       </>

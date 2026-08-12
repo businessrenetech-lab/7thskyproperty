@@ -221,7 +221,7 @@ export default function ProviderOnboarding() {
               </div>
               <div className="wt-card" style={{ padding: 18 }}><strong>Provider invitation</strong><p className="muted" style={{ fontSize: 12.5 }}>The secure link expires after 30 days and can be revoked by issuing another link.</p><button className="wt-btn primary" onClick={sendInvite} disabled={busy}><Send size={14} /> Generate and email invitation</button>{invite?.link && <div className="wt-invite-link"><input className="wt-input" readOnly value={invite.link} /><button className="wt-btn" onClick={() => navigator.clipboard.writeText(invite.link).then(() => toast.ok('Invitation link copied'))}>Copy</button><a className="wt-btn" href={invite.link} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Open</a></div>}</div>
               <div className="wt-note">After staff verifies documents, payment details and proposed rates, create the 63-clause master agreement. Both the provider and Seventh Sky must sign before rates activate.</div>
-              <button className="wt-btn primary" onClick={() => nav(`/agreements/water-tank-provider/new?provider=${provider.code}`)}><BadgeDollarSign size={14} /> Draft provider master agreement</button>
+              <button className="wt-btn primary" onClick={() => nav(`/water-tank/agreements/provider/new?provider=${provider.code}`)}><BadgeDollarSign size={14} /> Draft provider master agreement</button>
             </>}
           </>}
 

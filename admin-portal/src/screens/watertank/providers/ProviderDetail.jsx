@@ -249,7 +249,7 @@ export default function ProviderDetail() {
   const openAgreement = () => {
     const active = (d.agreements || []).find((agreement) => agreement.id === p.active_agreement_id)
       || (d.agreements || [])[0];
-    nav(active ? `/agreements/water-tank-provider/${active.code}` : `/agreements/water-tank-provider/new?provider=${p.code}`);
+    nav(active ? `/water-tank/agreements/provider/${active.code}` : `/water-tank/agreements/provider/new?provider=${p.code}`);
   };
 
   const inviteProvider = async () => {

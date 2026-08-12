@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import Layout from './ui/Layout';
@@ -47,6 +47,8 @@ import WTCompliance from './screens/watertank/Compliance';
 import WTServiceReports from './screens/watertank/ServiceReports';
 import WaterTankSettings from './screens/watertank/Settings';
 import WaterTankCatalogue from './screens/watertank/Catalogue';
+import WTWorkQueue from './screens/watertank/WorkQueue';
+import WTAmcDetail from './screens/watertank/AmcDetail';
 import WTClients from './screens/watertank/Clients';
 import WTClientDetail from './screens/watertank/clients/ClientDashboard';
 import WTClientCreate from './screens/watertank/clients/ClientCreate';
@@ -115,6 +117,23 @@ import Compliance from './screens/Compliance';
 import { UtilityBills, TenantRequests, ArrearsActions, MarketingActivities, ExpenseApprovals, PropertyRisks } from './screens/PropertyManagementControls';
 
 const PH = (title, note) => <Placeholder title={title} note={note} />;
+
+/*
+ * Redirect that keeps the query string and any route params.
+ *
+ * A bare <Navigate to="/new/path" /> drops the search string, and several of the
+ * water-tank agreement links carry ?project=WTCM-P0022 — the context the
+ * agreement builder needs to know what it is drafting against. Losing it silently
+ * hands the user an empty form. `:param` placeholders in `to` are filled from the
+ * matched route, so /agreements/water-tank-provider/7 lands on
+ * /water-tank/agreements/provider/7 rather than a literal ":id".
+ */
+function LegacyRedirect({ to }) {
+  const params = useParams();
+  const { search, hash } = useLocation();
+  const target = to.replace(/:([A-Za-z0-9_]+)/g, (m, k) => (params[k] != null ? params[k] : m));
+  return <Navigate to={`${target}${search}${hash}`} replace />;
+}
 
 // Send users to the right home: portal roles -> their portal, staff -> dashboard.
 function Landing() {
@@ -232,7 +251,7 @@ export default function App() {
               <Route path="/agreements/property-management" element={<RprmAgreements />} />
               <Route path="/agreements/tenancy-management" element={<TmAgreements />} />
               <Route path="/agreements/short-term-rental" element={<StsAgreements />} />
-              <Route path="/agreements/water-tank-customer" element={<WtCustomerAgreements />} />
+              <Route path="/agreements/water-tank-customer" element={<LegacyRedirect to="/water-tank/agreements/customer" />} />
               <Route path="/agreement-templates" element={<AgreementTemplates />} />
               <Route path="/documents" element={PH('Documents', 'Central document management with versioning.')} />
               <Route path="/signing" element={<Signing />} />
@@ -281,15 +300,26 @@ export default function App() {
               <Route path="/water-tank/providers/new" element={<WaterTankProviderOnboarding />} />
               <Route path="/water-tank/providers/:id" element={<WaterTankProviderDetail />} />
               <Route path="/water-tank/providers/:code/edit" element={<WaterTankProviderOnboarding />} />
-              <Route path="/agreements/water-tank-provider" element={<WtProviderAgreements />} />
-              <Route path="/agreements/water-tank-provider/new" element={<WtProviderAgreements />} />
-              <Route path="/agreements/water-tank-provider/:id" element={<WtProviderAgreements />} />
-              <Route path="/agreements/water-tank-provider/:id/edit" element={<WtProviderAgreements />} />
+              {/* Canonical agreement URLs live under /water-tank/agreements/*, so every
+                  destination in this console shares one prefix. The old
+                  /agreements/water-tank-* paths still work — they redirect, preserving
+                  the query string that carries the project context. */}
+              <Route path="/water-tank/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/water-tank/agreements/provider" element={<WtProviderAgreements />} />
+              <Route path="/water-tank/agreements/provider/new" element={<WtProviderAgreements />} />
+              <Route path="/water-tank/agreements/provider/:id" element={<WtProviderAgreements />} />
+              <Route path="/water-tank/agreements/provider/:id/edit" element={<WtProviderAgreements />} />
+              <Route path="/agreements/water-tank-provider" element={<LegacyRedirect to="/water-tank/agreements/provider" />} />
+              <Route path="/agreements/water-tank-provider/new" element={<LegacyRedirect to="/water-tank/agreements/provider/new" />} />
+              <Route path="/agreements/water-tank-provider/:id" element={<LegacyRedirect to="/water-tank/agreements/provider/:id" />} />
+              <Route path="/agreements/water-tank-provider/:id/edit" element={<LegacyRedirect to="/water-tank/agreements/provider/:id/edit" />} />
               <Route path="/water-tank/compliance" element={<WTCompliance />} />
               <Route path="/water-tank/reports" element={<WTServiceReports />} />
               <Route path="/water-tank/agreements" element={<WTAgreementsHub />} />
+              <Route path="/water-tank/work-queue" element={<WTWorkQueue />} />
               <Route path="/water-tank/amc" element={<WTAmc />} />
               <Route path="/water-tank/amc/create-amc" element={<WTAmcForm />} />
+              <Route path="/water-tank/amc/:code" element={<WTAmcDetail />} />
               <Route path="/water-tank/invoices" element={<WTInvoices />} />
               <Route path="/water-tank/invoices/:code" element={<WTInvoiceEditor />} />
               <Route path="/water-tank/payments" element={<WTPayments />} />

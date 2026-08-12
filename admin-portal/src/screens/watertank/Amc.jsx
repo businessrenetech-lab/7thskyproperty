@@ -63,7 +63,9 @@ export default function Amc() {
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(null);
   const [renewing, setRenewing] = useState(null);
-  useFocusedRecord(rows, (r) => setOpen(r));
+  // Now that a contract has its own page, a palette deep-link lands there
+  // rather than on a drawer over the register.
+  useFocusedRecord(rows, (r) => nav(`/water-tank/amc/${r.code}`));
 
   const packages = useMemo(() => [...new Set(rows.map((r) => r.package).filter(Boolean))], [rows]);
 
@@ -140,7 +142,7 @@ export default function Amc() {
                   const d = daysTo(r.end_date);
                   const expiring = (r.status || '').toLowerCase() === 'active' && d != null && d >= 0 && d <= 60;
                   return (
-                    <tr key={r.id} className="click" onClick={() => setOpen(r)}>
+                    <tr key={r.id} className="click" onClick={() => nav(`/water-tank/amc/${r.code}`)}>
                       <td className="id">{r.code}</td>
                       <td><strong>{r.client_name}</strong></td>
                       <td className="muted">{r.package || '—'}</td>
@@ -153,7 +155,7 @@ export default function Amc() {
                       <td><StatusCell value={r.status} options={STATUSES} onChange={(body) => patch(r.id, body, `${r.code} → ${body.status}`)} /></td>
                       <td>
                         <RowActions items={[
-                          { label: 'Open', icon: Eye, onClick: () => setOpen(r) },
+                          { label: 'Open', icon: Eye, onClick: () => nav(`/water-tank/amc/${r.code}`) },
                           { label: 'Renew contract', icon: RefreshCw, onClick: () => setRenewing(r) },
                           { label: 'Delete', icon: Trash2, danger: true, onClick: () => remove(r.id, `${r.code} deleted`).catch((e) => toast.err(errText(e))) },
                         ]} />
@@ -172,7 +174,7 @@ export default function Amc() {
           {calendar.length ? (
             <div className="wt-milestones">
               {calendar.map((r) => (
-                <div key={r.id} className="wt-milestone click" onClick={() => setOpen(r)} style={{ cursor: 'pointer' }}>
+                <div key={r.id} className="wt-milestone click" onClick={() => nav(`/water-tank/amc/${r.code}`)} style={{ cursor: 'pointer' }}>
                   <div className="mh"><span className="mt">{r.client_name}</span><Pill value={r.status} sm /></div>
                   <div className="amt" style={{ fontSize: 15 }}><CalendarClock size={14} style={{ verticalAlign: -2, marginRight: 5 }} />{r.next_visit}</div>
                   <div className="dt">{r.code} · {r.package || 'Standard'} · {r.frequency}</div>

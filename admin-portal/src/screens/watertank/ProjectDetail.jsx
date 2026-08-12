@@ -707,7 +707,7 @@ function Documents({ d, nav }) {
       hint: p.agreement_code
         ? 'Sec. 7 Step 6 — required before commencement'
         : 'Sec. 7 Step 6 — raise it prefilled from this project',
-      onClick: () => nav(`/agreements/water-tank-customer?project=${encodeURIComponent(p.code)}`) },
+      onClick: () => nav(`/water-tank/agreements/customer?project=${encodeURIComponent(p.code)}`) },
     { label: 'Quotation', code: p.quotation_code || related.quotations[0]?.code,
       status: related.quotations[0]?.decision || (p.needs_quotation ? 'To be prepared' : 'None'),
       hint: 'Sec. 7 Step 5',

@@ -63,6 +63,36 @@
 .wt-nav-item:hover { background: rgba(255, 255, 255, 0.06); }
 .wt-nav-item.on { background: var(--wt-accent-strong); color: #fff; font-weight: 600; }
 
+/* ── grouped navigation ──────────────────────────────────────────────────
+   Eighteen flat destinations do not scan; grouped, the eye lands on the
+   section first and the item second. Groups collapse and remember their
+   state, so an operator who lives in Delivery can shut the rest away. */
+.wt-nav-group { display: flex; flex-direction: column; gap: 2px; }
+.wt-nav-group + .wt-nav-group { margin-top: 6px; }
+.wt-nav-grouphead {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 7px 12px 5px; background: transparent; border: 0; cursor: pointer;
+  font: inherit; font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--wt-nav-muted); text-align: left;
+}
+.wt-nav-grouphead:hover { color: var(--wt-nav-ink); }
+.wt-nav-grouphead .chev { margin-left: auto; transition: transform .15s ease; opacity: .7; }
+.wt-nav-grouphead .chev.shut { transform: rotate(-90deg); }
+.wt-nav-group .wt-nav-item { padding: 8px 12px; }
+
+/* Badge: how many records in there are waiting on you. Amber is work in hand,
+   rose is work that has already missed a date someone was promised. */
+.wt-badge {
+  margin-left: auto; min-width: 20px; padding: 1px 6px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 700; text-align: center; line-height: 1.7;
+  background: rgba(255, 255, 255, 0.16); color: #fff;
+}
+.wt-badge.due { background: #b45309; }
+.wt-badge.late { background: var(--wt-red, #e11d48); }
+.wt-nav-item.on .wt-badge { background: rgba(255, 255, 255, 0.25); }
+/* On a collapsed group the total moves to the header, so nothing hides. */
+.wt-nav-grouphead .wt-badge { margin-left: 0; }
+
 .wt-userfoot { display: flex; align-items: center; gap: 12px; padding-top: 12px; border-top: 1px solid var(--wt-sidebar-border); }
 .wt-avatar { width: 36px; height: 36px; border-radius: 18px; background: var(--wt-accent-strong); display: grid; place-items: center; color: #fff; font-size: 14px; font-weight: 600; flex-shrink: 0; }
 .wt-userfoot .nm { font-size: 12px; font-weight: 600; color: #fff; }
