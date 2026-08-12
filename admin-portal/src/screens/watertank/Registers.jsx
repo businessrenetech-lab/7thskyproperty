@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ShieldCheck, MessageSquareWarning, AlertOctagon, Plus, Eye, Trash2, ExternalLink } from 'lucide-react';
 import {
   WtHead, WtTabs, Pill, StatCards, dateFmt, useCollection, CreateDrawer, RecordDrawer,
-  StatusCell, RowActions, Loading, EmptyState, useFocusedRecord, toast, errText,
+  StatusCell, RowActions, Loading, EmptyState, useFocusedRecord, useRoutedRecord, toast, errText,
 } from './common';
 
 /*
@@ -56,7 +56,8 @@ function Warranties() {
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(null);
   const [q, setQ] = useState('');
-  useFocusedRecord(rows, (r) => setOpen(r));
+  const routed = useRoutedRecord({ rows, base: '/water-tank/registers/warranties', current: open, setCurrent: setOpen });
+  useFocusedRecord(rows, (r) => routed.open(r));
 
   const shown = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -96,7 +97,7 @@ function Warranties() {
                 const soon = (r.status || '').toLowerCase() === 'active' && d != null && d >= 0 && d <= 60;
                 const lapsed = d != null && d < 0;
                 return (
-                  <tr key={r.id} className="click" onClick={() => setOpen(r)}>
+                  <tr key={r.id} className="click" onClick={() => routed.open(r)}>
                     <td className="id">{r.code}</td>
                     <td><strong>{r.client_name}</strong></td>
                     <td className="muted">{r.warranty_type || '—'}</td>
@@ -108,7 +109,7 @@ function Warranties() {
                     <td><StatusCell value={r.status} options={WARRANTY_STATUSES} onChange={(body) => patch(r.id, body, `${r.code} → ${body.status}`)} /></td>
                     <td>
                       <RowActions items={[
-                        { label: 'Open', icon: Eye, onClick: () => setOpen(r) },
+                        { label: 'Open', icon: Eye, onClick: () => routed.open(r) },
                         { label: 'Delete', icon: Trash2, danger: true, onClick: () => remove(r.id, `${r.code} deleted`).catch((e) => toast.err(errText(e))) },
                       ]} />
                     </td>
@@ -128,7 +129,7 @@ function Warranties() {
       )}
       {current && (
         <RecordDrawer record={current} singular="warranty" fields={WARRANTY_FIELDS} subtitle={current.client_name}
-          onClose={() => setOpen(null)}
+          onClose={routed.close}
           onSave={(body) => patch(current.id, body)}
           onDelete={() => remove(current.id, `${current.code} deleted`)} />
       )}
@@ -203,7 +204,8 @@ function Incidents() {
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(null);
   const [q, setQ] = useState('');
-  useFocusedRecord(rows, (r) => setOpen(r));
+  const routed = useRoutedRecord({ rows, base: '/water-tank/registers/incidents', current: open, setCurrent: setOpen });
+  useFocusedRecord(rows, (r) => routed.open(r));
 
   const shown = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -239,7 +241,7 @@ function Incidents() {
             <thead><tr><th style={{ width: 92 }}>Code</th><th style={{ width: 168 }}>Incident Type</th><th>Client / Location</th><th style={{ width: 150 }}>Provider</th><th style={{ width: 96 }}>Severity</th><th style={{ width: 110 }}>Date</th><th style={{ width: 136 }}>Status</th><th style={{ width: 44 }} /></tr></thead>
             <tbody>
               {shown.map((r) => (
-                <tr key={r.id} className="click" onClick={() => setOpen(r)}>
+                <tr key={r.id} className="click" onClick={() => routed.open(r)}>
                   <td className="id">{r.code}</td>
                   <td><strong>{r.incident_type || '—'}</strong></td>
                   <td className="muted">{[r.client_name, r.location].filter(Boolean).join(' · ') || '—'}</td>
@@ -249,7 +251,7 @@ function Incidents() {
                   <td><StatusCell value={r.status} options={INCIDENT_STATUSES} onChange={(body) => patch(r.id, body, `${r.code} → ${body.status}`)} /></td>
                   <td>
                     <RowActions items={[
-                      { label: 'Open', icon: Eye, onClick: () => setOpen(r) },
+                      { label: 'Open', icon: Eye, onClick: () => routed.open(r) },
                       { label: 'Delete', icon: Trash2, danger: true, onClick: () => remove(r.id, `${r.code} deleted`).catch((e) => toast.err(errText(e))) },
                     ]} />
                   </td>
@@ -269,7 +271,7 @@ function Incidents() {
       {current && (
         <RecordDrawer record={current} singular="incident" fields={INCIDENT_FIELDS}
           subtitle={[current.client_name, current.location].filter(Boolean).join(' · ')}
-          onClose={() => setOpen(null)}
+          onClose={routed.close}
           onSave={(body) => patch(current.id, body)}
           onDelete={() => remove(current.id, `${current.code} deleted`)} />
       )}
@@ -284,20 +286,37 @@ const TABS = [
 ];
 
 export default function Registers() {
-  const [tab, setTab] = useState('Warranties');
+  /*
+   * The tab lives in the PATH now (/water-tank/registers/incidents), not in
+   * component state, so a register — and a record inside it — can be linked and
+   * survives a refresh. ?tab= is still honoured for anything that already links
+   * that way.
+   */
+  const { kind } = useParams();
+  const nav = useNavigate();
+  const fromPath = TABS.find((t) => t.value.toLowerCase() === String(kind || '').toLowerCase());
+  const [tab, setTab] = useState(fromPath?.value || 'Warranties');
 
-  // ?tab=incidents deep-links straight to a register
   useEffect(() => {
+    if (fromPath && fromPath.value !== tab) { setTab(fromPath.value); return; }
+    if (kind) return;
     const wanted = new URLSearchParams(window.location.search).get('tab');
     if (!wanted) return;
     const hit = TABS.find((t) => t.value.toLowerCase() === wanted.toLowerCase());
     if (hit) setTab(hit.value);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind]);
+
+  // Changing tab changes the URL, so the back button walks the tabs.
+  const goTab = (value) => {
+    setTab(value);
+    nav(`/water-tank/registers/${value.toLowerCase()}`);
+  };
 
   return (
     <>
       <WtHead title="Warranty & Issues" subtitle="Warranties on completed work, client complaints and safety incidents" />
-      <WtTabs tabs={TABS.map((t) => ({ value: t.value, label: t.value }))} value={tab} onChange={setTab} />
+      <WtTabs tabs={TABS.map((t) => ({ value: t.value, label: t.value }))} value={tab} onChange={goTab} />
       {tab === 'Warranties' && <Warranties />}
       {tab === 'Complaints' && <ComplaintsRegister />}
       {tab === 'Incidents' && <Incidents />}

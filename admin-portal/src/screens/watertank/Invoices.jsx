@@ -4,7 +4,7 @@ import { Plus, Eye, Trash2, Wallet, Send, Banknote } from 'lucide-react';
 import api from '../../services/api';
 import InvoiceCreateModal from './InvoiceCreateModal';
 import {
-  WtHead, WtTabs, Pill, dateFmt, bdt, StatCards, useCollection, RecordDrawer,
+  WtHead, WtTabs, Pill, dateFmt, bdt, StatCards, useCollection, RecordDrawer, useUrlTab,
   WtDrawer, StatusCell, RowActions, Loading, EmptyState, useFocusedRecord, parseJson, toast, errText,
 } from './common';
 
@@ -60,6 +60,7 @@ export default function Invoices() {
   const nav = useNavigate();
   const { rows, loading, error, reload, patch, remove } = useCollection('invoices');
   const [tab, setTab] = useState('All');
+  useUrlTab(TABS, setTab);
   const [q, setQ] = useState('');
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(null);

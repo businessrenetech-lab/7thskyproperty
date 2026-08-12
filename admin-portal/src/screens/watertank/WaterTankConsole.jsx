@@ -4,7 +4,7 @@ import {
   CloudLightning, LayoutGrid, Users, FileText, ClipboardList, FileSignature,
   Briefcase, Folder, Truck, Shield, Receipt, AlertCircle, MessageSquare,
   Settings, LogOut, Search, Banknote, ShieldCheck, ClipboardCheck, FileBarChart, Tags,
-  ChevronDown, Inbox,
+  ChevronDown, Inbox, CalendarDays,
 } from 'lucide-react';
 import api from '../../services/api';
 import { ToastHost } from './common';
@@ -38,6 +38,7 @@ export const WT_NAV_GROUPS = [
     items: [
       { to: '/water-tank', label: 'Dashboard', icon: LayoutGrid, end: true },
       { to: '/water-tank/work-queue', label: 'My Work Queue', icon: Inbox },
+      { to: '/water-tank/calendar', label: 'Calendar', icon: CalendarDays },
     ],
   },
   {
@@ -78,8 +79,8 @@ export const WT_NAV_GROUPS = [
     key: 'finance',
     label: 'Finance',
     items: [
-      { to: '/water-tank/invoices', label: 'Invoices', icon: Receipt },
-      { to: '/water-tank/payments', label: 'Payments & Disbursements', icon: Banknote },
+      { to: '/water-tank/invoices', label: 'Invoices', icon: Receipt, needs: 'transact' },
+      { to: '/water-tank/payments', label: 'Payments & Disbursements', icon: Banknote, needs: 'transact' },
     ],
   },
   {
@@ -96,7 +97,7 @@ export const WT_NAV_GROUPS = [
     label: 'Administration',
     items: [
       { to: '/water-tank/communication', label: 'Communication Log', icon: MessageSquare },
-      { to: '/water-tank/catalogue', label: 'Price Schedule', icon: Tags },
+      { to: '/water-tank/catalogue', label: 'Price Schedule', icon: Tags, needs: 'bind' },
       { to: '/water-tank/settings', label: 'Settings', icon: Settings },
     ],
   },
@@ -121,6 +122,16 @@ export default function WaterTankConsole() {
   const [palette, setPalette] = useState(false);
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [badges, setBadges] = useState({});
+  /*
+   * What this user may do, fetched from /wt-ops/capabilities — which reads the
+   * SAME role tiers as the route guards. The UI must not keep its own copy of an
+   * authorization rule; two copies is one rule and one bug waiting to happen.
+   *
+   * Default is permissive: until the answer arrives, every link shows. Hiding is
+   * a courtesy so people are not offered doors that will not open — the API is
+   * what actually refuses, and it does so regardless of what the sidebar drew.
+   */
+  const [can, setCan] = useState(null);
 
   // ⌘K / Ctrl-K opens the console-wide search from anywhere
   useEffect(() => {
@@ -143,6 +154,16 @@ export default function WaterTankConsole() {
       .catch(() => { /* counts are a convenience, never a blocker */ });
   }, []);
   useEffect(loadBadges, [loadBadges, loc.pathname]);
+
+  // Capabilities change only when the user does, so this runs once per mount.
+  useEffect(() => {
+    api.get('/wt-ops/capabilities')
+      .then((r) => setCan(r.data?.can || null))
+      .catch(() => setCan(null));
+  }, []);
+
+  /** A destination with no `needs` is open to anyone who can reach the console. */
+  const allowed = (item) => !item.needs || !can || can[item.needs];
 
   const toggle = (key) => setCollapsed((prev) => {
     const next = new Set(prev);
@@ -181,12 +202,17 @@ export default function WaterTankConsole() {
 
           <nav className="wt-nav">
             {WT_NAV_GROUPS.map((g) => {
+              // Destinations this role cannot use are dropped first, so counts and
+              // the "is this group empty" test are all computed on what is shown.
+              const items = g.items.filter(allowed);
+              if (!items.length) return null;
+
               const shut = collapsed.has(g.key);
               // A collapsed group must not hide work, so its total moves up to
               // the header — and the group opens if the current page is inside it.
-              const inHere = g.items.some((i) => (i.end ? loc.pathname === i.to : loc.pathname.startsWith(i.to)));
-              const groupTotal = g.items.reduce((s, i) => s + (badges[i.to]?.count || 0), 0);
-              const groupLate = g.items.some((i) => badges[i.to]?.severity === 'late');
+              const inHere = items.some((i) => (i.end ? loc.pathname === i.to : loc.pathname.startsWith(i.to)));
+              const groupTotal = items.reduce((s, i) => s + (badges[i.to]?.count || 0), 0);
+              const groupLate = items.some((i) => badges[i.to]?.severity === 'late');
               const open = !shut || inHere;
 
               return (
@@ -202,7 +228,7 @@ export default function WaterTankConsole() {
                     <ChevronDown size={13} className={`chev${open ? '' : ' shut'}`} />
                   </button>
 
-                  {open && g.items.map((n) => (
+                  {open && items.map((n) => (
                     <NavLink key={n.to} to={n.to} end={n.end}
                       className={({ isActive }) => 'wt-nav-item' + (isActive ? ' on' : '')}>
                       <n.icon /> <span style={{ flex: '1 0 0', minWidth: 0 }}>{n.label}</span>
@@ -231,7 +257,9 @@ export default function WaterTankConsole() {
         </main>
       </div>
 
-      <CommandPalette open={palette} onClose={() => setPalette(false)} nav={WT_NAV} />
+      {/* The palette searches the same filtered list, so it cannot offer a
+          destination the sidebar has hidden. */}
+      <CommandPalette open={palette} onClose={() => setPalette(false)} nav={WT_NAV.filter(allowed)} />
       <ToastHost />
     </div>
   );

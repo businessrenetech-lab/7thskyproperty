@@ -118,6 +118,9 @@ export default function ServiceReports() {
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState(null);
   const [viewing, setViewing] = useState(null);
+  // A provider report is evidence attached to a job — it needs a URL someone can
+  // be sent, not just a drawer over a list.
+  const routed = useRoutedRecord({ rows, base: '/water-tank/reports', current: viewing, setCurrent: setViewing });
 
   const load = useCallback(() => {
     setLoading(true);
@@ -184,7 +187,7 @@ export default function ServiceReports() {
               {shown.map((r) => {
                 const nPhotos = (parseJson(r.photos_before, []) || []).length + (parseJson(r.photos_after, []) || []).length;
                 return (
-                  <tr key={r.id} className="click" onClick={() => setViewing(r)}>
+                  <tr key={r.id} className="click" onClick={() => routed.open(r)}>
                     <td className="id">{r.code}</td>
                     <td><strong>{r.report_type}</strong></td>
                     <td>{r.client_name || '—'}{r.summary && <div className="cell-sub">{r.summary.slice(0, 60)}{r.summary.length > 60 ? '…' : ''}</div>}</td>
@@ -196,7 +199,7 @@ export default function ServiceReports() {
                       onChange={async (body) => { await api.patch(`/wt-providers/reports/${r.id}`, body); toast.ok(`${r.code} → ${body.status}`); load(); }} /></td>
                     <td>
                       <RowActions items={[
-                        { label: 'View', icon: Eye, onClick: () => setViewing(r) },
+                        { label: 'View', icon: Eye, onClick: () => routed.open(r) },
                         { label: 'Edit', icon: FileText, onClick: () => setEditing(r) },
                         r.status === 'Submitted' && { label: 'Accept', icon: Check, onClick: () => review(r, 'Accepted') },
                         r.status === 'Submitted' && { label: 'Send back for rework', icon: RotateCcw, onClick: () => review(r, 'Rework') },
@@ -224,7 +227,7 @@ export default function ServiceReports() {
       {viewing && (
         <WtDrawer wide title={`${viewing.report_type} Report ${viewing.code}`}
           subtitle={[viewing.client_name, viewing.provider_name].filter(Boolean).join(' · ')}
-          onClose={() => setViewing(null)}
+          onClose={routed.close}
           footer={<>
             <button className="wt-btn" onClick={() => { setViewing(null); setEditing(viewing); }}>Edit</button>
             {viewing.status === 'Submitted' && <>

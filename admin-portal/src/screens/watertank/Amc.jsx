@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Eye, Trash2, RefreshCw, CalendarClock } from 'lucide-react';
 import {
-  WtHead, Pill, dateFmt, bdt, useCollection, CreateDrawer, RecordDrawer, WtDrawer,
+  WtHead, Pill, dateFmt, bdt, useCollection, CreateDrawer, RecordDrawer, WtDrawer, useUrlTab,
   StatusCell, RowActions, Loading, EmptyState, useFocusedRecord, toast, errText,
 } from './common';
 
@@ -58,6 +58,8 @@ export default function Amc() {
   const { rows, loading, error, reload, patch, remove } = useCollection('amc');
   const [pkg, setPkg] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  // Landed here from a dashboard KPI: show the contracts it counted.
+  useUrlTab(['All', ...STATUSES], setStatusFilter, 'status');
   const [view, setView] = useState('Ledger Table');
   const [q, setQ] = useState('');
   const [creating, setCreating] = useState(false);

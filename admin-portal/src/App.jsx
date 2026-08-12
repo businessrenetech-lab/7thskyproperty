@@ -49,6 +49,7 @@ import WaterTankSettings from './screens/watertank/Settings';
 import WaterTankCatalogue from './screens/watertank/Catalogue';
 import WTWorkQueue from './screens/watertank/WorkQueue';
 import WTAmcDetail from './screens/watertank/AmcDetail';
+import WTCalendar from './screens/watertank/Calendar';
 import WTClients from './screens/watertank/Clients';
 import WTClientDetail from './screens/watertank/clients/ClientDashboard';
 import WTClientCreate from './screens/watertank/clients/ClientCreate';
@@ -315,6 +316,7 @@ export default function App() {
               <Route path="/agreements/water-tank-provider/:id/edit" element={<LegacyRedirect to="/water-tank/agreements/provider/:id/edit" />} />
               <Route path="/water-tank/compliance" element={<WTCompliance />} />
               <Route path="/water-tank/reports" element={<WTServiceReports />} />
+              <Route path="/water-tank/reports/:code" element={<WTServiceReports />} />
               <Route path="/water-tank/agreements" element={<WTAgreementsHub />} />
               <Route path="/water-tank/work-queue" element={<WTWorkQueue />} />
               <Route path="/water-tank/amc" element={<WTAmc />} />
@@ -323,8 +325,14 @@ export default function App() {
               <Route path="/water-tank/invoices" element={<WTInvoices />} />
               <Route path="/water-tank/invoices/:code" element={<WTInvoiceEditor />} />
               <Route path="/water-tank/payments" element={<WTPayments />} />
+              <Route path="/water-tank/calendar" element={<WTCalendar />} />
+              {/* Registers and their records live in the path, so a warranty or an
+                  incident can be linked, bookmarked and reached with the back button. */}
               <Route path="/water-tank/registers" element={<WTRegisters />} />
+              <Route path="/water-tank/registers/:kind" element={<WTRegisters />} />
+              <Route path="/water-tank/registers/:kind/:code" element={<WTRegisters />} />
               <Route path="/water-tank/complaints" element={<WTComplaints />} />
+              <Route path="/water-tank/complaints/:code" element={<WTComplaints />} />
               <Route path="/water-tank/communication" element={<WTCommLog />} />
               <Route path="/water-tank/catalogue" element={<WaterTankCatalogue />} />
               <Route path="/water-tank/settings" element={<WaterTankSettings />} />

@@ -38,12 +38,40 @@ const WT_LEGAL = ['super_admin', 'branch_admin', 'property_manager'];
 /** Destructive actions stay with administrators. */
 const WT_ADMIN = ['super_admin', 'branch_admin'];
 
+const WT_TRANSACT = [...new Set([...WT_FINANCE, ...WT_ADMIN])];
+const WT_BIND = [...new Set([...WT_LEGAL, ...WT_ADMIN])];
+
+/**
+ * What a given role may do, as plain booleans.
+ *
+ * The frontend needs this to stop offering destinations a user cannot use, and
+ * the one thing it must NOT do is keep its own copy of the role lists — two
+ * copies of an authorization rule is one rule and one bug waiting to happen.
+ * So the tiers are exported through this function and the UI asks.
+ *
+ * This is for presentation only. Hiding a link is a courtesy, not a control:
+ * every route above still enforces the same tiers server-side.
+ */
+const capabilitiesFor = (role) => {
+  const has = (list) => list.includes(String(role || ''));
+  return {
+    read: has(WT_READ),
+    operate: has(WT_OPERATE),
+    transact: has(WT_TRANSACT),
+    bind: has(WT_BIND),
+    administer: has(WT_ADMIN),
+  };
+};
+
 module.exports = {
   WT_READ,
   WT_OPERATE,
   WT_FINANCE,
   WT_LEGAL,
   WT_ADMIN,
+  WT_TRANSACT,
+  WT_BIND,
+  capabilitiesFor,
   canRead: roleMiddleware(WT_READ),
   canOperate: roleMiddleware(WT_OPERATE),
   // Money: recording a receipt, paying a provider, issuing or voiding an invoice.

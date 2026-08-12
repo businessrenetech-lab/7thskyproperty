@@ -2149,3 +2149,80 @@ agent has them modified. Their old links keep working through the redirects.
   (verified in Phases 1–3), but the sidebar still shows every link to everyone.
 - The dashboard KPI rework (plan item 17) — deferred with the rest of Phase 5.
 - Browser QA of the grouped sidebar and the two new screens.
+
+---
+
+## 2026-08-13 — Claude — COMPLETED: Phase 5 + the Phase 4 leftovers
+
+Branch `water-tank/phase-0-baseline`. Everything listed as "not done" at the end
+of Phase 4 is now done, plus Phase 5's calendar and dashboard rework.
+
+### Unified calendar — `services/wtCalendar.service.js` + `/water-tank/calendar`
+Four scheduled things, each previously on its own screen: assessment dates, work
+order target/scheduled dates, AMC visit plans and invoice due dates. The AMC plan
+was the sharpest cost — it generates a year of dated rows the moment a contract
+activates and nothing ever showed them beside anything else, so a week with four
+AMC visits and two assessments looked empty until you opened two registers.
+28 events on this database, 12 overdue, 4 unassigned. Month grid + agenda, filter
+by kind, and "overdue" means the date passed AND the thing did not happen — a
+completed job is never flagged.
+
+No new scheduling model. It reads dates that already exist.
+
+### Dashboard rework
+Action Centre moved ABOVE the headline figures — what needs a person today is the
+reason to open the screen. Every KPI now lands on the ROWS IT COUNTED via a new
+`useUrlTab` hook, instead of the bare register.
+
+**Caught by verifying rather than assuming:** I first wrote the projects KPI as
+`?tab=Active`. That register's statuses are Open / On Hold / Completed /
+Cancelled — there is no "Active", so the link would have silently done nothing
+and no build or type check would have said so. The test now checks every KPI's
+filter value against the target register's own status constant.
+
+### Detail routes for the registers that had none
+`useRoutedRecord` in common.jsx backs all of them, so there is one hook rather
+than four copies. `useFocusedRecord` (?focus=CODE) deletes the param after
+jumping — right for the command palette, wrong for a location — so records now
+live in the path:
+  /water-tank/complaints/:code
+  /water-tank/reports/:code
+  /water-tank/registers/:kind and /registers/:kind/:code
+Warranties and incidents get separate base paths so their codes cannot collide,
+and the Registers tab now lives in the URL too, so the back button walks tabs.
+
+### Role-aware navigation
+New `capabilitiesFor(role)` in wtRoles.js and `GET /wt-ops/capabilities`. The
+console asks; it does NOT restate any role list — two copies of an authorization
+rule is one rule and one bug waiting to happen. Finance destinations need
+`transact`, the price schedule needs `bind`. A group with nothing left is not
+drawn as an empty heading, and the command palette is filtered by the same
+predicate so it cannot offer a hidden destination.
+Default is permissive until capabilities load: hiding is a courtesy, the API is
+what refuses.
+
+### Browser QA — done, and it found something
+Signed in and walked it. Grouped sidebar, badges, collapse (SALES & INTAKE
+collapsed correctly surfaces its total 6), calendar month grid, work queue,
+`?tab=Overdue` landing on the right tab, and all three new detail routes
+resolving from a pasted URL. No console errors.
+
+**Found by looking at the screen:** the AMC page showed a green "Active" pill
+directly beside "This contract expired on Dec 31, 2024. Cover has lapsed." Both
+were truthful — one is the stored status, the other derived from the end date —
+but together they read as a bug. The mismatch is now named explicitly rather
+than left for the operator to reconcile. No test would have caught that; it
+needed eyes.
+
+### Verified — 271 assertions, 0 failures
+Phase 5: 48, including calendar counts recomputed independently from raw rows,
+the capabilities endpoint matching the middleware exactly for every role present,
+and every dashboard KPI filter checked against the real status list.
+Regression: Phase 1 30/30, Phase 2 30+25+31, Phase 3 36+30, Phase 4 41.
+Build clean at 1974 modules. No route dropped.
+
+### NOT done
+- Phase 6 (provider and customer portals) and Phase 7 (notifications, automated
+  money-path tests, release QA) remain.
+- `ui/Layout.jsx` and `WtCustomerAgreements.jsx` are still another agent's;
+  their legacy agreement links keep working through the Phase 4 redirects.

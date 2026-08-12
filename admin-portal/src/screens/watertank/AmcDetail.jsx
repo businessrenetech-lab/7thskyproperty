@@ -313,7 +313,20 @@ export default function AmcDetail() {
         <div className="wt-card wt-kpi">
           <span className="wt-kpi-label">Status</span>
           <b><Pill value={amc.status} /></b>
-          <span className="wt-kpi-sub">{amc.start_date ? `${dateFmt(amc.start_date)} → ${dateFmt(amc.end_date)}` : '—'}</span>
+          {/*
+            * The pill is the STORED status; `expired` is derived from the end
+            * date. They disagree when a contract lapses and nobody updates the
+            * record — showing "Active" beside "cover has lapsed" reads as a bug,
+            * so the mismatch is named rather than left for the operator to
+            * reconcile.
+            */}
+          {stats.expired && String(amc.status).toLowerCase() === 'active' ? (
+            <span className="wt-kpi-sub" style={{ color: 'var(--wt-red)' }}>
+              still recorded as Active — the term ended {dateFmt(amc.end_date)}
+            </span>
+          ) : (
+            <span className="wt-kpi-sub">{amc.start_date ? `${dateFmt(amc.start_date)} → ${dateFmt(amc.end_date)}` : '—'}</span>
+          )}
         </div>
         <div className="wt-card wt-kpi">
           <span className="wt-kpi-label">Visits</span>

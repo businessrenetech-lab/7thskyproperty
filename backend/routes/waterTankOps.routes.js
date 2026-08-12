@@ -36,6 +36,10 @@ router.get('/payments', canRead, ctrl.payments);
 router.get('/money-journal', canRead, ctrl.moneyJournal);
 // Everything waiting on someone — drives both the work queue and the sidebar badges
 router.get('/work-queue', canRead, ctrl.workQueue);
+// One timeline for assessments, service visits, AMC visits and invoice due dates
+router.get('/calendar', canRead, ctrl.calendar);
+// What this user may do, so the UI can stop offering what the API will refuse
+router.get('/capabilities', canRead, ctrl.capabilities);
 
 // Site assessment reference data (checklist templates, equipment, categories)
 router.get('/assessment-reference', canRead, ctrl.assessmentReference);

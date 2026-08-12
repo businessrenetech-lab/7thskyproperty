@@ -619,6 +619,22 @@ const retiredMoneyRoute = (replacement) => (req, res) => res.status(410).json({
 exports.retiredMoneyRoute = retiredMoneyRoute;
 
 /**
+ * GET /wt-ops/capabilities — what this user may do, for the UI to hide by.
+ *
+ * Served from middleware/wtRoles rather than restated here, so the sidebar and
+ * the route guards can never disagree about who may do what. Presentation only:
+ * every route still enforces its own tier.
+ */
+exports.capabilities = asyncHandler(async (req, res) => {
+  const { capabilitiesFor } = require('../middleware/wtRoles');
+  res.json({
+    role: req.user?.role || null,
+    name: req.user?.name || req.user?.email || null,
+    can: capabilitiesFor(req.user?.role),
+  });
+});
+
+/**
  * GET /wt-ops/work-queue — everything waiting on someone, and the sidebar badges.
  *
  * One query serves both, so a badge and the queue behind it can never disagree.
@@ -628,6 +644,20 @@ exports.retiredMoneyRoute = retiredMoneyRoute;
 exports.workQueue = asyncHandler(async (req, res) => {
   const wq = require('../services/wtWorkQueue.service');
   res.json(await wq.summary(branchScope(req)));
+});
+
+/**
+ * GET /wt-ops/calendar?from=&to= — assessments, service visits, AMC visits and
+ * invoice due dates on one timeline. Reads dates that already exist; there is no
+ * separate scheduling record behind it.
+ */
+exports.calendar = asyncHandler(async (req, res) => {
+  const cal = require('../services/wtCalendar.service');
+  res.json(await cal.calendar({
+    scope: branchScope(req),
+    from: req.query.from || null,
+    to: req.query.to || null,
+  }));
 });
 
 /**

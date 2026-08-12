@@ -7,7 +7,7 @@ import {
 import api from '../../services/api';
 import {
   WtHead, WtTabs, Pill, StatCards, dateFmt, dateTimeFmt, useCollection, CreateDrawer,
-  RecordDrawer, StatusCell, RowActions, Loading, EmptyState, useFocusedRecord,
+  RecordDrawer, StatusCell, RowActions, Loading, EmptyState, useFocusedRecord, useUrlTab,
   parseJson, toast, errText,
 } from './common';
 
@@ -249,6 +249,7 @@ function EnquiriesRegister({ nav }) {
 function RequestsRegister({ nav }) {
   const { rows, loading, error, reload, patch, remove } = useCollection('service-requests');
   const [tab, setTab] = useState('All');
+  useUrlTab(['All', ...REQUEST_STATUSES], setTab);
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(null);
   useFocusedRecord(rows, (r) => { setTab('All'); setOpen(r); });

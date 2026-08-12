@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Search, X, Check, AlertCircle, Info, Pencil, Trash2, ArrowRight, MoreHorizontal,
   Calendar as CalendarIcon, ChevronLeft, ChevronRight,
@@ -208,6 +209,70 @@ export function useFocusedRecord(rows, onFocus) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows]);
+}
+
+/**
+ * useRoutedRecord — give a register's records a real, shareable URL.
+ *
+ * `useFocusedRecord` above deep-links via ?focus=CODE and then DELETES the
+ * param, which is right for the command palette (it is a jump, not a location)
+ * and wrong for everything else: the address bar goes back to the bare register,
+ * so the record cannot be linked, bookmarked or reached with the back button.
+ *
+ * This keeps the record in the path. Opening one navigates to `${base}/${code}`;
+ * closing returns to `base`. Arriving directly on `${base}/${code}` opens the
+ * record as soon as the rows land.
+ *
+ * A code in the URL that matches nothing is left alone rather than redirected —
+ * the rows may simply not have loaded yet, and bouncing the user off a URL they
+ * just pasted is worse than showing them the register for a moment.
+ */
+export function useRoutedRecord({ rows, base, current, setCurrent, key = 'code' }) {
+  const { code } = useParams();
+  const nav = useNavigate();
+
+  useEffect(() => {
+    if (!code) { if (current) setCurrent(null); return; }
+    if (current && String(current[key]) === String(code)) return;
+    const hit = (rows || []).find((r) => String(r[key]) === String(code));
+    if (hit) setCurrent(hit);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, rows]);
+
+  return {
+    /** The code in the URL, if any — useful for an "not found" message. */
+    routedCode: code || null,
+    open: (r) => nav(`${base}/${r[key]}`),
+    close: () => nav(base),
+  };
+}
+
+/**
+ * useUrlTab — let a link land on a register with a filter already applied.
+ *
+ * Dashboard KPIs used to navigate to the bare register: "Pending Invoices ৳4.2m"
+ * opened the full invoice list, leaving the operator to reproduce by hand the
+ * filter the number was computed from. A KPI that does not take you to the rows
+ * it counted is a decoration.
+ *
+ * `?tab=Overdue` now seeds the register's own tab state. Matching is
+ * case-insensitive so links can be written readably, and an unrecognised value
+ * is ignored rather than leaving the screen on an empty filter nobody chose.
+ */
+export function useUrlTab(tabs, setTab, param = 'tab') {
+  const applied = useRef(false);
+  useEffect(() => {
+    if (applied.current) return;
+    applied.current = true;
+    const wanted = new URLSearchParams(window.location.search).get(param);
+    if (!wanted) return;
+    const hit = (tabs || []).find((t) => {
+      const value = typeof t === 'string' ? t : t.value;
+      return String(value).toLowerCase() === wanted.toLowerCase();
+    });
+    if (hit) setTab(typeof hit === 'string' ? hit : hit.value);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 }
 
 /* ── calendar date picker ──────────────────────────────────── */

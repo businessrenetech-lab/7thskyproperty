@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Eye, Trash2, Siren, CheckCircle2, MessageSquarePlus, BellRing } from 'lucide-react';
 import {
   WtHead, WtTabs, Pill, dateFmt, dateTimeFmt, StatCards, useCollection, CreateDrawer, RecordDrawer,
-  WtDrawer, StatusCell, RowActions, Loading, EmptyState, useFocusedRecord, parseJson, toast, errText,
+  WtDrawer, StatusCell, RowActions, Loading, EmptyState, useFocusedRecord, useRoutedRecord, parseJson, toast, errText,
 } from './common';
 
 const STATUSES = ['Open', 'Investigating', 'Resolved', 'Closed'];
@@ -76,7 +76,9 @@ export default function Complaints() {
       setSel(shown.find((r) => (r.status || '').toLowerCase() === 'open') || shown[0]);
     }
   }, [shown, sel]);
-  useFocusedRecord(rows, (r) => { setTab('All'); setSel(r); setOpen(r); });
+  // The record now lives in the URL, so a complaint can be linked and bookmarked.
+  const routed = useRoutedRecord({ rows, base: '/water-tank/complaints', current: open, setCurrent: setOpen });
+  useFocusedRecord(rows, (r) => { setTab('All'); setSel(r); routed.open(r); });
 
   const selected = sel ? rows.find((r) => r.id === sel.id) || sel : null;
   const current = open ? rows.find((r) => r.id === open.id) || open : null;
@@ -179,7 +181,7 @@ export default function Complaints() {
                       <td><StatusCell value={r.status} options={STATUSES} onChange={(body) => patch(r.id, body, `${r.code} → ${body.status}`)} /></td>
                       <td>
                         <RowActions items={[
-                          { label: 'Open', icon: Eye, onClick: () => setOpen(r) },
+                          { label: 'Open', icon: Eye, onClick: () => routed.open(r) },
                           { label: 'Log entry', icon: MessageSquarePlus, onClick: () => setLogging({ record: r, mode: 'note' }) },
                           !r.acknowledged_at && { label: 'Acknowledge (Sec. 11)', icon: BellRing, onClick: () => acknowledge(r) },
                           s === 'open' && { label: 'Urgent Dispatch', icon: Siren, onClick: () => setLogging({ record: r, mode: 'dispatch' }) },
@@ -262,7 +264,7 @@ export default function Complaints() {
       {current && !logging && (
         <RecordDrawer
           record={current} singular="complaint" fields={FIELDS} subtitle={current.client_name}
-          onClose={() => setOpen(null)}
+          onClose={routed.close}
           onSave={(body) => patch(current.id, body)}
           onDelete={() => remove(current.id, `${current.code} deleted`)}
         />

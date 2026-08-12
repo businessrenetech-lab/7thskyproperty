@@ -48,11 +48,18 @@ export default function WaterTankDashboard() {
   const k = data?.kpis || {};
   const fin = data?.finance || {};
   const sla = data?.sla || {};
+  /*
+   * Every KPI lands on the ROWS IT COUNTED, not on the bare register.
+   * "Pending Invoices ৳4.2m" used to open the full invoice list and leave the
+   * operator to reconstruct by hand the filter the figure came from — which
+   * makes the number a decoration rather than a way in. The `?tab=` seeds the
+   * register's own filter (see useUrlTab).
+   */
   const KPIS = [
-    { icon: Briefcase, tint: 'var(--wt-accent-tint)', color: 'var(--wt-accent)', label: 'Total Active Projects', value: k.active_projects ?? '—', sub: k.active_projects_sub || '', to: '/water-tank/projects' },
-    { icon: UserPlus, tint: 'rgba(37,99,235,0.10)', color: 'var(--wt-blue)', label: 'New Leads', value: k.new_leads ?? '—', sub: 'awaiting assessment', to: '/water-tank/service-requests' },
-    { icon: Shield, tint: 'rgba(5,150,105,0.10)', color: 'var(--wt-green)', label: 'AMC Contracts Active', value: k.amc_active ?? '—', sub: k.amc_annual_value ? `Value: ${bdt(k.amc_annual_value)} annually` : 'No active contracts', to: '/water-tank/amc' },
-    { icon: CreditCard, tint: 'rgba(225,29,72,0.10)', color: 'var(--wt-red)', label: 'Pending Invoices', value: k.pending_invoice_amount != null ? bdt(k.pending_invoice_amount) : '—', sub: `${k.overdue_invoice_count || 0} invoice${k.overdue_invoice_count === 1 ? '' : 's'} overdue`, to: '/water-tank/invoices' },
+    { icon: Briefcase, tint: 'var(--wt-accent-tint)', color: 'var(--wt-accent)', label: 'Total Active Projects', value: k.active_projects ?? '—', sub: k.active_projects_sub || '', to: '/water-tank/projects?tab=Open' },
+    { icon: UserPlus, tint: 'rgba(37,99,235,0.10)', color: 'var(--wt-blue)', label: 'New Leads', value: k.new_leads ?? '—', sub: 'awaiting assessment', to: '/water-tank/service-requests?tab=New' },
+    { icon: Shield, tint: 'rgba(5,150,105,0.10)', color: 'var(--wt-green)', label: 'AMC Contracts Active', value: k.amc_active ?? '—', sub: k.amc_annual_value ? `Value: ${bdt(k.amc_annual_value)} annually` : 'No active contracts', to: '/water-tank/amc?status=Active' },
+    { icon: CreditCard, tint: 'rgba(225,29,72,0.10)', color: 'var(--wt-red)', label: 'Pending Invoices', value: k.pending_invoice_amount != null ? bdt(k.pending_invoice_amount) : '—', sub: `${k.overdue_invoice_count || 0} invoice${k.overdue_invoice_count === 1 ? '' : 's'} overdue`, to: '/water-tank/invoices?tab=Overdue' },
   ];
   const funnel = data?.funnel || [];
   const requests = data?.recent_requests || [];
@@ -87,20 +94,8 @@ export default function WaterTankDashboard() {
         <button className="wt-btn" onClick={load}><RefreshCw size={14} /> Refresh</button>
       </div>
 
-      <div className="wt-kpis">
-        {KPIS.map((kp) => (
-          <button key={kp.label} className="wt-card wt-kpi" onClick={() => nav(kp.to)}
-            style={{ textAlign: 'left', border: '1px solid var(--wt-line)', cursor: 'pointer', font: 'inherit' }}>
-            <span className="wt-kpi-ic" style={{ background: kp.tint, color: kp.color }}><kp.icon /></span>
-            <div>
-              <div className="wt-kpi-label">{kp.label}</div>
-              <div className="wt-kpi-value">{kp.value}</div>
-              <div className="wt-kpi-sub">{kp.sub}</div>
-            </div>
-          </button>
-        ))}
-      </div>
-
+      {/* Action Centre leads. What needs a person today is the reason to open
+          this screen; the headline figures are context for it, not the point. */}
       {alerts.length > 0 && (
         <div className="wt-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="wt-panel-head">
@@ -119,6 +114,20 @@ export default function WaterTankDashboard() {
           </div>
         </div>
       )}
+
+      <div className="wt-kpis">
+        {KPIS.map((kp) => (
+          <button key={kp.label} className="wt-card wt-kpi" onClick={() => nav(kp.to)}
+            style={{ textAlign: 'left', border: '1px solid var(--wt-line)', cursor: 'pointer', font: 'inherit' }}>
+            <span className="wt-kpi-ic" style={{ background: kp.tint, color: kp.color }}><kp.icon /></span>
+            <div>
+              <div className="wt-kpi-label">{kp.label}</div>
+              <div className="wt-kpi-value">{kp.value}</div>
+              <div className="wt-kpi-sub">{kp.sub}</div>
+            </div>
+          </button>
+        ))}
+      </div>
 
       <div className="wt-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <h2 className="wt-section-title">Service Acquisition Pipeline (Active Funnel)</h2>

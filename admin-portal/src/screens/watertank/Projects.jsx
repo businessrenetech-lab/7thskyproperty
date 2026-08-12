@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import {
-  WtHead, WtTabs, Pill, dateFmt, bdt, Loading, EmptyState, toast, errText,
+  WtHead, WtTabs, Pill, dateFmt, bdt, Loading, EmptyState, useUrlTab, toast, errText,
 } from './common';
 
 /*
@@ -24,6 +24,7 @@ export default function Projects() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('All');
+  useUrlTab(['All', ...STATUSES], setTab);
   const [q, setQ] = useState('');
   const [stage, setStage] = useState('');
   const [amcOnly, setAmcOnly] = useState(false);

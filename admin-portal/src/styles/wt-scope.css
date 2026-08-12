@@ -974,3 +974,33 @@
 .wt-scope .wt-liferow.current { background: var(--wt-accent-tint); border-color: var(--wt-accent); }
 .wt-scope .wt-liferow.current .t { color: var(--wt-accent-ink); font-weight: 700; }
 
+
+/* ── calendar ────────────────────────────────────────────────────────────
+   One month grid for four kinds of scheduled thing. Days are fixed-height
+   with their own scroll so a busy day cannot stretch the whole row. */
+.wt-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.wt-cal-weekday {
+  padding: 4px 6px 8px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--wt-muted); text-align: left;
+}
+.wt-cal-day {
+  min-height: 104px; max-height: 150px; overflow-y: auto; padding: 5px;
+  border: 1px solid var(--wt-line); border-radius: 8px; background: #fff;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.wt-cal-day.out { background: #fafafa; opacity: .55; }
+.wt-cal-day.today { border-color: var(--wt-accent); box-shadow: inset 0 0 0 1px var(--wt-accent); }
+.wt-cal-daynum { font-size: 11px; font-weight: 700; color: var(--wt-ink-2); padding: 1px 3px 2px; }
+.wt-cal-day.today .wt-cal-daynum { color: var(--wt-accent-ink, var(--wt-accent)); }
+.wt-cal-event {
+  display: flex; align-items: center; gap: 4px; width: 100%; text-align: left;
+  padding: 3px 5px; border: 0; border-left: 3px solid var(--wt-line); border-radius: 4px;
+  background: #f1f5f9; font: inherit; font-size: 11px; line-height: 1.35;
+  cursor: pointer; color: var(--wt-ink-2);
+}
+.wt-cal-event:hover { background: #e2e8f0; }
+.wt-cal-event-title { flex: 1 0 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wt-cal-more {
+  border: 0; background: transparent; padding: 1px 5px; font: inherit; font-size: 10.5px;
+  font-weight: 600; color: var(--wt-accent); cursor: pointer; text-align: left;
+}
