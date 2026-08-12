@@ -134,7 +134,7 @@ export default function Projects() {
                     <span style={{ fontSize: 11.5, color: 'var(--wt-muted)' }}>
                       {[r.assigned_provider || 'No provider', r.district].filter(Boolean).join(' · ')}
                     </span>
-                    {r.under_amc && <span className="wt-tag amc"><Repeat size={10} /> AMC</span>}
+                    {!!r.under_amc && <span className="wt-tag amc"><Repeat size={10} /> AMC</span>}
                     {r.overdue && <span className="wt-tag red">Overdue</span>}
                     {!r.overdue && r.at_risk && <span className="wt-tag amber">Due soon</span>}
                   </td>

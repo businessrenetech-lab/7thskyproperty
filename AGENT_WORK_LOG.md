@@ -1755,3 +1755,67 @@ Verified: node --check on both changed backend files, 24 assertions across the
 two features, backend restarts 200 with the meta endpoint 401 unauthenticated,
 vite build 1970 modules clean.
 NOT verified: the browser pass - admin session still expired. Nothing committed.
+
+---
+
+## PHASE 0 COMPLETE — baseline commit + the browser QA catch-up
+Date: 2026-08-12
+
+### 0a. Rollback point
+Committed 115 Water Tank files on branch water-tank/phase-0-baseline (4d46fcf).
+Scoped by filename, never git add -A — 97 other-agent changes left untouched in
+the working tree. Four shared files (App.jsx, server.js, partyRoleActivation,
+wt-scope.css) were included because the tree would not build without them; the
+commit message states plainly that App.jsx and server.js also carry concurrent
+Short Stay / RPRM / TM / STS work, so a rollback would revert that too.
+
+### 0b. First authenticated browser pass of the whole module
+The user signed in. This was the first time any of this session work had been
+opened in a browser. Two REAL defects found, both invisible to backend tests:
+
+BUG 1 — numeric-truthy JSX rendering (visible on 20 of 21 project rows).
+MySQL TINYINT comes back as the NUMBER 0, not false. In JSX, {0 && <span/>}
+renders a literal "0", so every project row read "No provider0". Fixed with an
+explicit !! at the five API-sourced render sites (Projects, ProjectDetail x3,
+QuotationAgreement). Verified in the browser: the stray 0 is gone.
+Checked and CLEAR: no `.length &&` instances anywhere; the wizard forms already
+coerce with !! on edit-hydration, so form state was never affected.
+
+BUG 2 — a PAID invoice was reported as fully receivable (financial).
+computeFinancials had `num(i.outstanding) || (amount - paid)`. A settled invoice
+legitimately has outstanding = 0, which is FALSY, so it fell through to the
+fallback and counted the entire invoice as still owed. WTCM-P0022 showed
+Collected 25,600 AND Receivable 25,600 — the same money twice.
+Same pattern found at two more sites, and the third is worse than display:
+  services/wtProject.service.js  computeFinancials (display)
+  waterTankOps.controller.js:487 payments receivable (display)
+  waterTankOps.controller.js:594 recordPayment DUE — would have reopened a
+                                 settled invoice for further payment
+Fixed with a shared outstandingOf() in both files that treats null/blank as
+"derive it" but a recorded zero as authoritative. 5 assertions incl. the exact
+failing row; verified in the browser — project receivable 47,440 -> 21,840 and
+the paid invoice now reads 0.
+
+### Not defects, but worth recording
+- The 500 on /api/wt-projects at the start of QA was MY process management, not
+  the app: `nohup node server.js &` from a Bash tool call gets reaped when the
+  call ends. Re-launched as a tracked background process; 10/10 requests then
+  passed. Any future "backend randomly 500s" should check the process is alive
+  before hunting application bugs.
+- Endpoint sweep: 23 of 24 water-tank endpoints return 200 under a real session.
+  The one 404 was my wrong test slug (/wt-ops/registers — the screen actually
+  uses warranties + incidents, both 200).
+- Console is clean apart from the pre-existing React Router v7 future-flag
+  warnings.
+- Screenshot/script-injection timed out repeatedly on the original tab after a
+  vite rebuild; a fresh tab recovered it. Known behaviour in this project.
+
+### Observations for later phases (NOT fixed — they are design questions)
+- Project contract_value (2,900) vs invoiced (25,600) diverge because an AMC
+  invoice is matched into the project by project_id. Either AMC billing should
+  not roll into the project contract comparison, or contract_value should
+  include it. Needs a decision, not a patch.
+- The progress KPI truncates "AMC / Ongoing Support" to "AMC / On...".
+
+Verified: vite build 1970 modules clean; backend restarts 200; both fixes
+confirmed on screen against real data.

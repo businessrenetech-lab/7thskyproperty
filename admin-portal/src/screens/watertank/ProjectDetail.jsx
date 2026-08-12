@@ -94,7 +94,7 @@ export default function ProjectDetail() {
       </WtHead>
 
       {/* AMC ribbon — only when the project genuinely sits under a contract */}
-      {p.under_amc && (
+      {!!p.under_amc && (
         <div className="wt-ribbon">
           <Repeat size={16} />
           <span><strong>Under AMC</strong>{p.amc_code ? ` — ${p.amc_code}` : ''}</span>
@@ -515,7 +515,7 @@ function Billing({ d, reload }) {
           tone={fin.net_position >= 0 ? 'green' : 'red'} />
       </div>
 
-      {p.deposit_required && (
+      {!!p.deposit_required && (
         <div className={p.deposit_received_at ? 'wt-note' : 'wt-warn'}>
           {p.deposit_received_at
             ? <><ShieldCheck size={15} /> Deposit of {money(p.deposit_amount)} received {dateFmt(p.deposit_received_at)}.</>
@@ -636,7 +636,7 @@ function Billing({ d, reload }) {
                     <td>
                       {r.category}
                       {r.source === 'work_order' && <span className="wt-tag">from work order</span>}
-                      {r.billable_to_client && <span className="wt-tag">rechargeable</span>}
+                      {!!r.billable_to_client && <span className="wt-tag">rechargeable</span>}
                     </td>
                     <td>
                       <strong>{r.payee || '—'}</strong>

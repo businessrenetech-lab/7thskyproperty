@@ -25,6 +25,20 @@ const customerSvc = require('./wtCustomerAgreement.service');
 
 const num = (v) => Number(v || 0);
 const round2 = (v) => Math.round(num(v) * 100) / 100;
+
+/**
+ * What is still owed on an invoice.
+ *
+ * `outstanding` is authoritative WHEN IT IS SET — including when it is zero.
+ * The obvious `num(i.outstanding) || (amount - paid)` is wrong: a fully-paid
+ * invoice legitimately has outstanding = 0, which is falsy, so it fell through
+ * to `amount - paid_amount` and reported the whole invoice as still receivable.
+ * A paid invoice showed up as fully outstanding. Only a null/blank column means
+ * "not recorded, derive it".
+ */
+const outstandingOf = (i) => (i.outstanding != null && i.outstanding !== ''
+  ? num(i.outstanding)
+  : num(i.amount) - num(i.paid_amount));
 const today = () => new Date().toISOString().slice(0, 10);
 const eq = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 const asArray = (v) => {
@@ -524,10 +538,7 @@ function computeFinancials(project, invoices, workOrders, disbursements) {
   const collected = invoices.reduce(
     (s, i) => s + (num(i.paid_amount) || (eq(i.status, 'paid') ? num(i.amount) : 0)), 0,
   );
-  const receivable = invoices.reduce((s, i) => {
-    const due = num(i.outstanding) || (num(i.amount) - num(i.paid_amount));
-    return s + Math.max(0, due);
-  }, 0);
+  const receivable = invoices.reduce((s, i) => s + Math.max(0, outstandingOf(i)), 0);
 
   const providerPaid = workOrders.reduce((s, w) => s + num(w.provider_paid_amount), 0);
   const providerCommitted = workOrders.reduce((s, w) => s + num(w.provider_fee), 0);

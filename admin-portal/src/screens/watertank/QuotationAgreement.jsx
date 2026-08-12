@@ -431,7 +431,7 @@ export default function QuotationAgreement() {
               </div>
             </div>
 
-            {sb.under_amc && (
+            {!!sb.under_amc && (
               <>
                 <div className="wt-grid3">
                   <div className="wt-field"><label>Existing AMC contract</label>

@@ -172,6 +172,16 @@ exports.remove = asyncHandler(async (req, res) => {
 });
 
 const num = (v) => Number(v || 0);
+
+/**
+ * What is still owed on an invoice. `outstanding` is authoritative when SET,
+ * including when it is zero — only a null/blank column means "derive it".
+ * Writing `num(outstanding) || (amount - paid)` treats a settled invoice's
+ * legitimate zero as unknown and reports the whole amount as still due.
+ */
+const outstandingOf = (i) => (i.outstanding != null && i.outstanding !== ''
+  ? num(i.outstanding)
+  : num(i.amount) - num(i.paid_amount));
 const today = () => new Date().toISOString().slice(0, 10);
 const addDays = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
 
@@ -484,7 +494,7 @@ exports.payments = asyncHandler(async (req, res) => {
   const eq = (v, s) => String(v || '').toLowerCase() === s;
 
   const receivable = invoices
-    .map((i) => ({ ...i, due: Math.max(0, num(i.outstanding) || (num(i.amount) - num(i.paid_amount))) }))
+    .map((i) => ({ ...i, due: Math.max(0, outstandingOf(i)) }))
     .filter((i) => i.due > 0.01 && !eq(i.status, 'cancelled') && !eq(i.status, 'draft'));
 
   const agreementById = Object.fromEntries(agreements.map((agreement) => [agreement.id, agreement]));
@@ -591,7 +601,9 @@ exports.recordPayment = asyncHandler(async (req, res) => {
 
   const total = num(inv.amount);
   const already = num(inv.paid_amount);
-  const due = Math.round((num(inv.outstanding) || (total - already)) * 100) / 100;
+  // See outstandingOf: a settled invoice has outstanding = 0, and treating that
+  // falsy zero as "unknown" would reopen a paid invoice for further payment.
+  const due = Math.round(outstandingOf(inv) * 100) / 100;
   const amount = Math.round(num(req.body.amount) * 100) / 100;
 
   if (!(amount > 0)) return res.status(400).json({ error: 'Enter an amount greater than zero.' });
