@@ -25,7 +25,12 @@ router.post('/', canTransact, ctrl.create);
 // Nested actions before /:code so they win the match.
 router.get('/:code/pdf', canRead, ctrl.pdf);
 router.post('/:code/send', canTransact, ctrl.send);
+router.get('/:code/actions', canRead, ctrl.actions);
+router.get('/:code/payments', canRead, ctrl.paymentHistory);
 router.post('/:code/payments', canTransact, ctrl.recordPayment);
+// Reversing a receipt is a correction to the books, so it sits with the people
+// who can bind the business rather than with everyone who can record one.
+router.post('/:code/payments/:eventId/reverse', canAdminister, ctrl.reversePayment);
 router.post('/:code/void', canTransact, ctrl.void);
 
 router.get('/:code', canRead, ctrl.detail);

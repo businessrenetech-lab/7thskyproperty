@@ -24,13 +24,21 @@ function AmountDrawer({ title, subtitle, label, maxAmount, note, onClose, onSubm
   const [reference, setReference] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  /*
+   * One key per drawer opening, sent with the request. If the button is
+   * double-clicked, or the answer is lost and the user retries, the server sees
+   * the same key and returns the movement it already recorded rather than
+   * posting the money a second time. A fresh drawer means a fresh key, so a
+   * genuine second payment of the same amount is still accepted.
+   */
+  const [idemKey] = useState(() => `ui-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
 
   const go = async () => {
     const value = Number(amount);
     if (!(value > 0)) { setErr('Enter an amount greater than zero.'); return; }
     if (maxAmount != null && value > maxAmount) { setErr(`Cannot exceed the remaining balance of ${bdt(maxAmount)}.`); return; }
     setBusy(true); setErr('');
-    try { await onSubmit({ amount: value, method, reference }); }
+    try { await onSubmit({ amount: value, method, reference, idempotency_key: idemKey }); }
     catch (e) { setErr(errText(e, 'Could not record this')); setBusy(false); }
   };
 
@@ -85,15 +93,27 @@ export default function Payments() {
   const payoutBlocked = data?.payout_blocked || [];
   const settled = data?.settled || [];
 
+  /*
+   * Both of these post to the specialist controllers, which write through the
+   * single money ledger. The old /wt-ops/... paths answered from an unguarded
+   * router that incremented a balance outside a transaction; they now return 410.
+   *
+   * `duplicate` says the server matched this request to one already recorded, so
+   * the operator is told the truth — "already recorded" — instead of a success
+   * message implying a second payment landed.
+   */
   const recordReceipt = async (body) => {
-    const r = await api.post(`/wt-ops/invoices/${receipt.id}/record-payment`, body);
-    toast.ok(r.data.outstanding <= 0.01 ? `${receipt.code} settled in full` : `${bdt(body.amount)} received on ${receipt.code}`);
+    const r = await api.post(`/wt-invoices/${receipt.code}/payments`, body);
+    const outstanding = num(r.data.totals?.outstanding);
+    toast.ok(r.data.duplicate ? `Already recorded on ${receipt.code} — nothing was posted twice`
+      : (outstanding <= 0.01 ? `${receipt.code} settled in full` : `${bdt(body.amount)} received on ${receipt.code}`));
     setReceipt(null); load();
   };
 
   const payProvider = async (body) => {
-    const r = await api.post(`/wt-ops/work-orders/${payout.id}/pay-provider`, body);
-    toast.ok(r.data.remaining <= 0.01 ? `${payout.code} payout cleared` : `${bdt(body.amount)} paid — ${bdt(r.data.remaining)} still due`);
+    const r = await api.post(`/wt-work-orders/${payout.id}/pay-provider`, body);
+    toast.ok(r.data.duplicate ? `Already paid on ${payout.code} — nothing was paid twice`
+      : (num(r.data.remaining) <= 0.01 ? `${payout.code} payout cleared` : `${bdt(body.amount)} paid — ${bdt(r.data.remaining)} still due`));
     setPayout(null); load();
   };
 

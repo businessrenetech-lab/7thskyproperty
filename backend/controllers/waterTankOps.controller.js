@@ -597,89 +597,45 @@ exports.payments = asyncHandler(async (req, res) => {
 });
 
 /**
- * POST /wt-ops/work-orders/:id/pay-provider — record a full or partial payout.
+ * Retired money endpoints.
+ *
+ * `payProvider` and `recordPayment` used to be implemented here: they read a
+ * balance, added to it and wrote it back, outside any transaction, on a router
+ * with no role guard. Two of those requests interleaving lose a payment, and
+ * they duplicated the specialist controllers with subtly different rules — this
+ * one would happily take a payment against a DRAFT invoice, which the invoice
+ * controller refuses.
+ *
+ * Money now moves in exactly one place, wtLedger.service, reached through the
+ * invoice and work-order controllers. These paths answer 410 Gone naming the
+ * replacement so a stale caller fails visibly instead of quietly writing through
+ * a weaker path.
  */
-exports.payProvider = asyncHandler(async (req, res) => {
-  const wo = await M.WtWorkOrder.findOne({ where: { id: req.params.id, ...branchScope(req) } });
-  if (!wo) return res.status(404).json({ error: 'Work order not found' });
-  const agreement = wo.provider_agreement_id
-    ? await P.WtProviderAgreement.findOne({ where: { id: wo.provider_agreement_id, ...branchScope(req) } })
-    : null;
-  if (!agreement) return res.status(400).json({ error: 'This payout has no signed provider agreement snapshot.' });
-  const projectInvoices = wo.project_id ? await M.WtInvoice.findAll({ where: { ...branchScope(req), project_id: wo.project_id }, raw: true }) : [];
-  const clientPaid = projectInvoices.length > 0 && projectInvoices.every((invoice) => String(invoice.status || '').toLowerCase() === 'paid' || num(invoice.paid_amount) >= num(invoice.amount));
-  if (agreement.payout_trigger === 'Client Payment Received' && !clientPaid) return res.status(400).json({ error: 'The signed agreement requires client payment before provider payout.' });
-  if (agreement.payout_trigger === 'Approved Milestone' && !wo.verified_at) return res.status(400).json({ error: 'The signed agreement requires an approved completion milestone before provider payout.' });
-  if (agreement.payout_trigger === 'Completion Verified' && !wo.verified_at) return res.status(400).json({ error: 'Completion must be verified before provider payout.' });
-
-  const fee = num(wo.provider_fee);
-  const already = num(wo.provider_paid_amount);
-  const remaining = Math.round((fee - already) * 100) / 100;
-  const amount = Math.round(num(req.body.amount) * 100) / 100;
-
-  if (!(amount > 0)) return res.status(400).json({ error: 'Enter a payout amount greater than zero.' });
-  if (amount > remaining) return res.status(400).json({ error: `Payout exceeds the remaining balance of ${remaining}.` });
-
-  const paid = Math.round((already + amount) * 100) / 100;
-  await wo.update({
-    provider_paid_amount: paid,
-    payout_status: paid >= fee - 0.01 ? 'Cleared' : 'Partially Paid',
-    payout_date: today(),
-    payout_method: req.body.method || wo.payout_method,
-    payout_reference: req.body.reference || wo.payout_reference,
-  });
-
-  // mirror onto the project's invoice payout flag so both screens agree
-  if (wo.project_id && paid >= fee - 0.01) {
-    await M.WtInvoice.update({ provider_payout: 'Cleared' }, { where: { ...branchScope(req), project_id: wo.project_id } });
-  }
-
-  await M.WtCommLog.create({
-    branch_id: resolveBranchId(req), client_name: wo.client_name, channel: 'note', direction: 'outbound',
-    summary: `Provider payout ${amount} to ${wo.provider_name || 'provider'} on ${wo.code}${req.body.reference ? ` (ref ${req.body.reference})` : ''}`,
-    ref_type: 'work-orders', ref_code: wo.code, logged_at: new Date(),
-  });
-
-  res.json({ workOrder: wo, paid, remaining: Math.round((fee - paid) * 100) / 100 });
+const retiredMoneyRoute = (replacement) => (req, res) => res.status(410).json({
+  error: 'This endpoint has been retired. Money is now recorded through a single audited ledger.',
+  use_instead: replacement,
+  why: 'The previous route incremented a balance outside a transaction, so two concurrent requests could lose a payment, and it bypassed the checks on the specialist controller.',
 });
+exports.retiredMoneyRoute = retiredMoneyRoute;
 
 /**
- * POST /wt-ops/invoices/:id/record-payment — record a client receipt.
+ * GET /wt-ops/money-journal — every receipt and payout that actually moved.
+ *
+ * The Payments screen previously derived "collected" and "disbursed" by summing
+ * cached columns across invoices and work orders. Those are now a cache of the
+ * ledger, so the journal reads the ledger itself: reversals appear as their own
+ * negative rows rather than silently changing an earlier figure.
  */
-exports.recordPayment = asyncHandler(async (req, res) => {
-  const inv = await M.WtInvoice.findOne({ where: { id: req.params.id, ...branchScope(req) } });
-  if (!inv) return res.status(404).json({ error: 'Invoice not found' });
-
-  const total = num(inv.amount);
-  const already = num(inv.paid_amount);
-  // See outstandingOf: a settled invoice has outstanding = 0, and treating that
-  // falsy zero as "unknown" would reopen a paid invoice for further payment.
-  const due = Math.round(outstandingOf(inv) * 100) / 100;
-  const amount = Math.round(num(req.body.amount) * 100) / 100;
-
-  if (!(amount > 0)) return res.status(400).json({ error: 'Enter an amount greater than zero.' });
-  if (amount > due) return res.status(400).json({ error: `Payment exceeds the outstanding balance of ${due}.` });
-
-  const outstanding = Math.round((due - amount) * 100) / 100;
-  const ledger = asArray(inv.payments);
-  ledger.push({ amount, method: req.body.method || 'bank_transfer', reference: req.body.reference || null, at: new Date().toISOString() });
-
-  await inv.update({
-    paid_amount: Math.round((already + amount) * 100) / 100,
-    outstanding,
-    payments: ledger,
-    status: outstanding <= 0.01 ? 'Paid' : (String(inv.status).toLowerCase() === 'draft' ? 'Sent' : inv.status),
-    // once the client has paid, the provider payout falls due
-    provider_payout: outstanding <= 0.01 && String(inv.provider_payout || '').toLowerCase() !== 'cleared' ? 'Pending' : inv.provider_payout,
+exports.moneyJournal = asyncHandler(async (req, res) => {
+  const ledger = require('../services/wtLedger.service');
+  const out = await ledger.journal({
+    branch_id: resolveBranchId(req),
+    from: req.query.from || null,
+    to: req.query.to || null,
+    direction: req.query.direction || null,
+    limit: Math.min(500, Number(req.query.limit) || 200),
   });
-
-  await M.WtCommLog.create({
-    branch_id: resolveBranchId(req), client_name: inv.client_name, channel: 'note', direction: 'inbound',
-    summary: `Payment ${amount} received against ${inv.code}${req.body.reference ? ` (ref ${req.body.reference})` : ''}`,
-    ref_type: 'invoices', ref_code: inv.code, logged_at: new Date(),
-  });
-
-  res.json({ invoice: inv, outstanding });
+  res.json(out);
 });
 
 /**

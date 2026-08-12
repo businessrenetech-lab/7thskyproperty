@@ -10,6 +10,8 @@ const { Op } = require('sequelize');
 const { asyncHandler, branchScope, resolveBranchId, pick } = require('../utils/controllerHelpers');
 const M = require('../models/waterTankOps');
 const svc = require('../services/wtInvoice.service');
+const ledger = require('../services/wtLedger.service');
+const sm = require('../services/wtStateMachine.service');
 const pdfSvc = require('../services/wtInvoicePdf.service');
 const { getBranding } = require('../services/wtBranding.service');
 
@@ -295,48 +297,137 @@ exports.pdf = asyncHandler(async (req, res) => {
   res.send(buf);
 });
 
-/* ── payments ── */
+/* ── payments ──
+ *
+ * Receipts are not written here. They go through wtLedger.service, which is the
+ * single writer for Water Tank money: it locks the invoice row, posts an
+ * append-only ledger entry under an idempotency key, and recomputes the cached
+ * columns from the ledger. This endpoint's job is to translate HTTP to that call
+ * and back — the validation and the arithmetic live in one place.
+ */
 exports.recordPayment = asyncHandler(async (req, res) => {
   const inv = await loadInvoice(req, res); if (!inv) return;
-  const amount = num(req.body?.amount);
-  if (amount <= 0) return res.status(400).json({ error: 'Enter the amount received.' });
-  if (eq(inv.status, 'draft')) {
-    return res.status(409).json({ error: 'Send the invoice before recording a payment against it.' });
+  try {
+    const out = await ledger.recordClientReceipt({
+      branch_id: inv.branch_id,
+      invoice_id: inv.id,
+      amount: num(req.body?.amount),
+      method: req.body?.method || null,
+      reference: req.body?.reference || null,
+      received_on: req.body?.received_on || today(),
+      note: req.body?.note || null,
+      // The client may send a key so a retry after a dropped response cannot
+      // post twice; without one the service derives a stable key itself.
+      idempotency_key: req.body?.idempotency_key || null,
+      actor: actorOf(req),
+      actor_id: req.user?.id || null,
+    });
+    await inv.reload();
+    res.json({
+      invoice: shape(inv.toJSON()),
+      totals: out.standing.totals,
+      event: out.event,
+      // Told plainly, so the UI never reports a second payment that did not happen.
+      duplicate: out.duplicate,
+      message: out.duplicate
+        ? 'This payment was already recorded — nothing was posted twice.'
+        : 'Payment recorded.',
+    });
+  } catch (e) {
+    if (e instanceof ledger.LedgerError) return res.status(e.status).json({ error: e.message, ...(e.outstanding != null ? { outstanding: e.outstanding } : {}) });
+    throw e;
   }
+});
 
-  const ledger = asArray(inv.payments);
-  ledger.push({
-    amount: round2(amount),
-    method: req.body?.method || null,
-    reference: req.body?.reference || null,
-    received_on: req.body?.received_on || today(),
-    by: actorOf(req),
-    at: new Date().toISOString(),
-  });
-  const paid = round2(ledger.reduce((s, p) => s + num(p.amount), 0));
-  const t = await syncTotals(inv, { payments: ledger, paid_amount: paid });
-  if (t.fully_settled && !inv.paid_at) await inv.update({ paid_at: new Date() });
+/**
+ * POST /:code/payments/:eventId/reverse — undo a receipt.
+ *
+ * A wrongly-entered payment is corrected by a compensating entry, never by
+ * deleting the original: the client's statement has to show what happened, and
+ * "it was entered and then reversed on this date for this reason" is what
+ * happened.
+ */
+exports.reversePayment = asyncHandler(async (req, res) => {
+  const inv = await loadInvoice(req, res); if (!inv) return;
+  try {
+    const out = await ledger.reverse({
+      branch_id: inv.branch_id,
+      event_id: Number(req.params.eventId),
+      reason: req.body?.reason,
+      actor: actorOf(req),
+      actor_id: req.user?.id || null,
+    });
+    await inv.reload();
+    res.json({ invoice: shape(inv.toJSON()), totals: out.standing?.totals, event: out.event, message: 'Payment reversed.' });
+  } catch (e) {
+    if (e instanceof ledger.LedgerError) return res.status(e.status).json({ error: e.message });
+    throw e;
+  }
+});
 
-  res.json({ invoice: shape(inv.toJSON()), totals: t });
+/** GET /:code/payments — the ledger rows behind this invoice. */
+exports.paymentHistory = asyncHandler(async (req, res) => {
+  const inv = await loadInvoice(req, res); if (!inv) return;
+  const rows = await ledger.historyOf({ branch_id: inv.branch_id, subject_type: 'invoice', subject_id: inv.id });
+  res.json({ rows, received: await ledger.balanceOf({ branch_id: inv.branch_id, subject_type: 'invoice', subject_id: inv.id }) });
 });
 
 /* ── void ── */
+/**
+ * Void an invoice.
+ *
+ * This used to void unconditionally and set outstanding to 0 — including on an
+ * invoice the client had already paid, which silently erased the receivable
+ * while the receipts stayed in the ledger. The books stopped balancing and
+ * nothing said so. The state machine now refuses it and names the correct route:
+ * reverse the receipt first, so the correction is on the record.
+ */
 exports.void = asyncHandler(async (req, res) => {
   const inv = await loadInvoice(req, res); if (!inv) return;
-  await inv.update({
-    status: 'Void', voided_at: new Date(),
-    void_reason: req.body?.reason || null, outstanding: 0,
-  });
-  res.json(shape(inv.toJSON()));
+  const received = await ledger.balanceOf({ branch_id: inv.branch_id, subject_type: 'invoice', subject_id: inv.id });
+  try {
+    const step = sm.assertAction('invoice', 'void', inv.toJSON(), { received });
+    await inv.update({
+      status: 'Void', voided_at: new Date(),
+      void_reason: req.body?.reason || null, outstanding: 0,
+    });
+    res.json({ ...shape(inv.toJSON()), warnings: step.warnings });
+  } catch (e) {
+    if (e instanceof sm.TransitionError) return res.status(e.status).json({ error: e.message, blockers: e.blockers });
+    throw e;
+  }
 });
 
 exports.remove = asyncHandler(async (req, res) => {
   const inv = await loadInvoice(req, res); if (!inv) return;
   // Only a draft may be deleted outright; an issued invoice is voided so the
   // numbering stays continuous and auditable.
-  if (!eq(inv.status, 'draft')) {
-    return res.status(409).json({ error: 'Only a draft can be deleted. Void this invoice instead so the number stays on the record.' });
+  try {
+    sm.assertAction('invoice', 'remove', inv.toJSON(), {});
+  } catch (e) {
+    if (e instanceof sm.TransitionError) return res.status(e.status).json({ error: e.message, blockers: e.blockers });
+    throw e;
   }
   await inv.destroy();
   res.json({ ok: true });
+});
+
+/**
+ * GET /:code/actions — what may happen to this invoice next, and why not.
+ *
+ * The UI asks this rather than reimplementing the rules, so a button is never
+ * offered for something the API will refuse, and a refusal always comes with the
+ * reason rather than a dead control.
+ */
+exports.actions = asyncHandler(async (req, res) => {
+  const inv = await loadInvoice(req, res); if (!inv) return;
+  const received = await ledger.balanceOf({ branch_id: inv.branch_id, subject_type: 'invoice', subject_id: inv.id });
+  const ctx = { received };
+  const row = inv.toJSON();
+  res.json({
+    state: sm.stateOf('invoice', row),
+    states: sm.MACHINES.invoice.states,
+    actions: sm.availableActions('invoice', row, ctx),
+    next: sm.nextRecommended('invoice', row, ctx),
+  });
 });

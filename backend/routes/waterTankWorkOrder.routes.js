@@ -11,7 +11,8 @@ const ctrl = require('../controllers/waterTankWorkOrder.controller');
 router.use(authMiddleware);
 
 router.get('/reference', canRead, ctrl.reference);
-router.get('/document/reference', canRead, ctrl.documentReference);   // before /:idrouter.get('/', canRead, ctrl.list);
+router.get('/document/reference', canRead, ctrl.documentReference);   // before /:id
+router.get('/', canRead, ctrl.list);
 router.get('/:id', canRead, ctrl.detail);
 router.patch('/:id', canOperate, ctrl.update);
 // SSPC-WTCM-PWO-01 project work order document
@@ -29,5 +30,12 @@ router.post('/:id/schedule', canOperate, ctrl.schedule);
 router.post('/:id/start', canOperate, ctrl.start);
 router.post('/:id/complete', canOperate, ctrl.complete);
 router.post('/:id/verify', canOperate, ctrl.verify);
+// Provider payouts — moved here from the unguarded generic /wt-ops router, and
+// written through the single money ledger. Recording one is a finance action;
+// reversing one is a correction to the books and stays with administrators.
+router.get('/:id/actions', canRead, ctrl.actions);
+router.get('/:id/payouts', canRead, ctrl.payoutHistory);
+router.post('/:id/pay-provider', canTransact, ctrl.payProvider);
+router.post('/:id/pay-provider/:eventId/reverse', canAdminister, ctrl.reversePayout);
 
 module.exports = router;

@@ -525,9 +525,39 @@ const WtCommLog = sequelize.define('WtCommLog', {
   summary: D.TEXT, ref_type: D.STRING(40), ref_code: D.STRING(30), logged_at: D.DATE,
 }, { tableName: 'wt_comm_logs' });
 
+/*
+ * The money ledger (migration 0082). Append-only: a correction is a new row with
+ * a negative amount pointing at what it reverses, never an edit. `timestamps` is
+ * off apart from created_at for exactly that reason — there is nothing to update.
+ */
+const WtMoneyEvent = sequelize.define('WtMoneyEvent', {
+  ...base,
+  event_type: { type: D.STRING(40), allowNull: false },
+  direction: { type: D.STRING(4), allowNull: false },
+  subject_type: { type: D.STRING(20), allowNull: false },
+  subject_id: { type: D.INTEGER, allowNull: false },
+  subject_code: D.STRING(30),
+  amount: { type: D.DECIMAL(15, 2), allowNull: false },
+  currency: { type: D.STRING(8), defaultValue: 'BDT' },
+  method: D.STRING(40),
+  reference: D.STRING(120),
+  received_on: D.DATEONLY,
+  idempotency_key: { type: D.STRING(120), allowNull: false },
+  reverses_event_id: D.INTEGER,
+  reversal_reason: D.STRING(255),
+  project_id: D.STRING(30),
+  client_name: D.STRING(200),
+  provider_name: D.STRING(160),
+  note: D.TEXT,
+  origin: { type: D.STRING(40), defaultValue: 'api' },
+  actor: D.STRING(120),
+  actor_id: D.INTEGER,
+  created_at: { type: D.DATE, defaultValue: D.NOW },
+}, { tableName: 'wt_money_events', timestamps: false });
+
 module.exports = {
   WtClient, WtServiceRequest, WtSiteAssessment, WtQuotation, WtWorkOrder,
   WtProject, WtProvider, WtAmcContract, WtInvoice, WtComplaint, WtCommLog,
   WtWarranty, WtIncident, WtClientEvent, WtRecordComment, WtEnquiry,
-  WtProjectDisbursement, WtAmcVisit,
+  WtProjectDisbursement, WtAmcVisit, WtMoneyEvent,
 };

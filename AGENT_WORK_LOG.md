@@ -1900,3 +1900,86 @@ Browser confirmation of the role matrix and the token-leak fix could not be done
 the Chrome extension disconnected and the admin session expired. Everything above
 is source- and API-verified. When you next sign in, the checks are: a wt-ops write
 as a non-admin role must 403, and no network response may contain `access_token`.
+
+---
+
+## 2026-08-12 — Claude — COMPLETED: Water Tank Phase 2 (single write authority + money safety)
+
+Branch `water-tank/phase-0-baseline`. Two halves: one writer for money, one
+declaration of every lifecycle rule.
+
+### FIRST — two defects I introduced in Phase 1, found and fixed here
+1. **A route was destroyed by my own script.** `waterTankWorkOrder.routes.js:14`
+   read `...ctrl.documentReference);   // before /:idrouter.get('/', canRead,
+   ctrl.list);` — the newline was eaten, so `GET /api/wt-work-orders` was inside
+   a comment. The work-orders register would have returned 404 with no error
+   anywhere. `node --check` passes on this happily; it is valid JavaScript.
+   Fixed, and I then wrote a route-inventory diff (every `router.<verb>('path')`
+   in all 11 files, before Phase 1 vs now) which confirmed this was the ONLY
+   route lost. That check now runs as part of verification.
+2. **The Phase 1 role sweep missed `waterTankOps.routes.js` entirely.** My
+   "all 143 routes carry a role guard" was true of the ten specialist routers I
+   listed by name — and wt-ops, the one with the generic CRUD and both money
+   endpoints, was not among them. Until this commit any authenticated user,
+   including a `tenant` or an `owner`, could POST a payment. Now guarded, and
+   verified with real tokens: tenant and owner get 403 on receipts, payouts,
+   deletes, and even the dashboard read.
+
+### Money: one writer, an append-only ledger (migration 0082)
+`wt_invoices.paid_amount` and `wt_work_orders.provider_paid_amount` were
+incremented in place — read, add, write — outside any transaction, by two
+different routes with different rules (wt-ops would take a payment against a
+DRAFT invoice; the invoice controller refuses). Two interleaved requests lose a
+payment and nothing in the data shows it happened.
+
+New `wt_money_events` table + `services/wtLedger.service.js`:
+- every post locks the subject row `FOR UPDATE` inside one transaction
+- balance is `SUM(amount)` over the rows; the old columns are now a CACHE
+  recomputed from that sum, never incremented
+- `amount` is SIGNED — a correction is a compensating row pointing at the
+  original, never an edit or a delete, so the mistake and the fix both stay
+- `idempotency_key` unique per branch; a double-click returns the ORIGINAL row
+  and the response says `duplicate: true` so the UI does not claim a second
+  payment landed
+- existing history was BACKFILLED (8 rows: 2 invoice receipts, 6 payouts), so
+  the ledger is complete from day one rather than from deployment
+
+`/wt-ops/invoices/:id/record-payment` and `/wt-ops/work-orders/:id/pay-provider`
+now return **410** naming their replacement. Payouts moved to the work-order
+controller behind `canTransact`. Reversals sit behind `canAdminister`.
+
+### Lifecycle: `services/wtStateMachine.service.js`
+Transitions for quotation / work order / invoice / AMC declared once. Two kinds
+of obstacle, deliberately distinct: **blockers** refuse (they would corrupt the
+record or break a contract), **warnings** proceed with a note — the advisory
+pattern from `wtProject.stageWarning()`, because software that refuses to record
+what actually happened gets worked around in a spreadsheet.
+`GET /:code/actions` lets the UI ask instead of reimplementing the rules.
+
+**This closed a real hole:** `invoice.void` previously voided unconditionally and
+set `outstanding = 0` — including on an invoice the client had already paid. The
+receivable vanished while the receipts stayed in the ledger, and nothing said so.
+It is now refused with "reverse the receipt first".
+
+### Verified
+- **86 Phase 2 assertions, 0 failures**, across three suites against the real DB:
+  - 8 concurrent identical posts → exactly 1 ledger row, 7 told "duplicate"
+  - 5 identical posts with NO key → still collapse to 1 (derived key)
+  - 4 genuinely different concurrent payments → all 4 land, no lost update
+  - two requests racing for the last 4,400 → exactly one wins, never over-collects
+  - reversal nets the balance, original row untouched, cannot be replayed or stacked
+  - a corrupted cache recomputes back to the ledger sum
+  - tenant/owner 403 on every money route
+- Phase 1 suite re-run: 30/30 still pass (I reported this as "28/28" last time —
+  the correct count is 30; nothing else about that report changes).
+- Route inventory: no route dropped. All 11 modules `require()` and mount.
+- `npm run build` clean at 1970 modules.
+
+### NOT done in this phase
+- Project and enquiry transitions are declared nowhere yet; only the four
+  entities above are in the machine.
+- The `/wt-ops/:entity/advance` generic pipeline still exists for the non-
+  specialist entities and does not consult the state machine.
+- Browser QA still outstanding — verification here is API-level with minted
+  tokens, which is stronger for the role matrix than clicking, but no one has
+  yet watched the Payments screen post a receipt through the new endpoint.

@@ -643,3 +643,109 @@ exports.voidDocument = asyncHandler(async (req, res) => {
   await logEvent(req, wo, 'work order signature voided', req.body.reason || '');
   res.json({ work_order: wo });
 });
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Provider payouts
+ *
+ * These used to live on /wt-ops/work-orders/:id/pay-provider, alongside the
+ * generic CRUD and with no role guard on the router at all. A payout is the
+ * money side of THIS work order, so it belongs on the work order's own
+ * controller behind canTransact, and the movement itself is written by
+ * wtLedger.service — the single authority for Water Tank money.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** POST /wt-work-orders/:id/pay-provider — record a full or partial payout. */
+exports.payProvider = asyncHandler(async (req, res) => {
+  const wo = await load(req, res); if (!wo) return;
+  const ledger = require('../services/wtLedger.service');
+  try {
+    const out = await ledger.recordProviderPayout({
+      branch_id: wo.branch_id,
+      work_order_id: wo.id,
+      amount: num(req.body?.amount),
+      method: req.body?.method || null,
+      reference: req.body?.reference || null,
+      paid_on: req.body?.paid_on || today(),
+      note: req.body?.note || null,
+      idempotency_key: req.body?.idempotency_key || null,
+      actor: actorOf(req),
+      actor_id: req.user?.id || null,
+    });
+
+    if (!out.duplicate) {
+      await M.WtCommLog.create({
+        branch_id: wo.branch_id, client_name: wo.client_name, channel: 'note', direction: 'outbound',
+        summary: `Provider payout ${out.event.amount} to ${wo.provider_name || 'provider'} on ${wo.code}${req.body?.reference ? ` (ref ${req.body.reference})` : ''}`,
+        ref_type: 'work-orders', ref_code: wo.code, logged_at: new Date(),
+      }).catch(() => {});
+    }
+
+    await wo.reload();
+    res.json({
+      work_order: wo,
+      paid: out.standing.paid,
+      remaining: out.standing.remaining,
+      event: out.event,
+      duplicate: out.duplicate,
+      message: out.duplicate
+        ? 'This payout was already recorded — nothing was paid twice.'
+        : 'Provider payout recorded.',
+    });
+  } catch (e) {
+    if (e instanceof ledger.LedgerError) return res.status(e.status).json({ error: e.message, ...(e.remaining != null ? { remaining: e.remaining } : {}) });
+    throw e;
+  }
+});
+
+/** POST /wt-work-orders/:id/pay-provider/:eventId/reverse — undo a payout. */
+exports.reversePayout = asyncHandler(async (req, res) => {
+  const wo = await load(req, res); if (!wo) return;
+  const ledger = require('../services/wtLedger.service');
+  try {
+    const out = await ledger.reverse({
+      branch_id: wo.branch_id,
+      event_id: Number(req.params.eventId),
+      reason: req.body?.reason,
+      actor: actorOf(req),
+      actor_id: req.user?.id || null,
+    });
+    await wo.reload();
+    res.json({ work_order: wo, standing: out.standing, event: out.event, message: 'Payout reversed.' });
+  } catch (e) {
+    if (e instanceof ledger.LedgerError) return res.status(e.status).json({ error: e.message });
+    throw e;
+  }
+});
+
+/** GET /wt-work-orders/:id/payouts — the ledger rows behind this work order. */
+exports.payoutHistory = asyncHandler(async (req, res) => {
+  const wo = await load(req, res); if (!wo) return;
+  const ledger = require('../services/wtLedger.service');
+  const subject = { branch_id: wo.branch_id, subject_type: 'work_order', subject_id: wo.id };
+  const rows = await ledger.historyOf(subject);
+  const paid = Math.abs(await ledger.balanceOf(subject));
+  res.json({ rows, paid, fee: num(wo.provider_fee), remaining: ledger.round2(num(wo.provider_fee) - paid) });
+});
+
+/**
+ * GET /wt-work-orders/:id/actions — the lifecycle, answered from one place.
+ *
+ * The work order screen previously decided for itself which buttons to show,
+ * duplicating rules the endpoints enforce. Both now read wtStateMachine, so an
+ * offered action is one the API will accept and a refused one carries its reason.
+ */
+exports.actions = asyncHandler(async (req, res) => {
+  const wo = await load(req, res); if (!wo) return;
+  const sm = require('../services/wtStateMachine.service');
+  const ledger = require('../services/wtLedger.service');
+  const paid = Math.abs(await ledger.balanceOf({ branch_id: wo.branch_id, subject_type: 'work_order', subject_id: wo.id }));
+  const ctx = { payoutPaid: paid, payoutRemaining: ledger.round2(num(wo.provider_fee) - paid) };
+  const row = wo.toJSON();
+  res.json({
+    state: sm.stateOf('work_order', row),
+    states: sm.MACHINES.work_order.states,
+    actions: sm.availableActions('work_order', row, ctx),
+    next: sm.nextRecommended('work_order', row, ctx),
+    payout: { fee: num(wo.provider_fee), paid, remaining: ctx.payoutRemaining },
+  });
+});
