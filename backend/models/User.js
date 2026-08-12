@@ -44,6 +44,15 @@ const User = sequelize.define('User', {
   tfa_secret: {
     type: DataTypes.STRING,
   },
+  // ── portal accounts (migration 0085) ──
+  // A password an administrator generated is one the holder never chose, so the
+  // first sign-in must replace it.
+  must_change_password: { type: DataTypes.BOOLEAN, defaultValue: false },
+  password_changed_at: DataTypes.DATE,
+  last_login_at: DataTypes.DATE,
+  // Only the hash of a reset token is stored.
+  reset_token_hash: DataTypes.STRING(128),
+  reset_token_expires_at: DataTypes.DATE,
 }, {
   tableName: 'users',
   underscored: true,

@@ -50,6 +50,7 @@ const WtClient = sequelize.define('WtClient', {
   // Portal access (0084)
   portal_token_hash: D.STRING(128), portal_token_expires_at: D.DATE,
   portal_last_seen_at: D.DATE, portal_revoked_at: D.DATE,
+  portal_user_id: D.INTEGER,
 }, { tableName: 'wt_clients' });
 
 const WtServiceRequest = sequelize.define('WtServiceRequest', {
@@ -341,6 +342,7 @@ const WtProvider = sequelize.define('WtProvider', {
   // application completes, this outlives it.
   portal_token_hash: D.STRING(128), portal_token_expires_at: D.DATE,
   portal_last_seen_at: D.DATE, portal_revoked_at: D.DATE,
+  portal_user_id: D.INTEGER,
   onboarding_submission_status: { type: D.STRING(30), defaultValue: 'Staff Draft' },
   onboarding_last_step: { type: D.INTEGER, defaultValue: 0 },
   bank_details: D.JSON, proposed_rates: D.JSON, payment_verified: { type: D.BOOLEAN, defaultValue: false },

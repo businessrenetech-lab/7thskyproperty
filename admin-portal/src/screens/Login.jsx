@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -124,7 +124,12 @@ export default function Login() {
           </div>
           <div ref={googleBtnRef} style={{ display: 'flex', justifyContent: 'center' }} />
         </form>
-        <p style={{ textAlign: 'center', color: 'var(--muted-2)', fontSize: 12, marginTop: 18 }}>Secure enterprise environment</p>
+        {/* Providers and clients sign in here too, and they cannot ring the
+            office when they forget — this is the only way back in for them. */}
+        <p style={{ textAlign: 'center', fontSize: 13, marginTop: 16 }}>
+          <Link to="/forgot-password">Forgotten your password?</Link>
+        </p>
+        <p style={{ textAlign: 'center', color: 'var(--muted-2)', fontSize: 12, marginTop: 14 }}>Secure enterprise environment</p>
       </div>
     </div>
   );

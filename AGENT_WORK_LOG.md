@@ -2305,3 +2305,77 @@ Regression: Phases 1–5 all green. Build clean at 1976 modules.
 - Email delivery of portal links — they are copied by hand from the admin card.
   Phase 7 wires SMTP.
 - Browser QA of the two portal screens.
+
+---
+
+## 2026-08-13 — Claude — BUILD: portal ACCOUNTS (email + password, auto-provisioned)
+
+Extends Phase 6. The magic link is right for one-off access and wrong for a
+lasting relationship: it expires, cannot be remembered, forwarding it hands over
+everything, and the holder can change nothing about their own access. Providers
+and clients now get a real login, and both mechanisms coexist.
+
+### What happens automatically
+When a provider's MASTER AGREEMENT or a client's SERVICE AGREEMENT completes,
+`partyRoleActivation` now also creates the account and emails the credentials.
+Both hooks are best-effort and sit outside what can roll the signature back — a
+fully executed agreement must never fail because SMTP was down or no email was
+on file.
+
+### Accounts live in the EXISTING users table
+Roles `wt_provider` and `wt_client`, routed to `/portal` by PORTAL_PATHS. A
+parallel identity system is how a codebase ends up with two ways to authenticate
+and only one of them patched when something is found.
+
+### Password self-service — which did not exist anywhere, for any role
+Before this a password could only be set FOR someone by an administrator, so
+every forgotten password was a phone call. External parties cannot ring the
+office, so `/auth/forgot-password`, `/auth/reset-password` and
+`/auth/change-password` were added; staff get the same capability as a result.
+
+- The temporary password is generated, emailed, and stored only as a bcrypt
+  hash. `must_change_password` forces a replacement at first sign-in, so a
+  password that travelled through an inbox stops working once used.
+- The gate lives in `RequireAuth`, not on the login screen — it has to hold for
+  EVERY authenticated destination, or a bookmarked deep link walks past it.
+- Reset tokens are stored as SHA-256, single-use, one-hour expiry.
+- forgot-password answers identically for a known and an unknown address.
+  Enumeration protection is the identical response, not the rate limit.
+
+### An email already in use is REFUSED, never repointed
+Attaching a party to an existing account would silently give that person sight
+of records that are not theirs, and a collision usually means a typo. 409 with
+an explanation instead.
+
+### Settings → Portal Accounts
+New register at `/water-tank/portal-accounts`, linked from Settings and the
+sidebar. Lists every provider and client with account state, INCLUDING those who
+cannot be invited, carrying the reason ("No email address on file") — hiding
+them would leave an operator wondering why someone never appears. Create access,
+reset password, suspend, restore. The temporary password is shown once, as a
+fallback for when the email does not arrive.
+
+### Two things the tests found
+- **My test, not the code:** the reset tests used 20-character stand-in tokens,
+  and `completeReset` correctly refuses anything under 32 before it looks
+  anything up. Real tokens are 64 hex chars. Verified the service directly
+  before changing anything, rather than "fixing" working code.
+- **The code, genuinely:** re-running hit 429. The limiter was doing its job,
+  but 10/hour PER IP covers a whole office behind one NAT address — a handful of
+  colleagues resetting on the same morning would lock each other out. Split by
+  purpose: forgot-password (sends mail, worth throttling) 20/hour;
+  reset-password (sends nothing, already needs a valid single-use token) 60/hour.
+
+### Verified — 61 assertions for this feature, 0 failures; 387 across the module
+Including: the password stored hashed and matching what was issued; provisioning
+idempotent; a clashing email refused AND the original link intact AND the
+clashing party given nothing; the emailed password ceasing to work after first
+change while the chosen one works; a portal login refused on three admin
+endpoints and a staff login refused on the portal endpoint; suspension blocking
+sign-in without breaking the link; reset tokens single-use and expiring with 410.
+All previous suites still green. Build clean at 1979 modules.
+
+### NOT done
+- Browser QA of the new screens (Portal Accounts, forced change, forgot/reset).
+- Email delivery is best-effort and unverified end to end here — SMTP is
+  configured, but no message was actually sent to a real inbox in testing.

@@ -4,7 +4,13 @@ import { LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 // Note: role='owner' is a landlord in Seventh Sky — the URL uses /landlord for clarity.
-export const PORTAL_PATHS = { buyer: '/buyer', tenant: '/tenant', supplier: '/supplier', owner: '/landlord', landlord: '/landlord' };
+// Water tank providers and clients get their own portal, which renders itself
+// entirely (own header, own shell) rather than sitting inside PortalLayout.
+export const PORTAL_PATHS = {
+  buyer: '/buyer', tenant: '/tenant', supplier: '/supplier',
+  owner: '/landlord', landlord: '/landlord',
+  wt_provider: '/portal', wt_client: '/portal',
+};
 export const portalPath = (role) => PORTAL_PATHS[role] || null;
 
 export default function PortalLayout() {

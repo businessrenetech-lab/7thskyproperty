@@ -400,6 +400,42 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
       } catch (e) {
         console.warn('[waterTank] invoice draft on sign:', e.message);
       }
+
+      /*
+       * Portal access. Signing the service agreement is the moment this client
+       * becomes someone with an ongoing relationship — invoices to pay, visits
+       * to expect, warranties to claim on — so the account is created here
+       * rather than waiting for somebody to remember.
+       *
+       * Best-effort, like the two above: a signature that has completed must not
+       * be rolled back because SMTP was down or the client has no email on file.
+       */
+      try {
+        const accounts = require('./wtPortalAccount.service');
+        const M2 = require('../models/waterTankOps');
+        const sb = typeof terms.schedule_b === 'string'
+          ? (() => { try { return JSON.parse(terms.schedule_b) || {}; } catch { return {}; } })()
+          : (terms.schedule_b || {});
+        const clientCode = terms.client_code || sb.client_code;
+        const client = clientCode
+          ? await M2.WtClient.findOne({ where: { branch_id: envelope.branch_id, code: clientCode } })
+          : await M2.WtClient.findOne({ where: { branch_id: envelope.branch_id, name: terms.client_name } });
+
+        if (client && !client.portal_user_id) {
+          const out = await accounts.provision({
+            party_type: 'client', party_id: client.id, branch_id: envelope.branch_id,
+          });
+          if (out.created && out.password) {
+            await accounts.sendCredentials({
+              to: out.user.email, name: out.party.name, password: out.password, partyType: 'client',
+            });
+            console.log(`[waterTank] customer portal account created for ${out.user.email}`);
+          }
+        }
+      } catch (e) {
+        // A missing email is the ordinary case, not a fault — say so quietly.
+        console.warn('[waterTank] customer portal account on sign:', e.message);
+      }
     }
 
     // Water Tank provider master agreement: both ordered signers have completed.
@@ -443,6 +479,39 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
           detail: `Version ${agreement.version_no}; effective ${agreement.effective_date}; expires ${agreement.expiry_date}; ${terms.agreed_lines?.length || 0} agreed rates activated.`,
           actor: 'eSign automation', occurred_at: new Date(),
         }, { transaction: tx });
+
+        /*
+         * Portal access. An executed master agreement is the point at which this
+         * provider starts receiving work, so their login is created here rather
+         * than waiting for someone to remember after the first job is assigned.
+         *
+         * Outside the transaction's concerns and best-effort: a fully executed
+         * agreement must never be rolled back because SMTP was unreachable or
+         * the provider has no contact email recorded.
+         */
+        try {
+          const accounts = require('./wtPortalAccount.service');
+          if (!provider.portal_user_id) {
+            const out = await accounts.provision({
+              party_type: 'provider', party_id: provider.id, branch_id: envelope.branch_id,
+            });
+            if (out.created && out.password) {
+              await accounts.sendCredentials({
+                to: out.user.email, name: out.party.name, password: out.password, partyType: 'provider',
+              });
+              await P.WtProviderEvent.create({
+                branch_id: envelope.branch_id, provider_id: provider.id, event_type: 'portal',
+                title: 'Provider portal access issued',
+                detail: `Login created for ${out.user.email} and credentials emailed.`,
+                actor: 'eSign automation', occurred_at: new Date(),
+              }, { transaction: tx }).catch(() => {});
+              console.log(`[waterTank] provider portal account created for ${out.user.email}`);
+            }
+          }
+        } catch (e) {
+          // No email on file is the ordinary case, not a fault.
+          console.warn('[waterTank] provider portal account on sign:', e.message);
+        }
       }
     }
 

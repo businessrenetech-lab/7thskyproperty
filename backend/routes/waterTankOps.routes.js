@@ -47,6 +47,16 @@ router.get('/portal/:partyType/:id', canRead, ctrl.portalStatus);
 router.post('/portal/:partyType/:id/link', canBind, ctrl.issuePortalLink);
 router.delete('/portal/:partyType/:id/link', canAdminister, ctrl.revokePortalLink);
 
+// Portal ACCOUNTS — real logins, as opposed to the one-off links above.
+// Creating one hands an outside party a standing credential, so it sits with
+// those who can bind; suspending stays with administrators.
+const accountsCtrl = require('../controllers/wtPortalAccount.controller');
+router.get('/portal-accounts', canRead, accountsCtrl.directory);
+router.get('/portal-accounts/:partyType/:id', canRead, accountsCtrl.status);
+router.post('/portal-accounts/:partyType/:id', canBind, accountsCtrl.provision);
+router.post('/portal-accounts/:partyType/:id/suspend', canAdminister, accountsCtrl.suspend);
+router.post('/portal-accounts/:partyType/:id/reinstate', canAdminister, accountsCtrl.reinstate);
+
 // Site assessment reference data (checklist templates, equipment, categories)
 router.get('/assessment-reference', canRead, ctrl.assessmentReference);
 

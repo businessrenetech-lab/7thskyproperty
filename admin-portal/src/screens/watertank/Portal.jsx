@@ -62,7 +62,7 @@ const Row = ({ label, children }) => (
 
 /* ── provider ──────────────────────────────────────────────────────────── */
 
-function CompleteForm({ wo, onDone, onCancel, token }) {
+function CompleteForm({ wo, onDone, onCancel, base }) {
   const [f, setF] = useState({ notes: '', summary: '', findings: '' });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -72,7 +72,7 @@ function CompleteForm({ wo, onDone, onCancel, token }) {
     if (!f.summary.trim() && !f.notes.trim()) { setErr('Say what you did before marking it complete.'); return; }
     setBusy(true); setErr('');
     try {
-      const r = await api.post(`/public/wt-portal/${token}/work-orders/${wo.code}/complete`, f);
+      const r = await api.post(`${base}/work-orders/${wo.code}/complete`, f);
       toast.ok(r.data.message);
       onDone();
     } catch (e) { setErr(errText(e, 'Could not submit this')); setBusy(false); }
@@ -104,7 +104,7 @@ function CompleteForm({ wo, onDone, onCancel, token }) {
   );
 }
 
-function ProviderPortal({ data, token, reload }) {
+function ProviderPortal({ data, base, reload }) {
   const [completing, setCompleting] = useState(null);
   const [scheduling, setScheduling] = useState(null);
   const [date, setDate] = useState('');
@@ -113,7 +113,7 @@ function ProviderPortal({ data, token, reload }) {
   const act = async (wo, path, body, label) => {
     setBusy(`${wo.code}-${path}`);
     try {
-      const r = await api.post(`/public/wt-portal/${token}/work-orders/${wo.code}/${path}`, body || {});
+      const r = await api.post(`${base}/work-orders/${wo.code}/${path}`, body || {});
       toast.ok(r.data.message || label);
       (r.data.warnings || []).forEach((w) => toast.ok(w));
       setScheduling(null); setDate('');
@@ -124,7 +124,7 @@ function ProviderPortal({ data, token, reload }) {
 
   const signLink = async (wo) => {
     try {
-      const r = await api.post(`/public/wt-portal/${token}/work-orders/${wo.code}/signing-link`);
+      const r = await api.post(`${base}/work-orders/${wo.code}/signing-link`);
       window.location.href = r.data.signing_path;
     } catch (e) { toast.err(errText(e, 'Could not open the document')); }
   };
@@ -225,7 +225,7 @@ function ProviderPortal({ data, token, reload }) {
             </div>
 
             {completing === w.code && (
-              <CompleteForm wo={w} token={token}
+              <CompleteForm wo={w} base={base}
                 onCancel={() => setCompleting(null)}
                 onDone={() => { setCompleting(null); reload(); }} />
             )}
@@ -238,23 +238,29 @@ function ProviderPortal({ data, token, reload }) {
 
 /* ── customer ──────────────────────────────────────────────────────────── */
 
-function CustomerPortal({ data, token, reload }) {
+function CustomerPortal({ data, base, reload }) {
   const [busy, setBusy] = useState('');
   const t = data.totals || {};
 
   const decide = async (q, decision) => {
     setBusy(q.code);
     try {
-      const r = await api.post(`/public/wt-portal/${token}/quotations/${q.code}/decision`, { decision });
+      const r = await api.post(`${base}/quotations/${q.code}/decision`, { decision });
       toast.ok(r.data.message);
       reload();
     } catch (e) { toast.err(errText(e, 'Could not record that')); }
     finally { setBusy(''); }
   };
 
+  /*
+   * Opened in a new tab rather than fetched, so the browser renders the PDF
+   * itself. On the token path the credential is in the URL; on the session path
+   * the auth cookie travels with the request, which is why this works without
+   * an Authorization header.
+   */
   const openPdf = (inv) => {
-    const base = api.defaults.baseURL || '';
-    window.open(`${base}/public/wt-portal/${token}/invoices/${inv.code}/pdf`, '_blank');
+    const apiRoot = api.defaults.baseURL || '';
+    window.open(`${apiRoot}${base}/invoices/${inv.code}/pdf`, '_blank');
   };
 
   return (
@@ -407,7 +413,7 @@ function CustomerPortal({ data, token, reload }) {
 
 /* ── message box, shared ───────────────────────────────────────────────── */
 
-function MessageBox({ token }) {
+function MessageBox({ base }) {
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -415,7 +421,7 @@ function MessageBox({ token }) {
     if (!body.trim()) return;
     setBusy(true);
     try {
-      const r = await api.post(`/public/wt-portal/${token}/message`, { body });
+      const r = await api.post(`${base}/message`, { body });
       toast.ok(r.data.message);
       setBody('');
     } catch (e) { toast.err(errText(e, 'Could not send that')); }
@@ -439,18 +445,35 @@ function MessageBox({ token }) {
 /* ── screen ────────────────────────────────────────────────────────────── */
 
 export default function Portal() {
+  /*
+   * Two ways in, one screen.
+   *
+   *   /portal/:token — a magic link, no account needed. Right for a client who
+   *                    will decide one quotation and never come back.
+   *   /portal        — a signed-in provider or client with their own login.
+   *
+   * The only difference is which API prefix the calls use, so the components
+   * below take `api` paths built from one base and never need to know. The
+   * server returns the same whitelisted dossier either way.
+   */
   const { token } = useParams();
+  const base = token ? `/public/wt-portal/${token}` : '/wt-portal';
+  const meUrl = token ? base : `${base}/me`;
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const load = useCallback(() => {
     setLoading(true); setError('');
-    api.get(`/public/wt-portal/${token}`)
+    api.get(meUrl)
       .then((r) => setData(r.data))
-      .catch((e) => { setData(null); setError(errText(e, 'This link could not be opened')); })
+      .catch((e) => {
+        setData(null);
+        setError(errText(e, token ? 'This link could not be opened' : 'Could not load your portal'));
+      })
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [meUrl, token]);
   useEffect(load, [load]);
 
   if (loading) return <Shell title="Portal" subtitle="Loading…"><Loading /></Shell>;
@@ -476,9 +499,9 @@ export default function Portal() {
       onRefresh={load}
     >
       {isProvider
-        ? <ProviderPortal data={data} token={token} reload={load} />
-        : <CustomerPortal data={data} token={token} reload={load} />}
-      <MessageBox token={token} />
+        ? <ProviderPortal data={data} base={base} reload={load} />
+        : <CustomerPortal data={data} base={base} reload={load} />}
+      <MessageBox base={base} />
       <p className="muted" style={{ fontSize: 11.5, textAlign: 'center' }}>
         This is a private link. Please do not forward it — anyone who has it can see this page.
       </p>

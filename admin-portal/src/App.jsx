@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useParams, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import Layout from './ui/Layout';
@@ -51,6 +51,8 @@ import WTWorkQueue from './screens/watertank/WorkQueue';
 import WTAmcDetail from './screens/watertank/AmcDetail';
 import WTCalendar from './screens/watertank/Calendar';
 import WTPortal from './screens/watertank/Portal';
+import WTPortalAccounts from './screens/watertank/PortalAccounts';
+import { ForgotPassword, ResetPassword, ChangePassword } from './screens/PasswordScreens';
 import WTClients from './screens/watertank/Clients';
 import WTClientDetail from './screens/watertank/clients/ClientDashboard';
 import WTClientCreate from './screens/watertank/clients/ClientCreate';
@@ -168,6 +170,10 @@ export default function App() {
             {/* Provider and customer portals. PUBLIC by design — the token in the
                 URL is the credential, so this must sit outside RequireAuth. */}
             <Route path="/portal/:token" element={<WTPortal />} />
+            {/* Password self-service. Public: someone who cannot sign in is
+                exactly who needs these. */}
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
 
             {/* Role-routed portals (buyer/tenant/supplier/landlord) — one SPA, one auth,
                 one style system. Everything lives inside the same admin-portal build. */}
@@ -178,6 +184,15 @@ export default function App() {
               <Route path="/landlord" element={<LandlordPortal />} />
               {/* Legacy /owner path — redirect old links to /landlord. */}
               <Route path="/owner" element={<Navigate to="/landlord" replace />} />
+            </Route>
+
+            {/* Water tank provider / customer portal for a party with a real login.
+                Outside PortalLayout because it renders its own shell, and outside
+                AdminGate because these roles are exactly who it is for. The same
+                screen also serves the tokenless magic-link route above. */}
+            <Route element={<RequireAuth><Outlet /></RequireAuth>}>
+              <Route path="/portal" element={<WTPortal />} />
+              <Route path="/account/password" element={<ChangePassword />} />
             </Route>
 
             {/* Admin CRM (staff only) */}
@@ -339,6 +354,7 @@ export default function App() {
               <Route path="/water-tank/complaints/:code" element={<WTComplaints />} />
               <Route path="/water-tank/communication" element={<WTCommLog />} />
               <Route path="/water-tank/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/water-tank/portal-accounts" element={<WTPortalAccounts />} />
               <Route path="/water-tank/settings" element={<WaterTankSettings />} />
             </Route>
 

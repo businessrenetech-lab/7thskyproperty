@@ -47,6 +47,21 @@ export default function Settings() {
         search={q} onSearch={setQ}
       />
 
+      {/* Portal access is a settings concern: who outside the business can
+          sign in, and how that is granted. */}
+      <div className="wt-card" style={{ padding: 18 }}>
+        <div className="wt-panel-head">
+          <div>
+            <h2 className="wt-section-title">Provider &amp; Customer Portals</h2>
+            <p className="wt-subtitle" style={{ marginBottom: 0 }}>
+              Logins are created and emailed automatically when a master or service agreement is
+              signed. <Link to="/water-tank/portal-accounts">Open Portal Accounts</Link> to invite
+              someone the automatic path missed, reset a password, or withdraw access.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
         <Stages title="Client Management SOP" steps={CLIENT_SOP} />
         <Stages title="Third-Party Provider SOP" steps={PROVIDER_SOP} />

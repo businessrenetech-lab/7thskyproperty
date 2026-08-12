@@ -59,6 +59,9 @@ const getSafeUserAttributes = async (includePassword = false) => {
   const columns = await getTableColumns('users');
   const attributes = [...BASE_SAFE_USER_ATTRIBUTES];
   if (hasColumn(columns, 'status')) attributes.push('status');
+  // The frontend has to know to force a password change before showing anything
+  // else, so this travels with every /me and /login response.
+  if (hasColumn(columns, 'must_change_password')) attributes.push('must_change_password');
   if (includePassword) attributes.push('password');
   return attributes;
 };
@@ -186,6 +189,10 @@ exports.googleLogin = async (req, res) => {
     }
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: AUTH_TOKEN_TTL });
+
+    // Signing in is the only reliable moment to know the link/credentials
+    // actually reached the person they were sent to.
+    await User.update({ last_login_at: new Date() }, { where: { id: user.id } }).catch(() => {});
     res.cookie(AUTH_COOKIE_NAME, token, getAuthCookieOptions());
     res.json({ token, user });
   } catch (error) {
@@ -315,5 +322,67 @@ exports.setStaffPassword = async (req, res) => {
   } catch (error) {
     console.error('[SetPassword Error]:', error.message);
     res.status(500).json({ error: 'Failed to update password.' });
+  }
+};
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Password self-service
+ *
+ * None of this existed before: a password could only be set FOR someone by an
+ * administrator, so every forgotten password was a phone call. Portal accounts
+ * make that untenable — external parties cannot ring the office to get back in —
+ * and staff get the same capability as a side effect.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const portalAccounts = require('../services/wtPortalAccount.service');
+
+/**
+ * POST /auth/forgot-password  { email }
+ *
+ * Always answers the same way whether or not the address exists. Reporting "no
+ * such account" would turn this into a way to discover who has one.
+ */
+exports.forgotPassword = async (req, res) => {
+  try {
+    await portalAccounts.requestReset(req.body?.email);
+    res.json({
+      ok: true,
+      message: 'If that address has an account, a reset link is on its way. It is valid for one hour.',
+    });
+  } catch (err) {
+    console.error('[auth] forgotPassword:', err.message);
+    // Even a genuine failure answers the same way, for the same reason.
+    res.json({ ok: true, message: 'If that address has an account, a reset link is on its way.' });
+  }
+};
+
+/** POST /auth/reset-password  { token, password } */
+exports.resetPassword = async (req, res) => {
+  try {
+    await portalAccounts.completeReset({ token: req.body?.token, password: req.body?.password });
+    res.json({ ok: true, message: 'Your password has been changed. You can sign in with it now.' });
+  } catch (err) {
+    if (err instanceof portalAccounts.AccountError) return res.status(err.status).json({ error: err.message });
+    console.error('[auth] resetPassword:', err.message);
+    res.status(500).json({ error: 'Could not reset the password.' });
+  }
+};
+
+/**
+ * POST /auth/change-password  { current_password, new_password }
+ * Also the endpoint that satisfies a forced first-time change.
+ */
+exports.changePassword = async (req, res) => {
+  try {
+    await portalAccounts.changePassword({
+      user_id: req.user.id,
+      current_password: req.body?.current_password,
+      new_password: req.body?.new_password,
+    });
+    res.json({ ok: true, message: 'Password changed.' });
+  } catch (err) {
+    if (err instanceof portalAccounts.AccountError) return res.status(err.status).json({ error: err.message });
+    console.error('[auth] changePassword:', err.message);
+    res.status(500).json({ error: 'Could not change the password.' });
   }
 };

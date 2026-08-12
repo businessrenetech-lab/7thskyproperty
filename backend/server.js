@@ -157,6 +157,7 @@ mount('/api/wt-catalogue', './routes/waterTankCatalogue.routes');
 mount('/api/wt-agreement-hub', './routes/waterTankAgreementHub.routes');
 mount('/api/public/water-tank', './routes/publicWaterTank.routes');
 mount('/api/public/wt-portal', './routes/publicWtPortal.routes');
+mount('/api/wt-portal', './routes/wtPortalSession.routes');
 mount('/api/wt-agreements', './routes/wtAgreements.routes');
 mount('/api/public/short-stay', './routes/publicShortTermStay.routes');
 mount('/api/landlord', './routes/landlord.routes');

@@ -32,4 +32,35 @@ router.get('/staff', authMiddleware, roleMiddleware(['super_admin', 'branch_admi
 router.patch('/role', authMiddleware, roleMiddleware(['super_admin', 'branch_admin']), authController.updateRole);
 router.patch('/staff-password', authMiddleware, roleMiddleware(['super_admin', 'branch_admin']), authController.setStaffPassword);
 
+// Password self-service, rate limited by purpose rather than with one number.
+//
+// forgot-password SENDS MAIL, so it is the one worth throttling: unthrottled it
+// is a way to bombard an address. But the limit is per IP and a whole office
+// sits behind one NAT address, so it has to be loose enough that a handful of
+// colleagues resetting on the same morning do not lock each other out. Ten an
+// hour was too tight for that; twenty is not.
+//
+// Protection against ACCOUNT ENUMERATION comes from the identical response, not
+// from this limit — see forgotPassword.
+const forgotLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  message: { error: 'Too many password reset requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// reset-password sends nothing and already requires a valid single-use token,
+// so this only needs to stop brute-forcing the token itself.
+const resetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  message: { error: 'Too many attempts. Please request a new reset link.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+router.post('/forgot-password', forgotLimiter, authController.forgotPassword);
+router.post('/reset-password', resetLimiter, authController.resetPassword);
+router.post('/change-password', authMiddleware, authController.changePassword);
+
 module.exports = router;

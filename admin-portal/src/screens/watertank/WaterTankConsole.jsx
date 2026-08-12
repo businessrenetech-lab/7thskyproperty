@@ -4,7 +4,7 @@ import {
   CloudLightning, LayoutGrid, Users, FileText, ClipboardList, FileSignature,
   Briefcase, Folder, Truck, Shield, Receipt, AlertCircle, MessageSquare,
   Settings, LogOut, Search, Banknote, ShieldCheck, ClipboardCheck, FileBarChart, Tags,
-  ChevronDown, Inbox, CalendarDays,
+  ChevronDown, Inbox, CalendarDays, KeyRound,
 } from 'lucide-react';
 import api from '../../services/api';
 import { ToastHost } from './common';
@@ -98,6 +98,7 @@ export const WT_NAV_GROUPS = [
     items: [
       { to: '/water-tank/communication', label: 'Communication Log', icon: MessageSquare },
       { to: '/water-tank/catalogue', label: 'Price Schedule', icon: Tags, needs: 'bind' },
+      { to: '/water-tank/portal-accounts', label: 'Portal Accounts', icon: KeyRound, needs: 'bind' },
       { to: '/water-tank/settings', label: 'Settings', icon: Settings },
     ],
   },
