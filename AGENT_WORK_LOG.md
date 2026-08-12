@@ -2226,3 +2226,82 @@ Build clean at 1974 modules. No route dropped.
   money-path tests, release QA) remain.
 - `ui/Layout.jsx` and `WtCustomerAgreements.jsx` are still another agent's;
   their legacy agreement links keep working through the Phase 4 redirects.
+
+---
+
+## 2026-08-13 — Claude — COMPLETED: Water Tank Phase 6 (provider & customer portals)
+
+Branch `water-tank/phase-0-baseline`. External parties can now do their own
+steps. Until this, a provider accepted a job by telephoning the office who
+clicked Accept for them, and a client asked for their invoice and someone
+emailed a PDF — staff impersonating someone else, and for anything meant to be
+the other party's decision, not really their decision at all.
+
+### The security model
+Migration 0084 adds `portal_token_hash` / `portal_token_expires_at` /
+`portal_last_seen_at` / `portal_revoked_at` to wt_providers and wt_clients, plus
+an append-only `wt_portal_events` audit table. The pattern is the one already
+proven by provider onboarding: a 32-byte token is shown ONCE and only its
+SHA-256 is stored, so a database dump yields no working links.
+
+Deliberately SEPARATE columns from `onboarding_token_hash`: onboarding expires
+when the application completes, portal access outlives it. Sharing one column
+would mean finishing onboarding either kills portal access or silently extends
+an application link forever.
+
+### The rule the whole service is built around
+**The portal returns a WHITELIST, never a record.** Every other API here hands
+back rows and lets the caller pick — fine behind an admin session, dangerous
+when the payload leaves the building. Two leaks are structurally prevented
+rather than remembered:
+
+- A CLIENT never sees `provider_fee`, `ss_fee`, `provider_paid_amount` or
+  `payout_status`. Those sit on the work order right beside everything the
+  client legitimately sees, so returning the row would publish Seventh Sky's
+  margin on the client's own job.
+- A PROVIDER never sees what the client was charged — no invoice figures, no
+  contract value. Only their own fee and what has been paid against it.
+
+Adding a column to a model therefore cannot widen a portal payload by accident.
+
+Portal actions go through `wtStateMachine`, the same table the admin API obeys,
+so a provider accepting through the portal is subject to exactly the rules as an
+operator accepting on their behalf. Completion files a report with status
+**Submitted, not approved** — the portal lets a provider report their work; it
+does not let them sign it off (SOP-01 Sec. 9 Step 11 keeps verification with
+Seventh Sky).
+
+### Assumptions I got wrong and fixed by checking the models
+Four field names I wrote from memory did not exist: `WtWorkOrder.specific_service`
+and `.photos` (the real columns are `scope`, `service_selections` and boolean
+evidence flags; reports live in `WtServiceReport`), `WtProvider.specialty`
+(it is `approved_services`), `WtQuotation.decision_date` (does not exist), and
+`EnvelopeSigner.party_role` (the column is `role`). Each was caught by querying
+`rawAttributes` before running anything.
+
+### A test that was passing without testing anything
+The first run reported 43/43 — but the two most important checks had SILENTLY
+SKIPPED for want of data: "a provider cannot touch another provider's job" and
+"the state machine still governs portal actions". The ownership boundary is the
+entire security model of the provider portal, and it was verifying nothing.
+Rebuilt both as explicit fixtures rather than hunting for convenient rows, and
+added the happy path so the refusals cannot pass by accident. 55/55 now, with
+the fixtures torn down afterwards (confirmed: 0 rows and 0 live tokens left).
+
+### Verified — 326 assertions, 0 failures
+Phase 6's 55 include: only a hash stored and it matches the issued token; the
+status endpoint never returns the hash; identical error text for unknown and
+wrong-type tokens so probing learns nothing; margin fields absent from real
+client payloads and invoice figures absent from real provider payloads; cross-
+party tokens refused; another provider's work order refused AND unchanged AND
+not reassigned; an already-completed job refused with the state machine's own
+wording; revoke clearing the hash so it matches nothing; re-issue invalidating
+the previous link; tenant/owner refused issuing and accounts refused revoking.
+Regression: Phases 1–5 all green. Build clean at 1976 modules.
+
+### NOT done
+- Photo UPLOAD from the portal. Completion accepts photo URLs and files the
+  report; wiring multipart upload to the existing upload service is a follow-up.
+- Email delivery of portal links — they are copied by hand from the admin card.
+  Phase 7 wires SMTP.
+- Browser QA of the two portal screens.

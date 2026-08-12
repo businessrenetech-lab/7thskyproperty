@@ -23,6 +23,7 @@ import {
   BadgeDollarSign,
 } from 'lucide-react';
 import api from '../../../services/api';
+import PortalLinkCard from '../PortalLinkCard';
 import {
   WtHead, WtTabs, Pill, WtDrawer, Loading, EmptyState, dateFmt, dateTimeFmt, bdt,
   toast, errText, StatusCell, RowActions,
@@ -510,6 +511,12 @@ export default function ProviderDetail() {
           </>
         );
       })()}
+
+      {/* Their own way in: accepting jobs and reporting completion without
+          telephoning the office to have it done for them. */}
+      {tab === 'Overview' && d?.provider?.id && (
+        <PortalLinkCard partyType="provider" partyId={d.provider.id} partyName={d.provider.business_name} />
+      )}
 
       {/* ═══ AGREEMENT & TERRITORY ═══ */}
       {tab === 'Agreement & Territory' && (

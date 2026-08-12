@@ -50,6 +50,7 @@ import WaterTankCatalogue from './screens/watertank/Catalogue';
 import WTWorkQueue from './screens/watertank/WorkQueue';
 import WTAmcDetail from './screens/watertank/AmcDetail';
 import WTCalendar from './screens/watertank/Calendar';
+import WTPortal from './screens/watertank/Portal';
 import WTClients from './screens/watertank/Clients';
 import WTClientDetail from './screens/watertank/clients/ClientDashboard';
 import WTClientCreate from './screens/watertank/clients/ClientCreate';
@@ -164,6 +165,9 @@ export default function App() {
             <Route path="/reference/:token" element={<EmployerReference />} />
             <Route path="/provider-register/:token" element={<ProviderRegister />} />
             <Route path="/water-tank-provider-onboard/:token" element={<WaterTankProviderOnboard />} />
+            {/* Provider and customer portals. PUBLIC by design — the token in the
+                URL is the credential, so this must sit outside RequireAuth. */}
+            <Route path="/portal/:token" element={<WTPortal />} />
 
             {/* Role-routed portals (buyer/tenant/supplier/landlord) — one SPA, one auth,
                 one style system. Everything lives inside the same admin-portal build. */}

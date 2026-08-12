@@ -20,6 +20,7 @@ import {
   MapPin,
 } from 'lucide-react';
 import api from '../../../services/api';
+import PortalLinkCard from '../PortalLinkCard';
 import {
   WtHead, WtTabs, Pill, Loading, EmptyState, DatePicker, WtDrawer, RowActions,
   dateFmt, dateTimeFmt, bdt, titleCase, toast, errText, parseJson,
@@ -422,6 +423,12 @@ export default function ClientDashboard() {
             </div>
           ))}
         </>
+      )}
+
+      {/* Their own way in: seeing their quotations, invoices and receipts, and
+          accepting a quotation themselves rather than telling someone to. */}
+      {tab === 'Account' && c?.id && (
+        <PortalLinkCard partyType="client" partyId={c.id} partyName={c.name} />
       )}
 
       {/* ═══ ACCOUNT ═══ */}

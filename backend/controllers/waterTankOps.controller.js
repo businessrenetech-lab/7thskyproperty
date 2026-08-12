@@ -9,6 +9,7 @@ const { asyncHandler, branchScope, resolveBranchId } = require('../utils/control
 const M = require('../models/waterTankOps');
 const P = require('../models/waterTankProviders');
 const identity = require('../services/wtIdentity.service');
+const sequelize = require('../config/db.config');
 
 const ENTITIES = {
   'clients': { model: M.WtClient, prefix: 'WTCM-C', pad: 4, start: 1, search: ['name', 'mobile', 'email', 'district', 'property_type'] },
@@ -798,5 +799,114 @@ exports.dashboard = asyncHandler(async (req, res) => {
     recent_requests: [...sr].sort((a, b) => b.id - a.id).slice(0, 6),
     upcoming_amc: amc.filter((a) => a.next_visit && !/none/i.test(a.next_visit)).slice(0, 5),
     top_providers: providers.filter((p) => p.rank).slice(0, 3),
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Portal access
+ *
+ * Issuing a link to an external party is a real grant of access, so it sits
+ * behind canBind and is audited on both sides: an entry in wt_portal_events and
+ * a line in the communication log, so the client or provider file shows that a
+ * link went out and who sent it.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** POST /wt-ops/portal/:partyType/:id/link — mint a portal link. */
+exports.issuePortalLink = asyncHandler(async (req, res) => {
+  const portal = require('../services/wtPortal.service');
+  try {
+    const out = await portal.issueToken({
+      party_type: req.params.partyType,
+      party_id: req.params.id,
+      branch_id: resolveBranchId(req),
+      days: req.body?.days,
+    });
+
+    const base = process.env.PORTAL_BASE_URL
+      || `${req.protocol}://${req.get('host')}/admin/portal`;
+
+    await portal.logEvent({
+      branch_id: resolveBranchId(req),
+      party_type: req.params.partyType,
+      party_id: Number(req.params.id),
+      party_code: out.party.code,
+      action: 'link_issued_by_staff',
+      detail: `Issued by ${req.user?.name || req.user?.email || 'staff'}, expires ${out.expires_at.toISOString().slice(0, 10)}`,
+      ip: req.headers['x-forwarded-for'] || req.ip,
+    });
+
+    /*
+     * The token is returned exactly ONCE, here. It is not stored in plaintext
+     * and cannot be shown again — re-issuing mints a new one and invalidates
+     * the old, which is also how access is cut off when a contact leaves.
+     */
+    res.json({
+      url: `${base}/${out.token}`,
+      expires_at: out.expires_at,
+      party: out.party,
+      message: 'Copy this link now — it cannot be shown again. Re-issuing replaces it.',
+    });
+  } catch (e) {
+    if (e instanceof require('../services/wtPortal.service').PortalError) {
+      return res.status(e.status).json({ error: e.message });
+    }
+    throw e;
+  }
+});
+
+/** DELETE /wt-ops/portal/:partyType/:id/link — withdraw portal access. */
+exports.revokePortalLink = asyncHandler(async (req, res) => {
+  const portal = require('../services/wtPortal.service');
+  try {
+    await portal.revokeToken({
+      party_type: req.params.partyType,
+      party_id: req.params.id,
+      branch_id: resolveBranchId(req),
+    });
+    await portal.logEvent({
+      branch_id: resolveBranchId(req),
+      party_type: req.params.partyType,
+      party_id: Number(req.params.id),
+      action: 'link_revoked_by_staff',
+      detail: `Revoked by ${req.user?.name || req.user?.email || 'staff'}`,
+      ip: req.headers['x-forwarded-for'] || req.ip,
+    });
+    res.json({ ok: true, message: 'Portal access withdrawn. The old link no longer works.' });
+  } catch (e) {
+    if (e instanceof require('../services/wtPortal.service').PortalError) {
+      return res.status(e.status).json({ error: e.message });
+    }
+    throw e;
+  }
+});
+
+/** GET /wt-ops/portal/:partyType/:id — access state and what they have done. */
+exports.portalStatus = asyncHandler(async (req, res) => {
+  const model = req.params.partyType === 'provider' ? M.WtProvider : M.WtClient;
+  const row = await model.findOne({
+    where: { id: req.params.id, ...branchScope(req) },
+    attributes: ['id', 'code', 'portal_token_expires_at', 'portal_last_seen_at', 'portal_revoked_at', 'portal_token_hash'],
+  });
+  if (!row) return res.status(404).json({ error: 'Not found.' });
+
+  const [events] = await sequelize.query(
+    `SELECT action, subject_type, subject_code, detail, created_at
+       FROM wt_portal_events
+      WHERE party_type = :type AND party_id = :id
+      ORDER BY created_at DESC LIMIT 40`,
+    { replacements: { type: req.params.partyType, id: req.params.id } },
+  ).catch(() => [[]]);
+
+  const live = !!row.portal_token_hash && !row.portal_revoked_at
+    && (!row.portal_token_expires_at || new Date(row.portal_token_expires_at) > new Date());
+
+  res.json({
+    // Never the hash itself — a boolean is all the UI needs, and publishing the
+    // hash would let anyone with read access attack it offline.
+    has_link: live,
+    expires_at: row.portal_token_expires_at,
+    last_seen_at: row.portal_last_seen_at,
+    revoked_at: row.portal_revoked_at,
+    events,
   });
 });

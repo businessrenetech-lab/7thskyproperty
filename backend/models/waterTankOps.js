@@ -47,6 +47,9 @@ const WtClient = sequelize.define('WtClient', {
   // service history / Sec. 13 KPI support
   first_service_date: D.DATEONLY, last_service_date: D.DATEONLY,
   converted: { type: D.BOOLEAN, defaultValue: false }, converted_date: D.DATEONLY,
+  // Portal access (0084)
+  portal_token_hash: D.STRING(128), portal_token_expires_at: D.DATE,
+  portal_last_seen_at: D.DATE, portal_revoked_at: D.DATE,
 }, { tableName: 'wt_clients' });
 
 const WtServiceRequest = sequelize.define('WtServiceRequest', {
@@ -334,6 +337,10 @@ const WtProvider = sequelize.define('WtProvider', {
   agreement_signed_date: D.DATEONLY, agreement_expiry_date: D.DATEONLY,
   active_agreement_id: D.INTEGER,
   onboarding_token_hash: D.STRING(128), onboarding_token_expires_at: D.DATE,
+  // Portal access (0084) — separate from onboarding: that expires when the
+  // application completes, this outlives it.
+  portal_token_hash: D.STRING(128), portal_token_expires_at: D.DATE,
+  portal_last_seen_at: D.DATE, portal_revoked_at: D.DATE,
   onboarding_submission_status: { type: D.STRING(30), defaultValue: 'Staff Draft' },
   onboarding_last_step: { type: D.INTEGER, defaultValue: 0 },
   bank_details: D.JSON, proposed_rates: D.JSON, payment_verified: { type: D.BOOLEAN, defaultValue: false },

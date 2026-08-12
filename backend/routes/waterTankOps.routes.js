@@ -19,7 +19,7 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware } = require('../middleware/auth.middleware');
-const { canRead, canOperate, canAdminister } = require('../middleware/wtRoles');
+const { canRead, canOperate, canBind, canAdminister } = require('../middleware/wtRoles');
 const ctrl = require('../controllers/waterTankOps.controller');
 
 router.use(authMiddleware);
@@ -40,6 +40,12 @@ router.get('/work-queue', canRead, ctrl.workQueue);
 router.get('/calendar', canRead, ctrl.calendar);
 // What this user may do, so the UI can stop offering what the API will refuse
 router.get('/capabilities', canRead, ctrl.capabilities);
+// Portal access for external parties. Issuing a link grants someone outside the
+// business a view of their own records, so it sits with those who can bind, and
+// withdrawing it stays with administrators.
+router.get('/portal/:partyType/:id', canRead, ctrl.portalStatus);
+router.post('/portal/:partyType/:id/link', canBind, ctrl.issuePortalLink);
+router.delete('/portal/:partyType/:id/link', canAdminister, ctrl.revokePortalLink);
 
 // Site assessment reference data (checklist templates, equipment, categories)
 router.get('/assessment-reference', canRead, ctrl.assessmentReference);
