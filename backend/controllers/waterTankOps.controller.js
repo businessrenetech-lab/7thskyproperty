@@ -26,6 +26,53 @@ const ENTITIES = {
   'comms': { model: M.WtCommLog, prefix: null, search: ['client_name', 'summary', 'ref_code'] },
 };
 
+/**
+ * Entities that own a specialist controller with real business gates.
+ *
+ * This generic controller spreads req.body straight into the model, so any
+ * caller could set a quotation's `decision`, an invoice's `status` and
+ * `paid_amount`, a work order's `payout_status`, or a provider's
+ * `agreement_status` — bypassing every rule the dedicated controllers exist to
+ * enforce. It stays READ-ONLY for these; writes must go through:
+ *
+ *   quotations    /api/wt-quotes
+ *   work-orders   /api/wt-work-orders
+ *   projects      /api/wt-projects
+ *   amc           /api/wt-amc
+ *   invoices      /api/wt-invoices
+ *   providers     /api/wt-providers
+ *   clients       /api/wt-clients
+ *
+ * The registers with no specialist controller (site assessments, complaints,
+ * warranties, incidents, comms) keep generic writes for now — they carry no
+ * money or legal state. They are the natural Phase 2 candidates.
+ */
+const READ_ONLY_ENTITIES = new Set([
+  'quotations', 'work-orders', 'projects', 'amc', 'invoices', 'providers', 'clients',
+]);
+
+const SPECIALIST_ROUTE = {
+  quotations: '/api/wt-quotes',
+  'work-orders': '/api/wt-work-orders',
+  projects: '/api/wt-projects',
+  amc: '/api/wt-amc',
+  invoices: '/api/wt-invoices',
+  providers: '/api/wt-providers',
+  clients: '/api/wt-clients',
+};
+
+/** Refuse a generic write to an entity that has real gates elsewhere. */
+function blockGenericWrite(req, res) {
+  const slug = req.params.entity;
+  if (!READ_ONLY_ENTITIES.has(slug)) return false;
+  res.status(405).json({
+    error: `Generic writes are disabled for "${slug}" because they bypass its business rules.`,
+    use_instead: SPECIALIST_ROUTE[slug],
+    reason: 'Lifecycle, pricing, signing and payment state must go through the controller that validates them.',
+  });
+  return true;
+}
+
 function getEntity(req, res) {
   const e = ENTITIES[req.params.entity];
   if (!e) { res.status(404).json({ error: `Unknown entity "${req.params.entity}"` }); return null; }
@@ -63,6 +110,7 @@ exports.detail = asyncHandler(async (req, res) => {
 });
 
 exports.create = asyncHandler(async (req, res) => {
+  if (blockGenericWrite(req, res)) return;
   const e = getEntity(req, res); if (!e) return;
   const branchId = resolveBranchId(req);
   let body = { ...req.body, branch_id: branchId };
@@ -76,6 +124,7 @@ exports.create = asyncHandler(async (req, res) => {
 });
 
 exports.update = asyncHandler(async (req, res) => {
+  if (blockGenericWrite(req, res)) return;
   const e = getEntity(req, res); if (!e) return;
   const row = await e.model.findOne({ where: { id: req.params.id, ...branchScope(req) } });
   if (!row) return res.status(404).json({ error: 'Not found' });
@@ -164,6 +213,7 @@ async function onWorkOrderCompleted(req, wo) {
 exports.onWorkOrderCompletedPublic = (req, wo) => onWorkOrderCompleted(req, wo);
 
 exports.remove = asyncHandler(async (req, res) => {
+  if (blockGenericWrite(req, res)) return;
   const e = getEntity(req, res); if (!e) return;
   const row = await e.model.findOne({ where: { id: req.params.id, ...branchScope(req) } });
   if (!row) return res.status(404).json({ error: 'Not found' });
@@ -436,6 +486,7 @@ const asObject = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : (
  * Body: any field overrides for the record being created.
  */
 exports.advance = asyncHandler(async (req, res) => {
+  if (blockGenericWrite(req, res)) return;
   const e = getEntity(req, res); if (!e) return;
   const step = PIPELINE[req.params.entity];
   if (!step) return res.status(400).json({ error: `"${req.params.entity}" has no next stage.` });

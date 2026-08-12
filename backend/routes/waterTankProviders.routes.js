@@ -5,55 +5,54 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
+const { canRead, canOperate, canAdminister } = require('../middleware/wtRoles');
 const ctrl = require('../controllers/waterTankProviders.controller');
 
 router.use(authMiddleware);
+// This file predates wtRoles and carries its own two guards. They are kept
+// because they are narrower than the shared tiers for these specific actions:
+// APPROVE additionally admits accounts, who verify payment details.
 const MANAGE = roleMiddleware(['super_admin', 'branch_admin', 'property_manager', 'staff']);
 const APPROVE = roleMiddleware(['super_admin', 'branch_admin', 'property_manager', 'accounts']);
 
 // reference data + watchtower
-router.get('/reference', ctrl.reference);
-router.get('/alerts', ctrl.alerts);
-router.get('/directory', ctrl.directory);
-router.get('/lookup', ctrl.lookup);
-router.post('/', MANAGE, ctrl.create);
-
+router.get('/reference', canRead, ctrl.reference);
+router.get('/alerts', canRead, ctrl.alerts);
+router.get('/directory', canRead, ctrl.directory);
+router.get('/lookup', canRead, ctrl.lookup);
+router.post('/', canOperate, MANAGE, ctrl.create);
 // Sec. 5 Steps 2 & 3 — compliance + insurance registers
-router.get('/documents', ctrl.listDocuments);
-router.post('/documents', ctrl.saveDocument);
-router.post('/documents/:id/verify', ctrl.verifyDocument);
-router.delete('/documents/:id', ctrl.deleteDocument);
-
+router.get('/documents', canRead, ctrl.listDocuments);
+router.post('/documents', canOperate, ctrl.saveDocument);
+router.post('/documents/:id/verify', canOperate, ctrl.verifyDocument);
+router.delete('/documents/:id', canAdminister, ctrl.deleteDocument);
 // Sec. 14 — audits
-router.get('/audits', ctrl.listAudits);
-router.post('/audits', ctrl.createAudit);
-router.patch('/audits/:id', ctrl.updateAudit);
-router.delete('/audits/:id', ctrl.deleteAudit);
-
+router.get('/audits', canRead, ctrl.listAudits);
+router.post('/audits', canOperate, ctrl.createAudit);
+router.patch('/audits/:id', canOperate, ctrl.updateAudit);
+router.delete('/audits/:id', canAdminister, ctrl.deleteAudit);
 // Sec. 8 Step 10 — provider reporting
-router.get('/reports', ctrl.listReports);
-router.post('/reports', ctrl.createReport);
-router.patch('/reports/:id', ctrl.updateReport);
-router.delete('/reports/:id', ctrl.deleteReport);
-
+router.get('/reports', canRead, ctrl.listReports);
+router.post('/reports', canOperate, ctrl.createReport);
+router.patch('/reports/:id', canOperate, ctrl.updateReport);
+router.delete('/reports/:id', canAdminister, ctrl.deleteReport);
 // Sec. 12 — protected clients / non-circumvention
-router.get('/protected/check', ctrl.checkProtected);
-router.get('/protected', ctrl.listProtected);
-router.post('/protected', ctrl.createProtected);
-router.patch('/protected/:id', ctrl.updateProtected);
-router.delete('/protected/:id', ctrl.deleteProtected);
-
+router.get('/protected/check', canRead, ctrl.checkProtected);
+router.get('/protected', canRead, ctrl.listProtected);
+router.post('/protected', canOperate, ctrl.createProtected);
+router.patch('/protected/:id', canOperate, ctrl.updateProtected);
+router.delete('/protected/:id', canAdminister, ctrl.deleteProtected);
 // one provider's own dashboard + lifecycle actions
-router.get('/:id', ctrl.detail);
-router.patch('/:id', MANAGE, ctrl.updateProfile);
-router.post('/:id/invite', MANAGE, ctrl.invite);
-router.post('/:id/payment-verification', APPROVE, ctrl.verifyPayment);
-router.post('/:id/stage', ctrl.setStage);
-router.post('/:id/capability', ctrl.assessCapability);
-router.post('/:id/territory-briefing', ctrl.territoryBriefing);
-router.post('/:id/agreement', ctrl.recordAgreement);
-router.post('/:id/sanction', ctrl.sanction);
-router.post('/:id/renewal', ctrl.renewal);
-router.post('/:id/breach', ctrl.logBreach);
+router.get('/:id', canRead, ctrl.detail);
+router.patch('/:id', canOperate, MANAGE, ctrl.updateProfile);
+router.post('/:id/invite', canOperate, MANAGE, ctrl.invite);
+router.post('/:id/payment-verification', canOperate, APPROVE, ctrl.verifyPayment);
+router.post('/:id/stage', canOperate, ctrl.setStage);
+router.post('/:id/capability', canOperate, ctrl.assessCapability);
+router.post('/:id/territory-briefing', canOperate, ctrl.territoryBriefing);
+router.post('/:id/agreement', canOperate, ctrl.recordAgreement);
+router.post('/:id/sanction', canOperate, ctrl.sanction);
+router.post('/:id/renewal', canOperate, ctrl.renewal);
+router.post('/:id/breach', canOperate, ctrl.logBreach);
 
 module.exports = router;

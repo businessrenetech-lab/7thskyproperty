@@ -162,7 +162,7 @@ export default function ClientDashboard() {
 
   const approveQuote = async (q) => {
     try {
-      await api.patch(`/wt-ops/quotations/${q.id}`, { decision: 'Approved' });
+      await api.post(`/wt-quotes/${q.id}/decision`, { decision: 'Approved' });
       toast.ok(`${q.code} approved — the agreement can now be raised`);
       await load();
     } catch (e) { toast.err(errText(e, 'Could not approve the quotation')); }

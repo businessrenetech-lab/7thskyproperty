@@ -112,7 +112,6 @@ exports.sendEnvelope = asyncHandler(async (req, res) => {
       return res.status(400).json({ error: 'Verify the owner KYC and required documents before sending this agreement.' });
     }
   }
-
   const expires = new Date(Date.now() + 14 * 86400000);
   const ordered = [...env.signers].sort((a, b) => a.signer_order - b.signer_order);
   const firstOrder = ordered[0]?.signer_order;
@@ -153,6 +152,35 @@ exports.sendEnvelope = asyncHandler(async (req, res) => {
   res.json({ message: 'Envelope sent.', links });
 });
 
+// Remind — re-notify outstanding signers of an already-sent envelope (keeps existing links).
+exports.remindEnvelope = asyncHandler(async (req, res) => {
+  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req) }, include: [{ model: EnvelopeSigner, as: 'signers' }] });
+  if (!env) return res.status(404).json({ error: 'Envelope not found.' });
+  if (!['sent', 'viewed', 'partially_signed'].includes(env.status)) return res.status(400).json({ error: `Cannot remind on an envelope in '${env.status}' state.` });
+
+  const expires = new Date(Date.now() + 14 * 86400000);
+  const outstanding = [...env.signers].filter((s) => s.status !== 'signed').sort((a, b) => a.signer_order - b.signer_order);
+  for (const s of outstanding) {
+    if (!s.access_token || (s.token_expires_at && new Date(s.token_expires_at) < new Date())) {
+      await s.update({ access_token: crypto.randomBytes(24).toString('hex'), token_expires_at: expires });
+    }
+  }
+  await audit(env.id, 'reminded', req, null, req.user?.email, { signers: outstanding.length });
+
+  const base = process.env.SIGN_BASE_URL || `${req.protocol}://${req.get('host')}/admin/sign`;
+  const links = outstanding.map((s) => ({ name: s.name, email: s.email, order: s.signer_order, link: `${base}/${s.access_token}` }));
+  try {
+    const { sendEmail } = require('../services/communication.service');
+    for (const link of links) {
+      if (!link.email) continue;
+      await sendEmail(link.email, `Reminder — please sign: ${env.title}`,
+        `<p>Dear ${link.name},</p><p>A gentle reminder to review and sign:</p><p><a href="${link.link}">${link.link}</a></p><p>— Seventh Sky Property Care</p>`
+      ).catch(() => {});
+    }
+  } catch { /* best-effort */ }
+  res.json({ message: 'Reminder sent.', links });
+});
+
 exports.voidEnvelope = asyncHandler(async (req, res) => {
   const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req) } });
   if (!env) return res.status(404).json({ error: 'Envelope not found.' });
@@ -165,6 +193,12 @@ exports.voidEnvelope = asyncHandler(async (req, res) => {
       const PropertyOwnerProfile = require('../models/PropertyOwnerProfile');
       await PropertyOwnerProfile.update({ agreement_status: 'draft' }, { where: { property_id: role.property_id } });
     }
+  }
+  if (env.related_type === 'water_tank_provider_agreement') {
+    const M = require('../models/waterTankOps');
+    const P = require('../models/waterTankProviders');
+    await P.WtProviderAgreement.update({ status: 'Voided' }, { where: { envelope_id: env.id, branch_id: env.branch_id } });
+    await M.WtProvider.update({ agreement_status: 'Not Started', agreement_envelope_id: null }, { where: { id: env.related_id, branch_id: env.branch_id, agreement_envelope_id: env.id } });
   }
   await audit(env.id, 'voided', req, null, req.user?.email, { reason: req.body.reason });
   res.json({ message: 'Envelope voided.' });
@@ -205,6 +239,34 @@ exports.signByToken = asyncHandler(async (req, res) => {
   const env = await SigningEnvelope.findByPk(signer.envelope_id);
   if (!env || ['voided', 'declined', 'completed'].includes(env.status)) return res.status(410).json({ error: 'This document can no longer be signed.' });
 
+  /*
+   * Enforce signing order on SUBMIT, not just on view.
+   *
+   * viewByToken already refuses to render out of turn, but that only guards the
+   * UI: a later signer holding their own valid token could POST straight to this
+   * endpoint and sign ahead of everyone. That matters because the order is
+   * legally meaningful — a witness attests a signature that has already been
+   * made, and Seventh Sky countersigns after the client.
+   */
+  if (env.signing_order_enforced) {
+    const earlier = await EnvelopeSigner.findOne({
+      where: {
+        envelope_id: env.id,
+        signer_order: { [Op.lt]: signer.signer_order },
+        status: { [Op.notIn]: ['signed', 'declined'] },
+      },
+      order: [['signer_order', 'ASC']],
+    });
+    if (earlier) {
+      await audit(env.id, 'order_violation_blocked', req, signer.id, signer.email,
+        { attempted_order: signer.signer_order, waiting_on: earlier.signer_order }).catch(() => {});
+      return res.status(423).json({
+        error: 'An earlier party has not signed yet. This document must be signed in order.',
+        waiting_on: earlier.name || `Signer ${earlier.signer_order}`,
+      });
+    }
+  }
+
   // Persist field values for this signer
   const values = req.body.fields || []; // [{id, value}]
   const myFields = await SignatureField.findAll({ where: { envelope_id: env.id, signer_id: signer.id } });
@@ -237,6 +299,10 @@ exports.signByToken = asyncHandler(async (req, res) => {
     if (next.status === 'pending') await next.update({ status: 'sent' });
   }
   await env.update({ status: 'partially_signed' });
+  if (env.related_type === 'water_tank_provider_agreement') {
+    const P = require('../models/waterTankProviders');
+    await P.WtProviderAgreement.update({ status: 'Provider Signed' }, { where: { envelope_id: env.id, branch_id: env.branch_id } });
+  }
   if (env.related_type === 'party_role') {
     await PartyRoleProfile.update({ status: 'partially_signed', next_action: 'Waiting for remaining signatures' }, { where: { id: env.related_id } });
   }
@@ -251,6 +317,12 @@ exports.declineByToken = asyncHandler(async (req, res) => {
   await env.update({ status: 'declined' });
   if (env.related_type === 'party_role') {
     await PartyRoleProfile.update({ status: 'declined', next_action: 'Agreement declined' }, { where: { id: env.related_id } });
+  }
+  if (env.related_type === 'water_tank_provider_agreement') {
+    const M = require('../models/waterTankOps');
+    const P = require('../models/waterTankProviders');
+    await P.WtProviderAgreement.update({ status: 'Declined' }, { where: { envelope_id: env.id, branch_id: env.branch_id } });
+    await M.WtProvider.update({ agreement_status: 'Declined' }, { where: { id: env.related_id, branch_id: env.branch_id, agreement_envelope_id: env.id } });
   }
   await audit(env.id, 'declined', req, signer.id, signer.email, { reason: req.body.reason });
   res.json({ message: 'You have declined to sign. The sender has been notified.' });

@@ -547,18 +547,41 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
      */
     if (envelope.related_type === 'water_tank_work_order') {
       const M = require('../models/waterTankOps');
+      // P is used below for the provider event. It was previously only required
+      // in the provider-agreement block above, so this block threw a
+      // ReferenceError — synchronously, so the .catch() on the create() never
+      // saw it — and aborted the whole signing transaction for any work order
+      // with a provider attached.
+      const P = require('../models/waterTankProviders');
       const wo = await M.WtWorkOrder.findOne({
         where: { id: envelope.related_id, branch_id: envelope.branch_id }, transaction: tx,
       });
       if (wo) {
         const signedAt = envelope.completed_at || new Date();
+
+        /*
+         * Freeze the EXECUTED copy — the one carrying the captured signatures,
+         * not the blank document that was sent out. envelope.document_html is
+         * the unsigned original; the signatures live on signature_fields until
+         * they are injected into the anchors.
+         */
+        let executedHtml = envelope.document_html;
+        try {
+          const signedDoc = require('./wtSignedDocument.service');
+          const built = await signedDoc.buildSignedDocument(envelope);
+          if (built?.html) executedHtml = built.html;
+        } catch (e) {
+          // Never lose the signature over a rendering fault — keep the original.
+          console.warn('[waterTank] executed WO render:', e.message);
+        }
+
         await wo.update({
           wo_doc_status: 'Signed',
           wo_signed_at: signedAt,
           wo_envelope_id: envelope.id,
           wo_doc_code: envelope.envelope_code,
           // freeze the executed copy — the legal record must never re-render
-          wo_signed_document_html: envelope.document_html,
+          wo_signed_document_html: executedHtml,
           provider_onboarded_at: signedAt,
           accepted_at: wo.accepted_at || signedAt,
           status: ['Draft', 'Issued'].includes(String(wo.status)) ? 'Accepted' : wo.status,

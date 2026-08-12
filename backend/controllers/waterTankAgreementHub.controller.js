@@ -43,8 +43,15 @@ function shapeEnvelope(env) {
       id: s.id, order: s.signer_order, role: s.role, name: s.name, email: s.email,
       status: s.status, signed_at: s.signed_at,
       declined_reason: s.declined_reason || null,
-      // Whose turn it is: the first unsigned signer in an ordered envelope.
-      signing_path: `/admin/sign/${s.access_token}`,
+      /*
+       * The signing token is deliberately NOT returned here.
+       *
+       * A token IS the signature authority — anyone holding it can sign as that
+       * party. Returning it in a routine list meant every staff member with API
+       * access could impersonate any signer. The link is now issued one signer
+       * at a time through POST /:id/signing-link/:signerId, which is audited.
+       */
+      has_live_link: !eq(s.status, 'signed') && !eq(s.status, 'declined'),
     }));
 
   const signed = signers.filter((s) => eq(s.status, 'signed'));
@@ -215,6 +222,43 @@ exports.signedDocument = asyncHandler(async (req, res) => {
     signatures_applied: built.signatures_applied,
     unsigned_parties: built.unsigned_parties,
     html: built.html,
+  });
+});
+
+/**
+ * Issue one signer's link, deliberately and on the record.
+ *
+ * Replaces returning tokens in list/detail payloads. A token is the signature
+ * authority itself, so handing one over is an act worth auditing: who asked,
+ * for whom, and when. Refuses for a party who has already signed or declined —
+ * there is no legitimate reason to re-open their link.
+ */
+exports.signingLink = asyncHandler(async (req, res) => {
+  const env = await loadEnvelope(req, res); if (!env) return;
+  const signer = await EnvelopeSigner.findOne({
+    where: { id: req.params.signerId, envelope_id: env.id },
+  });
+  if (!signer) return res.status(404).json({ error: 'That party is not on this agreement.' });
+  if (eq(signer.status, 'signed')) return res.status(409).json({ error: `${signer.name} has already signed.` });
+  if (eq(signer.status, 'declined')) return res.status(409).json({ error: `${signer.name} declined to sign.` });
+  if (eq(env.status, 'voided')) return res.status(409).json({ error: 'This agreement is void.' });
+
+  try {
+    const AuditLog = require('../models/SigningAuditLog');
+    await AuditLog.create({
+      envelope_id: env.id, signer_id: signer.id, event: 'signing_link_issued',
+      actor_email: req.user?.email || null,
+      ip_address: req.headers['x-forwarded-for'] || req.socket?.remoteAddress || null,
+      user_agent: req.headers['user-agent'] || null,
+      meta: { issued_by: actorOf(req), signer_name: signer.name, signer_email: signer.email },
+    });
+  } catch { /* the link still issues; the audit row is best-effort */ }
+
+  res.json({
+    signer: { id: signer.id, name: signer.name, email: signer.email, role: signer.role, order: signer.signer_order },
+    signing_path: `/admin/sign/${signer.access_token}`,
+    expires_at: signer.token_expires_at,
+    note: 'Treat this link as the signature itself — anyone holding it can sign as this party.',
   });
 });
 

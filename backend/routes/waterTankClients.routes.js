@@ -5,22 +5,22 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware } = require('../middleware/auth.middleware');
+const { canRead, canOperate, canTransact, canBind, canAdminister } = require('../middleware/wtRoles');
 const ctrl = require('../controllers/waterTankClients.controller');
 
 router.use(authMiddleware);
 
-router.get('/reference', ctrl.reference);
-router.get('/directory', ctrl.directory);
-router.get('/lookup', ctrl.lookup);
-
-router.get('/:id', ctrl.detail);
-router.post('/:id/stage', ctrl.setStage);
-router.post('/:id/consultation', ctrl.consultation);
-router.post('/:id/agreement', ctrl.agreement);
-router.post('/:id/deposit', ctrl.deposit);
-router.post('/:id/handover', ctrl.handover);
-router.post('/:id/closure', ctrl.closure);
-router.post('/:id/note', ctrl.note);
-router.post('/:id/register', ctrl.registerProject);
+router.get('/reference', canRead, ctrl.reference);
+router.get('/directory', canRead, ctrl.directory);
+router.get('/lookup', canRead, ctrl.lookup);
+router.get('/:id', canRead, ctrl.detail);
+router.post('/:id/stage', canOperate, ctrl.setStage);
+router.post('/:id/consultation', canOperate, ctrl.consultation);
+router.post('/:id/agreement', canOperate, ctrl.agreement);
+router.post('/:id/deposit', canTransact, ctrl.deposit);
+router.post('/:id/handover', canOperate, ctrl.handover);
+router.post('/:id/closure', canOperate, ctrl.closure);
+router.post('/:id/note', canOperate, ctrl.note);
+router.post('/:id/register', canOperate, ctrl.registerProject);
 
 module.exports = router;

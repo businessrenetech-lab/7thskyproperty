@@ -519,8 +519,16 @@ export default function WorkOrderDocument() {
                   <div className="wt-signer" key={s.id}>
                     <span className={s.status === 'signed' ? 'ok' : ''}>{s.status === 'signed' ? <Check size={12} /> : s.order}</span>
                     <div><strong>{s.name}</strong><small>{String(s.role).replace(/_/g, ' ')} · {s.status}{s.signed_at ? ` · ${dateFmt(s.signed_at)}` : ''}</small></div>
-                    {s.access_token && s.status !== 'signed' && (
-                      <button className="wt-btn sm" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/admin/sign/${s.access_token}`).then(() => toast.ok('Signing link copied'))}>
+                    {/* The token is issued on request and audited, never shipped
+                        with the page — see the agreement hub's signing-link route. */}
+                    {s.has_live_link && (
+                      <button className="wt-btn sm" onClick={async () => {
+                        try {
+                          const { data } = await api.post(`/wt-agreement-hub/${env.id}/signing-link/${s.id}`);
+                          await navigator.clipboard.writeText(`${window.location.origin}${data.signing_path}`);
+                          toast.ok('Signing link copied — treat it as their signature');
+                        } catch (e) { toast.err(errText(e, 'Could not issue the signing link')); }
+                      }}>
                         <Copy size={12} /> Link
                       </button>
                     )}

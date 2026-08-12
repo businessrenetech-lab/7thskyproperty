@@ -93,7 +93,7 @@ export default function QuotationDetail() {
   const setDecision = async (decision) => {
     setBusy('decision');
     try {
-      const { data } = await api.patch(`/wt-ops/quotations/${q.id}`, { decision });
+      const { data } = await api.post(`/wt-quotes/${q.id}/decision`, { decision });
       setQ((s) => ({ ...s, ...data }));
       toast.ok(`${q.code} → ${decision}`);
     } catch (e) { toast.err(errText(e, 'Could not update the quotation')); }
@@ -103,7 +103,7 @@ export default function QuotationDetail() {
   const remove = async () => {
     setBusy('del');
     try {
-      await api.delete(`/wt-ops/quotations/${q.id}`);
+      await api.delete(`/wt-quotes/${q.id}`);
       toast.ok(`${q.code} deleted`);
       nav('/water-tank/quotations');
     } catch (e) { toast.err(errText(e, 'Could not delete')); setBusy(''); }

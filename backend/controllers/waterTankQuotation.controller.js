@@ -183,6 +183,85 @@ exports.createDirect = asyncHandler(async (req, res) => {
   });
 });
 
+/*
+ * Quotation decision — a NAMED action, replacing the generic PATCH that let any
+ * caller set `decision` (and anything else on the row) with no validation.
+ *
+ * Sec. 7 Step 5: the decision is what turns a priced offer into a commitment,
+ * so it validates the target state, refuses to move a quotation that is already
+ * bound to a signed agreement, and records who decided.
+ */
+const QUOTE_DECISIONS = ['Pending', 'Sent', 'Approved', 'Rejected'];
+
+exports.setDecision = asyncHandler(async (req, res) => {
+  const scope = branchScope(req);
+  const key = req.params.id;
+  const quote = await M.WtQuotation.findOne({
+    where: { ...scope, [Op.or]: [{ id: Number.isNaN(Number(key)) ? -1 : Number(key) }, { code: key }] },
+  });
+  if (!quote) return res.status(404).json({ error: 'Quotation not found.' });
+
+  const decision = String(req.body?.decision || '').trim();
+  const match = QUOTE_DECISIONS.find((d) => d.toLowerCase() === decision.toLowerCase());
+  if (!match) {
+    return res.status(400).json({ error: `Unknown decision "${decision}".`, allowed: QUOTE_DECISIONS });
+  }
+
+  // Once an agreement has been raised from a quotation, its commercial terms are
+  // what the client signed. Re-deciding it would leave the two disagreeing.
+  if (quote.agreement_envelope_id && !['approved'].includes(match.toLowerCase())) {
+    return res.status(409).json({
+      error: `${quote.code} is already bound to a signed agreement and cannot be re-decided.`,
+      hint: 'Void the agreement first, or raise a revised quotation.',
+    });
+  }
+
+  await quote.update({ decision: match });
+
+  // The decision is worth a trace even without dedicated audit columns.
+  await M.WtCommLog.create({
+    branch_id: quote.branch_id,
+    client_name: quote.client_name,
+    channel: 'note',
+    direction: 'outbound',
+    summary: `Quotation ${quote.code} → ${match}`,
+    ref_type: 'quotations',
+    ref_code: quote.code,
+    logged_at: new Date(),
+  }).catch(() => { /* the decision stands even if the note fails */ });
+
+  res.json(quote);
+});
+
+/**
+ * Delete a quotation. Only ever a draft-stage clean-up: anything sent, approved
+ * or bound to an agreement is part of the commercial record and must be
+ * superseded rather than erased.
+ */
+exports.removeQuotation = asyncHandler(async (req, res) => {
+  const scope = branchScope(req);
+  const key = req.params.id;
+  const quote = await M.WtQuotation.findOne({
+    where: { ...scope, [Op.or]: [{ id: Number.isNaN(Number(key)) ? -1 : Number(key) }, { code: key }] },
+  });
+  if (!quote) return res.status(404).json({ error: 'Quotation not found.' });
+
+  const blocking = [];
+  if (quote.agreement_envelope_id) blocking.push('an agreement has been raised from it');
+  if (quote.work_order_code) blocking.push(`work order ${quote.work_order_code} references it`);
+  if (String(quote.decision || '').toLowerCase() === 'approved') blocking.push('it has been approved');
+  if (quote.sent_at) blocking.push('it has already been sent to the client');
+  if (blocking.length) {
+    return res.status(409).json({
+      error: `${quote.code} cannot be deleted because ${blocking.join(', and ')}.`,
+      hint: 'Raise a revised quotation instead — the commercial record must stay intact.',
+    });
+  }
+
+  await quote.destroy();
+  res.json({ ok: true });
+});
+
 exports.builder = asyncHandler(async (req, res) => {
   const scope = branchScope(req);
   const key = req.params.assessmentId;

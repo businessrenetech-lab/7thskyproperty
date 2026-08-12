@@ -322,13 +322,31 @@ function buildWorkOrderDocument(wo = {}, extra = {}) {
     return `<div style="${H3}">${esc(group)}</div>${checkboxes(options, chosen, 2)}`;
   }).join(''));
 
+  /*
+   * Anchored signature slots, matching the agreements.
+   *
+   * The work order previously ended in dead "Signature: ______" lines, so even a
+   * fully executed order showed blank signatures — the captured marks had
+   * nowhere to land. data-sign-party matches the SignatureField labels created
+   * with the envelope, which is how wtSignedDocument.service.js injects them.
+   */
+  const signSlot = (label) => `
+    <div data-sign-anchor="${esc(label)}" style="margin-top:8px;">
+      <div style="font-size:11px;color:#6b7280;">Signature</div>
+      <div data-sign-field="signature" data-sign-party="${esc(label)}"
+           style="height:46px;border-bottom:1px solid #333;margin:2px 0 6px;"></div>
+      <div style="font-size:11px;color:#6b7280;">Date signed</div>
+      <div data-sign-field="date_signed" data-sign-party="${esc(label)}"
+           style="height:20px;border-bottom:1px solid #333;"></div>
+    </div>`;
+
   const s11 = section('s11', 'Execution', `
     <p style="font-size:12.5px;margin:6px 0 12px;">This Project Work Order is issued under, and governed by, the Master Service Delivery Provider Agreement between the Parties. By signing below the Service Provider accepts the scope, timeline, agreed pricing and warranty terms set out above, and is thereby onboarded to this project.</p>
     <table style="width:100%;margin-top:10px;"><tr>
       <td style="width:50%;vertical-align:top;padding:0 16px 0 0;"><div style="border-top:1px solid #333;padding-top:6px;font-size:12px;">
-        <b>For Seventh Sky Property Care</b><br/>Name: ${or(org.represented_by)}<br/>Position: ${or(org.position, 'Project Manager')}<br/>Signature: __________________<br/>Date: __________________</div></td>
+        <b>For Seventh Sky Property Care</b><br/>Name: ${or(org.represented_by)}<br/>Position: ${or(org.position, 'Project Manager')}${signSlot('Seventh Sky')}</div></td>
       <td style="width:50%;vertical-align:top;padding:0 0 0 16px;"><div style="border-top:1px solid #333;padding-top:6px;font-size:12px;">
-        <b>For the Service Provider</b><br/>Business: ${or(provider.business_name || wo.provider_name)}<br/>Name: ${or(provider.contact_person)}<br/>Signature: __________________<br/>Date: __________________</div></td>
+        <b>For the Service Provider</b><br/>Business: ${or(provider.business_name || wo.provider_name)}<br/>Name: ${or(provider.contact_person)}${signSlot('Service Provider')}</div></td>
     </tr></table>`);
 
   const toc = `

@@ -1819,3 +1819,84 @@ the paid invoice now reads 0.
 
 Verified: vite build 1970 modules clean; backend restarts 200; both fixes
 confirmed on screen against real data.
+
+---
+
+## 2026-08-12 — Claude — COMPLETED: Water Tank Phase 1 (P0 security + runtime)
+
+Branch `water-tank/phase-0-baseline`. Six surgical fixes, no new features. Each
+finding was verified against source first — I did not take the assessment's word
+for any of them.
+
+### 1. Latent crash on work-order completion (real, would have fired in production)
+`services/partyRoleActivation.service.js` — the `water_tank_work_order` block
+used `P.WtProviderEvent` but only `M` was required in scope. `P` was required in
+the *provider-agreement* block above, so this threw a ReferenceError
+**synchronously** — meaning the `.catch()` on the `create()` never saw it, and the
+whole signing transaction aborted for any work order with a provider attached.
+Added the missing require. Also froze the *executed* HTML (with signatures)
+rather than the blank original, so the archived document matches what was signed.
+
+### 2. Signing order was enforced on VIEW but not on SUBMIT
+`controllers/signing.controller.js` — `viewByToken` checked earlier signers;
+`signByToken` did not. Anyone holding their own valid token could sign ahead of
+the parties before them, so a witness could attest a client signature that did
+not exist yet. Added the check inside `signByToken`, returning 423 with the name
+of the party being waited on, and auditing `order_violation_blocked`.
+Tested live against a real 3-signer envelope: witness blocked, countersigner
+blocked, correct order completes, 2 violations in the audit trail (9/9).
+
+### 3. Signer access tokens were in every list payload
+`controllers/waterTankAgreementHub.controller.js` (my own code) returned
+`access_token` per signer — anyone who could load the register could sign as
+anyone. Replaced with a boolean `has_live_link`; links now come from an explicit
+audited `POST /:id/signing-link/:signerId`. Same leak removed from work-order
+detail.
+
+### 4. Role matrix — there was NO role enforcement on any water-tank route
+New `middleware/wtRoles.js`: WT_READ / WT_OPERATE / WT_FINANCE / WT_LEGAL /
+WT_ADMIN → `canRead`, `canOperate`, `canTransact`, `canBind`, `canAdminister`.
+Applied across all 143 routes in 10 route files.
+Confirmed `admin@seventhskyproperty.com` is `super_admin` BEFORE applying guards,
+specifically to avoid locking the only admin account out.
+`waterTankProviders.routes.js` kept its two pre-existing narrower guards
+(`MANAGE`, `APPROVE` — the latter also admits `accounts`, who verify payment
+details); they now compose with the shared tiers.
+
+### 5. Generic write hole
+`/api/wt-ops/:entity` spread `req.body` straight into model writes, bypassing
+every specialist controller's validation. Quotations, work orders, projects, AMC,
+invoices, providers and clients are now **read-only** through that route; writes
+return 405 naming the correct specialist endpoint. Applied to create/update/
+remove/advance.
+
+### 6. Work-order documents had no signature anchors
+`services/wtWorkOrderDoc.service.js` printed dead `Signature: ______` lines, so
+executed work orders showed blanks where agreements showed signatures. Added
+`data-sign-party` slots for Seventh Sky and Service Provider, and aligned the
+signer field labels in `waterTankWorkOrder.controller.js` so `partyFromLabel()`
+resolves them. All 4 values now inject.
+
+### Mistake worth recording
+My scripted import insertion matched `const { authMiddleware }` and silently
+missed `waterTankProviders.routes.js`, whose line is
+`const { authMiddleware, roleMiddleware }`. `node --check` PASSED — the file
+parsed fine and only threw at require time. Because `server.js` uses a resilient
+`mount()` that **silently skips a throwing route file**, the entire provider API
+would have disappeared with no error visible in the app. Fixed, and I now verify
+`require()` succeeds on all 11 water-tank route modules, not merely that they parse.
+**`node --check` is not sufficient in this repo.**
+
+### Verified
+- 11/11 water-tank route modules `require()` OK; server boot log shows all 11
+  mounted and none in "skipped (to be rebuilt)".
+- `verify-phase1.js`: 28/28 assertions pass.
+- `test-phase1.js` against the live server: 9/9.
+- `/api/health` 200; all new routes 401 unauthenticated.
+- `npm run build`: 1970 modules, clean.
+
+### NOT verified — needs you
+Browser confirmation of the role matrix and the token-leak fix could not be done:
+the Chrome extension disconnected and the admin session expired. Everything above
+is source- and API-verified. When you next sign in, the checks are: a wt-ops write
+as a non-admin role must 403, and no network response may contain `access_token`.

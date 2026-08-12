@@ -277,9 +277,19 @@ function Kpi({ icon: Icon, label, value, sub, tone = 'slate' }) {
 
 /* Per-party detail: who, when, and the individual resend / copy-link. */
 function AgreementDrawer({ row, onClose, onResend, onDownload, onVoid, busy }) {
-  const copyLink = (s) => {
-    const url = `${window.location.origin}${s.signing_path}`;
-    navigator.clipboard?.writeText(url).then(() => toast.ok(`Link for ${s.name} copied`)).catch(() => {});
+  /*
+   * Signing links are fetched one party at a time and audited server-side.
+   * They are no longer returned with the agreement list — a token IS the
+   * signature authority, so it is issued deliberately, not handed out with
+   * every page load.
+   */
+  const copyLink = async (s) => {
+    try {
+      const { data } = await api.post(`/wt-agreement-hub/${row.id}/signing-link/${s.id}`);
+      const url = `${window.location.origin}${data.signing_path}`;
+      await navigator.clipboard?.writeText(url).catch(() => {});
+      toast.ok(`Link for ${s.name} copied — treat it as their signature`);
+    } catch (e) { toast.err(errText(e, 'Could not issue the signing link')); }
   };
   return (
     <div className="wt-modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>

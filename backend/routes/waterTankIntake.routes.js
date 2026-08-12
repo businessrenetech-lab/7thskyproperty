@@ -5,18 +5,18 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware } = require('../middleware/auth.middleware');
+const { canRead, canOperate, canTransact, canBind, canAdminister } = require('../middleware/wtRoles');
 const ctrl = require('../controllers/waterTankIntake.controller');
 
 router.use(authMiddleware);
 
 // enquiries triage
-router.get('/enquiries', ctrl.listEnquiries);
-router.post('/enquiries', ctrl.createEnquiry);
-router.patch('/enquiries/:id', ctrl.updateEnquiry);
-router.delete('/enquiries/:id', ctrl.deleteEnquiry);
-
+router.get('/enquiries', canRead, ctrl.listEnquiries);
+router.post('/enquiries', canOperate, ctrl.createEnquiry);
+router.patch('/enquiries/:id', canOperate, ctrl.updateEnquiry);
+router.delete('/enquiries/:id', canAdminister, ctrl.deleteEnquiry);
 // new service request wizard
-router.get('/request-reference', ctrl.requestReference);
-router.post('/requests', ctrl.createRequest);
+router.get('/request-reference', canRead, ctrl.requestReference);
+router.post('/requests', canOperate, ctrl.createRequest);
 
 module.exports = router;

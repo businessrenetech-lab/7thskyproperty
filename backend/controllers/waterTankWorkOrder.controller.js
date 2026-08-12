@@ -481,7 +481,11 @@ exports.document = asyncHandler(async (req, res) => {
       sent_at: envelope.sent_at, completed_at: envelope.completed_at,
       signers: (envelope.signers || []).sort((a, b) => a.signer_order - b.signer_order).map((s) => ({
         id: s.id, order: s.signer_order, role: s.role, name: s.name, email: s.email,
-        status: s.status, signed_at: s.signed_at, access_token: s.status === 'signed' ? null : s.access_token,
+        // The token is the signature authority; it is never returned in a
+        // routine payload. Issue it through the agreement hub's audited
+        // POST /:id/signing-link/:signerId instead.
+        status: s.status, signed_at: s.signed_at,
+        has_live_link: !['signed', 'declined'].includes(String(s.status || '').toLowerCase()),
       })),
     } : null,
     locked: !!wo.wo_signed_at || ['sent', 'partially_signed'].includes(String(wo.wo_doc_status || '').toLowerCase()),
@@ -579,9 +583,13 @@ exports.sendDocument = asyncHandler(async (req, res) => {
       created_by: req.user?.id || null,
     }, { transaction });
 
+    // `label` is the PARTY, and it must match the data-sign-party anchors in the
+    // work-order document — that pairing is how captured signatures find their
+    // box. Labelling the field with the person's name instead left the executed
+    // document blank.
     const signerDefs = [
-      { role: 'provider', order: 1, name: provider.contact_person || provider.business_name, email: provider.contact_email },
-      { role: 'staff_countersign', order: 2, name: req.body.countersigner_name || req.user?.name || 'Seventh Sky', email: staffEmail },
+      { role: 'provider', order: 1, label: 'Service Provider', name: provider.contact_person || provider.business_name, email: provider.contact_email },
+      { role: 'staff_countersign', order: 2, label: 'Seventh Sky', name: req.body.countersigner_name || req.user?.name || 'Seventh Sky', email: staffEmail },
     ];
     const links = [];
     for (const def of signerDefs) {
@@ -593,8 +601,8 @@ exports.sendDocument = asyncHandler(async (req, res) => {
         user_id: def.role === 'staff_countersign' ? req.user?.id || null : null,
       }, { transaction });
       await SignatureField.bulkCreate([
-        { envelope_id: envelope.id, signer_id: signer.id, field_type: 'signature', page: 1, required: true, label: `${def.name} signature` },
-        { envelope_id: envelope.id, signer_id: signer.id, field_type: 'date_signed', page: 1, required: true, label: 'Date signed' },
+        { envelope_id: envelope.id, signer_id: signer.id, field_type: 'signature', page: 1, required: true, label: `${def.label} signature` },
+        { envelope_id: envelope.id, signer_id: signer.id, field_type: 'date_signed', page: 1, required: true, label: `${def.label} — date signed` },
       ], { transaction });
       links.push({ name: def.name, email: def.email, role: def.role, order: def.order, token });
     }

@@ -5,29 +5,32 @@ const express = require('express');
 
 const router = express.Router();
 const { authMiddleware } = require('../middleware/auth.middleware');
+const { canRead, canTransact, canAdminister } = require('../middleware/wtRoles');
 const ctrl = require('../controllers/waterTankInvoice.controller');
 
 router.use(authMiddleware);
 
-router.get('/reference', ctrl.reference);
-router.get('/overview', ctrl.overview);
-router.get('/client-lookup', ctrl.clientLookup);
+// Reading the ledger is open to anyone who works the operation.
+router.get('/reference', canRead, ctrl.reference);
+router.get('/overview', canRead, ctrl.overview);
+router.get('/client-lookup', canRead, ctrl.clientLookup);
 
-// AMC billing — preview the instalment schedule, or raise it as drafts.
-router.get('/amc/:amcCode/preview', ctrl.previewAmc);
-router.post('/amc/:amcCode/generate', ctrl.createFromAmc);
+// AMC billing — previewing a schedule is free; raising it commits money.
+router.get('/amc/:amcCode/preview', canRead, ctrl.previewAmc);
+router.post('/amc/:amcCode/generate', canTransact, ctrl.createFromAmc);
 
-router.get('/', ctrl.list);
-router.post('/', ctrl.create);
+router.get('/', canRead, ctrl.list);
+router.post('/', canTransact, ctrl.create);
 
 // Nested actions before /:code so they win the match.
-router.get('/:code/pdf', ctrl.pdf);
-router.post('/:code/send', ctrl.send);
-router.post('/:code/payments', ctrl.recordPayment);
-router.post('/:code/void', ctrl.void);
+router.get('/:code/pdf', canRead, ctrl.pdf);
+router.post('/:code/send', canTransact, ctrl.send);
+router.post('/:code/payments', canTransact, ctrl.recordPayment);
+router.post('/:code/void', canTransact, ctrl.void);
 
-router.get('/:code', ctrl.detail);
-router.patch('/:code', ctrl.update);
-router.delete('/:code', ctrl.remove);
+router.get('/:code', canRead, ctrl.detail);
+router.patch('/:code', canTransact, ctrl.update);
+// Deleting a financial record — even a draft — stays with administrators.
+router.delete('/:code', canAdminister, ctrl.remove);
 
 module.exports = router;
