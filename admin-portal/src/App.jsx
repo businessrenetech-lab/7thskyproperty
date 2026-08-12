@@ -37,6 +37,44 @@ import TenantApply from './screens/TenantApply';
 import EmployerReference from './screens/EmployerReference';
 import Services from './screens/Services';
 import ServiceCatalog from './screens/ServiceCatalog';
+import ServiceLineDashboard from './screens/services/ServiceLineDashboard';
+import WaterTankConsole from './screens/watertank/WaterTankConsole';
+import WaterTankDashboard from './screens/watertank/Dashboard';
+import WaterTankProviders from './screens/watertank/providers/ProviderDirectory';
+import WaterTankProviderDetail from './screens/watertank/providers/ProviderDetail';
+import WaterTankProviderOnboarding from './screens/watertank/providers/ProviderOnboarding';
+import WTCompliance from './screens/watertank/Compliance';
+import WTServiceReports from './screens/watertank/ServiceReports';
+import WaterTankSettings from './screens/watertank/Settings';
+import WTClients from './screens/watertank/Clients';
+import WTClientDetail from './screens/watertank/clients/ClientDashboard';
+import WTClientCreate from './screens/watertank/clients/ClientCreate';
+import WTServiceRequests from './screens/watertank/ServiceRequests';
+import WTServiceRequestNew from './screens/watertank/ServiceRequestNew';
+import WTSiteAssessments from './screens/watertank/SiteAssessments';
+import WTAssessmentDetail from './screens/watertank/AssessmentDetail';
+import WTAssessmentForm from './screens/watertank/AssessmentForm';
+import WTQuotationBuilder from './screens/watertank/QuotationBuilder';
+import WTQuotationAgreement from './screens/watertank/QuotationAgreement';
+import WTQuotationDetail from './screens/watertank/QuotationDetail';
+import WTQuotations from './screens/watertank/Quotations';
+import WTQuotationDirect from './screens/watertank/QuotationDirect';
+import WTWorkOrders from './screens/watertank/WorkOrders';
+import WTWorkOrderDetail from './screens/watertank/WorkOrderDetail';
+import WTWorkOrderForm from './screens/watertank/WorkOrderForm';
+import WTWorkOrderDocument from './screens/watertank/WorkOrderDocument';
+import WTProjects from './screens/watertank/Projects';
+import WTProjectDetail from './screens/watertank/ProjectDetail';
+import WTProjectForm from './screens/watertank/ProjectForm';
+import WTAgreementsHub from './screens/watertank/AgreementsHub';
+import WTAmc from './screens/watertank/Amc';
+import WTAmcForm from './screens/watertank/AmcForm';
+import WTInvoices from './screens/watertank/Invoices';
+import WTInvoiceEditor from './screens/watertank/InvoiceEditor';
+import WTPayments from './screens/watertank/Payments';
+import WTRegisters from './screens/watertank/Registers';
+import WTComplaints from './screens/watertank/Complaints';
+import WTCommLog from './screens/watertank/CommLog';
 import Projects from './screens/Projects';
 import WorkOrders from './screens/WorkOrders';
 import Inspections from './screens/Inspections';
@@ -44,14 +82,22 @@ import Leads from './screens/Leads';
 import Providers from './screens/Providers';
 import ServiceProviders from './screens/ServiceProviders';
 import ProviderRegister from './screens/ProviderRegister';
+import WaterTankProviderOnboard from './screens/WaterTankProviderOnboard';
 import CareDashboard from './screens/CareDashboard';
 import CareWorkOrders from './screens/CareWorkOrders';
 import CareEnquiries, { CareLeads } from './screens/CareEnquiries';
-import CareInvoicing, { CustomerLists, CarePayments } from './screens/CareBilling';
+import CareInvoicing, { CustomerLists } from './screens/CareBilling';
 import CareQuotations from './screens/CareQuotations';
 import CareAmc from './screens/CareAmc';
-import CareRegisters from './screens/CareRegisters';
+import ShortStayHub from './screens/ShortStayHub';
+import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
+import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
 import Signing from './screens/Signing';
+import RprmAgreements from './screens/RprmAgreements';
+import TmAgreements from './screens/TmAgreements';
+import StsAgreements from './screens/StsAgreements';
+import WtCustomerAgreements from './screens/WtCustomerAgreements';
+import WtProviderAgreements from './screens/WtProviderAgreements';
 import Invoices from './screens/Invoices';
 import Payments from './screens/Payments';
 import Folios from './screens/Folios';
@@ -96,6 +142,7 @@ export default function App() {
             <Route path="/apply/:token" element={<TenantApply />} />
             <Route path="/reference/:token" element={<EmployerReference />} />
             <Route path="/provider-register/:token" element={<ProviderRegister />} />
+            <Route path="/water-tank-provider-onboard/:token" element={<WaterTankProviderOnboard />} />
 
             {/* Role-routed portals (buyer/tenant/supplier/landlord) — one SPA, one auth,
                 one style system. Everything lives inside the same admin-portal build. */}
@@ -139,6 +186,15 @@ export default function App() {
                 <Route path="/property-management/risks" element={<PropertyRisks />} />
                 <Route path="/property-management/global-invoicing" element={<GlobalInvoicing />} />
               </Route>
+              {/* Short Term Stay (Airbnb style) */}
+              <Route element={<PmScopeLayout />}>
+                <Route path="/short-term-stay" element={<ShortStayHub />} />
+                <Route path="/short-term-stay/properties/new" element={<ShortStayPropertyOnboarding />} />
+                <Route path="/short-term-stay/properties/link" element={<ShortStayPropertyOnboarding />} />
+                <Route path="/short-term-stay/properties/:profileId" element={<ShortStayPropertyFile />} />
+                <Route path="/short-term-stay/properties/:profileId/edit" element={<ShortStayPropertyOnboarding />} />
+                <Route path="/short-term-stay/*" element={<ShortStayHub />} />
+              </Route>
               <Route path="/commercial/buy" element={<DealsBoard category="commercial" dealType="buy" title="Commercial · Buy" desc="Commercial buyer service — deals, buyers, agreements, commission and expenses." />} />
               <Route path="/commercial/sell" element={<PropertySellDashboard category="commercial" title="Commercial · Sell" desc="Commercial seller service — listings, owners, agreements and settlement." />} />
               <Route path="/commercial/enquiry" element={<SalesEnquiries category="commercial" title="Commercial · Buyer Enquiries" desc="Every buyer who enquired on a commercial sale property." />} />
@@ -147,6 +203,7 @@ export default function App() {
               <Route path="/rural/enquiry" element={<SalesEnquiries category="rural" title="Rural · Buyer Enquiries" desc="Every buyer who enquired on a rural sale property." />} />
               <Route path="/services" element={<ServiceCatalog />} />
               <Route path="/services/lines" element={<Services />} />
+              <Route path="/services/lines/:slug" element={<ServiceLineDashboard />} />
               <Route path="/projects" element={<Projects />} />
               <Route path="/work-orders" element={<WorkOrders />} />
               <Route path="/inspections" element={<Inspections />} />
@@ -164,11 +221,17 @@ export default function App() {
               <Route path="/property-care/leads" element={<CareLeads />} />
               <Route path="/property-care/customers" element={<CustomerLists />} />
               <Route path="/property-care/invoicing" element={<CareInvoicing />} />
-              <Route path="/property-care/payments" element={<CarePayments />} />
+              {/* Payments & Disbursements moved into the Water Tank console */}
+              <Route path="/property-care/payments" element={<Navigate to="/water-tank/payments" replace />} />
               <Route path="/property-care/quotations" element={<CareQuotations />} />
               <Route path="/property-care/amc" element={<CareAmc />} />
-              <Route path="/property-care/registers" element={<CareRegisters />} />
+              {/* Warranty & Issues moved into the Water Tank console */}
+              <Route path="/property-care/registers" element={<Navigate to="/water-tank/registers" replace />} />
               <Route path="/agreements" element={<Agreements />} />
+              <Route path="/agreements/property-management" element={<RprmAgreements />} />
+              <Route path="/agreements/tenancy-management" element={<TmAgreements />} />
+              <Route path="/agreements/short-term-rental" element={<StsAgreements />} />
+              <Route path="/agreements/water-tank-customer" element={<WtCustomerAgreements />} />
               <Route path="/agreement-templates" element={<AgreementTemplates />} />
               <Route path="/documents" element={PH('Documents', 'Central document management with versioning.')} />
               <Route path="/signing" element={<Signing />} />
@@ -181,6 +244,58 @@ export default function App() {
               <Route path="/reports" element={PH('Reports', 'Operational and financial reports.')} />
               <Route path="/users" element={PH('Users & Roles', 'User management and RBAC matrix.')} />
               <Route path="/settings" element={PH('Settings', 'System configuration.')} />
+            </Route>
+
+            {/* Water Tank Services — self-contained operations console with its OWN
+                sidebar (separate window per service line). Auth-gated but rendered
+                outside the global admin Layout. This is the reusable pattern for
+                every other service line. */}
+            <Route element={<RequireAuth><AdminGate><WaterTankConsole /></AdminGate></RequireAuth>}>
+              <Route path="/water-tank" element={<WaterTankDashboard />} />
+              <Route path="/water-tank/clients" element={<WTClients />} />
+              <Route path="/water-tank/clients/new" element={<WTClientCreate />} />
+              <Route path="/water-tank/clients/:code" element={<WTClientDetail />} />
+              <Route path="/water-tank/service-requests" element={<WTServiceRequests />} />
+              <Route path="/water-tank/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/water-tank/site-assessments" element={<WTSiteAssessments />} />
+              <Route path="/water-tank/site-assessments/new" element={<WTAssessmentForm />} />
+              <Route path="/water-tank/site-assessments/:code" element={<WTAssessmentDetail />} />
+              <Route path="/water-tank/site-assessments/:code/edit" element={<WTAssessmentForm />} />
+              <Route path="/water-tank/site-assessments/:code/quotation" element={<WTQuotationBuilder />} />
+              <Route path="/water-tank/site-assessments/:code/quotation/:quoteCode/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/water-tank/quotations" element={<WTQuotations />} />
+              <Route path="/water-tank/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/water-tank/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/water-tank/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/water-tank/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/water-tank/work-orders" element={<WTWorkOrders />} />
+              <Route path="/water-tank/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/water-tank/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/water-tank/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/water-tank/projects" element={<WTProjects />} />
+              <Route path="/water-tank/projects/new" element={<WTProjectForm />} />
+              <Route path="/water-tank/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/water-tank/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/water-tank/providers" element={<WaterTankProviders />} />
+              <Route path="/water-tank/providers/new" element={<WaterTankProviderOnboarding />} />
+              <Route path="/water-tank/providers/:id" element={<WaterTankProviderDetail />} />
+              <Route path="/water-tank/providers/:code/edit" element={<WaterTankProviderOnboarding />} />
+              <Route path="/agreements/water-tank-provider" element={<WtProviderAgreements />} />
+              <Route path="/agreements/water-tank-provider/new" element={<WtProviderAgreements />} />
+              <Route path="/agreements/water-tank-provider/:id" element={<WtProviderAgreements />} />
+              <Route path="/agreements/water-tank-provider/:id/edit" element={<WtProviderAgreements />} />
+              <Route path="/water-tank/compliance" element={<WTCompliance />} />
+              <Route path="/water-tank/reports" element={<WTServiceReports />} />
+              <Route path="/water-tank/agreements" element={<WTAgreementsHub />} />
+              <Route path="/water-tank/amc" element={<WTAmc />} />
+              <Route path="/water-tank/amc/create-amc" element={<WTAmcForm />} />
+              <Route path="/water-tank/invoices" element={<WTInvoices />} />
+              <Route path="/water-tank/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/water-tank/payments" element={<WTPayments />} />
+              <Route path="/water-tank/registers" element={<WTRegisters />} />
+              <Route path="/water-tank/complaints" element={<WTComplaints />} />
+              <Route path="/water-tank/communication" element={<WTCommLog />} />
+              <Route path="/water-tank/settings" element={<WaterTankSettings />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />

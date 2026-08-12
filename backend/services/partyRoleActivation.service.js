@@ -20,6 +20,7 @@
 const sequelize = require('../config/db.config');
 const PartyRoleProfile = require('../models/PartyRoleProfile');
 const SigningEnvelope = require('../models/SigningEnvelope');
+const EnvelopeSigner = require('../models/EnvelopeSigner');
 const KycDocument = require('../models/KycDocument');
 const { evaluate } = require('./kycRequirements.service');
 const Tenancy = require('../models/Tenancy');
@@ -36,6 +37,24 @@ const parseTerms = (envelope) => {
   if (typeof t === 'string') { try { return JSON.parse(t); } catch { return {}; } }
   return t;
 };
+
+async function shortStayOwnerKycVerified(envelope, transaction) {
+  const ownerSigners = await EnvelopeSigner.findAll({
+    where: { envelope_id: envelope.id, role: 'landlord' },
+    transaction,
+  });
+  if (!ownerSigners.length) return false;
+  for (const signer of ownerSigners) {
+    if (!signer.contact_id) return false;
+    const docs = await KycDocument.findAll({
+      where: { related_type: 'short_stay_owner', related_id: signer.contact_id, role: 'sts_owner' },
+      raw: true,
+      transaction,
+    });
+    if (!evaluate('sts_owner', docs).all_verified) return false;
+  }
+  return true;
+}
 
 async function activatePartyRole(profile, options = {}) {
   if (!profile || profile.status === 'active') return profile;
@@ -211,10 +230,127 @@ async function logPropertyEvent(propertyId, branchId, subject, body) {
   } catch { /* non-fatal */ }
 }
 
+/* ── SSPC-WTCM-PWO-01 post-execution notifications ─────────────────────
+ * Runs after the signing transaction commits. Two audiences:
+ *   Client   — who is coming, when, and how to reach them.
+ *   Provider — the branded Project Work Order PDF and the execution certificate.
+ * Every step is individually guarded: a failed email must never cost the
+ * signature, and one failed recipient must not stop the other.
+ */
+async function notifyWorkOrderExecuted(envelopeId, workOrderId, branchId) {
+  const M = require('../models/waterTankOps');
+  const woPdf = require('../services/wtWorkOrderPdf.service');
+  const branding = require('../services/wtBranding.service');
+  const { sendEmail } = require('../services/communication.service');
+
+  const [envelope, wo] = await Promise.all([
+    SigningEnvelope.findByPk(envelopeId, { include: [{ model: EnvelopeSigner, as: 'signers' }] }),
+    M.WtWorkOrder.findOne({ where: { id: workOrderId, branch_id: branchId } }),
+  ]);
+  if (!wo) return;
+
+  const provider = wo.provider_id
+    ? await M.WtProvider.findOne({ where: { id: wo.provider_id, branch_id: branchId }, raw: true })
+    : null;
+
+  let brand = { contact_lines: [] };
+  try { brand = await branding.getBranding(branchId); } catch { /* defaults */ }
+  const contactBlock = (brand.contact_lines || []).length
+    ? `<p style="color:#6b7280;font-size:12px;margin-top:18px;">${brand.contact_lines.map((l) => String(l)).join('<br/>')}</p>`
+    : '';
+
+  const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : null);
+  const timeline = (() => {
+    const raw = wo.timeline_dates;
+    if (!raw) return {};
+    if (typeof raw === 'object') return raw;
+    try { return JSON.parse(raw) || {}; } catch { return {}; }
+  })();
+  const scheduledFor = fmt(wo.scheduled_date || timeline.commencement || timeline.site_inspection);
+
+  const shell = (title, body) => `
+    <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2430;line-height:1.6;max-width:640px;">
+      <div style="border-bottom:3px double #003768;padding-bottom:10px;text-align:center;">
+        <div style="font-size:18px;font-weight:bold;color:#003768;">Seventh Sky Property Care</div>
+        <div style="font-size:11px;color:#12b6f3;font-weight:bold;letter-spacing:.04em;">WATER TANK CLEANING &amp; MAINTENANCE</div>
+      </div>
+      <h2 style="font-size:16px;color:#003768;margin:18px 0 8px;">${title}</h2>
+      ${body}
+      ${contactBlock}
+    </div>`;
+
+  /* ── the client: who is coming ── */
+  if (wo.client_email) {
+    const rows = [
+      ['Work Order No.', wo.code],
+      ['Project No.', wo.project_id],
+      ['Service Address', wo.site_address],
+      ['Assigned Service Provider', provider?.business_name || wo.provider_name],
+      ['Provider Contact', provider?.contact_person],
+      ['Provider Phone', provider?.contact_phone],
+      ['Provider Email', provider?.contact_email],
+      ['Scheduled', scheduledFor],
+    ].filter(([, v]) => v != null && v !== '');
+    const table = `<table style="width:100%;border-collapse:collapse;margin:10px 0;">${rows.map(([k, v]) => `
+      <tr><td style="padding:6px 10px;border:1px solid #d9dee6;background:#f6f8fb;width:42%;font-weight:600;font-size:13px;">${k}</td>
+      <td style="padding:6px 10px;border:1px solid #d9dee6;font-size:13px;">${String(v)}</td></tr>`).join('')}</table>`;
+
+    await sendEmail(
+      wo.client_email,
+      `Your water tank service is confirmed — Work Order ${wo.code}`,
+      shell('Your service provider has been confirmed', `
+        <p>Dear ${wo.client_contact_person || wo.client_name || 'Customer'},</p>
+        <p>Your Project Work Order has been finalised and the assigned service provider has formally accepted the work. Their details are below so you know exactly who to expect on site.</p>
+        ${table}
+        <p style="font-size:13px;">Our provider carries Seventh Sky identification. If anyone attends who is not from the company named above, please contact us before allowing access.</p>
+        <p style="font-size:13px;">We will be in touch to confirm the attendance window.</p>`),
+    ).then(() => wo.update({ client_notified_at: new Date() }))
+      .catch((e) => console.error('[work order] client email failed:', e.message));
+
+    await M.WtCommLog.create({
+      branch_id: branchId, client_name: wo.client_name, channel: 'email', direction: 'outbound',
+      summary: `${wo.code}: provider confirmation sent to client — ${provider?.business_name || wo.provider_name || 'provider'}`,
+      ref_type: 'work-orders', ref_code: wo.code, logged_at: new Date(),
+    }).catch(() => {});
+  }
+
+  /* ── the provider: branded work order + execution certificate ── */
+  const providerEmail = provider?.contact_email;
+  if (providerEmail) {
+    const attachments = [];
+    try {
+      const pdf = await woPdf.buildWorkOrderPdf(wo.get({ plain: true }), { provider: provider || {}, org: {} });
+      attachments.push({ filename: `${wo.code}-project-work-order.pdf`, content: pdf, contentType: 'application/pdf' });
+    } catch (e) { console.error('[work order] provider PDF failed:', e.message); }
+    if (envelope) {
+      try {
+        const cert = await woPdf.buildExecutionPdf(envelope, envelope.signers || [], wo.get({ plain: true }));
+        attachments.push({ filename: `${wo.code}-signed-agreement.pdf`, content: cert, contentType: 'application/pdf' });
+      } catch (e) { console.error('[work order] execution certificate failed:', e.message); }
+    }
+
+    await sendEmail(
+      providerEmail,
+      `Work Order ${wo.code} executed — you are onboarded to this project`,
+      shell('You are onboarded to this project', `
+        <p>Dear ${provider.contact_person || provider.business_name},</p>
+        <p>Project Work Order <b>${wo.code}</b> for <b>${wo.client_name || 'the client'}</b> has been signed by both parties and is now in force under your Master Service Delivery Provider Agreement.</p>
+        <p>Attached you will find:</p>
+        <ul style="font-size:13px;">
+          <li>The branded Project Work Order (Sections 1–10, including the agreed pricing schedule)</li>
+          <li>The certificate of execution recording both signatures</li>
+        </ul>
+        <p style="font-size:13px;">Please review the timeline and warranty terms and confirm your attendance. Your payout of <b>BDT ${Number(wo.provider_net_payable || wo.provider_fee || 0).toLocaleString('en-BD')}</b> becomes payable per the trigger set in your master agreement.</p>`),
+      attachments,
+    ).catch((e) => console.error('[work order] provider email failed:', e.message));
+  }
+}
+
 /** Master hook — called by signing.controller when an envelope completes. */
 async function handleEnvelopeCompleted(envelope, options = {}) {
   if (!envelope) return;
   const terms = parseTerms(envelope);
+  const deferred = [];   // post-commit side effects (email, PDF) — never inside the tx
 
   await sequelize.transaction(async (tx) => {
     if (envelope.related_type === 'tenancy') {
@@ -234,6 +370,79 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
         // Auto-raise the work order on the signed customer agreement (in-transaction).
         try { if (!q.work_order_id) await convertToWorkOrder(q, null, { transaction: tx }); } catch (e) { console.warn('[careQuotation] convert on sign:', e.message); }
         await q.update({ agreement_status: 'signed' }, { transaction: tx });
+      }
+    }
+
+    // Water Tank customer agreement signed → raise the work order (SOP-01 Sec. 7
+    // Step 6 into Sec. 8 Step 7). Idempotent inside the service.
+    if (envelope.related_type === 'water_tank_customer_agreement') {
+      const { createFromSignedAgreement } = require('./wtWorkOrder.service');
+      try {
+        await createFromSignedAgreement(envelope, { transaction: tx });
+      } catch (e) {
+        console.warn('[waterTank] work order on sign:', e.message);
+      }
+
+      /*
+       * Invoicing. The client has just agreed to Schedule C, so the payment
+       * stages in the agreement's own terms become DRAFT invoices — built from
+       * those figures rather than retyped, so the invoice cannot drift from what
+       * was signed. Deliberately drafts, never sends: an invoice is the one
+       * thing you cannot un-send, so the operator reviews it first.
+       * A failure here must not roll back a completed signature.
+       */
+      try {
+        const invSvc = require('./wtInvoice.service');
+        const drafted = await invSvc.createFromSignedAgreement(envelope, { transaction: tx });
+        if (drafted.length) {
+          console.log(`[waterTank] ${drafted.length} draft invoice(s) raised from ${envelope.envelope_code}: ${drafted.map((d) => d.code).join(', ')}`);
+        }
+      } catch (e) {
+        console.warn('[waterTank] invoice draft on sign:', e.message);
+      }
+    }
+
+    // Water Tank provider master agreement: both ordered signers have completed.
+    // Activate the versioned commercial terms and effective-dated rate card; do
+    // not auto-approve the provider because compliance, payment and territory
+    // gates remain independently reviewable.
+    if (envelope.related_type === 'water_tank_provider_agreement') {
+      const M = require('../models/waterTankOps');
+      const P = require('../models/waterTankProviders');
+      const agreementId = terms.provider_agreement_id;
+      const agreement = agreementId
+        ? await P.WtProviderAgreement.findOne({ where: { id: agreementId, provider_id: envelope.related_id, branch_id: envelope.branch_id }, transaction: tx })
+        : await P.WtProviderAgreement.findOne({ where: { envelope_id: envelope.id, provider_id: envelope.related_id, branch_id: envelope.branch_id }, transaction: tx });
+      const provider = await M.WtProvider.findOne({ where: { id: envelope.related_id, branch_id: envelope.branch_id }, transaction: tx });
+      if (agreement && provider) {
+        if (provider.active_agreement_id && provider.active_agreement_id !== agreement.id) {
+          await P.WtProviderAgreement.update({ status: 'Superseded' }, { where: { id: provider.active_agreement_id, branch_id: envelope.branch_id }, transaction: tx });
+        }
+        await agreement.update({ status: 'Completed', envelope_id: envelope.id, completed_at: envelope.completed_at || new Date() }, { transaction: tx });
+        await P.WtProviderAgreementRate.update({
+          effective_from: agreement.effective_date,
+          effective_to: agreement.expiry_date,
+          rate_status: 'Approved',
+        }, { where: { agreement_id: agreement.id, branch_id: envelope.branch_id }, transaction: tx });
+        await provider.update({
+          active_agreement_id: agreement.id,
+          agreement_status: 'Signed',
+          agreement_envelope_id: envelope.id,
+          agreement_code: agreement.code,
+          agreement_signed_date: new Date(envelope.completed_at || Date.now()).toISOString().slice(0, 10),
+          agreement_expiry_date: agreement.expiry_date,
+          onboarding_stage: provider.cumilla_briefed ? 'Territory Briefing' : 'Agreement Signing',
+          stage_updated_at: new Date(),
+          bank_details: terms.bank_details || provider.bank_details,
+          approved_services: terms.authorised_services || provider.approved_services,
+          cumilla_exclusive: terms.cumilla_exclusive ?? provider.cumilla_exclusive,
+        }, { transaction: tx });
+        await P.WtProviderEvent.create({
+          branch_id: envelope.branch_id, provider_id: provider.id, event_type: 'agreement',
+          title: `Master agreement ${agreement.code} fully executed`,
+          detail: `Version ${agreement.version_no}; effective ${agreement.effective_date}; expires ${agreement.expiry_date}; ${terms.agreed_lines?.length || 0} agreed rates activated.`,
+          actor: 'eSign automation', occurred_at: new Date(),
+        }, { transaction: tx });
       }
     }
 
@@ -297,9 +506,86 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
         }
       }
     }
+
+    if (envelope.related_type === 'short_stay_management') {
+      const ShortStayOwnerManagement = require('../models/ShortStayOwnerManagement');
+      const ShortStayPropertyProfile = require('../models/ShortStayPropertyProfile');
+      const KycDocument = require('../models/KycDocument');
+      const { evaluate } = require('./kycRequirements.service');
+      // related_id is the property_id (see buildOwnerAgreement), not the management PK.
+      const mgmt = await ShortStayOwnerManagement.findOne({ where: { property_id: envelope.related_id, branch_id: envelope.branch_id }, transaction: tx });
+      if (mgmt) {
+        const canActivate = envelope.kyc_policy === 'none' || await shortStayOwnerKycVerified(envelope, tx);
+        await mgmt.update({ status: canActivate ? 'active' : 'pending_signature' }, { transaction: tx });
+        const profile = await ShortStayPropertyProfile.findOne({ where: { property_id: mgmt.property_id, branch_id: envelope.branch_id }, transaction: tx });
+        if (profile && profile.status === 'draft') {
+          await profile.update({ status: 'readiness_pending' }, { transaction: tx });
+        }
+        await logPropertyEvent(mgmt.property_id, mgmt.branch_id, `STS-Owner Agreement Signed — ${envelope.envelope_code}`, canActivate ? 'Short term management active.' : 'Activation held until owner KYC is verified.');
+      }
+    }
+
+    if (envelope.related_type === 'short_stay_booking') {
+      const ShortStayBooking = require('../models/ShortStayBooking');
+      const KycDocument = require('../models/KycDocument');
+      const { evaluate } = require('./kycRequirements.service');
+      const booking = await ShortStayBooking.findOne({ where: { id: envelope.related_id, branch_id: envelope.branch_id }, transaction: tx });
+      if (booking) {
+        const docs = await KycDocument.findAll({ where: { related_type: 'short_stay_booking', related_id: booking.id, role: 'guest' }, raw: true, transaction: tx });
+        const kyc = evaluate('guest', docs);
+        const nextStatus = envelope.kyc_policy === 'none' || kyc.all_verified ? 'pending_payment' : 'pending_verification';
+        await booking.update({ status: nextStatus }, { transaction: tx });
+        await logPropertyEvent(booking.property_id, booking.branch_id, `Guest Agreement Signed — ${envelope.envelope_code}`, `Booking ${booking.booking_code} status updated to ${nextStatus}.`);
+      }
+    }
+
+    /*
+     * SSPC-WTCM-PWO-01 — both parties have signed the Project Work Order.
+     * The provider is thereby onboarded to the project: the work order advances,
+     * the client is told who is coming, and the provider receives the branded
+     * work order and the execution certificate as PDFs.
+     */
+    if (envelope.related_type === 'water_tank_work_order') {
+      const M = require('../models/waterTankOps');
+      const wo = await M.WtWorkOrder.findOne({
+        where: { id: envelope.related_id, branch_id: envelope.branch_id }, transaction: tx,
+      });
+      if (wo) {
+        const signedAt = envelope.completed_at || new Date();
+        await wo.update({
+          wo_doc_status: 'Signed',
+          wo_signed_at: signedAt,
+          wo_envelope_id: envelope.id,
+          wo_doc_code: envelope.envelope_code,
+          // freeze the executed copy — the legal record must never re-render
+          wo_signed_document_html: envelope.document_html,
+          provider_onboarded_at: signedAt,
+          accepted_at: wo.accepted_at || signedAt,
+          status: ['Draft', 'Issued'].includes(String(wo.status)) ? 'Accepted' : wo.status,
+        }, { transaction: tx });
+
+        if (wo.provider_id) {
+          await P.WtProviderEvent.create({
+            branch_id: envelope.branch_id, provider_id: wo.provider_id, event_type: 'work order',
+            title: `Project Work Order ${wo.code} executed`,
+            detail: `Signed by both parties for ${wo.client_name || 'the client'}; provider onboarded to project ${wo.project_id || wo.code}.`,
+            actor: 'eSign automation', occurred_at: signedAt,
+          }, { transaction: tx }).catch(() => {});
+        }
+
+        // Notifications go out after the transaction commits, never inside it —
+        // a slow SMTP server must not hold the signing transaction open, and a
+        // failed send must not roll back a completed signature.
+        deferred.push(() => notifyWorkOrderExecuted(envelope.id, wo.id, envelope.branch_id));
+      }
+    }
+
   });
 
   // Notifications outside the transaction — must never roll back activation.
+  for (const job of deferred) {
+    try { await job(); } catch (e) { console.error('[activation] post-commit job failed:', e.message); }
+  }
   await notifyCompletion(envelope);
 }
 
@@ -328,9 +614,28 @@ async function activatePartyRoleAfterKyc(profileId) {
   return profile;
 }
 
+async function activateShortStayManagementAfterKyc(envelopeId) {
+  const envelope = await SigningEnvelope.findByPk(envelopeId);
+  if (!envelope || envelope.related_type !== 'short_stay_management' || envelope.status !== 'completed') return null;
+  const ShortStayOwnerManagement = require('../models/ShortStayOwnerManagement');
+  const ShortStayPropertyProfile = require('../models/ShortStayPropertyProfile');
+  const management = await ShortStayOwnerManagement.findOne({
+    where: { property_id: envelope.related_id, branch_id: envelope.branch_id },
+  });
+  if (!management || management.status === 'active') return management;
+  if (!await shortStayOwnerKycVerified(envelope)) return null;
+  await management.update({ status: 'active' });
+  const profile = await ShortStayPropertyProfile.findOne({
+    where: { property_id: management.property_id, branch_id: management.branch_id },
+  });
+  if (profile && profile.status === 'draft') await profile.update({ status: 'readiness_pending' });
+  return management;
+}
+
 module.exports = {
   activatePartyRole,
   activateTenancyFromSignedAgreement,
   activatePartyRoleAfterKyc,
+  activateShortStayManagementAfterKyc,
   handleEnvelopeCompleted,
 };

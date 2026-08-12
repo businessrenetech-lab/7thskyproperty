@@ -1,0 +1,424 @@
+/**
+ * waterTankIntake.controller.js
+ * Where water-tank work comes from, and how it gets routed.
+ *
+ *   Website / phone enquiry  →  Service Request  →  either
+ *      (a) Site Assessment first (Sec. 6), or
+ *      (b) straight to a Quotation (Sec. 7 Step 5) when the job is well
+ *          understood and no visit is needed.
+ *
+ * The public submit endpoint is unauthenticated — it is what the marketing site
+ * posts to. It deliberately exposes no pricing.
+ */
+const { Op } = require('sequelize');
+const { asyncHandler, branchScope, resolveBranchId } = require('../utils/controllerHelpers');
+const M = require('../models/waterTankOps');
+const ServiceItem = require('../models/ServiceItem');
+
+const num = (v) => Number(v || 0);
+const today = () => new Date().toISOString().slice(0, 10);
+const addDays = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+const actorOf = (req) => req.user?.name || req.user?.email || 'Client Service';
+
+const ENQUIRY_STATUSES = ['New', 'Contacted', 'Qualified', 'Converted', 'Unqualified'];
+
+async function nextCode(model, prefix, pad, start, branchId) {
+  const rows = await model.findAll({ where: { branch_id: branchId }, attributes: ['code'], raw: true });
+  let max = start - 1;
+  for (const r of rows) {
+    const n = parseInt(String(r.code || '').replace(prefix, ''), 10);
+    if (!Number.isNaN(n) && n > max) max = n;
+  }
+  return prefix + String(max + 1).padStart(pad, '0');
+}
+
+/* ═══ PUBLIC (website) ════════════════════════════════════════ */
+
+/**
+ * GET /public/water-tank/services — the service menu the website shows.
+ * Names only. Pricing is deliberately withheld from the public site.
+ */
+exports.publicServices = asyncHandler(async (req, res) => {
+  const rows = await ServiceItem.findAll({
+    where: { vertical: 'water_tank_csa', is_active: true },
+    order: [['sort_order', 'ASC']],
+    raw: true,
+  });
+  // The catalogue carries no customer-facing category, so group by service
+  // family read off the name — this is also how a visitor thinks about it.
+  const FAMILY = [
+    [/inspect/i, 'Inspection & Assessment'],
+    [/clean|wash|scrub|evacuat/i, 'Tank Cleaning'],
+    [/disinfect|steril|bacteria|algae|chlorin/i, 'Disinfection & Treatment'],
+    [/test|quality|sample|report/i, 'Water Quality Testing'],
+    [/leak|crack|repair|waterproof|valve|pipe|structur/i, 'Repairs & Waterproofing'],
+    [/pump|pressure/i, 'Pump & Pressure Systems'],
+    [/maintenance contract|amc|annual/i, 'Annual Maintenance Contracts'],
+    [/maintenance|preventive|scheduled/i, 'Maintenance'],
+    [/emergency|call-out|after hours/i, 'Emergency Call-Out'],
+  ];
+  const familyOf = (name) => (FAMILY.find(([re]) => re.test(name)) || [null, 'Other Services'])[1];
+
+  const groups = {};
+  rows.forEach((r) => {
+    let tags = r.tags;
+    if (typeof tags === 'string') { try { tags = JSON.parse(tags); } catch { tags = {}; } }
+    // only customer-facing services; materials and labour rates are internal
+    if (((tags || {}).group || 'service') !== 'service') return;
+    const g = familyOf(r.name || '');
+    (groups[g] = groups[g] || []).push({ code: r.code, name: r.name, unit: r.unit || null });
+  });
+  res.json({
+    groups: Object.entries(groups).map(([label, services]) => ({ label, services })),
+    property_types: ['Apartment', 'House', 'Duplex', 'Commercial Building', 'Hotel', 'Restaurant', 'School', 'Hospital', 'Factory', 'Warehouse', 'Mosque', 'Other'],
+    tank_types: ['Overhead', 'Underground', 'Rooftop', 'Ground Level', 'Sectional', 'Not sure'],
+    districts: ['Dhaka', 'Cumilla', 'Chattogram', 'Sylhet', 'Rajshahi', 'Khulna', 'Barishal', 'Rangpur', 'Mymensingh', 'Gazipur', 'Narayanganj'],
+  });
+});
+
+/**
+ * POST /public/water-tank/enquiry — the website enquiry form.
+ * Unauthenticated. Validates the minimum a coordinator needs to call back.
+ */
+exports.publicEnquiry = asyncHandler(async (req, res) => {
+  const b = req.body || {};
+  const name = String(b.client_name || '').trim();
+  const phone = String(b.phone || '').trim();
+  if (!name) return res.status(400).json({ error: 'Please tell us your name.' });
+  if (!phone) return res.status(400).json({ error: 'Please give us a phone number so we can call you back.' });
+
+  const branchId = num(b.branch_id) || 1;
+  const row = await M.WtEnquiry.create({
+    branch_id: branchId,
+    code: await nextCode(M.WtEnquiry, 'ENQ-', 4, 1, branchId),
+    client_name: name,
+    phone,
+    email: String(b.email || '').trim() || null,
+    site_address: b.site_address || null,
+    district: b.district || null,
+    property_type: b.property_type || null,
+    services_requested: Array.isArray(b.services_requested) ? b.services_requested : [],
+    tank_type: b.tank_type || null,
+    tanks_count: num(b.tanks_count),
+    preferred_date: b.preferred_date || null,
+    message: b.message || null,
+    source: b.source || 'Website',
+    page_url: b.page_url || null,
+    status: 'New',
+  });
+
+  await M.WtCommLog.create({
+    branch_id: branchId, client_name: name, channel: 'note', direction: 'inbound',
+    summary: `Water tank enquiry ${row.code} received from ${row.source}`,
+    ref_type: 'enquiries', ref_code: row.code, logged_at: new Date(),
+  }).catch(() => {});
+
+  // never echo internal fields back to the public site
+  res.status(201).json({
+    ok: true,
+    reference: row.code,
+    message: 'Thank you — we have received your enquiry and will call you shortly.',
+  });
+});
+
+/* ═══ ENQUIRIES (console) ═════════════════════════════════════ */
+
+exports.listEnquiries = asyncHandler(async (req, res) => {
+  const where = { ...branchScope(req) };
+  if (req.query.status) where.status = req.query.status;
+  if (req.query.q) {
+    const like = { [Op.like]: `%${req.query.q}%` };
+    where[Op.or] = [{ client_name: like }, { phone: like }, { email: like }, { code: like }, { site_address: like }];
+  }
+  const rows = await M.WtEnquiry.findAll({ where, order: [['id', 'DESC']], limit: 300 });
+
+  const all = await M.WtEnquiry.findAll({ where: branchScope(req), attributes: ['status', 'createdAt', 'converted_at'], raw: true });
+  const is = (r, s) => String(r.status || '').toLowerCase() === s;
+  const converted = all.filter((r) => is(r, 'converted'));
+  const closed = all.filter((r) => is(r, 'converted') || is(r, 'unqualified'));
+
+  res.json({
+    rows,
+    statuses: ENQUIRY_STATUSES,
+    summary: {
+      total: all.length,
+      new: all.filter((r) => is(r, 'new')).length,
+      contacted: all.filter((r) => is(r, 'contacted')).length,
+      qualified: all.filter((r) => is(r, 'qualified')).length,
+      converted: converted.length,
+      unqualified: all.filter((r) => is(r, 'unqualified')).length,
+      conversion_rate: closed.length ? Math.round((converted.length / closed.length) * 1000) / 10 : null,
+    },
+  });
+});
+
+exports.updateEnquiry = asyncHandler(async (req, res) => {
+  const row = await M.WtEnquiry.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!row) return res.status(404).json({ error: 'Enquiry not found' });
+  const body = { ...req.body };
+  delete body.id; delete body.branch_id; delete body.code;
+  if (body.status === 'Contacted' && !row.contacted_at) body.contacted_at = new Date();
+  await row.update(body);
+  res.json(row);
+});
+
+exports.createEnquiry = asyncHandler(async (req, res) => {
+  const branchId = resolveBranchId(req);
+  if (!req.body.client_name) return res.status(400).json({ error: 'Client name is required.' });
+  if (!req.body.phone) return res.status(400).json({ error: 'Phone number is required.' });
+  const row = await M.WtEnquiry.create({
+    ...req.body,
+    branch_id: branchId,
+    code: await nextCode(M.WtEnquiry, 'ENQ-', 4, 1, branchId),
+    source: req.body.source || 'Phone',
+    status: req.body.status || 'New',
+  });
+  res.status(201).json(row);
+});
+
+exports.deleteEnquiry = asyncHandler(async (req, res) => {
+  const row = await M.WtEnquiry.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!row) return res.status(404).json({ error: 'Enquiry not found' });
+  await row.destroy();
+  res.json({ ok: true });
+});
+
+/* ═══ REQUEST WIZARD SUPPORT ══════════════════════════════════ */
+
+/**
+ * GET /wt-intake/request-reference
+ * Everything the new-request wizard needs: the service menu with prices (this
+ * is the console, not the website), and the providers who may actually be
+ * assigned — SOP-02 Sec. 6 Step 4 permits assignment only to an approved
+ * provider with a signed master agreement.
+ */
+exports.requestReference = asyncHandler(async (req, res) => {
+  const scope = branchScope(req);
+  const [catalogRows, providers] = await Promise.all([
+    ServiceItem.findAll({ where: { ...scope, vertical: 'water_tank_csa', is_active: true }, order: [['sort_order', 'ASC']], raw: true }),
+    M.WtProvider.findAll({ where: scope, order: [['rank', 'ASC'], ['business_name', 'ASC']], raw: true }),
+  ]);
+
+  const GROUP_LABEL = { service: 'Services', material: 'Materials', labour: 'Labour' };
+  const catalog = catalogRows.map((i) => {
+    let tags = i.tags;
+    if (typeof tags === 'string') { try { tags = JSON.parse(tags); } catch { tags = {}; } }
+    const g = (tags || {}).group || 'service';
+    return {
+      id: i.id, code: i.code, name: i.name, unit: i.unit || null,
+      standard_price: num(i.base_price), group: GROUP_LABEL[g] || 'Services', group_key: g,
+      description: i.description || null,
+    };
+  });
+
+  const eligible = providers.map((p) => {
+    const approved = String(p.status || '').toLowerCase() === 'approved';
+    const signed = String(p.agreement_status || '').toLowerCase() === 'signed';
+    let areas = p.coverage_areas;
+    if (typeof areas === 'string') { try { areas = JSON.parse(areas); } catch { areas = []; } }
+    let cats = p.service_categories;
+    if (typeof cats === 'string') { try { cats = JSON.parse(cats); } catch { cats = []; } }
+    return {
+      id: p.id, code: p.code, business_name: p.business_name,
+      specialty: p.specialty, rating: num(p.rating), rank: p.rank,
+      coverage_areas: Array.isArray(areas) ? areas : [],
+      service_categories: Array.isArray(cats) ? cats : [],
+      status: p.status, agreement_status: p.agreement_status,
+      // the SOP gate: no client work without an executed master agreement
+      assignable: approved && signed,
+      blocked_reason: approved
+        ? (signed ? null : 'No signed master agreement (Sec. 6 Step 4)')
+        : `Provider status is ${p.status || 'Pending'}`,
+    };
+  });
+
+  res.json({
+    catalog,
+    groups: [...new Set(catalog.map((c) => c.group))],
+    providers: eligible,
+    assignable_providers: eligible.filter((p) => p.assignable),
+    categories: ['Cleaning', 'Disinfection', 'Repairs', 'Water Quality', 'Maintenance', 'AMC', 'Inspection'],
+    priorities: ['High', 'Medium', 'Low'],
+    districts: ['Dhaka', 'Cumilla', 'Chattogram', 'Sylhet', 'Rajshahi', 'Khulna', 'Barishal', 'Rangpur', 'Mymensingh', 'Gazipur', 'Narayanganj'],
+    property_types: ['Apartment', 'House', 'Duplex', 'Commercial Building', 'Hotel', 'Restaurant', 'School', 'Hospital', 'Factory', 'Warehouse', 'Mosque', 'Other'],
+    tank_types: ['Overhead', 'Underground', 'Rooftop', 'Ground Level', 'Sectional', 'Pressure Vessel'],
+  });
+});
+
+/**
+ * POST /wt-intake/requests
+ * Creates the service request and routes it in one move:
+ *   needs_assessment true  → schedules the site assessment on the chosen date
+ *   needs_assessment false → raises the quotation from the selected services
+ * Also creates the client and project file if they do not exist yet, and
+ * closes off the originating enquiry.
+ */
+exports.createRequest = asyncHandler(async (req, res) => {
+  const scope = branchScope(req);
+  const branchId = resolveBranchId(req);
+  const b = req.body || {};
+
+  if (!b.client_name) return res.status(400).json({ error: 'Client name is required.' });
+  const needsAssessment = b.needs_assessment !== false;
+  const lines = Array.isArray(b.lines) ? b.lines : [];
+  if (!needsAssessment && !lines.length) {
+    return res.status(400).json({ error: 'Select at least one service to quote, or choose a site assessment instead.' });
+  }
+  if (needsAssessment && !b.assessment_date) {
+    return res.status(400).json({ error: 'Pick a date for the site assessment.' });
+  }
+
+  // ── client: reuse or register ──
+  let client = b.client_code
+    ? await M.WtClient.findOne({ where: { ...scope, code: b.client_code } })
+    : await M.WtClient.findOne({ where: { ...scope, name: b.client_name } });
+  if (!client) {
+    client = await M.WtClient.create({
+      branch_id: branchId,
+      code: await nextCode(M.WtClient, 'WTCM-C', 4, 1, branchId),
+      name: b.client_name,
+      client_type: b.client_type || 'Residential',
+      mobile: b.phone || null, email: b.email || null,
+      service_address: b.address || null, district: b.district || null,
+      property_type: b.property_type || null,
+      tank_type: b.tank_type || null, tanks_count: num(b.tanks_count),
+      lead_source: b.source || 'Direct',
+      current_status: 'New Lead',
+      workflow_stage: 'Needs Assessment',
+      stage_updated_at: new Date(),
+      enquiry_date: today(),
+      requested_service: b.specific_service || null,
+      assigned_officer: b.assigned_officer || null,
+    });
+  }
+
+  // ── project file ──
+  let project = await M.WtProject.findOne({ where: { ...scope, client_name: client.name, status: 'Open' } });
+  if (!project) {
+    project = await M.WtProject.create({
+      branch_id: branchId,
+      code: await nextCode(M.WtProject, 'WTCM-P', 4, 1, branchId),
+      name: `${client.name} — ${b.specific_service || b.category || 'Water Tank Service'}`,
+      client_name: client.name,
+      assigned_provider: b.provider_name || null,
+      start_date: today(),
+      stage: needsAssessment ? 'Site Assessment' : 'Quotation',
+      status: 'Open',
+      timeline: [], linked: {}, milestones: [],
+    });
+  }
+
+  // ── the request itself ──
+  const request = await M.WtServiceRequest.create({
+    branch_id: branchId,
+    code: await nextCode(M.WtServiceRequest, 'SR-', 4, 1095, branchId),
+    request_date: b.request_date || today(),
+    client_name: client.name,
+    client_code: client.code,
+    email: b.email || client.email,
+    phone: b.phone || client.mobile,
+    address: b.address || client.service_address,
+    district: b.district || client.district,
+    property_type: b.property_type || client.property_type,
+    category: b.category || null,
+    specific_service: b.specific_service || null,
+    services_requested: b.services_requested || lines.map((l) => l.name),
+    priority: b.priority || 'Medium',
+    preferred_date: b.preferred_date || null,
+    visit_required: needsAssessment,
+    deposit_required: !!b.deposit_required,
+    provider_name: b.provider_name || null,
+    assigned_officer: b.assigned_officer || null,
+    description: b.description || null,
+    needs_assessment: needsAssessment,
+    assessment_date: needsAssessment ? b.assessment_date : null,
+    project_id: project.code,
+    source: b.source || 'Direct',
+    enquiry_code: b.enquiry_code || null,
+    status: needsAssessment ? 'Assessment Scheduled' : 'In Progress',
+  });
+
+  const out = { request, client, project, assessment: null, quotation: null };
+
+  // ── branch A: schedule the site assessment ──
+  if (needsAssessment) {
+    const assessment = await M.WtSiteAssessment.create({
+      branch_id: branchId,
+      code: await nextCode(M.WtSiteAssessment, 'SA-', 4, 402, branchId),
+      client_name: client.name,
+      project_id: project.code,
+      provider: b.provider_name || null,
+      assessed_date: b.assessment_date,
+      status: 'Scheduled',
+      tank_type: b.tank_type || client.tank_type || null,
+      checklist: {}, photos: [], photos_after: [], risks: [], variations: [],
+      recommended_services: b.services_requested || [],
+      findings: b.description || null,
+      assessor: b.assigned_officer || null,
+      template_key: 'standard',
+    });
+    await request.update({ assessment_code: assessment.code });
+    out.assessment = assessment;
+  } else {
+    // ── branch B: straight to a quotation ──
+    const lineTotal = (l) => num(l.price) * (num(l.qty) || 1);
+    const service_charges = lines.filter((l) => l.kind !== 'fee').reduce((s, l) => s + lineTotal(l), 0);
+    const other_fees = lines.filter((l) => l.kind === 'fee').reduce((s, l) => s + lineTotal(l), 0);
+    const alloc = num(b.provider_allocation_fee);
+    const discount = num(b.discount);
+    const net = Math.max(0, service_charges + other_fees + alloc - discount);
+    const vat = b.vat_exempt ? 0 : Math.round(net * 0.05 * 100) / 100;
+
+    const quotation = await M.WtQuotation.create({
+      branch_id: branchId,
+      code: await nextCode(M.WtQuotation, 'Q-', 4, 1049, branchId),
+      client_name: client.name,
+      project_id: project.code,
+      lines,
+      service_charges, other_fees, provider_allocation_fee: alloc, discount,
+      vat_exempt: !!b.vat_exempt, vat,
+      total: Math.round((net + vat) * 100) / 100,
+      validity: b.validity || '15 Days',
+      payment_terms: b.payment_terms || null,
+      notes: b.notes || null,
+      decision: 'Pending',
+    });
+    await request.update({ quotation_code: quotation.code });
+    await client.update({ workflow_stage: 'Quotation', stage_updated_at: new Date() });
+    out.quotation = quotation;
+  }
+
+  // ── project timeline ──
+  const timeline = (() => { try { return JSON.parse(project.timeline) || []; } catch { return Array.isArray(project.timeline) ? project.timeline : []; } })();
+  timeline.push({
+    title: needsAssessment ? 'Site assessment scheduled' : 'Quotation raised',
+    detail: needsAssessment
+      ? `${request.code} → ${out.assessment.code} on ${b.assessment_date}`
+      : `${request.code} → ${out.quotation.code}`,
+    at: new Date().toISOString(), by: actorOf(req),
+  });
+  await project.update({ timeline, stage: needsAssessment ? 'Site Assessment' : 'Quotation' });
+
+  // ── close off the enquiry it came from ──
+  if (b.enquiry_code) {
+    const enq = await M.WtEnquiry.findOne({ where: { ...scope, code: b.enquiry_code } });
+    if (enq) {
+      await enq.update({
+        status: 'Converted',
+        converted_request_code: request.code,
+        converted_client_code: client.code,
+        converted_at: new Date(),
+      });
+    }
+  }
+
+  await M.WtCommLog.create({
+    branch_id: branchId, client_name: client.name, channel: 'note', direction: 'outbound',
+    summary: needsAssessment
+      ? `Service request ${request.code} raised — site assessment ${out.assessment.code} scheduled for ${b.assessment_date}`
+      : `Service request ${request.code} raised — quotation ${out.quotation.code} prepared`,
+    ref_type: 'service-requests', ref_code: request.code, logged_at: new Date(),
+  });
+
+  res.status(201).json(out);
+});
