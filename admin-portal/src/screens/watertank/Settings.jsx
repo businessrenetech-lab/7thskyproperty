@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { WtHead, bdt, useCatalog, Loading, EmptyState, titleCase } from './common';
 
 /* Settings — the WTC standard price schedule (live from the service catalog)
-   plus the Water Tank SOP stages. Editable pricing lives in the Service Catalog;
+   plus the Water Tank SOP stages. Editing lives on the Price Schedule screen;
    quotations and agreements price from this schedule. */
 
 const CLIENT_SOP = ['Client Enquiry', 'Needs Assessment', 'Site Assessment', 'Quotation & Agreement', 'Deposit Collection', 'Provider Assignment', 'Service Delivery', 'Inspection & Reporting', 'Completion', 'AMC / Ongoing Support'];
@@ -57,7 +58,8 @@ export default function Settings() {
             <div>
               <h2 className="wt-section-title">Standard Service Price Schedule</h2>
               <p className="wt-subtitle" style={{ marginBottom: 8 }}>
-                Live from the Service Catalog (vertical <code>water_tank_csa</code>) — {items.length} item{items.length === 1 ? '' : 's'}, {priced.length} priced{avg ? `, average ${bdt(avg)}` : ''}. Quotations and agreements price from this list.
+                {items.length} item{items.length === 1 ? '' : 's'}, {priced.length} priced{avg ? `, average ${bdt(avg)}` : ''}. Quotations and agreements price from this list.
+                {' '}This is a read-only view — <Link to="/water-tank/catalogue">open the Price Schedule</Link> to add, edit, withdraw or see the change history of an item.
               </p>
             </div>
             {groups.length > 1 && (

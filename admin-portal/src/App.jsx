@@ -46,6 +46,7 @@ import WaterTankProviderOnboarding from './screens/watertank/providers/ProviderO
 import WTCompliance from './screens/watertank/Compliance';
 import WTServiceReports from './screens/watertank/ServiceReports';
 import WaterTankSettings from './screens/watertank/Settings';
+import WaterTankCatalogue from './screens/watertank/Catalogue';
 import WTClients from './screens/watertank/Clients';
 import WTClientDetail from './screens/watertank/clients/ClientDashboard';
 import WTClientCreate from './screens/watertank/clients/ClientCreate';
@@ -295,6 +296,7 @@ export default function App() {
               <Route path="/water-tank/registers" element={<WTRegisters />} />
               <Route path="/water-tank/complaints" element={<WTComplaints />} />
               <Route path="/water-tank/communication" element={<WTCommLog />} />
+              <Route path="/water-tank/catalogue" element={<WaterTankCatalogue />} />
               <Route path="/water-tank/settings" element={<WaterTankSettings />} />
             </Route>
 

@@ -1983,3 +1983,88 @@ It is now refused with "reverse the receipt first".
 - Browser QA still outstanding — verification here is API-level with minted
   tokens, which is stronger for the role matrix than clicking, but no one has
   yet watched the Payments screen post a receipt through the new endpoint.
+
+---
+
+## 2026-08-12 — Claude — COMPLETED: Water Tank Phase 3 (catalogue integrity)
+
+Branch `water-tank/phase-0-baseline`.
+
+### A plan item I did NOT do, and why
+The plan's item 9 was "consolidate the 28 `water_tank` items onto the 41
+`water_tank_csa`, retire the legacy vertical". I checked the premise before
+acting on it and it does not hold:
+
+- `water_tank_csa` is ALREADY the only catalogue this module reads. Every
+  water-tank consumer — quotations, agreements, invoices, projects, AMC, intake,
+  work-order docs — queries `water_tank_csa`. There is no competing list here.
+- The 28 `water_tank` items are **Property Care's** catalogue. They are
+  referenced by 24 live records (`care_work_orders` 15, `care_quotations` 6,
+  `care_amc_contracts` 2, `care_enquiries` 1), most recent activity 2026-08-09,
+  and `/property-care/*` is still fully routed in App.jsx.
+
+Retiring that vertical would have broken a live module outside this scope. Two
+catalogues exist because there are two service lines, not because of drift.
+**Not done deliberately** — if consolidation is genuinely wanted it is a Property
+Care migration and needs its own decision.
+
+### What was actually broken — verified by reproducing it first
+I changed a price, renamed an item and archived one on the real database and
+watched what happened to a Schedule C:
+
+| Manipulation | Before |
+|---|---|
+| Rename an item | The name AND unit were **rewritten** on any recomputed Schedule C |
+| Archive an item | Its line **silently vanished** — 2 lines in, 1 line out, no error |
+| Change a price | Stored `agreed_price` held (this part was already safe) |
+| Delete an item | Allowed unconditionally, even under signed contract |
+
+The disappearing line is the worst of these: a client's agreed scope shrinking
+with nothing looking wrong. Cause was `wtCustomerAgreement.computePricing()`:
+`const line = byCode[s.code]; if (!line) return null; ... {...line}` — it
+resolved every line against the LIVE catalogue and dropped what it could not find.
+
+Stored quotation lines were tested too and do NOT drift; they already snapshot
+code/name/unit/price. The exposure was specifically on recompute.
+
+### Built
+- **`services/wtCatalogue.service.js`** — `resolveLine()` reads a line's own
+  snapshot first and treats the catalogue as fallback; a withdrawn item renders
+  flagged `orphaned` instead of disappearing. Plus usage counting, append-only
+  history, guarded create/update/archive/restore/clone/delete.
+- **Migration 0083** `wt_catalogue_history` — every price/name/status change with
+  who, when, why and an `effective_from`, so "what did this cost in March" is
+  answerable. Backfilled an opening row per existing item.
+- **`computePricing` fixed** — resolves through the snapshot, and looks items up
+  INCLUDING archived rows so legacy lines (code only, no snapshot) also survive.
+  The picker still offers active items only.
+- **`/api/wt-catalogue`** + a real editor screen at `/water-tank/catalogue`:
+  usage shown next to every row, price history with reason, archive as the
+  normal removal, Delete shown ONLY for items nothing has priced against.
+- **Closed the bypass**: the shared `/service-catalog/items/:id` DELETE
+  hard-destroyed with no check. It now refuses for `water_tank_csa` items in use
+  and names archiving. Other verticals keep their existing behaviour — I have not
+  verified how to count usage for them and did not want to add an unproven guard.
+
+### A real bug found by the tests, not by review
+`priceOn()` returned the SUPERSEDED price intermittently. `changed_at` has
+one-second resolution, so two edits in the same second tied on
+`(effective_from, changed_at)` and MySQL was free to return either — and did.
+Added `id DESC` as the final tiebreak. Confirmed stable over three consecutive
+runs; before the fix it passed once and failed once on identical input.
+
+### Verified — 182 assertions, 0 failures
+- Phase 3: 36 service-level + 30 over HTTP. The rename/archive manipulations that
+  previously corrupted a Schedule C now hold name, unit, list-price-as-at-agreement,
+  agreed price and the contract total (8400 before and after).
+- Regression: Phase 1 30/30, Phase 2 30+25+31, all still green.
+- Role guards: tenant and owner 403 on read and on every write.
+- Route inventory: nothing dropped. All 12 route modules load and mount.
+- `npm run build` clean, 1971 modules.
+
+### NOT done
+- Quotation and work-order builders do not yet WRITE the new `snapshot` field
+  onto their lines — they still store code/name/unit/price, which the resolver
+  reads as a partial snapshot. New agreements are protected via the archived-
+  inclusive lookup; full snapshotting of those two builders is a follow-up.
+- Browser QA of the new editor screen.

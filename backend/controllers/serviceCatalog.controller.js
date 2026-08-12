@@ -110,9 +110,36 @@ exports.updateItem = asyncHandler(async (req, res) => {
   res.json({ data: item, message: 'Service updated.' });
 });
 
+/**
+ * Delete a catalogue item.
+ *
+ * This used to destroy unconditionally. For a water-tank item that is wrong in a
+ * way that shows up much later: quotations, agreements and invoices resolve
+ * their lines by code, so deleting an item that is under contract used to make
+ * the line disappear from a recomputed Schedule C with no error anywhere. The
+ * usage check refuses that and points at archiving, which withdraws the item
+ * from the picker while every existing document keeps rendering.
+ *
+ * Only the water_tank_csa vertical is checked here, because that is the one
+ * whose usage this codebase can currently count. Other verticals keep the old
+ * behaviour rather than being given a guard that has not been verified for them.
+ */
 exports.deleteItem = asyncHandler(async (req, res) => {
   const item = await ServiceItem.findOne({ where: { id: req.params.id, ...branchScope(req) } });
   if (!item) return res.status(404).json({ error: 'Service not found.' });
+
+  if (item.vertical === 'water_tank_csa') {
+    const wtCat = require('../services/wtCatalogue.service');
+    const usage = await wtCat.usageOf(item.code, item.branch_id).catch(() => null);
+    if (usage && usage.total > 0) {
+      return res.status(409).json({
+        error: `${item.code} is used by ${usage.total} priced record(s) and cannot be deleted. Archive it instead — it stops being offered and the existing documents stay intact.`,
+        usage,
+        use_instead: `POST /api/wt-catalogue/${item.id}/archive`,
+      });
+    }
+  }
+
   await item.destroy();
   res.json({ message: 'Service deleted.' });
 });

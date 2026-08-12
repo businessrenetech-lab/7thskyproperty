@@ -109,31 +109,68 @@ const CLAUSES = [
   ['EXECUTION', `<p>By signing this Agreement, the Parties confirm that they have read and understood this Agreement, have had the opportunity to seek independent legal or professional advice, enter into this Agreement voluntarily, and agree to be legally bound by its terms. This Agreement may be executed in counterparts and by electronic signature, including through approved digital signature platforms. Each signed copy will be deemed an original and together will constitute one Agreement.</p>`],
 ];
 
-/** Editable Schedule C price catalog (ServiceItem, vertical water_tank_csa). */
-async function getCatalog(branchId) {
-  const where = { vertical: 'water_tank_csa', is_active: true };
+/**
+ * Editable Schedule C price catalog (ServiceItem, vertical water_tank_csa).
+ *
+ * `includeArchived` exists for RESOLUTION, not for the picker. A line already on
+ * an agreement has to keep rendering after its item is withdrawn, so recompute
+ * looks the item up including archived rows; the item picker still shows only
+ * what is currently on offer.
+ */
+async function getCatalog(branchId, { includeArchived = false } = {}) {
+  const where = { vertical: 'water_tank_csa' };
+  if (!includeArchived) where.is_active = true;
   if (branchId) where.branch_id = branchId;
   const rows = await ServiceItem.findAll({ where, order: [['sort_order', 'ASC']] });
   return rows.map((r) => {
     const p = r.get({ plain: true });
     let tags = p.tags; if (typeof tags === 'string') { try { tags = JSON.parse(tags); } catch { tags = {}; } }
-    return { id: p.id, code: p.code, name: p.name, unit: p.unit, standard_price: Number(p.base_price || 0), group: (tags || {}).group || 'service' };
+    return {
+      id: p.id, code: p.code, name: p.name, unit: p.unit,
+      standard_price: Number(p.base_price || 0), group: (tags || {}).group || 'service',
+      is_active: p.is_active !== false,
+    };
   });
 }
 
 /**
  * Compute Schedule C: selected lines with standard+agreed, cost summary and payment schedule.
- * input: { selected:[{code, qty, agreed_price}], discount, vat_percent, transport, govt_fees, payment_overrides }
+ * input: { selected:[{code, qty, agreed_price, snapshot}], discount, vat_percent, transport, govt_fees, payment_overrides }
+ *
+ * This used to resolve every line against the LIVE catalogue and spread that row
+ * in — `const line = byCode[s.code]; if (!line) return null; ... { ...line }`.
+ * Two consequences were confirmed against real data:
+ *
+ *   - renaming a catalogue item REWROTE the name and unit on a Schedule C that
+ *     was recomputed, so a signed scope could describe itself differently later
+ *   - archiving an item made its line SILENTLY DISAPPEAR — two lines in, one
+ *     line out, no error. A client's agreed scope shrinking without a word is
+ *     the worst failure of the three, because nothing looks wrong.
+ *
+ * Lines now resolve through wtCatalogue.resolveLine, which reads the line's own
+ * snapshot first and treats the catalogue as a fallback for new lines only. An
+ * item that has since been archived or deleted still renders, flagged as
+ * `orphaned`, at the price that was agreed.
  */
 async function computePricing(input = {}, branchId) {
-  const catalog = await getCatalog(branchId);
+  const wtCat = require('./wtCatalogue.service');
+  // Archived items are included HERE only: a line already on this agreement must
+  // still resolve after its catalogue item is withdrawn. getCatalog() without the
+  // flag — what the item picker calls — still offers active items only.
+  const catalog = await getCatalog(branchId, { includeArchived: true });
   const byCode = Object.fromEntries(catalog.map((c) => [c.code, c]));
-  const selected = (input.selected || []).map((s) => {
-    const line = byCode[s.code]; if (!line) return null;
-    const qty = Number(s.qty || 1);
-    const agreed = (s.agreed_price != null && s.agreed_price !== '') ? Number(s.agreed_price) : line.standard_price;
-    return { ...line, qty, agreed_price: agreed, line_total: agreed * qty };
-  }).filter(Boolean);
+  const active = new Set(catalog.filter((c) => c.is_active !== false).map((c) => c.code));
+  const selected = (input.selected || [])
+    .map((s) => {
+      const line = wtCat.resolveLine(s, byCode);
+      // Flag a line whose item is no longer on offer, rather than dropping it.
+      if (line && line.code && !active.has(line.code)) {
+        line.orphaned = true;
+        line.orphan_note = 'This item has been withdrawn from the catalogue. It is shown as it was agreed.';
+      }
+      return line;
+    })
+    .filter(Boolean);
 
   const groupTotal = (g) => selected.filter((l) => l.group === g).reduce((s, l) => s + l.line_total, 0);
   const service_charges = groupTotal('service');

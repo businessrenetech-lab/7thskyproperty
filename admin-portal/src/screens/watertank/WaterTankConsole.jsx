@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   CloudLightning, LayoutGrid, Users, FileText, ClipboardList, FileSignature,
   Briefcase, Folder, Truck, Shield, Receipt, AlertCircle, MessageSquare,
-  Settings, LogOut, Search, Banknote, ShieldCheck, ClipboardCheck, FileBarChart,
+  Settings, LogOut, Search, Banknote, ShieldCheck, ClipboardCheck, FileBarChart, Tags,
 } from 'lucide-react';
 import { ToastHost } from './common';
 import CommandPalette from './CommandPalette';
@@ -37,6 +37,7 @@ export const WT_NAV = [
   { to: '/water-tank/registers', label: 'Warranty & Issues', icon: ShieldCheck },
   { to: '/water-tank/complaints', label: 'Complaints', icon: AlertCircle },
   { to: '/water-tank/communication', label: 'Communication Log', icon: MessageSquare },
+  { to: '/water-tank/catalogue', label: 'Price Schedule', icon: Tags },
   { to: '/water-tank/settings', label: 'Settings', icon: Settings },
 ];
 
