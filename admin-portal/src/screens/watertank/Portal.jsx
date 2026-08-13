@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { bdt, dateFmt, Pill, Loading, EmptyState, toast, errText, ToastHost } from './common';
+import Photos from './Photos';
 import '../../styles/wt-scope.css';
 
 /*
@@ -62,55 +63,8 @@ const Row = ({ label, children }) => (
 
 /* ── provider ──────────────────────────────────────────────────────────── */
 
-/*
- * Photos, straight from the phone that is standing at the tank.
- *
- * Completion used to accept photo URLs, which quietly assumed the provider had
- * hosted the pictures somewhere first — so nobody attached any and completion
- * evidence went in as prose. That evidence is what releases their own payment,
- * so it needs to be one tap.
- */
-function PhotoPicker({ wo, base, stage, label }) {
-  const [files, setFiles] = useState([]);
-  const [busy, setBusy] = useState(false);
-
-  const pick = async (e) => {
-    const chosen = Array.from(e.target.files || []);
-    if (!chosen.length) return;
-    setBusy(true);
-    for (const file of chosen) {
-      const form = new FormData();
-      form.append('file', file);
-      form.append('stage', stage);
-      try {
-        const r = await api.post(`${base}/work-orders/${wo.code}/photos`, form);
-        setFiles((s) => [...s, { name: file.name, url: r.data.url }]);
-      } catch (err) {
-        toast.err(errText(err, `Could not upload ${file.name}`));
-      }
-    }
-    setBusy(false);
-    e.target.value = '';   // let the same file be re-picked after a failure
-  };
-
-  return (
-    <div className="wt-field">
-      <label>{label}</label>
-      {/* `capture` opens the camera directly on a phone rather than the gallery. */}
-      <input type="file" accept="image/*" multiple capture="environment"
-        onChange={pick} disabled={busy} style={{ fontSize: 13 }} />
-      {busy && <span className="hint">Uploading…</span>}
-      {files.length > 0 && (
-        <span className="hint" style={{ color: 'var(--wt-green, #059669)' }}>
-          <Check size={11} style={{ verticalAlign: -1 }} /> {files.length} photo{files.length === 1 ? '' : 's'} attached
-        </span>
-      )}
-    </div>
-  );
-}
-
 function CompleteForm({ wo, onDone, onCancel, base }) {
-  const [f, setF] = useState({ notes: '', summary: '', findings: '' });
+  const [f, setF] = useState({ notes: '', summary: '', findings: '', photos_before: [], photos_after: [] });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
@@ -133,8 +87,13 @@ function CompleteForm({ wo, onDone, onCancel, base }) {
         <textarea className="wt-input" rows={3} value={f.summary} onChange={set('summary')}
           placeholder="e.g. Drained, scrubbed and disinfected both rooftop tanks; flushed lines." />
       </div>
-      <PhotoPicker wo={wo} base={base} stage="before" label="Photos before the work (optional)" />
-      <PhotoPicker wo={wo} base={base} stage="after" label="Photos after the work" />
+      <Photos label="Photos before the work (optional)" photos={f.photos_before}
+        uploadUrl={`${base}/work-orders/${wo.code}/photos`} portalBase={base}
+        onChange={(x) => setF((s) => ({ ...s, photos_before: x }))}
+        hint="Add a note to each photo — it is what makes the picture useful to Seventh Sky." />
+      <Photos label="Photos after the work" photos={f.photos_after}
+        uploadUrl={`${base}/work-orders/${wo.code}/photos`} portalBase={base}
+        onChange={(x) => setF((s) => ({ ...s, photos_after: x }))} />
 
       <div className="wt-field">
         <label>Anything Seventh Sky should know?</label>

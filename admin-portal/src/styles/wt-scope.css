@@ -523,7 +523,7 @@
 .wt-dropzone .tx { flex: 1 0 0; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .wt-dropzone .tx strong { font-size: 13px; font-weight: 650; color: var(--wt-ink); }
 .wt-dropzone .tx span { font-size: 11.5px; color: var(--wt-muted); }
-.wt-photogrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 10px; margin-bottom: 4px; }
+.wt-pv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 10px; margin-bottom: 4px; }
 .wt-photocard { border: 1px solid var(--wt-line); border-radius: 10px; overflow: hidden; background: #fff; }
 .wt-photocard .thumb { position: relative; height: 104px; display: grid; place-items: center; background: #f1f5f9; color: var(--wt-muted); overflow: hidden; }
 .wt-photocard .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -1053,3 +1053,71 @@
   background: rgba(15,23,42,.72); color: #fff; cursor: pointer; line-height: 0;
 }
 .wt-scope .wt-photochip-x:hover { background: var(--wt-red); }
+
+/* ── photos: thumbnails, per-photo comments, lightbox ────────────────────
+   Site pictures are evidence. They need to be visible at a useful size, and
+   each needs a comment — "cracked wall, north side" is what makes a photo
+   worth anything a year later. */
+.wt-scope .wt-pv-grid { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+
+.wt-scope .wt-pv { position: relative; width: 128px; display: flex; flex-direction: column; gap: 5px; }
+.wt-scope .wt-pv-img {
+  width: 128px; height: 96px; padding: 0; border: 1px solid var(--wt-line); border-radius: 9px;
+  overflow: hidden; background: #f1f5f9; cursor: zoom-in; display: block;
+}
+.wt-scope .wt-pv-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wt-scope .wt-pv-img:hover { border-color: var(--wt-accent); }
+.wt-scope .wt-pv-broken {
+  width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 4px; font-size: 11px; color: var(--wt-muted);
+}
+.wt-scope .wt-pv-x {
+  position: absolute; top: 4px; right: 4px; border: 0; border-radius: 6px; padding: 3px;
+  background: rgba(15,23,42,.7); color: #fff; cursor: pointer; line-height: 0;
+}
+.wt-scope .wt-pv-x:hover { background: var(--wt-red); }
+.wt-scope .wt-pv-cap {
+  width: 100%; padding: 5px 7px; border: 1px solid var(--wt-line); border-radius: 7px;
+  font: inherit; font-size: 11.5px; color: var(--wt-ink-2); background: #fff;
+}
+.wt-scope .wt-pv-cap:focus { outline: none; border-color: var(--wt-accent); }
+.wt-scope .wt-pv-cap-ro {
+  font-size: 11.5px; color: var(--wt-ink-2); line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* the add-photos tile, sized to match a thumbnail so the row stays even */
+.wt-scope .wt-pv-add {
+  width: 128px; height: 96px; border: 1px dashed var(--wt-line); border-radius: 9px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  font-size: 11.5px; font-weight: 600; color: var(--wt-muted); cursor: pointer; background: #fff;
+}
+.wt-scope .wt-pv-add:hover { border-color: var(--wt-accent); color: var(--wt-accent-ink); background: var(--wt-accent-tint); }
+.wt-scope .wt-pv-add input { display: none; }
+
+/* full-size viewer — above the modal layer, since photos are opened from inside one */
+.wt-lightbox {
+  position: fixed; inset: 0; z-index: 1400; background: rgba(2, 6, 23, .88);
+  display: flex; align-items: center; justify-content: center; padding: 40px;
+}
+.wt-lightbox-fig { margin: 0; max-width: 92vw; max-height: 88vh; display: flex; flex-direction: column; gap: 10px; }
+.wt-lightbox-fig img {
+  max-width: 92vw; max-height: 74vh; object-fit: contain;
+  border-radius: 10px; background: #0f172a; display: block; margin: 0 auto;
+}
+.wt-lightbox-fig figcaption {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  color: #e2e8f0; font-size: 13px; padding: 0 4px;
+}
+.wt-lightbox-meta { display: flex; align-items: center; gap: 14px; font-size: 12px; color: #94a3b8; white-space: nowrap; }
+.wt-lightbox-meta a { display: inline-flex; align-items: center; gap: 5px; color: #cbd5e1; text-decoration: none; }
+.wt-lightbox-meta a:hover { color: #fff; }
+.wt-lightbox-x, .wt-lightbox-nav {
+  position: absolute; border: 0; border-radius: 999px; background: rgba(255,255,255,.12);
+  color: #fff; cursor: pointer; display: grid; place-items: center;
+}
+.wt-lightbox-x { top: 20px; right: 24px; width: 38px; height: 38px; }
+.wt-lightbox-nav { top: 50%; transform: translateY(-50%); width: 44px; height: 44px; }
+.wt-lightbox-nav.left { left: 20px; }
+.wt-lightbox-nav.right { right: 20px; }
+.wt-lightbox-x:hover, .wt-lightbox-nav:hover { background: rgba(255,255,255,.26); }

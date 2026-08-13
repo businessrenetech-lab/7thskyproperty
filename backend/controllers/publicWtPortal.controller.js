@@ -572,3 +572,102 @@ exports.sessionUploadPhoto = asyncHandler(async (req, res) => {
     await handleUpload(req, res, ctx);
   } catch (e) { fail(res, e); }
 });
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Serving a photo back to the party who uploaded it
+ *
+ * Job photos live in the PRIVATE uploads folder, which is JWT-gated. A provider
+ * on a magic link has no JWT and no cookie, so they could upload a photo and
+ * then not see it — the thumbnail came back 401.
+ *
+ * This route authorises with the portal token instead. Two things make it a
+ * photo route rather than a file reader, and both matter:
+ *
+ *   1. The filename is sanitised to a bare basename. Anything with a slash or a
+ *      `..` is rejected outright, so `?file=../../.env` cannot escape the folder.
+ *   2. The file must actually be referenced by one of THIS party's records.
+ *      A valid token for provider A therefore cannot fetch provider B's photos
+ *      by guessing a filename.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const pathLib = require('path');
+const fsLib = require('fs');
+
+/** Only ever a bare filename inside the documents folder. */
+function safeUploadName(raw) {
+  const name = pathLib.basename(String(raw || ''));
+  if (!name || name !== String(raw || '').replace(/^\/uploads\/documents\//, '')) return null;
+  if (name.includes('/') || name.includes('\\') || name.includes('..')) return null;
+  if (!/^[A-Za-z0-9._-]+$/.test(name)) return null;
+  return name;
+}
+
+/** Every photo URL this party legitimately has, as a Set of basenames. */
+async function photosOwnedBy(ctx) {
+  const owned = new Set();
+  const add = (list) => portal.asArray(list).forEach((p) => {
+    const url = typeof p === 'string' ? p : p?.url;
+    if (url) owned.add(pathLib.basename(String(url)));
+  });
+
+  if (ctx.party_type === 'provider') {
+    const [wos, reports] = await Promise.all([
+      M.WtWorkOrder.findAll({
+        where: {
+          branch_id: ctx.row.branch_id,
+          [require('sequelize').Op.or]: [{ provider_id: ctx.row.id }, { provider_name: ctx.row.business_name }],
+        },
+        attributes: ['portal_photos_before', 'portal_photos_after'], raw: true,
+      }).catch(() => []),
+      P.WtServiceReport.findAll({
+        where: { branch_id: ctx.row.branch_id, provider_id: ctx.row.id },
+        attributes: ['photos_before', 'photos_after'], raw: true,
+      }).catch(() => []),
+    ]);
+    wos.forEach((w) => { add(w.portal_photos_before); add(w.portal_photos_after); });
+    reports.forEach((r) => { add(r.photos_before); add(r.photos_after); });
+  } else {
+    // A client sees the evidence for their own jobs.
+    const reports = await P.WtServiceReport.findAll({
+      where: { branch_id: ctx.row.branch_id, client_name: ctx.row.name },
+      attributes: ['photos_before', 'photos_after'], raw: true,
+    }).catch(() => []);
+    reports.forEach((r) => { add(r.photos_before); add(r.photos_after); });
+  }
+  return owned;
+}
+
+/** GET /public/wt-portal/:token/photo?file=<basename> */
+exports.photo = asyncHandler(async (req, res) => {
+  try {
+    const ctx = await open(req);
+    const name = safeUploadName(req.query.file);
+    if (!name) throw new portal.PortalError(400, 'That is not a valid file reference.');
+
+    const owned = await photosOwnedBy(ctx);
+    // Same 404 for "no such file" and "not yours" — distinguishing them would
+    // confirm which filenames exist.
+    if (!owned.has(name)) throw new portal.PortalError(404, 'Photo not found.');
+
+    const full = pathLib.join(__dirname, '..', 'uploads', 'documents', name);
+    if (!fsLib.existsSync(full)) throw new portal.PortalError(404, 'Photo not found.');
+
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.sendFile(full);
+  } catch (e) { fail(res, e); }
+});
+
+/** GET /api/wt-portal/photo?file= — the same, for a signed-in portal user. */
+exports.sessionPhoto = asyncHandler(async (req, res) => {
+  try {
+    const ctx = await openSession(req);
+    const name = safeUploadName(req.query.file);
+    if (!name) throw new portal.PortalError(400, 'That is not a valid file reference.');
+    const owned = await photosOwnedBy(ctx);
+    if (!owned.has(name)) throw new portal.PortalError(404, 'Photo not found.');
+    const full = pathLib.join(__dirname, '..', 'uploads', 'documents', name);
+    if (!fsLib.existsSync(full)) throw new portal.PortalError(404, 'Photo not found.');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.sendFile(full);
+  } catch (e) { fail(res, e); }
+});

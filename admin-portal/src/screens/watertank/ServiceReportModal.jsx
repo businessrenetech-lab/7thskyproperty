@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  X, Search, Check, Loader2, Camera, Trash2, Briefcase, User, FolderOpen,
+  X, Search, Check, Loader2, Briefcase, User, FolderOpen,
   MapPin, Truck, AlertTriangle, FileText,
 } from 'lucide-react';
 import api from '../../services/api';
 import { dateFmt, Pill, toast, errText } from './common';
+import Photos from './Photos';
 
 /*
  * New Service Report — a CENTRED modal, and nothing typed that the system knows.
@@ -114,48 +115,6 @@ function JobPicker({ providerFilter, onPick }) {
         ))}
       </div>
     </>
-  );
-}
-
-/* ── photos, uploaded rather than linked ──────────────────────────────── */
-
-function PhotoStrip({ label, photos, onAdd, onRemove }) {
-  const [busy, setBusy] = useState(false);
-
-  const pick = async (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    setBusy(true);
-    for (const file of files) {
-      const form = new FormData();
-      form.append('file', file);
-      try {
-        const r = await api.post('/wt-providers/reports/upload', form);
-        onAdd({ url: r.data.url, caption: '', name: r.data.name });
-      } catch (err) { toast.err(errText(err, `Could not upload ${file.name}`)); }
-    }
-    setBusy(false);
-    e.target.value = '';
-  };
-
-  return (
-    <div className="wt-field">
-      <label>{label}</label>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        {photos.map((p, i) => (
-          <span key={`${p.url}-${i}`} className="wt-photochip" title={p.name || p.url}>
-            <img src={p.url} alt={p.caption || 'photo'} />
-            <button className="wt-photochip-x" onClick={() => onRemove(i)} title="Remove"><Trash2 size={11} /></button>
-          </span>
-        ))}
-        <label className="wt-btn sm" style={{ cursor: 'pointer', margin: 0 }}>
-          {busy ? <Loader2 size={13} className="wt-spin" /> : <Camera size={13} />}
-          {busy ? ' Uploading…' : ' Add photos'}
-          <input type="file" accept="image/*" multiple capture="environment"
-            onChange={pick} disabled={busy} style={{ display: 'none' }} />
-        </label>
-      </div>
-    </div>
   );
 }
 
@@ -343,12 +302,12 @@ export default function ServiceReportModal({ job: presetJob, onClose, onCreated 
                   placeholder="Condition found, damage, parts replaced, recommendations…" />
               </div>
 
-              <PhotoStrip label="Before photos" photos={f.photos_before}
-                onAdd={(p) => set('photos_before', [...f.photos_before, p])}
-                onRemove={(i) => set('photos_before', f.photos_before.filter((_, j) => j !== i))} />
-              <PhotoStrip label="After photos" photos={f.photos_after}
-                onAdd={(p) => set('photos_after', [...f.photos_after, p])}
-                onRemove={(i) => set('photos_after', f.photos_after.filter((_, j) => j !== i))} />
+              <Photos label="Before photos" photos={f.photos_before}
+                uploadUrl="/wt-providers/reports/upload"
+                onChange={(p) => set('photos_before', p)} />
+              <Photos label="After photos" photos={f.photos_after}
+                uploadUrl="/wt-providers/reports/upload"
+                onChange={(p) => set('photos_after', p)} />
 
               <div className="wt-field">
                 <label>Status</label>

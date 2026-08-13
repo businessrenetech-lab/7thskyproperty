@@ -25,6 +25,9 @@ const writeLimit = rateLimit({
 
 router.get('/:token', readLimit, ctrl.view);
 router.get('/:token/invoices/:code/pdf', readLimit, ctrl.invoicePdf);
+// Job photos live in the private uploads folder; this serves them back to the
+// party who owns them, authorised by their portal token.
+router.get('/:token/photo', readLimit, ctrl.photo);
 
 // Provider — their own steps, previously taken for them over the telephone.
 router.post('/:token/work-orders/:code/respond', writeLimit, ctrl.respond);

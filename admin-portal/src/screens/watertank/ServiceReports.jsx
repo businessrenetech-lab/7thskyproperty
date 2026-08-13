@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, RefreshCw, Check, RotateCcw, Trash2, Eye, Image, FileText } from 'lucide-react';
 import api from '../../services/api';
 import ServiceReportModal from './ServiceReportModal';
+import Photos from './Photos';
 import {
   WtHead,
   WtTabs,
@@ -49,9 +50,6 @@ function ReportDrawer({ record, providers, onClose, onSaved }) {
   const [err, setErr] = useState('');
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
 
-  const addPhoto = (w) => set(w, [...f[w], { caption: '', url: '' }]);
-  const setPhoto = (w, i, k, v) => set(w, f[w].map((p, j) => (j === i ? { ...p, [k]: v } : p)));
-  const delPhoto = (w, i) => set(w, f[w].filter((_, j) => j !== i));
 
   const go = async () => {
     if (!f.report_type) { setErr('Choose a report type.'); return; }
@@ -94,19 +92,15 @@ function ReportDrawer({ record, providers, onClose, onSaved }) {
         <textarea className="wt-input" rows={3} style={{ resize: 'vertical' }} value={f.summary} onChange={(e) => set('summary', e.target.value)} /></div>
       <div className="wt-field"><label>Findings</label>
         <textarea className="wt-input" rows={3} style={{ resize: 'vertical' }} value={f.findings} onChange={(e) => set('findings', e.target.value)} /></div>
-      {[['photos_before', 'Before photos'], ['photos_after', 'After photos']].map(([w, label]) => (
-        <div className="wt-field" key={w}>
-          <label>{label}</label>
-          {f[w].map((p, i) => (
-            <div className="wt-riskrow" key={i} style={{ gridTemplateColumns: '1fr 1fr 30px', marginBottom: 6 }}>
-              <input className="wt-input" value={p.caption} onChange={(e) => setPhoto(w, i, 'caption', e.target.value)} placeholder="Caption" />
-              <input className="wt-input" value={p.url} onChange={(e) => setPhoto(w, i, 'url', e.target.value)} placeholder="Image link" />
-              <button className="wt-iconbtn" onClick={() => delPhoto(w, i)}>×</button>
-            </div>
-          ))}
-          <button className="wt-btn" style={{ alignSelf: 'flex-start' }} onClick={() => addPhoto(w)}><Plus size={14} /> Add photo</button>
-        </div>
-      ))}
+      {/*
+        * The same gallery used everywhere else. This was a caption plus an
+        * "image link" the filer had to host themselves — so in practice nothing
+        * was ever attached, and what was could not be seen.
+        */}
+      <Photos label="Before photos" photos={f.photos_before}
+        uploadUrl="/wt-providers/reports/upload" onChange={(p) => set('photos_before', p)} />
+      <Photos label="After photos" photos={f.photos_after}
+        uploadUrl="/wt-providers/reports/upload" onChange={(p) => set('photos_after', p)} />
     </WtDrawer>
   );
 }
@@ -255,18 +249,18 @@ export default function ServiceReports() {
             <p style={{ fontSize: 12.5, color: 'var(--wt-ink-2)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{viewing.summary}</p></>}
           {viewing.findings && <><div className="wt-sec-title">Findings</div>
             <p style={{ fontSize: 12.5, color: 'var(--wt-ink-2)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{viewing.findings}</p></>}
-          {[['photos_before', 'Before photos'], ['photos_after', 'After photos']].map(([w, label]) => {
-            const list = parseJson(viewing[w], []) || [];
-            return (
-              <div key={w}>
-                <div className="wt-sec-title">{label} ({list.length})</div>
-                <div className="wt-photos">
-                  {list.map((p, i) => <div key={i} className="wt-photo"><div className="ph"><Image size={22} /></div><div className="cap">{p.caption || `Photo ${i + 1}`}</div></div>)}
-                  {!list.length && <span className="muted" style={{ fontSize: 12.5 }}>None.</span>}
-                </div>
-              </div>
-            );
-          })}
+          {/*
+            * The real photographs, not an icon.
+            *
+            * This block used to render a grey placeholder tile with a picture
+            * icon in it for every photo — so a report that HAD evidence looked
+            * identical to one that did not, and there was no way to view
+            * anything. The same gallery the editor uses is reused read-only, so
+            * what a reviewer sees cannot drift from what was uploaded.
+            */}
+          {[['photos_before', 'Before photos'], ['photos_after', 'After photos']].map(([w, label]) => (
+            <Photos key={w} readOnly label={label} photos={parseJson(viewing[w], []) || []} />
+          ))}
         </WtDrawer>
       )}
     </>

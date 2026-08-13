@@ -20,6 +20,7 @@ const portalOnly = roleMiddleware(PORTAL_ROLES);
 
 router.get('/me', portalOnly, ctrl.sessionView);
 router.get('/invoices/:code/pdf', portalOnly, ctrl.sessionInvoicePdf);
+router.get('/photo', portalOnly, ctrl.sessionPhoto);
 
 // Provider actions
 router.post('/work-orders/:code/respond', portalOnly, ctrl.sessionRespond);

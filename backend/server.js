@@ -56,9 +56,21 @@ publicUploadDirs.forEach((dir) => {
   }));
 });
 
-// Everything else under /uploads requires a valid JWT (signed docs, client files, etc.)
+/*
+ * Everything else under /uploads requires a valid JWT (signed docs, client files).
+ *
+ * The cookie is read HERE as well as the header and the query param, and that
+ * omission was a real bug: an <img src="/uploads/documents/photo.jpg"> cannot
+ * send an Authorization header, so every private image in the admin app —
+ * report photos, site-assessment photos, KYC scans — came back 401 and rendered
+ * as a broken image with no indication why. The browser does send the
+ * same-origin auth cookie automatically, which is exactly the credential the
+ * rest of the app authenticates with; it simply was not being looked at.
+ */
 app.use('/uploads', (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '') || req.query.token;
+  const token = req.header('Authorization')?.replace('Bearer ', '')
+    || req.cookies?.la_admin_token
+    || req.query.token;
   if (!token) return res.status(401).json({ error: 'Authentication required' });
   try {
     jwt.verify(token, process.env.JWT_SECRET);
