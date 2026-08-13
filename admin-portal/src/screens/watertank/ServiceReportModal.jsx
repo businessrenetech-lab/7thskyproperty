@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  X, Search, Check, Loader2, Briefcase, User, FolderOpen,
+  X, Check, Loader2, Briefcase, User, FolderOpen,
   MapPin, Truck, AlertTriangle, FileText,
 } from 'lucide-react';
 import api from '../../services/api';
 import { dateFmt, Pill, toast, errText } from './common';
 import Photos from './Photos';
+import JobPicker from './JobPicker';
 
 /*
  * New Service Report — a CENTRED modal, and nothing typed that the system knows.
@@ -27,96 +28,6 @@ import Photos from './Photos';
  */
 
 const STEPS = ['Choose the job', 'Write the report'];
-
-const initials = (n) => String(n || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
-
-/* ── the job picker ───────────────────────────────────────────────────── */
-
-function JobPicker({ providerFilter, onPick }) {
-  const [q, setQ] = useState('');
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const timer = useRef(null);
-
-  const load = useCallback((term) => {
-    setLoading(true);
-    const params = {};
-    if (term) params.q = term;
-    if (providerFilter) params.provider_id = providerFilter;
-    api.get('/wt-providers/reports/jobs', { params })
-      .then((r) => setRows(Array.isArray(r.data) ? r.data : []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false));
-  }, [providerFilter]);
-
-  // Debounced: this fires on every keystroke and each call joins five tables.
-  useEffect(() => {
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => load(q.trim()), 220);
-    return () => clearTimeout(timer.current);
-  }, [q, load]);
-
-  return (
-    <>
-      <div className="wt-field">
-        <label>Find the job this report is about</label>
-        <div style={{ position: 'relative' }}>
-          <Search size={15} style={{ position: 'absolute', left: 11, top: 11, color: 'var(--wt-muted)' }} />
-          <input className="wt-input" style={{ paddingLeft: 34 }} autoFocus
-            placeholder="Work order, client, project, provider or address…"
-            value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
-        <span className="hint">
-          Everything else — client, project, property, provider — is taken from the job, so it cannot disagree with it.
-        </span>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflowY: 'auto' }}>
-        {loading && <div className="muted" style={{ padding: 20, textAlign: 'center' }}><Loader2 size={16} className="wt-spin" /> Searching…</div>}
-
-        {!loading && rows.length === 0 && (
-          <div className="muted" style={{ padding: 24, textAlign: 'center', fontSize: 13 }}>
-            {q ? `No job matches “${q}”.` : 'No work orders on file yet.'}
-          </div>
-        )}
-
-        {!loading && rows.map((j) => (
-          <button key={j.code} className="wt-pickrow" onClick={() => onPick(j)}>
-            <span className="wt-pickrow-mark"><Briefcase size={15} /></span>
-            <span style={{ flex: '1 0 0', minWidth: 0, textAlign: 'left' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <strong>{j.code}</strong>
-                <Pill value={j.status} sm />
-                {/*
-                  * Shown because an operator picking a job wants to know they are
-                  * not about to file a second report for the same visit.
-                  */}
-                {j.reports_filed > 0 && (
-                  <span className="wt-chip warn" title={j.report_types_filed.join(', ')}>
-                    {j.reports_filed} report{j.reports_filed === 1 ? '' : 's'} already filed
-                  </span>
-                )}
-              </span>
-              <span className="muted" style={{ display: 'block', fontSize: 12, marginTop: 2 }}>
-                {j.client?.name || 'Unknown client'}
-                {j.project?.code ? ` · ${j.project.code}` : ''}
-                {j.provider?.name ? ` · ${j.provider.name}` : ' · unassigned'}
-              </span>
-              {j.site_address && (
-                <span className="muted" style={{ display: 'block', fontSize: 11.5 }}>
-                  <MapPin size={10} style={{ verticalAlign: -1 }} /> {j.site_address}
-                </span>
-              )}
-            </span>
-            <span className="muted" style={{ fontSize: 11.5, whiteSpace: 'nowrap' }}>
-              {j.scheduled_date ? dateFmt(j.scheduled_date) : j.target_date ? dateFmt(j.target_date) : ''}
-            </span>
-          </button>
-        ))}
-      </div>
-    </>
-  );
-}
 
 /* ── the modal ─────────────────────────────────────────────────────────── */
 
@@ -205,7 +116,10 @@ export default function ServiceReportModal({ job: presetJob, onClose, onCreated 
         <div className="wt-modal-body">
           {err && <div className="wt-formerr">{err}</div>}
 
-          {step === 0 && <JobPicker onPick={pickJob} />}
+          {step === 0 && (
+            <JobPicker endpoint="/wt-providers/reports/jobs" countKey="reports"
+              label="Find the job this report is about" onPick={pickJob} />
+          )}
 
           {step === 1 && job && (
             <>

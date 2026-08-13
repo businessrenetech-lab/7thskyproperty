@@ -36,5 +36,6 @@ router.post('/quotations/:code/decision', portalOnly, ctrl.sessionQuotationDecis
 
 // Either
 router.post('/message', portalOnly, ctrl.sessionMessage);
+router.post('/complaint', portalOnly, ctrl.sessionComplaint);
 
 module.exports = router;

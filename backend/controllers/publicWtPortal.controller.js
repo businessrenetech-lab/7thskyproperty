@@ -330,6 +330,96 @@ exports.message = asyncHandler(async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
+/*
+ * Raising a complaint.
+ *
+ * Until now a client who was unhappy could only send a message, which landed in
+ * the communication log — a place nobody reviews for unresolved problems. The
+ * complaints register, meanwhile, only ever held rows typed by staff. So a
+ * customer complaint made through the portal was, in the register's terms,
+ * invisible.
+ *
+ * This writes a real WtComplaint stamped `raised_via: 'client'`, so the register
+ * shows both, and shows which is which. The job context is resolved server-side
+ * from the work order the party names — and only from one they own, since the
+ * lookup is scoped to the party.
+ */
+const SEVERITIES = ['Low', 'Medium', 'High', 'Critical'];
+const SLA_HOURS = { Critical: 4, High: 8, Medium: 24, Low: 48 };
+
+async function raiseComplaint(req, res, ctx) {
+  const details = String(req.body?.details || req.body?.body || '').trim();
+  if (!details) throw new portal.PortalError(400, 'Tell us what went wrong.');
+  if (details.length > 4000) throw new portal.PortalError(400, 'That is too long — please summarise.');
+
+  const isProvider = ctx.party_type === 'provider';
+  const name = isProvider ? ctx.row.business_name : ctx.row.name;
+
+  // The work order, if one was named — and only if it belongs to this party.
+  let wo = null;
+  const wanted = String(req.body?.work_order_code || '').trim();
+  if (wanted) {
+    wo = await M.WtWorkOrder.findOne({
+      where: {
+        branch_id: ctx.row.branch_id, code: wanted,
+        ...(isProvider
+          ? { provider_name: ctx.row.business_name }
+          : (ctx.row.code ? { client_code: ctx.row.code } : { client_name: ctx.row.name })),
+      },
+    });
+    if (!wo) throw new portal.PortalError(404, 'We could not find that job on your account.');
+  }
+
+  const severity = SEVERITIES.includes(req.body?.severity) ? req.body.severity : 'Medium';
+  const identity = require('../services/wtIdentity.service');
+  const row = await M.WtComplaint.create({
+    branch_id: ctx.row.branch_id,
+    code: await identity.nextCode('complaints', ctx.row.branch_id),
+    client_name: isProvider ? (wo?.client_name || null) : name,
+    client_code: isProvider ? (wo?.client_code || null) : (ctx.row.code || null),
+    work_order_id: wo?.id || null,
+    work_order_code: wo?.code || null,
+    project_id: wo?.project_id || null,
+    site_address: wo?.site_address || (isProvider ? null : ctx.row.service_address) || null,
+    provider_name: isProvider ? ctx.row.business_name : (wo?.provider_name || null),
+    incident_type: String(req.body?.incident_type || 'Service Quality').slice(0, 60),
+    severity,
+    details,
+    disclosure: details,
+    status: 'Open',
+    logged_date: today(),
+    ack_due_at: new Date(Date.now() + 24 * 3600e3),
+    sla_due: `${SLA_HOURS[severity]} hours`,
+    raised_via: isProvider ? 'provider' : 'client',
+    logged_by: name,
+  });
+
+  // Still logged to comms, so the client's own history reads as one thread.
+  await M.WtCommLog.create({
+    branch_id: ctx.row.branch_id, client_name: name,
+    channel: 'portal', direction: 'inbound',
+    summary: `Complaint ${row.code} raised: ${details.slice(0, 400)}`,
+    ref_type: 'complaints', ref_code: row.code, logged_at: new Date(),
+  }).catch(() => {});
+
+  await auditOf(req, ctx, 'raised_complaint', {
+    subject_type: 'complaint', subject_code: row.code, detail: wo?.code || null,
+  });
+
+  res.status(201).json({
+    complaint: { code: row.code, status: row.status, severity: row.severity, logged_date: row.logged_date },
+    message: `Logged as ${row.code}. Seventh Sky will acknowledge this within one business day.`,
+  });
+}
+
+/** POST /:token/complaint — a complaint from a magic link. */
+exports.complaint = asyncHandler(async (req, res) => {
+  try {
+    const ctx = await open(req);
+    await raiseComplaint(req, res, ctx);
+  } catch (e) { fail(res, e); }
+});
+
 /* ────────────────────────────────────────────────────────────────────────────
  * Signed-in portal users
  *
@@ -489,6 +579,9 @@ exports.sessionMessage = sessionAction(async (req, res, ctx) => {
   await auditOf(req, ctx, 'sent_message');
   res.json({ message: 'Sent. Seventh Sky will come back to you.' });
 });
+
+// The same complaint path for a party with a real login.
+exports.sessionComplaint = sessionAction(async (req, res, ctx) => raiseComplaint(req, res, ctx));
 
 exports.sessionInvoicePdf = sessionAction(async (req, res, ctx) => {
   if (ctx.party_type !== 'client') throw new portal.PortalError(403, 'Only a client can download an invoice.');

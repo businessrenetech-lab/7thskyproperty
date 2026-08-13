@@ -61,6 +61,13 @@ router.post('/portal-accounts/:partyType/:id', canBind, accountsCtrl.provision);
 router.post('/portal-accounts/:partyType/:id/suspend', canAdminister, accountsCtrl.suspend);
 router.post('/portal-accounts/:partyType/:id/reinstate', canAdminister, accountsCtrl.reinstate);
 
+// Warranty & Issues: reference lists and the shared job lookup. Declared before
+// the generic /:entity family so they are not swallowed.
+const registersCtrl = require('../controllers/waterTankRegisters.controller');
+router.get('/registers/reference', canRead, registersCtrl.reference);
+router.get('/registers/jobs', canRead, registersCtrl.jobs);
+router.post('/registers/:register', canOperate, registersCtrl.create);
+
 // Site assessment reference data (checklist templates, equipment, categories)
 router.get('/assessment-reference', canRead, ctrl.assessmentReference);
 

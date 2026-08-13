@@ -46,5 +46,8 @@ router.post('/:token/quotations/:code/decision', writeLimit, ctrl.quotationDecis
 
 // Either party, writing back without needing an email thread.
 router.post('/:token/message', writeLimit, ctrl.message);
+// A complaint is not a message: it opens a tracked record with an SLA, and it
+// appears in the complaints register alongside the ones staff log.
+router.post('/:token/complaint', writeLimit, ctrl.complaint);
 
 module.exports = router;

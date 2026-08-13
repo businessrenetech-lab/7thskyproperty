@@ -473,6 +473,98 @@ function MessageBox({ base }) {
   );
 }
 
+/* ── raising a complaint ───────────────────────────────────────────────── */
+
+/*
+ * Deliberately separate from the message box above, because they are not the
+ * same act. A message goes to the communication log; a complaint opens a tracked
+ * record with an acknowledgement deadline and a response clock, and appears on
+ * the register beside the ones staff log — marked as having come from the client.
+ * Until this existed, an unhappy client could only send a message, which no one
+ * reviews for unresolved problems.
+ */
+const COMPLAINT_ABOUT = [
+  'Service Quality', 'Water Discolouration', 'Incomplete Work', 'Damage During Service',
+  'Staff Conduct', 'Late Attendance', 'Billing Dispute', 'Repeat Fault', 'Other',
+];
+
+function ComplaintBox({ base, jobs = [] }) {
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({ work_order_code: '', incident_type: COMPLAINT_ABOUT[0], severity: 'Medium', details: '' });
+  const [busy, setBusy] = useState(false);
+  const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
+
+  const send = async () => {
+    if (!f.details.trim()) return;
+    setBusy(true);
+    try {
+      const r = await api.post(`${base}/complaint`, f);
+      toast.ok(r.data.message);
+      setF({ work_order_code: '', incident_type: COMPLAINT_ABOUT[0], severity: 'Medium', details: '' });
+      setOpen(false);
+    } catch (e) { toast.err(errText(e, 'Could not log that')); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="wt-card" style={{ padding: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <h2 className="wt-section-title" style={{ margin: 0 }}>Something wrong?</h2>
+        <button className="wt-btn" style={{ marginLeft: 'auto' }} onClick={() => setOpen((v) => !v)}>
+          {open ? 'Never mind' : 'Raise a complaint'}
+        </button>
+      </div>
+
+      {!open ? (
+        <p className="muted" style={{ fontSize: 12.5, marginTop: 8, marginBottom: 0 }}>
+          A complaint is logged formally and acknowledged within one business day — unlike a
+          message, it is tracked until it is resolved.
+        </p>
+      ) : (
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {jobs.length > 0 && (
+            <div className="wt-field">
+              <label>Which job is this about?</label>
+              <select className="wt-select" value={f.work_order_code} onChange={(e) => set('work_order_code', e.target.value)}>
+                <option value="">Not about a specific job</option>
+                {jobs.map((w) => (
+                  <option key={w.code} value={w.code}>
+                    {w.code}{w.category ? ` — ${w.category}` : ''}{w.scheduled_date ? ` (${dateFmt(w.scheduled_date)})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="wt-grid2">
+            <div className="wt-field">
+              <label>What is it about?</label>
+              <select className="wt-select" value={f.incident_type} onChange={(e) => set('incident_type', e.target.value)}>
+                {COMPLAINT_ABOUT.map((t) => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div className="wt-field">
+              <label>How serious is it?</label>
+              <select className="wt-select" value={f.severity} onChange={(e) => set('severity', e.target.value)}>
+                <option>Low</option><option>Medium</option><option>High</option><option>Critical</option>
+              </select>
+            </div>
+          </div>
+          <div className="wt-field">
+            <label>What happened</label>
+            <textarea className="wt-input" rows={4} value={f.details} onChange={(e) => set('details', e.target.value)}
+              placeholder="Tell us what went wrong and what you would like us to do." />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button className="wt-btn primary" disabled={busy || !f.details.trim()} onClick={send}>
+              <Send size={14} /> {busy ? 'Logging…' : 'Log complaint'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── screen ────────────────────────────────────────────────────────────── */
 
 export default function Portal() {
@@ -532,6 +624,7 @@ export default function Portal() {
       {isProvider
         ? <ProviderPortal data={data} base={base} reload={load} />
         : <CustomerPortal data={data} base={base} reload={load} />}
+      <ComplaintBox base={base} jobs={data.work_orders || []} />
       <MessageBox base={base} />
       <p className="muted" style={{ fontSize: 11.5, textAlign: 'center' }}>
         This is a private link. Please do not forward it — anyone who has it can see this page.

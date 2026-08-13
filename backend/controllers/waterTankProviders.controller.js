@@ -17,6 +17,7 @@ const { Op } = require('sequelize');
 const { asyncHandler, branchScope, resolveBranchId, pick } = require('../utils/controllerHelpers');
 const M = require('../models/waterTankOps');
 const P = require('../models/waterTankProviders');
+const jobContext = require('../services/wtJobContext.service');
 const identity = require('../services/wtIdentity.service');
 
 const num = (v) => Number(v || 0);
@@ -1057,80 +1058,25 @@ exports.reportReference = asyncHandler(async (req, res) => {
  * about to duplicate one.
  */
 exports.reportJobs = asyncHandler(async (req, res) => {
-  const M = require('../models/waterTankOps');
-  const scope = branchScope(req);
-  const q = String(req.query.q || '').trim();
-
-  const where = { ...scope };
-  if (req.query.provider_id) where.provider_id = req.query.provider_id;
-  if (q) {
-    const like = { [Op.like]: `%${q}%` };
-    where[Op.or] = [
-      { code: like }, { client_name: like }, { project_id: like },
-      { provider_name: like }, { site_address: like }, { category: like },
-    ];
-  }
-
-  const workOrders = await M.WtWorkOrder.findAll({
-    where, order: [['id', 'DESC']], limit: 40, raw: true,
-  }).catch(() => []);
-
-  const codes = workOrders.map((w) => w.code).filter(Boolean);
   /*
-   * Providers are loaded to resolve the id BY NAME.
+   * Delegates to wtJobContext.service, which is the ONE implementation of
+   * "which client, project, property and provider does this work order belong
+   * to". Warranties, complaints and incidents ask the same question through the
+   * same service — two copies of it would be two chances to answer differently,
+   * which defeats the point of resolving server-side at all.
    *
-   * Most work orders on this database carry `provider_name` with a null
-   * `provider_id` — assignment has historically written the name. Keying only on
-   * the id therefore made every job look unassigned, and the dialog defaulted to
-   * "no provider" for a job that plainly has one, forcing the operator to pick
-   * by hand the very thing the system already knows.
+   * The two flat fields below are kept because the report dialog reads them.
    */
-  const [reports, projects, clients, providers] = await Promise.all([
-    codes.length
-      ? P.WtServiceReport.findAll({ where: { ...scope, work_order_code: { [Op.in]: codes } }, raw: true }).catch(() => [])
-      : [],
-    M.WtProject.findAll({ where: scope, attributes: ['code', 'name', 'site_address', 'client_code'], raw: true }).catch(() => []),
-    M.WtClient.findAll({ where: scope, attributes: ['code', 'name', 'service_address', 'district'], raw: true }).catch(() => []),
-    M.WtProvider.findAll({ where: scope, attributes: ['id', 'business_name'], raw: true }).catch(() => []),
-  ]);
-
-  const projectBy = Object.fromEntries(projects.map((p) => [p.code, p]));
-  const clientByCode = Object.fromEntries(clients.map((c) => [c.code, c]));
-  const clientByName = Object.fromEntries(clients.map((c) => [c.name, c]));
-  const providerByName = Object.fromEntries(providers.map((p) => [p.business_name, p]));
-
-  res.json(workOrders.map((w) => {
-    const project = w.project_id ? projectBy[w.project_id] : null;
-    const client = (w.client_code && clientByCode[w.client_code]) || clientByName[w.client_name] || null;
-    const filed = reports.filter((r) => r.work_order_code === w.code);
-
-    return {
-      // the job
-      id: w.id,
-      code: w.code,
-      status: w.status,
-      category: w.category,
-      scope: w.scope,
-      target_date: w.target_date,
-      scheduled_date: w.scheduled_date,
-      completed_at: w.completed_at,
-      // everything that used to be typed by hand
-      client: client ? { code: client.code, name: client.name, district: client.district } : { code: w.client_code, name: w.client_name },
-      project: project ? { code: project.code, name: project.name } : (w.project_id ? { code: w.project_id, name: null } : null),
-      // the property: the work order's own site wins, then the project's, then
-      // the client's registered address — most specific first.
-      site_address: w.site_address || project?.site_address || client?.service_address || null,
-      // The id is resolved BY NAME when the work order recorded only the name,
-      // which is the case for most rows here — without it every job looked
-      // unassigned and the dialog made the operator re-pick a known provider.
-      provider: w.provider_id || w.provider_name
-        ? { id: w.provider_id || providerByName[w.provider_name]?.id || null, name: w.provider_name }
-        : null,
-      // so the operator does not file a second report without meaning to
-      reports_filed: filed.length,
-      report_types_filed: filed.map((r) => r.report_type),
-    };
-  }));
+  const jobs = await jobContext.search({
+    scope: branchScope(req),
+    q: String(req.query.q || '').trim(),
+    provider_id: req.query.provider_id || null,
+  });
+  res.json(jobs.map((j) => ({
+    ...j,
+    reports_filed: j.existing.reports,
+    report_types_filed: j.existing.report_types,
+  })));
 });
 
 /**

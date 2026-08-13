@@ -2,9 +2,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ShieldCheck, MessageSquareWarning, AlertOctagon, Plus, Eye, Trash2, ExternalLink } from 'lucide-react';
 import {
-  WtHead, WtTabs, Pill, StatCards, dateFmt, useCollection, CreateDrawer, RecordDrawer,
+  WtHead, WtTabs, Pill, StatCards, dateFmt, useCollection, RecordDrawer,
   StatusCell, RowActions, Loading, EmptyState, useFocusedRecord, useRoutedRecord, toast, errText,
 } from './common';
+import RegisterModal from './RegisterModal';
 
 /*
  * Warranty & Issues registers for the Water Tank service line.
@@ -19,10 +20,17 @@ const INCIDENT_STATUSES = ['Open', 'Investigating', 'Closed'];
 const INCIDENT_TYPES = ['Injury', 'Contamination', 'Property Damage', 'Environmental', 'Equipment Failure', 'Other'];
 const SEVERITIES = ['Low', 'Medium', 'High', 'Critical'];
 
+/*
+ * These describe the READ drawer only. Creating no longer uses them: a warranty,
+ * complaint or incident is created through RegisterModal, which starts from the
+ * job and lets the server resolve the client, project, property and provider —
+ * so those four are shown here but are no longer typed.
+ */
 const WARRANTY_FIELDS = [
   { key: 'client_name', label: 'Client name', required: true },
   { key: 'work_order_code', label: 'Work order', hint: 'The completed job this cover applies to.' },
   { key: 'project_id', label: 'Project ID' },
+  { key: 'site_address', label: 'Property' },
   { key: 'provider_name', label: 'Provider' },
   { key: 'warranty_type', label: 'Warranty type', hint: 'e.g. Cleaning & Disinfection, Waterproofing, Crack Repair.' },
   { key: 'start_date', label: 'Start date', type: 'date' },
@@ -41,6 +49,7 @@ const INCIDENT_FIELDS = [
   { key: 'location', label: 'Location' },
   { key: 'work_order_code', label: 'Work order' },
   { key: 'project_id', label: 'Project ID' },
+  { key: 'site_address', label: 'Property' },
   { key: 'provider_name', label: 'Provider' },
   { key: 'reported_by', label: 'Reported by' },
   { key: 'status', label: 'Status', type: 'select', options: INCIDENT_STATUSES, pill: true },
@@ -49,6 +58,9 @@ const INCIDENT_FIELDS = [
 ];
 
 const daysTo = (d) => (d ? Math.ceil((new Date(d) - Date.now()) / 864e5) : null);
+
+/** How a complaint reached us. Rows written before this existed read as staff. */
+const RAISED_BY = { client: 'Client', provider: 'Provider', staff: 'Our team' };
 
 /* ── Warranties ───────────────────────────────────────────── */
 function Warranties() {
@@ -123,9 +135,8 @@ function Warranties() {
       </div>
 
       {creating && (
-        <CreateDrawer entity="warranties" singular="warranty" fields={WARRANTY_FIELDS}
-          initial={{ status: 'Active', start_date: new Date().toISOString().slice(0, 10) }}
-          onClose={() => setCreating(false)} onDone={() => { setCreating(false); reload(); }} />
+        <RegisterModal kind="warranties"
+          onClose={() => setCreating(false)} onCreated={() => { setCreating(false); reload(); }} />
       )}
       {current && (
         <RecordDrawer record={current} singular="warranty" fields={WARRANTY_FIELDS} subtitle={current.client_name}
@@ -142,22 +153,27 @@ function ComplaintsRegister() {
   const nav = useNavigate();
   const { rows, loading, error, reload } = useCollection('complaints');
   const [q, setQ] = useState('');
+  const [creating, setCreating] = useState(false);
 
   const shown = useMemo(() => {
     const term = q.trim().toLowerCase();
-    return rows.filter((r) => !term || [r.code, r.client_name, r.incident_type].some((v) => String(v || '').toLowerCase().includes(term)));
+    return rows.filter((r) => !term || [r.code, r.client_name, r.incident_type, r.work_order_code, r.details].some((v) => String(v || '').toLowerCase().includes(term)));
   }, [rows, q]);
 
   const is = (r, s) => (r.status || '').toLowerCase() === s;
   const open = rows.filter((r) => is(r, 'open')).length;
   const investigating = rows.filter((r) => is(r, 'investigating')).length;
   const resolved = rows.filter((r) => is(r, 'resolved') || is(r, 'closed')).length;
+  // Split out because the two are not the same signal: a complaint the client
+  // made themselves is worth a different response from one we noticed ourselves.
+  const fromClients = rows.filter((r) => r.raised_via === 'client').length;
 
   return (
     <>
       <StatCards items={[
         { label: 'Open', value: `${open}`, sub: 'Awaiting first response', color: open ? 'var(--wt-red)' : undefined },
         { label: 'Investigating', value: `${investigating}`, sub: 'Under active review', color: investigating ? 'var(--wt-amber)' : undefined },
+        { label: 'Raised by Clients', value: `${fromClients}`, sub: `${rows.length - fromClients} logged by our team`, color: fromClients ? 'var(--wt-amber)' : undefined },
         { label: 'Resolved / Closed', value: `${resolved}`, sub: `${rows.length} logged in total`, color: 'var(--wt-green)' },
       ]} />
 
@@ -165,9 +181,10 @@ function ComplaintsRegister() {
         <label className="wt-search" style={{ flex: '1 0 200px', maxWidth: 320 }}>
           <input placeholder="Search complaints…" value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
-        <button className="wt-btn primary" style={{ marginLeft: 'auto' }} onClick={() => nav('/water-tank/complaints')}>
-          <ExternalLink size={14} /> Open Complaints desk
+        <button className="wt-btn" style={{ marginLeft: 'auto' }} onClick={() => nav('/water-tank/complaints')}>
+          <ExternalLink size={14} /> Complaints desk
         </button>
+        <button className="wt-btn primary" onClick={() => setCreating(true)}><Plus size={15} /> Log Complaint</button>
       </div>
 
       <div className="wt-card wt-tblcard">
@@ -176,24 +193,34 @@ function ComplaintsRegister() {
             action={<button className="wt-btn" onClick={reload}>Retry</button>} />
         ) : shown.length ? (
           <table className="wt-tbl">
-            <thead><tr><th style={{ width: 96 }}>Code</th><th>Client</th><th style={{ width: 176 }}>Incident Type</th><th style={{ width: 96 }}>Severity</th><th style={{ width: 112 }}>Logged</th><th style={{ width: 116 }}>Resolution</th><th style={{ width: 120 }}>Status</th></tr></thead>
+            <thead><tr><th style={{ width: 96 }}>Code</th><th>Client</th><th style={{ width: 168 }}>About</th><th style={{ width: 104 }}>Work Order</th><th style={{ width: 122 }}>Raised By</th><th style={{ width: 92 }}>Severity</th><th style={{ width: 106 }}>Logged</th><th style={{ width: 116 }}>Status</th></tr></thead>
             <tbody>
               {shown.map((r) => (
                 <tr key={r.id} className="click" onClick={() => nav(`/water-tank/complaints?focus=${encodeURIComponent(r.code)}`)}>
                   <td className="id" style={{ color: 'var(--wt-red)' }}>{r.code}</td>
                   <td><strong>{r.client_name}</strong></td>
-                  <td className="muted">{r.incident_type || '—'}</td>
+                  <td className="muted" title={r.details || r.disclosure || ''}>{r.incident_type || '—'}</td>
+                  <td className="id">{r.work_order_code || '—'}</td>
+                  <td>{/* the answer to "did the customer tell us, or did we find it?" */}
+                    <span className={`wt-chip${r.raised_via === 'client' ? ' warn' : ''}`}>
+                      {RAISED_BY[r.raised_via] || RAISED_BY.staff}
+                    </span>
+                  </td>
                   <td><Pill value={r.severity} sm /></td>
                   <td className="muted">{dateFmt(r.logged_date || r.createdAt)}</td>
-                  <td className="muted">{Number(r.resolution_hours) > 0 ? `${r.resolution_hours} h` : '—'}</td>
                   <td><Pill value={r.status} sm /></td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : <EmptyState eyebrow="Complaints" title={q ? `Nothing matches “${q}”.` : 'No complaints logged'}
-          hint={q ? undefined : 'Complaints are raised and worked on the Complaints desk; this register summarises them.'} />}
+          hint={q ? undefined : 'Complaints raised by clients through their portal appear here alongside the ones our team logs.'} />}
       </div>
+
+      {creating && (
+        <RegisterModal kind="complaints"
+          onClose={() => setCreating(false)} onCreated={() => { setCreating(false); reload(); }} />
+      )}
     </>
   );
 }
@@ -264,9 +291,8 @@ function Incidents() {
       </div>
 
       {creating && (
-        <CreateDrawer entity="incidents" singular="incident" fields={INCIDENT_FIELDS}
-          initial={{ status: 'Open', severity: 'Medium', incident_type: 'Other', incident_date: new Date().toISOString().slice(0, 10) }}
-          onClose={() => setCreating(false)} onDone={() => { setCreating(false); reload(); }} />
+        <RegisterModal kind="incidents"
+          onClose={() => setCreating(false)} onCreated={() => { setCreating(false); reload(); }} />
       )}
       {current && (
         <RecordDrawer record={current} singular="incident" fields={INCIDENT_FIELDS}

@@ -493,6 +493,12 @@ const WtComplaint = sequelize.define('WtComplaint', {
   logged_date: D.DATEONLY, resolved_date: D.DATEONLY,
   // Sec. 11 — acknowledge within 1 business day
   acknowledged_at: D.DATE, acknowledged_by: D.STRING(120), ack_due_at: D.DATE,
+  // Resolved job context (0089) — written from the work order, never typed.
+  work_order_id: D.INTEGER, client_code: D.STRING(30), site_address: D.STRING(255),
+  raised_via: { type: D.STRING(20), defaultValue: 'staff' }, logged_by: D.STRING(120),
+  // The complaint in the words used, and how it was settled.
+  details: D.TEXT, resolution: D.TEXT,
+  project_id: D.STRING(30), work_order_code: D.STRING(30), provider_name: D.STRING(160),
 }, { tableName: 'wt_complaints' });
 
 const WtWarranty = sequelize.define('WtWarranty', {
@@ -504,6 +510,9 @@ const WtWarranty = sequelize.define('WtWarranty', {
   start_date: D.DATEONLY, expiry_date: D.DATEONLY,
   status: { type: D.STRING(30), defaultValue: 'Active' },
   provider_name: D.STRING(160), terms: D.TEXT, claim_notes: D.TEXT, source_ref: D.STRING(80),
+  // Resolved job context (0089) — written from the work order, never typed.
+  work_order_id: D.INTEGER, client_code: D.STRING(30), site_address: D.STRING(255),
+  raised_via: { type: D.STRING(20), defaultValue: 'staff' }, logged_by: D.STRING(120),
 }, { tableName: 'wt_warranties' });
 
 const WtIncident = sequelize.define('WtIncident', {
@@ -516,6 +525,9 @@ const WtIncident = sequelize.define('WtIncident', {
   provider_name: D.STRING(160), reported_by: D.STRING(120),
   description: D.TEXT, action_taken: D.TEXT, source_ref: D.STRING(80),
   status: { type: D.STRING(30), defaultValue: 'Open' },
+  // Resolved job context (0089) — written from the work order, never typed.
+  work_order_id: D.INTEGER, client_code: D.STRING(30), site_address: D.STRING(255),
+  raised_via: { type: D.STRING(20), defaultValue: 'staff' }, logged_by: D.STRING(120),
 }, { tableName: 'wt_incidents' });
 
 /* SOP-01 client lifecycle timeline. */

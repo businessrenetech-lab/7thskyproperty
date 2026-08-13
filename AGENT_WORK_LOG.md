@@ -2448,3 +2448,68 @@ baseline. Build clean. Both portals walked in a real browser.
   deployment decision — a cron that emails clients should be switched on
   deliberately, not by a developer.
 - Notification templates are English only.
+
+---
+
+## COMPLETED — Warranty & Issues rework (warranties · complaints · incidents)
+**Agent:** Claude (Water Tank console) · **Date:** 2026-08-13
+**Files:** `backend/migrations/0089-registers-job-context.js`,
+`backend/models/waterTankOps.js`, `backend/services/wtJobContext.service.js` (new),
+`backend/controllers/waterTankRegisters.controller.js` (new),
+`backend/controllers/publicWtPortal.controller.js`,
+`backend/controllers/waterTankProviders.controller.js`,
+`backend/routes/waterTankOps.routes.js`, `backend/routes/publicWtPortal.routes.js`,
+`backend/routes/wtPortalSession.routes.js`,
+`admin-portal/src/screens/watertank/JobPicker.jsx` (new),
+`admin-portal/src/screens/watertank/RegisterModal.jsx` (new),
+`admin-portal/src/screens/watertank/Registers.jsx`,
+`admin-portal/src/screens/watertank/ServiceReportModal.jsx`,
+`admin-portal/src/screens/watertank/Portal.jsx`
+
+### The defect
+All three registers captured their context as free text: the client typed by
+hand, the work order typed by hand, no property field at all. A warranty could
+therefore cover a client who was not the client on the job it came from, and
+nothing objected. Separately, a customer complaint raised through the portal
+wrote a line to the communication log and never appeared on the complaints
+register — the one place anyone reviews for unresolved problems.
+
+### The fix
+Same idea as the service report rework: **all three are records ABOUT A JOB.**
+The caller picks the work order; the server resolves client, project, property
+and provider from it. `wtJobContext.service` is the single implementation of
+that resolution — `reportJobs` was refactored to delegate to it rather than keep
+a second copy, because two copies are two chances to answer differently.
+
+- Migration 0089 adds `work_order_id`, `client_code`, `site_address`,
+  `raised_via`, `logged_by` to all three; complaints also get `details`,
+  `resolution`, `project_id`, `work_order_code`, `provider_name`.
+- `POST /wt-ops/registers/:register` resolves the job and IGNORES client fields
+  in the request body. A warranty or incident with no job is refused (400); a
+  job that does not exist is refused (404) rather than saved half-filled.
+- A complaint may stand alone — a client can be unhappy about something that
+  never became a work order, and refusing that only means it goes unrecorded.
+- Warranty cover starts the day the work FINISHED and runs the standard period
+  for its type, both adjustable. Complaint SLA follows severity (4/8/24/48 h)
+  instead of being typed as free text like "6 Hours Left".
+- `POST /public/wt-portal/:token/complaint` and `POST /wt-portal/complaint`
+  create real register rows stamped `raised_via: 'client'`, scoped so a party
+  can only complain about their own job. The portal has a complaint form, kept
+  separate from the message box because they are not the same act.
+- Reference lists (types, statuses, severities, cover periods) come from
+  `/wt-ops/registers/reference`; the screens no longer carry their own copies.
+
+### Verified
+48 new assertions, plus the full suite re-run: **491 across 13 suites, 0 failures.**
+Two real bugs were caught by the new tests before commit: warranty cover starting
+today instead of at job completion, and a `DATE` column returning a Date object
+where a `YYYY-MM-DD` string was assumed, which made every derived expiry invalid.
+Browser QA: all three modals open centred, the job search resolves client /
+project / provider, a warranty saved end to end (removed afterwards), and the
+customer portal complaint form renders with the client's own jobs. Build clean.
+
+### NOT done
+- The Complaints desk screen (`/water-tank/complaints`) still has its own older
+  create path; the register now has the good one. Consolidating them is a
+  follow-up.
+- Warranty claims (calling on cover) are still a status change, not a workflow.
