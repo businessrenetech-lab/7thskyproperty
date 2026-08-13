@@ -699,9 +699,19 @@
 .wt-scope .wt-filter-spacer { flex: 1 0 0; }
 .wt-scope .wt-sortpick { display: inline-flex; align-items: center; gap: 5px; padding: 0 9px; height: 32px; border: 1px solid var(--wt-line); border-radius: 8px; background: #fff; color: var(--wt-muted); }
 .wt-scope .wt-sortpick select { border: 0; background: none; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--wt-ink); cursor: pointer; outline: none; }
-.wt-scope .wt-viewswitch > button { display: grid; place-items: center; width: 30px; height: 26px; border: 0; border-radius: 7px; background: none; color: var(--wt-muted); cursor: pointer; }
-.wt-scope .wt-viewswitch > button:hover { background: #f1f5f9; color: var(--wt-ink); }
-.wt-scope .wt-viewswitch > button.on { background: var(--wt-accent); color: #fff; }
+/*
+ * .wt-viewswitch has two forms, and these rules are the ICON-ONLY one — the
+ * 30×26 squares used for the table/card toggle on the provider directory.
+ *
+ * `:not(.wt-viewbtn)` is what keeps them apart. Without it this rule also
+ * caught the LABELLED form (Enquiries / Requests on Service Requests), which
+ * carries .wt-viewbtn: being later in the file and more specific, it beat
+ * .wt-viewbtn's own padding and forced those pills into a 30px box, so their
+ * text overflowed and the two labels overlapped underneath.
+ */
+.wt-scope .wt-viewswitch > button:not(.wt-viewbtn) { display: grid; place-items: center; width: 30px; height: 26px; border: 0; border-radius: 7px; background: none; color: var(--wt-muted); cursor: pointer; }
+.wt-scope .wt-viewswitch > button:not(.wt-viewbtn):hover { background: #f1f5f9; color: var(--wt-ink); }
+.wt-scope .wt-viewswitch > button:not(.wt-viewbtn).on { background: var(--wt-accent); color: #fff; }
 
 /* lens bar — explains why the roster is narrowed */
 .wt-scope .wt-lensbar { display: flex; align-items: center; gap: 7px; padding: 9px 14px; font-size: 12.5px; color: var(--wt-ink); background: rgba(18,182,243,0.07); border: 1px solid rgba(18,182,243,0.28); border-radius: 9px; }
