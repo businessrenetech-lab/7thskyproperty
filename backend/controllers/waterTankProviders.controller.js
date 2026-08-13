@@ -726,17 +726,100 @@ exports.listReports = asyncHandler(async (req, res) => {
   res.json(rows);
 });
 
+/**
+ * Create a service report.
+ *
+ * The client sends a work order and what was found; everything ELSE about the
+ * job — client, project, site, provider, category — is resolved HERE from the
+ * work order rather than accepted from the request. The form used to take those
+ * as free text, so a report could name a client who was not the client on the
+ * job. Reports are the evidence that releases a provider's payment, so evidence
+ * that contradicts the job it describes is worse than none.
+ */
 exports.createReport = asyncHandler(async (req, res) => {
   const branchId = resolveBranchId(req);
   if (!req.body.report_type) return res.status(400).json({ error: 'report_type is required.' });
+
+  const M = require('../models/waterTankOps');
+  const body = { ...req.body };
+
+  const woKey = body.work_order_code || body.work_order_id;
+  if (!woKey) {
+    return res.status(400).json({
+      error: 'Choose the job this report is about.',
+      why: 'A report is evidence for a specific work order — client, project and site are taken from it.',
+    });
+  }
+
+  const wo = await M.WtWorkOrder.findOne({
+    where: {
+      branch_id: branchId,
+      [Op.or]: [
+        { code: String(woKey) },
+        { id: Number.isNaN(Number(woKey)) ? -1 : Number(woKey) },
+      ],
+    },
+  });
+  if (!wo) return res.status(404).json({ error: 'That work order was not found.' });
+
+  // Resolve the rest of the context from the job itself.
+  const [project, client] = await Promise.all([
+    wo.project_id
+      ? M.WtProject.findOne({ where: { branch_id: branchId, code: wo.project_id }, raw: true }).catch(() => null)
+      : null,
+    wo.client_code
+      ? M.WtClient.findOne({ where: { branch_id: branchId, code: wo.client_code }, raw: true }).catch(() => null)
+      : M.WtClient.findOne({ where: { branch_id: branchId, name: wo.client_name }, raw: true }).catch(() => null),
+  ]);
+
+  /*
+   * A staff member may file on a provider's behalf — the request that prompted
+   * this. The provider defaults to whoever the job is assigned to, but can be
+   * set explicitly for the case where the job was reassigned after the visit.
+   */
+  const providerId = body.provider_id || wo.provider_id || null;
+  const provider = providerId
+    ? await M.WtProvider.findByPk(providerId, { raw: true }).catch(() => null)
+    : null;
+
   const row = await P.WtServiceReport.create({
-    ...req.body,
+    // what the caller legitimately supplies
+    report_type: body.report_type,
+    summary: body.summary || null,
+    findings: body.findings || null,
+    data: body.data || null,
+    photos_before: body.photos_before || [],
+    photos_after: body.photos_after || [],
+    submitted_date: body.submitted_date || today(),
+    status: body.status || 'Submitted',
+    // resolved from the job — never taken from the request
     branch_id: branchId,
     code: await nextCode(P.WtServiceReport, 'RPT-', 4, 1, branchId),
-    submitted_date: req.body.submitted_date || today(),
-    status: req.body.status || 'Submitted',
+    work_order_id: wo.id,
+    work_order_code: wo.code,
+    project_id: wo.project_id || null,
+    client_code: client?.code || wo.client_code || null,
+    client_name: client?.name || wo.client_name || null,
+    site_address: wo.site_address || project?.site_address || client?.service_address || null,
+    service_category: wo.category || null,
+    provider_id: providerId,
+    provider_name: provider?.business_name || wo.provider_name || null,
+    filed_via: body.filed_via === 'provider' ? 'provider' : 'staff',
+    filed_by: actorOf(req),
   });
-  if (row.provider_id) await logEvent(branchId, row.provider_id, 'report', `${row.report_type} report ${row.code} submitted`, row.work_order_code || null, actorOf(req));
+
+  if (row.provider_id) {
+    await logEvent(branchId, row.provider_id, 'report',
+      `${row.report_type} report ${row.code} filed for ${row.work_order_code}${row.filed_via === 'staff' ? ` by ${row.filed_by} on their behalf` : ''}`,
+      row.work_order_code || null, actorOf(req));
+  }
+
+  // Mirror onto the job, so the work order shows its evidence is in.
+  await wo.update({
+    reports_submitted: true,
+    photos_collected: (row.photos_before?.length || 0) + (row.photos_after?.length || 0) > 0 || wo.photos_collected,
+  }).catch(() => {});
+
   res.status(201).json(row);
 });
 
@@ -910,5 +993,159 @@ exports.alerts = asyncHandler(async (req, res) => {
       medium: items.filter((i) => i.severity === 'medium').length,
       low: items.filter((i) => i.severity === 'low').length,
     },
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Service reports — reference data and job lookup
+ *
+ * The report form used to ask for client, work order and dates as free text and
+ * had no field for the project or the property at all. Every one of those facts
+ * already lives on the work order, so the form now picks a JOB and the server
+ * resolves the rest. Nothing about a report is typed that the system already
+ * knows.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+// REPORT_TYPES is declared at the top of this file; reusing it keeps one list.
+const REPORT_STATUSES = ['Draft', 'Submitted', 'Accepted', 'Rework'];
+
+/** GET /wt-providers/reports/reference — everything the report dialog needs to open. */
+exports.reportReference = asyncHandler(async (req, res) => {
+  const M = require('../models/waterTankOps');
+  const scope = branchScope(req);
+
+  const [providers, reports] = await Promise.all([
+    M.WtProvider.findAll({
+      where: scope,
+      attributes: ['id', 'code', 'business_name', 'contact_person', 'status', 'contact_email'],
+      order: [['business_name', 'ASC']], raw: true,
+    }).catch(() => []),
+    P.WtServiceReport.findAll({ where: scope, attributes: ['status', 'report_type', 'provider_id'], raw: true }).catch(() => []),
+  ]);
+
+  const count = (list, key, value) => list.filter((r) => String(r[key] || '').toLowerCase() === value).length;
+
+  res.json({
+    report_types: REPORT_TYPES,
+    statuses: REPORT_STATUSES,
+    /*
+     * Every provider is offered, not only approved ones: a report can legitimately
+     * be filed about a provider who has since been suspended, and hiding them
+     * would make the earlier work unrecordable. The status travels so the dialog
+     * can say so.
+     */
+    providers: providers.map((p) => ({
+      id: p.id, code: p.code, name: p.business_name,
+      contact: p.contact_person, email: p.contact_email, status: p.status,
+      reports: reports.filter((r) => r.provider_id === p.id).length,
+    })),
+    summary: {
+      total: reports.length,
+      awaiting_review: count(reports, 'status', 'submitted'),
+      accepted: count(reports, 'status', 'accepted'),
+      rework: count(reports, 'status', 'rework'),
+    },
+  });
+});
+
+/**
+ * GET /wt-providers/reports/jobs?q=&provider_id=
+ *
+ * The one lookup the dialog needs. Returns work orders with their client,
+ * project, site and provider already resolved, plus whether a report has been
+ * filed against them — an operator picking a job wants to know they are not
+ * about to duplicate one.
+ */
+exports.reportJobs = asyncHandler(async (req, res) => {
+  const M = require('../models/waterTankOps');
+  const scope = branchScope(req);
+  const q = String(req.query.q || '').trim();
+
+  const where = { ...scope };
+  if (req.query.provider_id) where.provider_id = req.query.provider_id;
+  if (q) {
+    const like = { [Op.like]: `%${q}%` };
+    where[Op.or] = [
+      { code: like }, { client_name: like }, { project_id: like },
+      { provider_name: like }, { site_address: like }, { category: like },
+    ];
+  }
+
+  const workOrders = await M.WtWorkOrder.findAll({
+    where, order: [['id', 'DESC']], limit: 40, raw: true,
+  }).catch(() => []);
+
+  const codes = workOrders.map((w) => w.code).filter(Boolean);
+  /*
+   * Providers are loaded to resolve the id BY NAME.
+   *
+   * Most work orders on this database carry `provider_name` with a null
+   * `provider_id` — assignment has historically written the name. Keying only on
+   * the id therefore made every job look unassigned, and the dialog defaulted to
+   * "no provider" for a job that plainly has one, forcing the operator to pick
+   * by hand the very thing the system already knows.
+   */
+  const [reports, projects, clients, providers] = await Promise.all([
+    codes.length
+      ? P.WtServiceReport.findAll({ where: { ...scope, work_order_code: { [Op.in]: codes } }, raw: true }).catch(() => [])
+      : [],
+    M.WtProject.findAll({ where: scope, attributes: ['code', 'name', 'site_address', 'client_code'], raw: true }).catch(() => []),
+    M.WtClient.findAll({ where: scope, attributes: ['code', 'name', 'service_address', 'district'], raw: true }).catch(() => []),
+    M.WtProvider.findAll({ where: scope, attributes: ['id', 'business_name'], raw: true }).catch(() => []),
+  ]);
+
+  const projectBy = Object.fromEntries(projects.map((p) => [p.code, p]));
+  const clientByCode = Object.fromEntries(clients.map((c) => [c.code, c]));
+  const clientByName = Object.fromEntries(clients.map((c) => [c.name, c]));
+  const providerByName = Object.fromEntries(providers.map((p) => [p.business_name, p]));
+
+  res.json(workOrders.map((w) => {
+    const project = w.project_id ? projectBy[w.project_id] : null;
+    const client = (w.client_code && clientByCode[w.client_code]) || clientByName[w.client_name] || null;
+    const filed = reports.filter((r) => r.work_order_code === w.code);
+
+    return {
+      // the job
+      id: w.id,
+      code: w.code,
+      status: w.status,
+      category: w.category,
+      scope: w.scope,
+      target_date: w.target_date,
+      scheduled_date: w.scheduled_date,
+      completed_at: w.completed_at,
+      // everything that used to be typed by hand
+      client: client ? { code: client.code, name: client.name, district: client.district } : { code: w.client_code, name: w.client_name },
+      project: project ? { code: project.code, name: project.name } : (w.project_id ? { code: w.project_id, name: null } : null),
+      // the property: the work order's own site wins, then the project's, then
+      // the client's registered address — most specific first.
+      site_address: w.site_address || project?.site_address || client?.service_address || null,
+      // The id is resolved BY NAME when the work order recorded only the name,
+      // which is the case for most rows here — without it every job looked
+      // unassigned and the dialog made the operator re-pick a known provider.
+      provider: w.provider_id || w.provider_name
+        ? { id: w.provider_id || providerByName[w.provider_name]?.id || null, name: w.provider_name }
+        : null,
+      // so the operator does not file a second report without meaning to
+      reports_filed: filed.length,
+      report_types_filed: filed.map((r) => r.report_type),
+    };
+  }));
+});
+
+/**
+ * POST /wt-providers/reports/upload — a photo for a report.
+ *
+ * Replaces the caption + "image link" text pair the form used to offer, which
+ * assumed whoever filed the report had already hosted the picture somewhere.
+ * Forced into the private documents folder: site photos show a client's premises.
+ */
+exports.reportUpload = asyncHandler(async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Choose a photo to upload.' });
+  const path = require('path');
+  res.status(201).json({
+    url: `/uploads/documents/${path.basename(req.file.path)}`,
+    caption: req.body?.caption || '',
+    name: req.file.originalname,
   });
 });

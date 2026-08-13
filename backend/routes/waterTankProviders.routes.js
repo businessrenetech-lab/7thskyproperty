@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
 const { canRead, canOperate, canAdminister } = require('../middleware/wtRoles');
+const upload = require('../utils/uploadAny');
 const ctrl = require('../controllers/waterTankProviders.controller');
 
 router.use(authMiddleware);
@@ -32,10 +33,16 @@ router.post('/audits', canOperate, ctrl.createAudit);
 router.patch('/audits/:id', canOperate, ctrl.updateAudit);
 router.delete('/audits/:id', canAdminister, ctrl.deleteAudit);
 // Sec. 8 Step 10 — provider reporting
+// Reference + job lookup must precede /reports/:id so they are not swallowed.
+router.get('/reports/reference', canRead, ctrl.reportReference);
+router.get('/reports/jobs', canRead, ctrl.reportJobs);
 router.get('/reports', canRead, ctrl.listReports);
 router.post('/reports', canOperate, ctrl.createReport);
 router.patch('/reports/:id', canOperate, ctrl.updateReport);
 router.delete('/reports/:id', canAdminister, ctrl.deleteReport);
+router.post('/reports/upload', canOperate,
+  (req, res, next) => { req.uploadFolder = 'documents'; next(); },
+  upload.single('file'), ctrl.reportUpload);
 // Sec. 12 — protected clients / non-circumvention
 router.get('/protected/check', canRead, ctrl.checkProtected);
 router.get('/protected', canRead, ctrl.listProtected);

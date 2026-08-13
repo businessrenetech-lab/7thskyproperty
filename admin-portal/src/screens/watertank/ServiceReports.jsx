@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, RefreshCw, Check, RotateCcw, Trash2, Eye, Image, FileText } from 'lucide-react';
 import api from '../../services/api';
+import ServiceReportModal from './ServiceReportModal';
 import {
   WtHead,
   WtTabs,
@@ -118,6 +119,7 @@ export default function ServiceReports() {
   const [tab, setTab] = useState('All');
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState(null);
+  const [creating, setCreating] = useState(false);
   const [viewing, setViewing] = useState(null);
   // A provider report is evidence attached to a job — it needs a URL someone can
   // be sent, not just a drawer over a list.
@@ -165,7 +167,7 @@ export default function ServiceReports() {
         search={q} onSearch={setQ}
       >
         <button className="wt-btn" onClick={load}><RefreshCw size={14} /> Refresh</button>
-        <button className="wt-btn primary" onClick={() => setEditing({})}><Plus size={15} /> Log Report</button>
+        <button className="wt-btn primary" onClick={() => setCreating(true)}><Plus size={15} /> Log Report</button>
       </WtHead>
 
       <StatCards items={[
@@ -215,12 +217,18 @@ export default function ServiceReports() {
         ) : (
           <EmptyState eyebrow="Service Reports" title={q ? `Nothing matches “${q}”.` : `No ${tab === 'All' ? '' : `${tab} `}reports yet`}
             hint={q ? undefined : 'Sec. 8 Step 10 requires site assessment, cleaning, inspection, testing, repair and AMC reports with before & after photos.'}
-            action={!q && <button className="wt-btn primary" onClick={() => setEditing({})}><Plus size={14} /> Log the first report</button>} />
+            action={!q && <button className="wt-btn primary" onClick={() => setCreating(true)}><Plus size={14} /> Log the first report</button>} />
         )}
       </div>
 
+      {creating && (
+        <ServiceReportModal
+          onClose={() => setCreating(false)}
+          onCreated={() => { setCreating(false); load(); }} />
+      )}
+
       {editing && (
-        <ReportDrawer record={editing.id ? editing : null} providers={providers}
+        <ReportDrawer record={editing} providers={providers}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); toast.ok('Report saved'); load(); }} />
       )}

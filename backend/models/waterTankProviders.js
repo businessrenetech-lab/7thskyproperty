@@ -98,6 +98,19 @@ const WtServiceReport = sequelize.define('WtServiceReport', {
   reviewed_by: D.STRING(120),
   reviewed_date: D.DATEONLY,
   review_notes: D.TEXT,
+  /*
+   * Resolved job context (migration 0088). Written server-side from the work
+   * order rather than typed, so a report and the job it describes cannot
+   * disagree. `filed_via` distinguishes a provider submitting through the portal
+   * from a staff member logging it on their behalf — different things when a
+   * dispute arrives.
+   */
+  work_order_id: D.INTEGER,
+  client_code: D.STRING(30),
+  site_address: D.STRING(255),
+  service_category: D.STRING(120),
+  filed_via: { type: D.STRING(20), defaultValue: 'staff' },
+  filed_by: D.STRING(120),
 }, { tableName: 'wt_service_reports' });
 
 const WtProviderAgreement = sequelize.define('WtProviderAgreement', {
