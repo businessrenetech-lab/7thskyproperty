@@ -223,6 +223,8 @@ const WtWorkOrder = sequelize.define('WtWorkOrder', {
   wo_sent_at: D.DATE, wo_signed_at: D.DATE, wo_signed_document_html: D.TEXT('long'),
   // Clause 9 AMC billing cycle + the quotation this order came from (migration 0081)
   amc_payment_frequency: D.STRING(30), source_quotation_code: D.STRING(30),
+  // Photos attached from the provider portal (migration 0086)
+  portal_photos_before: D.JSON, portal_photos_after: D.JSON,
   provider_onboarded_at: D.DATE, client_notified_at: D.DATE,
 }, { tableName: 'wt_work_orders' });
 

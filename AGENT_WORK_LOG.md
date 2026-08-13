@@ -2379,3 +2379,72 @@ All previous suites still green. Build clean at 1979 modules.
 - Browser QA of the new screens (Portal Accounts, forced change, forgot/reset).
 - Email delivery is best-effort and unverified end to end here — SMTP is
   configured, but no message was actually sent to a real inbox in testing.
+
+---
+
+## 2026-08-13 — Claude — COMPLETED: Phase 7 (notifications, money tests, release QA)
+
+Branch `water-tank/phase-0-baseline`. The last phase, plus the three portal
+leftovers.
+
+### Notifications — SMTP was configured all along and unused
+`services/wtNotify.service.js` + migration 0087. Seven templates wired to real
+events: quotation sent, invoice issued, payment received, invoice overdue, AMC
+visit due, AMC expiring, work order assigned, provider paid. A sweep handles the
+things that become true because a date passed, and `GET /wt-ops/notifications`
+previews exactly what WOULD go out before `POST` sends it — these reach real
+clients, so seeing the list first matters more than one-endpoint convenience.
+
+**Corrected a false comment while wiring it.** `invoice.send` carried
+"SMTP is not configured in this environment", marked the invoice Sent and sent
+nothing. SMTP has been configured throughout; the claim was stale. An invoice
+recorded as sent that nobody received is the worst thing to be wrong about here.
+Confirmed working end to end — `[COMM_SERVICE] Email sent via info@` in the log,
+which also closes the "email delivery unverified" gap left after portal accounts.
+
+### A bug the tests found that no review would have
+De-duplication originally wrote the event key into `wt_comm_log.ref_code`, a
+**VARCHAR(30)**. The keys are longer, MySQL truncated silently, and the lookup
+therefore never matched — **de-duplication never worked at all.** Every sweep
+would have emailed the same client about the same overdue invoice again, every
+run, forever. Moved to `wt_notifications` with a UNIQUE INDEX, where the INSERT
+itself is the claim, so it is also race-safe: SELECT-then-INSERT would let two
+concurrent sweeps both send.
+
+Then a second bug in the fix: `claim()` matched the duplicate error by grepping
+`e.message`, but Sequelize puts "must be unique" in `errors[0].message` and
+leaves `message` generic — so it rethrew as an unhandled rejection instead of
+suppressing. Now matched on `e.name` and the driver's `ER_DUP_ENTRY`. Verified:
+5 concurrent sends of one event produce exactly 1 email and 1 claim row.
+
+### Portal leftovers, all three
+- **Photo upload** (migration 0086 + `PhotoPicker`): multipart straight from a
+  phone camera (`capture="environment"`), forced into the PRIVATE documents
+  folder because site photos show a client's premises. One shared handler for
+  the token and session paths, so the ownership check cannot differ. Both
+  complete handlers fold the uploaded photos into the filed report.
+- **Portal links are emailed** rather than copied by hand — the last
+  hand-carried step. Still returned once as a fallback.
+- **Browser QA**, which earned its keep again: three layout collisions only
+  visible on screen. `gap: 0` on the work-order grid rendered
+  "Oct 05, 2024Booked for" as one run-on line; the invoice table header read
+  "OutstandingStatus"; the receipt amount butted into its date. All three fixed
+  and re-verified. No console errors.
+
+### Money-path tests, as the plan asked for
+44 assertions covering what Phase 2's burst test could not: notifications firing
+twice, a receipt emailed for money that was never posted, a full lifecycle
+reconciling end to end (three postings + a reversal, checked against BOTH the
+ledger and the cache at every step), the journal agreeing with the invoice, and
+the provider payout path including over-payment refusal.
+
+### Release QA — 431 assertions across 11 suites, 0 failures
+Phase 1 30 · Phase 2 30+25+31 · Phase 3 36+30 · Phase 4 41 · Phase 5 48 ·
+Phase 6 55 · portal accounts 61 · Phase 7 44. No route dropped since the Phase 1
+baseline. Build clean. Both portals walked in a real browser.
+
+### NOT done
+- The sweep is manual (preview then send). Putting it on a schedule is a
+  deployment decision — a cron that emails clients should be switched on
+  deliberately, not by a developer.
+- Notification templates are English only.

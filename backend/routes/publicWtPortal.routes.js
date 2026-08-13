@@ -11,6 +11,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
+const upload = require('../utils/uploadAny');
 const ctrl = require('../controllers/publicWtPortal.controller');
 
 const readLimit = rateLimit({
@@ -31,6 +32,11 @@ router.post('/:token/work-orders/:code/schedule', writeLimit, ctrl.schedule);
 router.post('/:token/work-orders/:code/start', writeLimit, ctrl.start);
 router.post('/:token/work-orders/:code/complete', writeLimit, ctrl.complete);
 router.post('/:token/work-orders/:code/signing-link', writeLimit, ctrl.signingLink);
+// A phone camera straight into the job record. Forced into the private,
+// JWT-gated documents folder — site photos can show a client’s premises.
+router.post('/:token/work-orders/:code/photos', writeLimit,
+  (req, res, next) => { req.uploadFolder = 'documents'; next(); },
+  upload.single('file'), ctrl.uploadPhoto);
 
 // Customer — accepting their own quotation rather than telling someone to.
 router.post('/:token/quotations/:code/decision', writeLimit, ctrl.quotationDecision);

@@ -244,7 +244,13 @@ exports.assign = asyncHandler(async (req, res) => {
     status: ['Draft'].includes(wo.status) ? 'Issued' : wo.status,
   });
   await logEvent(req, wo, 'provider assigned', provider.business_name);
-  res.json({ work_order: wo, fees: {
+
+  // Tell the provider. Previously an assignment sat in the system until someone
+  // telephoned them, which is the delay the portal was built to remove.
+  const notify = require('../services/wtNotify.service');
+  const mail = await notify.onWorkOrderAssigned(wo.toJSON());
+
+  res.json({ work_order: wo, provider_notified: mail.sent, fees: {
     agreement_code: fees.agreement.code, gross: fees.gross_provider_charge,
     commission_pct: fees.commission_pct, commission: fees.commission_amount,
     net_payable: fees.net_provider_payable, overridden: !!fees.override_reason,
@@ -681,8 +687,19 @@ exports.payProvider = asyncHandler(async (req, res) => {
     }
 
     await wo.reload();
+
+    // Tell the provider their money moved. New postings only, for the same
+    // reason as the client receipt above.
+    let payoutMailed = false;
+    if (!out.duplicate) {
+      const notify = require('../services/wtNotify.service');
+      const m = await notify.onProviderPaid(wo.toJSON(), out.event.amount);
+      payoutMailed = m.sent;
+    }
+
     res.json({
       work_order: wo,
+      payout_emailed: payoutMailed,
       paid: out.standing.paid,
       remaining: out.standing.remaining,
       event: out.event,

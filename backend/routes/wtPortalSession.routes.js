@@ -12,6 +12,7 @@ const express = require('express');
 const router = express.Router();
 const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
 const { PORTAL_ROLES } = require('../services/wtPortalAccount.service');
+const upload = require('../utils/uploadAny');
 const ctrl = require('../controllers/publicWtPortal.controller');
 
 router.use(authMiddleware);
@@ -25,6 +26,9 @@ router.post('/work-orders/:code/respond', portalOnly, ctrl.sessionRespond);
 router.post('/work-orders/:code/schedule', portalOnly, ctrl.sessionSchedule);
 router.post('/work-orders/:code/start', portalOnly, ctrl.sessionStart);
 router.post('/work-orders/:code/complete', portalOnly, ctrl.sessionComplete);
+router.post('/work-orders/:code/photos', portalOnly,
+  (req, res, next) => { req.uploadFolder = 'documents'; next(); },
+  upload.single('file'), ctrl.sessionUploadPhoto);
 
 // Client actions
 router.post('/quotations/:code/decision', portalOnly, ctrl.sessionQuotationDecision);

@@ -51,6 +51,10 @@ router.delete('/portal/:partyType/:id/link', canAdminister, ctrl.revokePortalLin
 // Creating one hands an outside party a standing credential, so it sits with
 // those who can bind; suspending stays with administrators.
 const accountsCtrl = require('../controllers/wtPortalAccount.controller');
+// Notifications. Previewing is a read; sending mails real clients, so it sits
+// with those who can bind the business.
+router.get('/notifications', canRead, ctrl.notificationPreview);
+router.post('/notifications', canBind, ctrl.notificationSend);
 router.get('/portal-accounts', canRead, accountsCtrl.directory);
 router.get('/portal-accounts/:partyType/:id', canRead, accountsCtrl.status);
 router.post('/portal-accounts/:partyType/:id', canBind, accountsCtrl.provision);

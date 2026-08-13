@@ -62,6 +62,53 @@ const Row = ({ label, children }) => (
 
 /* ── provider ──────────────────────────────────────────────────────────── */
 
+/*
+ * Photos, straight from the phone that is standing at the tank.
+ *
+ * Completion used to accept photo URLs, which quietly assumed the provider had
+ * hosted the pictures somewhere first — so nobody attached any and completion
+ * evidence went in as prose. That evidence is what releases their own payment,
+ * so it needs to be one tap.
+ */
+function PhotoPicker({ wo, base, stage, label }) {
+  const [files, setFiles] = useState([]);
+  const [busy, setBusy] = useState(false);
+
+  const pick = async (e) => {
+    const chosen = Array.from(e.target.files || []);
+    if (!chosen.length) return;
+    setBusy(true);
+    for (const file of chosen) {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('stage', stage);
+      try {
+        const r = await api.post(`${base}/work-orders/${wo.code}/photos`, form);
+        setFiles((s) => [...s, { name: file.name, url: r.data.url }]);
+      } catch (err) {
+        toast.err(errText(err, `Could not upload ${file.name}`));
+      }
+    }
+    setBusy(false);
+    e.target.value = '';   // let the same file be re-picked after a failure
+  };
+
+  return (
+    <div className="wt-field">
+      <label>{label}</label>
+      {/* `capture` opens the camera directly on a phone rather than the gallery. */}
+      <input type="file" accept="image/*" multiple capture="environment"
+        onChange={pick} disabled={busy} style={{ fontSize: 13 }} />
+      {busy && <span className="hint">Uploading…</span>}
+      {files.length > 0 && (
+        <span className="hint" style={{ color: 'var(--wt-green, #059669)' }}>
+          <Check size={11} style={{ verticalAlign: -1 }} /> {files.length} photo{files.length === 1 ? '' : 's'} attached
+        </span>
+      )}
+    </div>
+  );
+}
+
 function CompleteForm({ wo, onDone, onCancel, base }) {
   const [f, setF] = useState({ notes: '', summary: '', findings: '' });
   const [busy, setBusy] = useState(false);
@@ -86,6 +133,9 @@ function CompleteForm({ wo, onDone, onCancel, base }) {
         <textarea className="wt-input" rows={3} value={f.summary} onChange={set('summary')}
           placeholder="e.g. Drained, scrubbed and disinfected both rooftop tanks; flushed lines." />
       </div>
+      <PhotoPicker wo={wo} base={base} stage="before" label="Photos before the work (optional)" />
+      <PhotoPicker wo={wo} base={base} stage="after" label="Photos after the work" />
+
       <div className="wt-field">
         <label>Anything Seventh Sky should know?</label>
         <textarea className="wt-input" rows={2} value={f.findings} onChange={set('findings')}
@@ -173,7 +223,13 @@ function ProviderPortal({ data, base, reload }) {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 0, marginTop: 12 }}>
+            {/*
+              * A column gap is not decoration here. Each Row is space-between, so
+              * with gap:0 the value of one column butted straight against the
+              * label of the next and read as "Oct 05, 2024Booked for" — a single
+              * run-on line. Caught by looking at the rendered page.
+              */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', columnGap: 28, marginTop: 12 }}>
               <Row label="Target date">{w.target_date ? dateFmt(w.target_date) : '—'}</Row>
               <Row label="Booked for">{w.scheduled_date ? dateFmt(w.scheduled_date) : '—'}</Row>
             </div>
@@ -319,7 +375,22 @@ function CustomerPortal({ data, base, reload }) {
             <Receipt size={15} style={{ verticalAlign: -2, marginRight: 6 }} />Invoices & receipts
           </h2>
           <table className="wt-tbl">
-            <thead><tr><th>Invoice</th><th>Issued</th><th>Due</th><th style={{ textAlign: 'right' }}>Amount</th><th style={{ textAlign: 'right' }}>Outstanding</th><th>Status</th><th /></tr></thead>
+            {/*
+              * Explicit widths: without them "Outstanding" (right-aligned) butted
+              * straight into "Status" and rendered as "OutstandingStatus" in the
+              * header. Only visible by looking at the page.
+              */}
+            <thead>
+              <tr>
+                <th style={{ width: 110 }}>Invoice</th>
+                <th style={{ width: 110 }}>Issued</th>
+                <th style={{ width: 110 }}>Due</th>
+                <th style={{ width: 120, textAlign: 'right' }}>Amount</th>
+                <th style={{ width: 130, textAlign: 'right', paddingRight: 18 }}>Outstanding</th>
+                <th style={{ width: 90 }}>Status</th>
+                <th style={{ width: 80 }} />
+              </tr>
+            </thead>
             <tbody>
               {data.invoices.map((i) => (
                 <tr key={i.code}>
@@ -327,7 +398,7 @@ function CustomerPortal({ data, base, reload }) {
                   <td className="muted">{dateFmt(i.issue_date)}</td>
                   <td className="muted">{i.due_date ? dateFmt(i.due_date) : '—'}</td>
                   <td style={{ textAlign: 'right', fontWeight: 700 }}>{bdt(i.amount)}</td>
-                  <td style={{ textAlign: 'right', color: num(i.outstanding) > 0 ? 'var(--wt-red)' : undefined }}>{bdt(i.outstanding)}</td>
+                  <td style={{ textAlign: 'right', paddingRight: 18, color: num(i.outstanding) > 0 ? 'var(--wt-red)' : undefined }}>{bdt(i.outstanding)}</td>
                   <td><Pill value={i.status} sm /></td>
                   <td style={{ textAlign: 'right' }}>
                     <button className="wt-btn sm" onClick={() => openPdf(i)}><Download size={12} /> PDF</button>
@@ -342,7 +413,8 @@ function CustomerPortal({ data, base, reload }) {
               <h3 className="wt-section-title" style={{ fontSize: 12.5 }}>Payments received</h3>
               {data.invoices.flatMap((i) => i.receipts.map((p, n) => (
                 <Row key={`${i.code}-${n}`} label={`${i.code} · ${p.method || 'payment'}${p.reference ? ` · ${p.reference}` : ''}`}>
-                  {bdt(p.amount)} <span className="muted">{p.received_on ? dateFmt(p.received_on) : ''}</span>
+                  <b>{bdt(p.amount)}</b>
+                  {p.received_on && <span className="muted" style={{ marginLeft: 8 }}>on {dateFmt(p.received_on)}</span>}
                 </Row>
               )))}
             </div>

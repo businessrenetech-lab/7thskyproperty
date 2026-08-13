@@ -840,11 +840,46 @@ exports.issuePortalLink = asyncHandler(async (req, res) => {
      * and cannot be shown again — re-issuing mints a new one and invalidates
      * the old, which is also how access is cut off when a contact leaves.
      */
+    /*
+     * Email it, rather than leaving the operator to copy the link into their own
+     * mail client. That was the last hand-carried step in the portal flow, and a
+     * link that has to be pasted by a person is a link that reaches the wrong
+     * person eventually.
+     *
+     * The URL is STILL returned once, because email is best-effort and the
+     * operator needs a fallback when it does not arrive.
+     */
+    const url = `${base}/${out.token}`;
+    const accounts = require('../services/wtPortalAccount.service');
+    const model = req.params.partyType === 'provider' ? M.WtProvider : M.WtClient;
+    const row = await model.findByPk(req.params.id);
+    const shape = row ? accounts.partyShape(req.params.partyType, row) : {};
+
+    let mailed = false;
+    if (req.body?.email !== false && shape.email) {
+      const { sendEmail } = require('../services/communication.service');
+      const what = req.params.partyType === 'provider' ? 'Provider Portal' : 'Customer Portal';
+      mailed = await sendEmail(
+        shape.email,
+        `Your Seventh Sky ${what} link`,
+        `<p>Dear ${shape.contact || shape.name || 'Sir/Madam'},</p>
+         <p>Here is your private link to the Seventh Sky ${what}:</p>
+         <p><a href="${url}">${url}</a></p>
+         <p>It works until <b>${out.expires_at.toISOString().slice(0, 10)}</b>. Please do not forward it —
+            anyone holding it can see the same page.</p>
+         <p>— Seventh Sky Property Care</p>`,
+      ).then(() => true).catch(() => false);
+    }
+
     res.json({
-      url: `${base}/${out.token}`,
+      url,
       expires_at: out.expires_at,
       party: out.party,
-      message: 'Copy this link now — it cannot be shown again. Re-issuing replaces it.',
+      emailed_to: mailed ? shape.email : null,
+      email_sent: mailed,
+      message: mailed
+        ? `Link emailed to ${shape.email}. It is shown here once as a fallback and cannot be recovered later.`
+        : `Copy this link now — it cannot be shown again.${shape.email ? ' The email did not send.' : ' No email address is on file for this party.'}`,
     });
   } catch (e) {
     if (e instanceof require('../services/wtPortal.service').PortalError) {
@@ -909,4 +944,23 @@ exports.portalStatus = asyncHandler(async (req, res) => {
     revoked_at: row.portal_revoked_at,
     events,
   });
+});
+
+/**
+ * GET  /wt-ops/notifications  — what the sweep WOULD send, sending nothing.
+ * POST /wt-ops/notifications  — actually send it.
+ *
+ * Split deliberately. Overdue reminders and renewal notices go to real clients,
+ * so being able to look at the list first — and to see why each one is or is not
+ * going — matters more than the convenience of one endpoint.
+ */
+exports.notificationPreview = asyncHandler(async (req, res) => {
+  const notify = require('../services/wtNotify.service');
+  res.json(await notify.sweep({ branch_id: resolveBranchId(req), dryRun: true }));
+});
+
+exports.notificationSend = asyncHandler(async (req, res) => {
+  const notify = require('../services/wtNotify.service');
+  const out = await notify.sweep({ branch_id: resolveBranchId(req), dryRun: false });
+  res.json({ ...out, message: `${out.sent} notification(s) sent.` });
 });

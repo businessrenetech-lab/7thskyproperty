@@ -277,13 +277,29 @@ exports.send = asyncHandler(async (req, res) => {
     issued_snapshot: { ...row, totals: t, branding_snapshot: { company_name: branding.company_name } },
   });
 
+  /*
+   * Actually email it.
+   *
+   * The comment that used to sit here said SMTP was not configured, so the
+   * endpoint marked an invoice "Sent" while sending nothing and handed back a
+   * PDF path instead. SMTP has in fact been configured throughout — the claim
+   * was stale, and an invoice recorded as sent that nobody received is the
+   * worst version of this to be wrong about.
+   *
+   * Best-effort: the invoice IS issued either way, and the response says plainly
+   * whether the message went, so the operator knows to share the PDF by hand.
+   */
+  const notify = require('../services/wtNotify.service');
+  const mail = await notify.onInvoiceIssued({ ...inv.toJSON(), bill_to_email: to });
+
   res.json({
     invoice: shape(inv.toJSON()),
     sent_to: to,
-    // Delivery is by download/share here — SMTP is not configured in this
-    // environment, so the caller gets the PDF endpoint rather than a false
-    // claim that an email went out.
+    email_sent: mail.sent,
     pdf_path: `/api/wt-invoices/${inv.code}/pdf`,
+    message: mail.sent
+      ? `Invoice emailed to ${to}.`
+      : `Invoice issued, but the email did not send (${mail.reason}). Share the PDF instead.`,
   });
 });
 
@@ -323,10 +339,21 @@ exports.recordPayment = asyncHandler(async (req, res) => {
       actor_id: req.user?.id || null,
     });
     await inv.reload();
+
+    // A receipt the client can see without asking. Only on a NEW posting — a
+    // replayed request must not send a second thank-you for the same money.
+    let receiptMailed = false;
+    if (!out.duplicate) {
+      const notify = require('../services/wtNotify.service');
+      const m = await notify.onPaymentReceived(inv.toJSON(), out.event.amount);
+      receiptMailed = m.sent;
+    }
+
     res.json({
       invoice: shape(inv.toJSON()),
       totals: out.standing.totals,
       event: out.event,
+      receipt_emailed: receiptMailed,
       // Told plainly, so the UI never reports a second payment that did not happen.
       duplicate: out.duplicate,
       message: out.duplicate

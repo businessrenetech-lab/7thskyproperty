@@ -161,8 +161,10 @@ exports.complete = asyncHandler(async (req, res) => {
     const wo = await providerWorkOrder(ctx, req.params.code);
     const step = sm.assertAction('work_order', 'complete', wo.toJSON(), {});
 
-    const before = portal.asArray(req.body?.photos_before);
-    const after = portal.asArray(req.body?.photos_after);
+    // Photos uploaded through the portal as the job progressed, plus anything
+    // passed in the body — the report keeps its own copy so it stands alone.
+    const before = [...portal.asArray(wo.portal_photos_before).map((p) => p.url), ...portal.asArray(req.body?.photos_before)];
+    const after = [...portal.asArray(wo.portal_photos_after).map((p) => p.url), ...portal.asArray(req.body?.photos_after)];
 
     const report = await P.WtServiceReport.create({
       branch_id: wo.branch_id,
@@ -408,8 +410,10 @@ exports.sessionComplete = sessionAction(async (req, res, ctx) => {
   if (ctx.party_type !== 'provider') throw new portal.PortalError(403, 'Only a provider can complete a work order.');
   const wo = await providerWorkOrder(ctx, req.params.code);
   const step = sm.assertAction('work_order', 'complete', wo.toJSON(), {});
-  const before = portal.asArray(req.body?.photos_before);
-  const after = portal.asArray(req.body?.photos_after);
+  // Same as the token path: photos uploaded while the job was under way, plus
+  // anything in the body. The report keeps its own copy so it stands alone.
+  const before = [...portal.asArray(wo.portal_photos_before).map((p) => p.url), ...portal.asArray(req.body?.photos_before)];
+  const after = [...portal.asArray(wo.portal_photos_after).map((p) => p.url), ...portal.asArray(req.body?.photos_after)];
 
   const report = await P.WtServiceReport.create({
     branch_id: wo.branch_id,
@@ -503,4 +507,68 @@ exports.sessionInvoicePdf = sessionAction(async (req, res, ctx) => {
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `inline; filename="${inv.code}.pdf"`);
   res.send(buf);
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Photo upload
+ *
+ * Completion previously took photo URLs, which meant a provider had to host the
+ * pictures somewhere first — so in practice nobody attached any, and completion
+ * evidence went in as prose. A phone camera straight into the report is the only
+ * version of this anyone will actually use.
+ *
+ * Both the token and the session paths share this handler, because the ownership
+ * check and the storage rules must not differ by how the provider arrived.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const pathMod = require('path');
+
+/** Shared by the two entry points; `resolve` supplies the party. */
+async function handleUpload(req, res, ctx) {
+  if (ctx.party_type !== 'provider') throw new portal.PortalError(403, 'Only a provider can attach job photos.');
+  if (!req.file) throw new portal.PortalError(400, 'Choose a photo to upload.');
+
+  // The work order must be theirs before anything is written anywhere.
+  const wo = await providerWorkOrder(ctx, req.params.code);
+
+  const stage = ['before', 'after'].includes(String(req.body?.stage)) ? req.body.stage : 'after';
+  const url = `/uploads/documents/${pathMod.basename(req.file.path)}`;
+
+  /*
+   * Held on the work order rather than the report, because photos are taken as
+   * the job proceeds and the report is filed at the end — waiting for the report
+   * to exist would mean the first pictures had nowhere to go.
+   */
+  const key = stage === 'before' ? 'portal_photos_before' : 'portal_photos_after';
+  const current = portal.asArray(wo[key]);
+  const next = [...current, { url, at: new Date().toISOString(), name: req.file.originalname }];
+
+  await wo.update({ [key]: next, photos_collected: true });
+
+  await auditOf(req, ctx, 'uploaded_photo', {
+    subject_type: 'work_order', subject_code: wo.code, detail: `${stage}: ${req.file.originalname}`,
+  });
+
+  res.status(201).json({
+    url,
+    stage,
+    count: next.length,
+    message: `Photo added to the ${stage} set.`,
+  });
+}
+
+/** POST /public/wt-portal/:token/work-orders/:code/photos */
+exports.uploadPhoto = asyncHandler(async (req, res) => {
+  try {
+    const ctx = await open(req, 'provider');
+    await handleUpload(req, res, ctx);
+  } catch (e) { fail(res, e); }
+});
+
+/** POST /api/wt-portal/work-orders/:code/photos */
+exports.sessionUploadPhoto = asyncHandler(async (req, res) => {
+  try {
+    const ctx = await openSession(req);
+    await handleUpload(req, res, ctx);
+  } catch (e) { fail(res, e); }
 });
