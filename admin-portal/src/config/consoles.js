@@ -304,10 +304,20 @@ export const PROPERTY_MGMT_NAV = [
     ],
   },
   {
-    key: 'contracts',
-    label: 'Contracts',
+    key: 'agreements',
+    label: 'Agreements',
     items: [
+      /*
+       * Both agreement builders this module owns. They were filed under the
+       * global "Documents & Signing" section, away from the screens they are
+       * about — a property manager drafting a tenancy agreement was leaving the
+       * console to do it.
+       *
+       * PM = the owner/agency management agreement (SSPC-RPRMS-01).
+       * TM = the tenancy agreement between landlord and tenant (SSPC-RPTMS-01).
+       */
       { to: '/property-management/agreements', label: 'PM Agreements', icon: FileSignature },
+      { to: '/property-management/tenancy-agreements', label: 'TM Agreements', icon: FileSignature },
     ],
   },
   {

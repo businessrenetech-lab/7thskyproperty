@@ -3029,3 +3029,41 @@ a sidebar item cannot point at nothing.
   three components between them and have no dedicated screens, so a console
   would be chrome around very little. They need screens before they need a
   sidebar.
+
+---
+
+## COMPLETED — TM Agreements moved into the Property Management console
+**Agent:** Claude (console pattern) · **Date:** 2026-08-13
+**Files:** `admin-portal/src/config/consoles.js`, `admin-portal/src/App.jsx`,
+`admin-portal/src/ui/Layout.jsx`
+
+`/agreements/tenancy-management` now lives at
+`/property-management/tenancy-agreements`, inside the console, under an
+**Agreements** group beside PM Agreements. The group was called "Contracts";
+renamed, since it now holds the two agreement builders this module owns and
+"Agreements" is what people call them.
+
+- PM = the owner/agency management agreement (SSPC-RPRMS-01)
+- TM = the tenancy agreement between landlord and tenant (SSPC-RPTMS-01)
+
+A property manager drafting a tenancy agreement was leaving the console to do it.
+
+### Tidied while here
+- **`/agreements/short-term-rental` was declared twice** — a redirect added when
+  Short Term Stay got its console, and the original live route further down,
+  with the redirect shadowing it. Harmless, but exactly the sort of thing that
+  gets "fixed" later by deleting the wrong one. The dead duplicate is gone.
+- The old `/agreements/property-management` and `/agreements/tenancy-management`
+  paths are now redirects rather than live routes, so there is one home per
+  screen and bookmarks still work.
+- The global **Documents & Signing** section still lists all five agreement
+  builders — it is where someone looks for "all our agreements" — but the links
+  now point straight at their new homes instead of bouncing through a redirect.
+
+### Verified
+12 new assertions; full suite **983 across 21 suites, 0 failures**. The
+destination-count assertion caught the addition on its own (27 → 28), which is
+what it is for.
+
+### NOT done
+Browser QA — the Chrome extension has been disconnected for six sessions.

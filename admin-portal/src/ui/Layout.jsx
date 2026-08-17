@@ -82,11 +82,19 @@ const NAV = [
   { to: '/leads', label: 'Leads', icon: Filter },
   { section: 'Documents & Signing' },
   { to: '/agreements', label: 'Agreements', icon: ScrollText },
-  { to: '/agreements/property-management', label: 'PM Agreements', icon: FileSignature },
-  { to: '/agreements/tenancy-management', label: 'TM Agreements', icon: FileSignature },
-  { to: '/agreements/short-term-rental', label: 'STS Agreements', icon: FileSignature },
-  { to: '/agreements/water-tank-customer', label: 'WT Customer Agreements', icon: FileSignature },
-  { to: '/agreements/water-tank-provider', label: 'WT Provider Agreements', icon: FileSignature },
+  /*
+   * The per-vertical agreement builders now live in their own consoles, beside
+   * the screens they are about — a property manager drafting a tenancy
+   * agreement should not have to leave Property Management to do it. They are
+   * still listed here because this section is where someone looks for "all our
+   * agreements", and the links point straight at their new homes rather than
+   * bouncing through a redirect.
+   */
+  { to: '/property-management/agreements', label: 'PM Agreements', icon: FileSignature },
+  { to: '/property-management/tenancy-agreements', label: 'TM Agreements', icon: FileSignature },
+  { to: '/short-stay/agreements', label: 'STS Agreements', icon: FileSignature },
+  { to: '/water-tank/agreements/customer', label: 'WT Customer Agreements', icon: FileSignature },
+  { to: '/water-tank/agreements/provider', label: 'WT Provider Agreements', icon: FileSignature },
   { to: '/agreement-templates', label: 'Agreement Templates', icon: FileSignature },
   { to: '/documents', label: 'Documents', icon: FileText },
   { to: '/signing', label: 'eSign Envelopes', icon: FileSignature },

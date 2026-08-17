@@ -269,9 +269,14 @@ export default function App() {
               {/* Warranty & Issues moved into the Water Tank console */}
               <Route path="/property-care/registers" element={<Navigate to="/water-tank/registers" replace />} />
               <Route path="/agreements" element={<Agreements />} />
-              <Route path="/agreements/property-management" element={<RprmAgreements />} />
-              <Route path="/agreements/tenancy-management" element={<TmAgreements />} />
-              <Route path="/agreements/short-term-rental" element={<StsAgreements />} />
+              {/* Every per-vertical agreement builder now lives in its own
+                  console, beside the screens it is about. These paths stay as
+                  redirects so bookmarks, dashboard tiles and emailed links keep
+                  working. The short-term-rental one was previously declared
+                  twice — a redirect here and a live route below, with the
+                  redirect shadowing it — so the dead duplicate is gone. */}
+              <Route path="/agreements/property-management" element={<LegacyRedirect to="/property-management/agreements" />} />
+              <Route path="/agreements/tenancy-management" element={<LegacyRedirect to="/property-management/tenancy-agreements" />} />
               <Route path="/agreements/water-tank-customer" element={<LegacyRedirect to="/water-tank/agreements/customer" />} />
               <Route path="/agreement-templates" element={<AgreementTemplates />} />
               <Route path="/documents" element={PH('Documents', 'Central document management with versioning.')} />
@@ -418,6 +423,7 @@ export default function App() {
               <Route path="/property-management/folios" element={<Folios />} />
               <Route path="/property-management/landlord-bills" element={<LandlordBills />} />
               <Route path="/property-management/agreements" element={<RprmAgreements />} />
+              <Route path="/property-management/tenancy-agreements" element={<TmAgreements />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />
