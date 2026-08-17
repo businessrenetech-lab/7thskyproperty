@@ -179,7 +179,17 @@ export default function ServiceConsole({ config }) {
               const shut = collapsed.has(g.key);
               // A collapsed group must not hide work, so its total moves up to
               // the header — and the group opens if the current page is inside.
-              const inHere = items.some((i) => (i.end ? loc.pathname === i.to : loc.pathname.startsWith(i.to)));
+              /*
+               * Compared on the PATH alone. A nav item may carry a query string
+               * — Property Management links several shared screens filtered by
+               * one (`/property-management/work-orders?vertical=rental`) — and
+               * `pathname` never contains a `?`, so comparing the raw `to` would
+               * quietly fail to open the group holding the current page.
+               */
+              const inHere = items.some((i) => {
+                const path = i.to.split('?')[0];
+                return i.end ? loc.pathname === path : loc.pathname.startsWith(path);
+              });
               const groupTotal = items.reduce((s, i) => s + (badges[i.to]?.count || 0), 0);
               const groupLate = items.some((i) => badges[i.to]?.severity === 'late');
               const open = !shut || inHere;

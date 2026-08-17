@@ -2961,3 +2961,71 @@ comments documenting the very fixes they were checking.
   per-row button on the statements screen; the payment run covers the bulk case
   the request was about.
 - Housekeeping still has no "Awaiting QC" state (needs an enum value).
+
+---
+
+## COMPLETED — Property Management opens as its own console (the third)
+**Agent:** Claude (console pattern) · **Date:** 2026-08-13
+**Files:** new `admin-portal/src/screens/PropertyMgmtConsole.jsx`,
+`admin-portal/src/config/consoles.js`, `admin-portal/src/ui/ServiceConsole.jsx`,
+`admin-portal/src/App.jsx`, `admin-portal/src/ui/Layout.jsx`
+
+### What it cost
+A config object, a 20-line wrapper and a route block — which is the whole point
+of having extracted the shell two sessions ago. One change to `ServiceConsole`
+itself was needed, described below.
+
+Property Management was 20 routes inside `PmScopeLayout` with 27 children
+crowding the global sidebar. It now opens the way Water Tank and Short Term Stay
+do: own sidebar, own window, violet accent over the same navy.
+
+**Its URLs did not change.** `/property-management/*` meant these screens before
+and means them now, so unlike Short Term Stay nothing needed a redirect — only
+the chrome around the screens is different.
+
+### The problem the third console surfaced
+Eight of the 27 nav items were not Property Management screens at all. They were
+SHARED screens — work orders, inspections, compliance, workflows, tenant
+invoices, receipts, folios, landlord bills — filtered to rentals by a query
+string and living at global paths. Left alone, clicking one would have thrown the
+operator out of the console and back into the admin shell, sidebar and all.
+
+They are now routed at `/property-management/*` **inside** the console, rendering
+the same components, still reading their own query string. The rental filter is
+intact and not one of those components was touched. Their global paths remain for
+the other verticals that use them.
+
+That in turn exposed a real bug in the shared shell: `inHere` compared
+`loc.pathname.startsWith(item.to)`, and `pathname` never contains a `?`, so a nav
+item carrying a query string would silently fail to open its own group. Fixed by
+comparing on the path alone — and proved by reverting the fix and watching the
+assertion fail.
+
+### Nav
+27 destinations across 7 groups. The old "Rental Accounting" sub-group held ten
+items, which is a list you read rather than scan, so it is split by DIRECTION —
+Money In (tenant invoices, receipts, folios, arrears, global invoicing) and Money
+Out (owner statements, disbursements, landlord bills, deposit settlements,
+expense approvals). Chasing arrears and paying an owner are different jobs.
+`roles:` gating added to every finance destination, matching the convention the
+other consoles use.
+
+`ui/PmScopeLayout.jsx` is now unused — the console supplies `.pm-scope` through
+`contentClass`. Left in place rather than deleted, since deleting a file other
+agents may be mid-edit on is not worth the saving.
+
+### Verified
+12 new assertions; full suite **971 across 21 suites, 0 failures**. Every nav
+destination in all three consoles is asserted to resolve to a declared route, so
+a sidebar item cannot point at nothing.
+
+### NOT done
+- **Browser QA.** The Chrome extension has been disconnected for six sessions.
+  Build- and assertion-verified only.
+- **No badges or ⌘K for Property Management** — both need `work-queue` and
+  `search` endpoints it does not have. The shell lights them up the day they
+  exist; until then the nav gates on `roles:`.
+- Residential Sales, Commercial and Rural remain. Honest note: those three share
+  three components between them and have no dedicated screens, so a console
+  would be chrome around very little. They need screens before they need a
+  sidebar.

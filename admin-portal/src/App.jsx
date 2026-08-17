@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useParams, us
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import Layout from './ui/Layout';
-import PmScopeLayout from './ui/PmScopeLayout';
 import RequireAuth from './ui/RequireAuth';
 import PortalLayout, { portalPath } from './ui/PortalLayout';
 import Login from './screens/Login';
@@ -99,6 +98,7 @@ import CareQuotations from './screens/CareQuotations';
 import CareAmc from './screens/CareAmc';
 import ShortStayHub from './screens/ShortStayHub';
 import ShortStayConsole from './screens/shortstay/ShortStayConsole';
+import PropertyMgmtConsole from './screens/PropertyMgmtConsole';
 import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
 import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
 import Signing from './screens/Signing';
@@ -222,28 +222,9 @@ export default function App() {
               <Route path="/sales/property/:id" element={<SalesPropertyFile />} />
               <Route path="/sales/properties/new" element={<PropertyWizard />} />
               <Route path="/sales/properties/new/:id" element={<PropertyWizard />} />
-              <Route element={<PmScopeLayout />}>
-                <Route path="/property-management" element={<PropertyMgmtDashboard />} />
-                <Route path="/property-management/rentals" element={<RentalProperties />} />
-                <Route path="/property-management/rentals/new" element={<PropertyWizard />} />
-                <Route path="/property-management/rentals/new/:id" element={<PropertyWizard />} />
-                <Route path="/property-management/applications" element={<TenantApplications />} />
-                <Route path="/property-management/enquiries" element={<RentalEnquiries />} />
-                <Route path="/property-management/assessments" element={<RentalAssessments />} />
-                <Route path="/property-management/statements" element={<OwnerStatements />} />
-                <Route path="/property-management/renewals" element={<Renewals />} />
-                <Route path="/property-management/vacancies" element={<Vacancies />} />
-                <Route path="/property-management/settlements" element={<DepositSettlements />} />
-                <Route path="/property-management/reports" element={<RentalReports />} />
-                <Route path="/property-management/disbursements" element={<Disbursements />} />
-                <Route path="/property-management/utilities" element={<UtilityBills />} />
-                <Route path="/property-management/tenant-requests" element={<TenantRequests />} />
-                <Route path="/property-management/arrears" element={<ArrearsActions />} />
-                <Route path="/property-management/marketing" element={<MarketingActivities />} />
-                <Route path="/property-management/expense-approvals" element={<ExpenseApprovals />} />
-                <Route path="/property-management/risks" element={<PropertyRisks />} />
-                <Route path="/property-management/global-invoicing" element={<GlobalInvoicing />} />
-              </Route>
+              {/* Property Management moved to its own console — see the route
+                  block below. The URLs are unchanged, so nothing needs a
+                  redirect; only the chrome around the screens is different. */}
               {/* Short Term Stay moved to its own console at /short-stay/*.
                   These keep every bookmark, dashboard tile and emailed link
                   working: ?tab=bookings is lifted into the path, ?booking= is
@@ -396,6 +377,47 @@ export default function App() {
               <Route path="/short-stay/properties/:profileId/edit" element={<ShortStayPropertyOnboarding />} />
               <Route path="/short-stay/agreements" element={<StsAgreements />} />
               <Route path="/short-stay/:tab" element={<ShortStayHub />} />
+            </Route>
+
+            {/* Property Management — the third separated console, on the same
+                ServiceConsole shell. Its own URLs are unchanged; the eight
+                SHARED screens it links (work orders, inspections, compliance,
+                folios, invoices, receipts, landlord bills, workflows) are
+                re-routed here under /property-management/* so that clicking one
+                does not drop the operator back out into the global admin. They
+                keep reading their query string, so the rental filter is intact
+                and the components are untouched. */}
+            <Route element={<RequireAuth><AdminGate><PropertyMgmtConsole /></AdminGate></RequireAuth>}>
+              <Route path="/property-management" element={<PropertyMgmtDashboard />} />
+              <Route path="/property-management/rentals" element={<RentalProperties />} />
+              <Route path="/property-management/rentals/new" element={<PropertyWizard />} />
+              <Route path="/property-management/rentals/new/:id" element={<PropertyWizard />} />
+              <Route path="/property-management/applications" element={<TenantApplications />} />
+              <Route path="/property-management/enquiries" element={<RentalEnquiries />} />
+              <Route path="/property-management/assessments" element={<RentalAssessments />} />
+              <Route path="/property-management/statements" element={<OwnerStatements />} />
+              <Route path="/property-management/renewals" element={<Renewals />} />
+              <Route path="/property-management/vacancies" element={<Vacancies />} />
+              <Route path="/property-management/settlements" element={<DepositSettlements />} />
+              <Route path="/property-management/reports" element={<RentalReports />} />
+              <Route path="/property-management/disbursements" element={<Disbursements />} />
+              <Route path="/property-management/utilities" element={<UtilityBills />} />
+              <Route path="/property-management/tenant-requests" element={<TenantRequests />} />
+              <Route path="/property-management/arrears" element={<ArrearsActions />} />
+              <Route path="/property-management/marketing" element={<MarketingActivities />} />
+              <Route path="/property-management/expense-approvals" element={<ExpenseApprovals />} />
+              <Route path="/property-management/risks" element={<PropertyRisks />} />
+              <Route path="/property-management/global-invoicing" element={<GlobalInvoicing />} />
+              {/* Shared screens, filtered to rentals by their own query string. */}
+              <Route path="/property-management/work-orders" element={<WorkOrders />} />
+              <Route path="/property-management/inspections" element={<Inspections />} />
+              <Route path="/property-management/compliance" element={<Compliance />} />
+              <Route path="/property-management/workflows" element={<Projects />} />
+              <Route path="/property-management/invoices" element={<Invoices />} />
+              <Route path="/property-management/receipts" element={<RentalReceipts />} />
+              <Route path="/property-management/folios" element={<Folios />} />
+              <Route path="/property-management/landlord-bills" element={<LandlordBills />} />
+              <Route path="/property-management/agreements" element={<RprmAgreements />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />

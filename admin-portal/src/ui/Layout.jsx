@@ -18,37 +18,13 @@ const NAV = [
     { to: '/compliance?category=residential', label: 'Compliance' },
     { to: '/projects?vertical_key=properties', label: 'Checklists / Workflows' },
   ] },
-  { key: 'pm', label: 'Property Management', to: '/property-management', icon: KeyRound, children: [
-    { to: '/property-management', label: 'Dashboard' },
-    { label: 'Rentals', group: true },
-    { to: '/property-management/rentals', label: 'Properties' },
-    { to: '/work-orders?vertical=rental', label: 'Maintenance / Work Orders' },
-    { to: '/property-management/enquiries', label: 'Rental Enquiries' },
-    { to: '/property-management/applications', label: 'Tenant Applications' },
-    { to: '/property-management/vacancies', label: 'Vacancy Notices' },
-    { to: '/inspections?type=rental', label: 'Rental Inspections' },
-    { to: '/compliance?listing_type=rent', label: 'Compliances' },
-    { to: '/projects?vertical_key=leasing,short_stay', label: 'Workflows' },
-    { label: 'Rental Accounting', group: true },
-    { to: '/landlord-bills', label: 'Landlord Bills' },
-    { to: '/invoices?kind=client', label: 'Tenant Invoices' },
-    { to: '/folios', label: 'Folios' },
-    { to: '/property-management/disbursements', label: 'Disbursement & Payouts' },
-    { to: '/rental-receipts', label: 'Rental Receipts' },
-    { to: '/property-management/statements', label: 'Owner Statements' },
-    { to: '/property-management/settlements', label: 'Deposit Settlements' },
-    { label: 'Others', group: true },
-    { to: '/property-management/assessments', label: 'Rental Assessments' },
-    { to: '/property-management/renewals', label: 'Renewals' },
-    { to: '/property-management/utilities', label: 'Utilities & Bills' },
-    { to: '/property-management/tenant-requests', label: 'Tenant Requests' },
-    { to: '/property-management/arrears', label: 'Arrears Actions' },
-    { to: '/property-management/marketing', label: 'Rental Marketing' },
-    { to: '/property-management/expense-approvals', label: 'Expense Approvals' },
-    { to: '/property-management/risks', label: 'Risk Register' },
-    { to: '/property-management/reports', label: 'Reports' },
-    { to: '/property-management/global-invoicing', label: 'Global Tenant Invoicing' },
-  ] },
+  /*
+   * Property Management is its own operations console now, so it appears here as
+   * a single destination — as Water Tank Services and Short Term Stay do. Its
+   * twenty-seven screens live in that console's own sidebar rather than being
+   * repeated in this one.
+   */
+  { to: '/property-management', label: 'Property Management', icon: KeyRound },
   /*
    * Short Term Stay is its own operations console now, so it appears here as a
    * single destination — exactly as Water Tank Services does under Services.

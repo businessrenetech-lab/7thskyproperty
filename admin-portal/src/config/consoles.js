@@ -4,7 +4,7 @@ import {
   Settings, Banknote, ShieldCheck, ClipboardCheck, FileBarChart, Tags,
   Inbox, CalendarDays, KeyRound,
   Hotel, CalendarRange, MessageSquareQuote, BookOpen, UserCheck, DoorOpen,
-  Home, Sparkles, Wrench, HandCoins, Landmark, BarChart3,
+  Home, Sparkles, Wrench, HandCoins, Landmark, BarChart3, TrendingUp,
 } from 'lucide-react';
 
 /*
@@ -230,7 +230,122 @@ export const shortStayConsole = {
   exitTo: '/dashboard',
 };
 
+/* ── Property Management ───────────────────────────────────────────────── */
+
+/*
+ * Twenty-seven destinations across seven groups, from the three flat sub-groups
+ * the module used in ui/Layout.jsx (Rentals · Rental Accounting · Others).
+ *
+ * "Rental Accounting" held ten items, which is a list you read rather than scan,
+ * so it is split by DIRECTION: money coming in from tenants, money going out to
+ * landlords and suppliers. An operator chasing arrears and an operator paying an
+ * owner are doing different jobs.
+ *
+ * Eight of these are shared screens that other verticals use too — work orders,
+ * inspections, compliance, folios, invoices — filtered to rentals by a query
+ * string. They are routed at `/property-management/*` inside the console so
+ * clicking one does not throw the operator back out into the global admin.
+ */
+const PM_FINANCE_ROLES = ['super_admin', 'branch_admin', 'property_manager', 'accounts'];
+
+export const PROPERTY_MGMT_NAV = [
+  {
+    key: 'home',
+    label: 'Home',
+    items: [
+      { to: '/property-management', label: 'Dashboard', icon: LayoutGrid, end: true },
+      { to: '/property-management/reports', label: 'Reports', icon: BarChart3 },
+    ],
+  },
+  {
+    key: 'rentals',
+    label: 'Rentals',
+    items: [
+      { to: '/property-management/rentals', label: 'Properties', icon: Home },
+      { to: '/property-management/enquiries', label: 'Rental Enquiries', icon: MessageSquareQuote },
+      { to: '/property-management/applications', label: 'Tenant Applications', icon: ClipboardList },
+      { to: '/property-management/assessments', label: 'Rental Assessments', icon: ClipboardCheck },
+      { to: '/property-management/vacancies', label: 'Vacancy Notices', icon: DoorOpen },
+      { to: '/property-management/renewals', label: 'Renewals', icon: CalendarRange },
+    ],
+  },
+  {
+    key: 'operations',
+    label: 'Operations',
+    items: [
+      { to: '/property-management/work-orders?vertical=rental', label: 'Maintenance / Work Orders', icon: Wrench },
+      { to: '/property-management/inspections?type=rental', label: 'Rental Inspections', icon: ClipboardCheck },
+      { to: '/property-management/compliance?listing_type=rent', label: 'Compliances', icon: ShieldCheck },
+      { to: '/property-management/workflows?vertical_key=leasing,short_stay', label: 'Workflows', icon: Folder },
+      { to: '/property-management/tenant-requests', label: 'Tenant Requests', icon: MessageSquare },
+      { to: '/property-management/utilities', label: 'Utilities & Bills', icon: Sparkles },
+    ],
+  },
+  {
+    key: 'income',
+    label: 'Money In',
+    items: [
+      { to: '/property-management/invoices?kind=client', label: 'Tenant Invoices', icon: Receipt, roles: PM_FINANCE_ROLES },
+      { to: '/property-management/receipts', label: 'Rental Receipts', icon: Banknote, roles: PM_FINANCE_ROLES },
+      { to: '/property-management/folios', label: 'Folios', icon: BookOpen, roles: PM_FINANCE_ROLES },
+      { to: '/property-management/arrears', label: 'Arrears Actions', icon: AlertCircle, roles: PM_FINANCE_ROLES },
+      { to: '/property-management/global-invoicing', label: 'Global Tenant Invoicing', icon: FileText, roles: PM_FINANCE_ROLES },
+    ],
+  },
+  {
+    key: 'payouts',
+    label: 'Money Out',
+    items: [
+      { to: '/property-management/statements', label: 'Owner Statements', icon: Landmark, roles: PM_FINANCE_ROLES },
+      { to: '/property-management/disbursements', label: 'Disbursement & Payouts', icon: HandCoins, roles: PM_FINANCE_ROLES },
+      { to: '/property-management/landlord-bills', label: 'Landlord Bills', icon: Receipt, roles: PM_FINANCE_ROLES },
+      { to: '/property-management/settlements', label: 'Deposit Settlements', icon: Shield, roles: PM_FINANCE_ROLES },
+      { to: '/property-management/expense-approvals', label: 'Expense Approvals', icon: ClipboardCheck, roles: PM_FINANCE_ROLES },
+    ],
+  },
+  {
+    key: 'contracts',
+    label: 'Contracts',
+    items: [
+      { to: '/property-management/agreements', label: 'PM Agreements', icon: FileSignature },
+    ],
+  },
+  {
+    key: 'admin',
+    label: 'Administration',
+    items: [
+      { to: '/property-management/marketing', label: 'Rental Marketing', icon: TrendingUp },
+      { to: '/property-management/risks', label: 'Risk Register', icon: AlertCircle },
+    ],
+  },
+];
+
+export const propertyMgmtConsole = {
+  slug: 'property-management',
+  storageKey: 'pm.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Property Management',
+    icon: KeyRound,
+    // Violet over the same navy. Water Tank is cyan, Short Term Stay amber —
+    // three consoles that read as one product, told apart at a glance.
+    accent: '#8b5cf6',
+    accentStrong: '#7c3aed',
+    accentInk: '#6d28d9',
+    accentTint: 'rgba(139,92,246,.12)',
+    accentTint2: '#ede9fe',
+  },
+  navGroups: PROPERTY_MGMT_NAV,
+  // No capabilities or work-queue endpoints yet; the nav gates on `roles:` and
+  // shows no badges until those exist.
+  api: {},
+  // The screens are written in the pm-design system this console is named after.
+  contentClass: 'pm-scope',
+  exitTo: '/dashboard',
+};
+
 export const CONSOLES = {
   'water-tank': waterTankConsole,
   'short-stay': shortStayConsole,
+  'property-management': propertyMgmtConsole,
 };
