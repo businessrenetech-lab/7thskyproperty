@@ -2583,3 +2583,74 @@ and a fixture that pre-stringified a JSON column, which double-encoded it.
 - Overpayment still cannot be parked as a client credit balance; the ledger
   refuses to take more than is owed. A credit-note subsystem is a separate piece
   of work, and inventing somewhere to put unexplained money would be worse.
+
+---
+
+## COMPLETED — Disbursements, payment runs and branded vouchers
+**Agent:** Claude (Water Tank console) · **Date:** 2026-08-13
+**Files:** `backend/migrations/0091-disbursements-and-vouchers.js` (new),
+`backend/models/waterTankOps.js`, `backend/services/wtLedger.service.js`,
+`backend/services/wtVoucher.service.js` (new),
+`backend/controllers/waterTankDisbursement.controller.js` (new),
+`backend/routes/waterTankDisbursement.routes.js` (new), `backend/server.js`,
+`admin-portal/src/screens/watertank/DisbursementModal.jsx` (new),
+`admin-portal/src/screens/watertank/BulkDisbursementModal.jsx` (new),
+`admin-portal/src/screens/watertank/Payments.jsx`
+
+### The gap, as the operator named it
+"Sometimes some payments do not always go to service provider — it directly
+relates to Seventh Sky." Exactly right, and the software had nowhere to put
+that. Chemicals, transport, government fees and day labour either went
+unrecorded or landed in `wt_project_disbursements`, a table the money ledger has
+never read. So the Payments screen's `disbursed` counted provider payouts only,
+and **the margin it derived was overstated by everything the business spent on
+its own account.** That is the defect this closes; the buttons are the surface.
+
+### What was built
+- **Two kinds of disbursement, one register.** A PROVIDER PAYOUT keeps its gates
+  (the signed agreement's payout trigger, unchanged). A DIRECT COST has a
+  free-text payee — the whole point is that the payee is on no list — and no
+  gate, because the money has already gone and refusing to record it would only
+  hide it. `project_code` became nullable: a drum of hypochlorite covers six
+  jobs, and forcing a project means someone picks one at random.
+- **Both write to the ledger**, so the journal, the margin and the register
+  cannot disagree. `direct_disbursement` is a real event type with its own
+  reversal, and reversing one now updates the register row — previously the
+  branch did not exist, so a reversed row would have kept reading "Paid".
+- **Branded payment voucher** for every payment, provider payouts included —
+  they had none, so a contractor was paid and signed nothing. Amount in words in
+  Bangladeshi numbering (lakh/crore, not million), a PAID mark carrying the
+  method, and three signature blocks: prepared, approved, received.
+- **Payment run**: several disbursements in one banking act, provider fees and
+  direct costs together, atomic, sharing one batch reference, producing ONE
+  document — a summary page for the bank line, then a voucher per recipient.
+  Blocked payouts are shown with their reason rather than hidden.
+- **Direct Costs tab** on the Payments screen with a spend-by-category
+  breakdown, and the margin card corrected to subtract direct costs.
+
+### Two bugs found and fixed while here
+- **Refunds corrupted the journal.** Refunds are stored negative (they hang off
+  the invoice, whose balance must fall), but the journal summed raw amounts for
+  outflows — so a refund *reduced* what the business appeared to have paid out.
+  `cashOut()` now reconciles that in one place.
+- **Journal totals were computed over the fetched page**, not the whole set.
+  Correct today at 9 events; silently wrong past 200, with nothing on screen to
+  say so. Totals now sum every matching row.
+
+### Verified
+69 new assertions; full suite **680 across 17 suites, 0 failures**. Vouchers are
+checked by inflating the PDF and decoding its hex text — the first version
+grepped raw bytes and "failed" on a perfectly good document, since pdfkit
+deflates its streams and writes text as hex inside kerned TJ arrays. Sample
+voucher and run PDFs rendered and read back field by field.
+
+### NOT done / needs attention
+- **Browser QA.** The Chrome extension has been disconnected for two sessions
+  and would not reconnect. The screens are API-, build- and PDF-verified but
+  have not been opened.
+- **Company details are missing from Settings** — address, phone, BIN, TIN and
+  logo are all unset, so every voucher, invoice and agreement goes out with only
+  a name and an email in the letterhead. Nothing to fix in code; it is five
+  minutes in Settings and it materially improves every outbound document.
+- Direct costs marked "rechargeable" are flagged but do not raise a client
+  invoice by themselves; wiring that to invoicing is a separate piece of work.

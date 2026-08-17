@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Banknote, RefreshCw, Wallet, ArrowDownLeft, ArrowUpRight, Layers } from 'lucide-react';
+import { Banknote, RefreshCw, Wallet, ArrowDownLeft, ArrowUpRight, Layers, FileText } from 'lucide-react';
 import api from '../../services/api';
 import {
   WtHead, WtTabs, Pill, dateFmt, bdt, WtDrawer, Loading, EmptyState, toast, errText,
 } from './common';
 import BulkPaymentModal from './BulkPaymentModal';
+import DisbursementModal from './DisbursementModal';
+import BulkDisbursementModal from './BulkDisbursementModal';
 
 /*
  * Payments & Disbursements — both sides of the money on a water-tank job.
@@ -79,6 +81,9 @@ export default function Payments() {
   const [receipt, setReceipt] = useState(null);
   const [payout, setPayout] = useState(null);
   const [bulk, setBulk] = useState(false);
+  const [disbursing, setDisbursing] = useState(false);
+  const [run, setRun] = useState(false);
+  const [direct, setDirect] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true); setError('');
@@ -88,6 +93,17 @@ export default function Payments() {
       .finally(() => setLoading(false));
   }, []);
   useEffect(load, [load]);
+
+  /*
+   * Direct costs are loaded separately because `/wt-ops/payments` knows nothing
+   * about them — that aggregate predates them, and its "disbursed" figure counts
+   * provider payouts only. The margin card below therefore has to subtract them
+   * itself, or it reports a profit the business did not make.
+   */
+  const loadDirect = useCallback(() => {
+    api.get('/wt-disbursements').then((r) => setDirect(r.data)).catch(() => setDirect(null));
+  }, []);
+  useEffect(loadDirect, [loadDirect]);
 
   const t = data?.totals || {};
   const receivable = data?.receivable || [];
@@ -119,7 +135,20 @@ export default function Payments() {
     setPayout(null); load();
   };
 
-  const counts = { 'Client Receivables': receivable.length, 'Provider Payouts': payable.length, 'Blocked Payouts': payoutBlocked.length, 'Settled Payouts': settled.length };
+  const directRows = direct?.rows || [];
+  const directPaid = num(direct?.totals?.paid);
+  // The margin the business actually made: what came in, less BOTH what went to
+  // providers and what Seventh Sky spent on its own account.
+  const trueMargin = num(t.collected) - num(t.disbursed) - directPaid;
+
+  const TABS = ['Client Receivables', 'Provider Payouts', 'Direct Costs', 'Blocked Payouts', 'Settled Payouts'];
+  const counts = {
+    'Client Receivables': receivable.length,
+    'Provider Payouts': payable.length,
+    'Direct Costs': directRows.length,
+    'Blocked Payouts': payoutBlocked.length,
+    'Settled Payouts': settled.length,
+  };
 
   if (loading) return (<><WtHead title="Payments & Disbursements" subtitle="Client receipts and third-party provider payouts" /><Loading /></>);
 
@@ -138,10 +167,22 @@ export default function Payments() {
         {/* This screen is about receivables, so the lump-sum dialog belongs here
             as much as on the invoice register — an operator chasing a balance
             should not have to go elsewhere to bank the payment. */}
-        <button className="wt-btn primary" onClick={() => setBulk(true)}><Layers size={14} /> Bulk Payment</button>
+        <button className="wt-btn" onClick={() => setBulk(true)}><Layers size={14} /> Bulk Payment</button>
+        {/* Money out. Kept visually apart from the money-in controls above,
+            because confusing the two directions is the expensive mistake. */}
+        <button className="wt-btn" onClick={() => setRun(true)}><Layers size={14} /> Payment Run</button>
+        <button className="wt-btn primary" onClick={() => setDisbursing(true)}><Banknote size={14} /> Disburse</button>
       </WtHead>
 
       {bulk && <BulkPaymentModal onClose={() => { setBulk(false); load(); }} onDone={load} />}
+      {disbursing && (
+        <DisbursementModal onClose={() => { setDisbursing(false); load(); loadDirect(); }}
+          onDone={() => { load(); loadDirect(); }} />
+      )}
+      {run && (
+        <BulkDisbursementModal onClose={() => { setRun(false); load(); loadDirect(); }}
+          onDone={() => { load(); loadDirect(); }} />
+      )}
 
       <div className="wt-kpis">
         <div className="wt-card wt-kpi">
@@ -165,20 +206,96 @@ export default function Payments() {
           <div>
             <div className="wt-kpi-label">Collected</div>
             <div className="wt-kpi-value">{bdt(t.collected)}</div>
-            <div className="wt-kpi-sub">{bdt(t.disbursed)} disbursed to providers</div>
+            <div className="wt-kpi-sub">
+              {bdt(t.disbursed)} to providers{directPaid ? ` · ${bdt(directPaid)} direct costs` : ''}
+            </div>
           </div>
         </div>
         <div className="wt-card wt-kpi">
           <span className="wt-kpi-ic" style={{ background: 'var(--wt-accent-tint)', color: 'var(--wt-accent)' }}><Banknote /></span>
           <div>
             <div className="wt-kpi-label">Seventh Sky margin</div>
-            <div className="wt-kpi-value">{bdt(t.margin)}</div>
-            <div className="wt-kpi-sub">{bdt(t.ss_fees)} in allocation fees booked</div>
+            {/*
+              * Net of direct costs. This card used to read collected minus
+              * provider payouts, so every taka the business spent on chemicals,
+              * transport or labour made the margin look better than it was.
+              */}
+            <div className="wt-kpi-value" style={{ color: trueMargin < 0 ? 'var(--wt-red)' : undefined }}>{bdt(trueMargin)}</div>
+            <div className="wt-kpi-sub">
+              {directPaid
+                ? `after ${bdt(directPaid)} of Seventh Sky's own costs`
+                : `${bdt(t.ss_fees)} in allocation fees booked`}
+            </div>
           </div>
         </div>
       </div>
 
-      <WtTabs tabs={['Client Receivables', 'Provider Payouts', 'Blocked Payouts', 'Settled Payouts']} value={tab} onChange={setTab} counts={counts} />
+      <WtTabs tabs={TABS} value={tab} onChange={setTab} counts={counts} />
+
+      {tab === 'Direct Costs' && (
+        <>
+          {/* Where the money actually goes — the question a monthly review asks
+              and which no screen here could previously answer. */}
+          {(direct?.totals?.by_category || []).length > 0 && (
+            <div className="wt-card" style={{ padding: 16, marginBottom: 14 }}>
+              <div className="wt-sec-title" style={{ marginBottom: 10 }}>What Seventh Sky spends on</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {direct.totals.by_category.map((c) => (
+                  <span key={c.name} className="wt-chip" style={{ cursor: 'default' }}>
+                    {c.name} <b style={{ marginLeft: 6 }}>{bdt(c.total)}</b>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="wt-card wt-tblcard">
+            {directRows.length ? (
+              <table className="wt-tbl">
+                <thead><tr>
+                  <th style={{ width: 88 }}>Voucher</th><th style={{ width: 150 }}>Category</th>
+                  <th>Paid to</th><th style={{ width: 104 }}>Project</th>
+                  <th style={{ width: 100 }}>Paid on</th>
+                  <th style={{ width: 116, textAlign: 'right' }}>Amount</th>
+                  <th style={{ width: 106 }}>Status</th><th style={{ width: 108 }} />
+                </tr></thead>
+                <tbody>
+                  {directRows.map((d) => (
+                    <tr key={d.id}>
+                      <td className="id">{d.voucher_no || d.code}</td>
+                      <td className="muted">{d.category}</td>
+                      <td>
+                        <strong>{d.payee}</strong>
+                        <span className="muted" style={{ display: 'block', fontSize: 11.5 }}>{d.description}</span>
+                      </td>
+                      <td className="muted">{d.project_code || '—'}</td>
+                      <td className="muted">{d.paid_on ? dateFmt(d.paid_on) : '—'}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--wt-red)' }}>{bdt(d.amount)}</td>
+                      <td>
+                        <Pill value={d.status} sm />
+                        {d.billable_to_client ? <span className="wt-chip" style={{ cursor: 'default', marginLeft: 4 }}>rechargeable</span> : null}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        {d.voucher_no ? (
+                          <button className="wt-btn sm"
+                            onClick={() => window.open(`${api.defaults.baseURL || ''}/wt-disbursements/${d.voucher_no}/voucher`, '_blank')}>
+                            <FileText size={13} /> Voucher
+                          </button>
+                        ) : (
+                          <button className="wt-btn sm" onClick={() => setDisbursing(true)}>Pay</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <EmptyState eyebrow="Direct costs" title="Nothing recorded yet"
+                hint="Not every payment goes to a service provider. Chemicals, transport, government fees and day labour are paid by Seventh Sky directly — record them here so the margin is the truth."
+                action={<button className="wt-btn primary" onClick={() => setDisbursing(true)}><Banknote size={14} /> Make a disbursement</button>} />
+            )}
+          </div>
+        </>
+      )}
 
       {tab === 'Client Receivables' && (
         <div className="wt-card wt-tblcard">

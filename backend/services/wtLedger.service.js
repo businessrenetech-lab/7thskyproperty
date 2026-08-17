@@ -59,7 +59,29 @@ const EVENT_TYPES = {
   client_refund_reversal: { direction: 'out', subject: 'invoice' },
   provider_payout: { direction: 'out', subject: 'work_order' },
   provider_payout_reversal: { direction: 'out', subject: 'work_order' },
+  /*
+   * Money Seventh Sky spends ITSELF: chemicals, transport, a government fee, a
+   * day-labourer, equipment hire. Not every payment goes to a service provider,
+   * and until this existed those payments were either unrecorded or parked in a
+   * table the ledger never read — so "disbursed" counted provider payouts only
+   * and the margin derived from it was overstated by everything the business
+   * spent on its own account.
+   *
+   * There is no gate here, deliberately. A provider payout is gated by the
+   * signed agreement because it is a promise about WHEN to pay. A direct cost is
+   * recorded AFTER the money has gone; refusing to record it would not stop the
+   * spending, it would only hide it.
+   */
+  direct_disbursement: { direction: 'out', subject: 'disbursement' },
+  direct_disbursement_reversal: { direction: 'out', subject: 'disbursement' },
 };
+
+/** What Seventh Sky spends money on directly, in rough order of frequency. */
+const DISBURSEMENT_CATEGORIES = [
+  'Chemicals & Consumables', 'Transport & Fuel', 'Labour & Wages', 'Equipment Hire',
+  'Equipment Purchase', 'Government & Licence Fees', 'Testing & Laboratory',
+  'Repairs & Spares', 'Site Expenses', 'Refreshments', 'Office & Admin', 'Other',
+];
 
 /** Methods a Bangladeshi client actually pays by, in the order they are used. */
 const PAYMENT_METHODS = [
@@ -479,6 +501,7 @@ async function recordProviderPayout(opts, { transaction } = {}) {
       subject_id: wo.id,
       subject_code: wo.code,
       amount,
+      batch_ref: opts.batch_ref,
       method: opts.method,
       reference: opts.reference,
       received_on: opts.paid_on,
@@ -517,6 +540,139 @@ async function syncWorkOrderCache(wo, { transaction } = {}) {
   }, { transaction });
 
   return { fee, paid, remaining: round2(fee - paid) };
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Direct disbursements — money Seventh Sky spends itself
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Record money paid out that is NOT a provider payout.
+ *
+ * The disbursement row is created by the caller and passed in; this posts the
+ * ledger entry against it and links the two, so the register and the journal can
+ * never disagree about whether the money moved.
+ *
+ * Unlike a receipt there is no ceiling to check — a direct cost is not "against"
+ * a balance, it IS the balance. What is checked is that it has a payee and a
+ * reason, because an unexplained payment out is exactly what a voucher exists to
+ * prevent.
+ */
+async function recordDirectDisbursement(opts, { transaction } = {}) {
+  const run = async (t) => {
+    const row = await M.WtProjectDisbursement.findOne({
+      where: { id: opts.disbursement_id, branch_id: opts.branch_id },
+      transaction: t, lock: t.LOCK.UPDATE,
+    });
+    if (!row) throw new LedgerError(404, 'Disbursement not found.');
+
+    const amount = round2(opts.amount != null ? opts.amount : row.amount);
+    if (!(amount > 0)) throw new LedgerError(400, 'Enter an amount greater than zero.');
+    if (!String(row.payee || '').trim()) throw new LedgerError(400, 'A disbursement needs a payee — who received the money.');
+
+    const already = await balanceOf(
+      { branch_id: opts.branch_id, subject_type: 'disbursement', subject_id: row.id }, { transaction: t },
+    );
+    if (Math.abs(already) > 0.009) {
+      throw new LedgerError(409, 'This disbursement has already been paid. Reverse it first if it was wrong.');
+    }
+
+    const { event, duplicate } = await append({
+      branch_id: opts.branch_id,
+      event_type: 'direct_disbursement',
+      subject_type: 'disbursement',
+      subject_id: row.id,
+      subject_code: row.code,
+      /*
+       * POSITIVE, matching provider payouts. Outflows are stored positive here
+       * and identified as outflows by `direction`; only client refunds are
+       * stored negative, and for a specific reason — they hang off the INVOICE,
+       * whose balance is the sum of its rows, so a refund has to subtract from
+       * what that invoice has received. A disbursement has its own subject, so
+       * there is nothing to subtract from and the house convention wins.
+       */
+      amount,
+      method: opts.method,
+      reference: opts.reference,
+      received_on: opts.paid_on,
+      idempotency_key: opts.idempotency_key,
+      batch_ref: opts.batch_ref,
+      project_id: row.project_code,
+      provider_name: row.payee,
+      note: opts.note || row.description,
+      actor: opts.actor,
+      actor_id: opts.actor_id,
+    }, { transaction: t });
+
+    await row.update({
+      status: 'Paid',
+      amount,
+      paid_on: opts.paid_on || today(),
+      method: opts.method || row.method,
+      reference: opts.reference || row.reference,
+      batch_ref: opts.batch_ref || row.batch_ref,
+      money_event_id: event.id,
+      paid_by: opts.actor || row.paid_by,
+    }, { transaction: t });
+
+    return { event, duplicate, disbursement: row };
+  };
+
+  return transaction ? run(transaction) : sequelize.transaction(run);
+}
+
+/**
+ * A payment run: several disbursements settled in one banking act.
+ *
+ * Atomic for the same reason a bulk receipt is — a run that half-posts leaves
+ * the operator believing they have paid people they have not. Lines may mix
+ * provider payouts and direct costs, because a Thursday payment run does.
+ */
+async function recordDisbursementRun(opts, { transaction } = {}) {
+  const lines = Array.isArray(opts.lines) ? opts.lines.filter((l) => round2(l.amount) > 0) : [];
+  if (!lines.length) throw new LedgerError(400, 'Choose at least one payment to make.');
+
+  const batch = opts.batch_ref || `RUN-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+
+  const run = async (t) => {
+    const paid = [];
+    for (const line of lines) {
+      // Sequential on purpose: each call takes a row lock, and running them
+      // concurrently inside one transaction would deadlock against itself.
+      const key = opts.idempotency_key ? `${opts.idempotency_key}:${line.kind}:${line.id}` : null;
+      const common = {
+        branch_id: opts.branch_id,
+        amount: line.amount,
+        method: opts.method,
+        reference: opts.reference,
+        paid_on: opts.paid_on,
+        note: opts.note,
+        batch_ref: batch,
+        idempotency_key: key,
+        actor: opts.actor,
+        actor_id: opts.actor_id,
+      };
+
+      if (line.kind === 'provider') {
+        const out = await recordProviderPayout({ ...common, work_order_id: line.id }, { transaction: t });
+        paid.push({
+          kind: 'provider', id: line.id, code: out.workOrder.code,
+          payee: out.workOrder.provider_name, amount: round2(line.amount),
+          duplicate: out.duplicate, remaining: out.standing.remaining, event_id: out.event.id,
+        });
+      } else {
+        const out = await recordDirectDisbursement({ ...common, disbursement_id: line.id }, { transaction: t });
+        paid.push({
+          kind: 'direct', id: line.id, code: out.disbursement.code,
+          payee: out.disbursement.payee, amount: round2(line.amount),
+          duplicate: out.duplicate, remaining: 0, event_id: out.event.id,
+        });
+      }
+    }
+    return { batch_ref: batch, total: round2(paid.reduce((s, p) => s + p.amount, 0)), paid };
+  };
+
+  return transaction ? run(transaction) : sequelize.transaction(run);
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -582,6 +738,22 @@ async function reverse(opts, { transaction } = {}) {
         where: { id: original.subject_id, branch_id: opts.branch_id }, transaction: t, lock: t.LOCK.UPDATE,
       });
       if (inv) standing = await syncInvoiceCache(inv, { transaction: t });
+    } else if (original.subject_type === 'disbursement') {
+      /*
+       * Without this branch a reversed disbursement would still read "Paid" on
+       * the register while the ledger said otherwise — the register is a cache,
+       * and a cache nobody invalidates is just a lie with a timestamp.
+       */
+      const row = await M.WtProjectDisbursement.findOne({
+        where: { id: original.subject_id, branch_id: opts.branch_id }, transaction: t, lock: t.LOCK.UPDATE,
+      });
+      if (row) {
+        await row.update({
+          status: 'Reversed', paid_on: null, money_event_id: null,
+          notes: [row.notes, `Reversed: ${String(opts.reason).trim()}`].filter(Boolean).join('\n'),
+        }, { transaction: t });
+        standing = { paid: 0 };
+      }
     } else {
       const wo = await M.WtWorkOrder.findOne({
         where: { id: original.subject_id, branch_id: opts.branch_id }, transaction: t, lock: t.LOCK.UPDATE,
@@ -610,16 +782,48 @@ async function journal({ branch_id, from, to, direction, limit = 200 }) {
   const rows = await M.WtMoneyEvent.findAll({
     where, order: [['created_at', 'DESC'], ['id', 'DESC']], limit, raw: true,
   });
-  const collected = round2(rows.filter((r) => r.direction === 'in').reduce((s, r) => s + num(r.amount), 0));
-  const disbursed = round2(rows.filter((r) => r.direction === 'out').reduce((s, r) => s + num(r.amount), 0));
-  return { rows, totals: { collected, disbursed, margin: round2(collected - disbursed) } };
+
+  /*
+   * The totals are computed over EVERY matching row, not over the page that was
+   * fetched for display. Summing the limited set is the kind of bug that works
+   * perfectly until the business has been running a year: the page still shows
+   * 200 rows, and the "collected" figure above it quietly stops being the truth
+   * with nothing on screen to say so.
+   */
+  const all = await M.WtMoneyEvent.findAll({
+    where, attributes: ['direction', 'amount', 'event_type'], raw: true,
+  });
+  const collected = round2(all.filter((r) => r.direction === 'in').reduce((s, r) => s + num(r.amount), 0));
+  const disbursed = round2(all.filter((r) => r.direction === 'out').reduce((s, r) => s + cashOut(r), 0));
+  return {
+    rows,
+    totals: { collected, disbursed, margin: round2(collected - disbursed), event_count: all.length },
+    truncated: all.length > rows.length,
+  };
+}
+
+/**
+ * How much cash an outward row actually moved.
+ *
+ * Nearly all outflows are stored positive. Client refunds are the exception:
+ * they hang off the INVOICE, whose balance is the sum of its own rows, so a
+ * refund must be negative there to reduce what that invoice has received. That
+ * makes its stored sign the opposite of its cash effect, and summing the raw
+ * amounts would make a refund look like money coming BACK to the business.
+ *
+ * This is the one place that difference is reconciled, rather than each caller
+ * remembering it — which is how it would eventually be forgotten.
+ */
+function cashOut(row) {
+  const signed = num(row.amount);
+  return String(row.event_type || '').startsWith('client_refund') ? -signed : signed;
 }
 
 module.exports = {
-  LedgerError, EVENT_TYPES, PAYMENT_METHODS,
-  balanceOf, historyOf, journal,
+  LedgerError, EVENT_TYPES, PAYMENT_METHODS, DISBURSEMENT_CATEGORIES,
+  balanceOf, historyOf, journal, cashOut,
   recordClientReceipt, recordBatchClientReceipt, recordClientRefund,
-  recordProviderPayout, reverse,
+  recordProviderPayout, recordDirectDisbursement, recordDisbursementRun, reverse,
   syncInvoiceCache, syncWorkOrderCache,
   round2,
 };

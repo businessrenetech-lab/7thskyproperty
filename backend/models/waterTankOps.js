@@ -290,10 +290,19 @@ const WtProject = sequelize.define('WtProject', {
 const WtProjectDisbursement = sequelize.define('WtProjectDisbursement', {
   ...base,
   code: { type: D.STRING(30), allowNull: false, unique: true },
-  project_code: { type: D.STRING(30), allowNull: false },
+  // Nullable (0091): a direct cost is often not attributable to one project —
+  // a drum of hypochlorite covers six jobs, and picking one at random is worse
+  // than recording no project at all.
+  project_code: { type: D.STRING(30), allowNull: true },
   category: { type: D.STRING(60), allowNull: false, defaultValue: 'Other' },
   payee: D.STRING(200), payee_type: { type: D.STRING(40), defaultValue: 'Supplier' },
   work_order_code: D.STRING(30), description: D.TEXT,
+  // 0091 — 'provider' (a payout against a work order, gated by the signed
+  // agreement) or 'direct' (Seventh Sky paid it itself; nothing to gate).
+  disbursement_type: { type: D.STRING(20), defaultValue: 'direct' },
+  voucher_no: D.STRING(30), batch_ref: D.STRING(40),
+  work_order_id: D.INTEGER, money_event_id: D.INTEGER,
+  payee_details: D.TEXT, paid_by: D.STRING(120), voucher_issued_at: D.DATE,
   amount: { type: D.DECIMAL(15, 2), allowNull: false, defaultValue: 0 },
   status: { type: D.STRING(30), defaultValue: 'Requested' },
   incurred_on: D.DATEONLY, paid_on: D.DATEONLY,
