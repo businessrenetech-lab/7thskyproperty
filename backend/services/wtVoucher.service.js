@@ -37,6 +37,20 @@ const GREEN = '#047857';
 const M = 48;
 const W = 595.28 - M * 2;
 
+/*
+ * What kind of payment this voucher records, in words the recipient recognises.
+ *
+ * One voucher design serves the whole company — a provider fee, a direct cost
+ * and an owner payout are all money leaving Seventh Sky, and an owner receiving
+ * a document that looks nothing like the one a contractor receives makes the
+ * business look like two businesses.
+ */
+const VOUCHER_TYPE = {
+  provider: 'Provider payout — against a signed work order',
+  direct: 'Direct cost — paid by Seventh Sky',
+  owner: 'Owner disbursement — rental income passed to the property owner',
+};
+
 const num = (v) => (v == null || v === '' || Number.isNaN(Number(v)) ? 0 : Number(v));
 const money = (v) => Number(num(v)).toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const txt = (v, f = '—') => (v == null || v === '' ? f : String(v));
@@ -100,11 +114,24 @@ function render(build) {
   });
 }
 
-function letterhead(doc, branding, y = M) {
+/*
+ * The service line under the company name.
+ *
+ * This was hard-coded to "WATER TANK CLEANING & MAINTENANCE", which was correct
+ * while water tank was the only thing issuing vouchers and became a small lie
+ * the moment a short-stay owner received one. It follows the kind of payment.
+ */
+const SERVICE_LINE = {
+  provider: 'WATER TANK CLEANING & MAINTENANCE',
+  direct: 'WATER TANK CLEANING & MAINTENANCE',
+  owner: 'SHORT TERM STAY MANAGEMENT',
+};
+
+function letterhead(doc, branding, y = M, kind) {
   doc.fontSize(17).fillColor(NAVY).font('Helvetica-Bold')
     .text(branding.name || branding.company_name || 'Seventh Sky Property Care', M, y, { width: W * 0.6 });
   doc.fontSize(8.5).fillColor(CYAN).font('Helvetica-Bold')
-    .text('WATER TANK CLEANING & MAINTENANCE', { width: W * 0.6 });
+    .text(SERVICE_LINE[kind] || SERVICE_LINE.direct, { width: W * 0.6 });
   doc.fontSize(8).fillColor(MUTED).font('Helvetica');
   [branding.address, branding.phone && `Phone: ${branding.phone}`, branding.email,
     branding.bin && `BIN: ${branding.bin}`, branding.tin && `TIN: ${branding.tin}`]
@@ -132,6 +159,14 @@ function titleBlock(doc, v, y = M) {
 function block(doc, title, rows, y) {
   const pad = 10;
   const lineH = 15;
+  /*
+   * `undefined` means "this line does not apply to this kind of voucher" and the
+   * row is dropped; `null` and '' still print as '—', meaning "applies, but we
+   * do not have it". An owner disbursement has no "recharged to client" question
+   * at all — it is the owner's own money being passed on — and printing the
+   * label with a dash invites the reader to wonder what the answer was.
+   */
+  rows = rows.filter(([, value]) => value !== undefined);
   const h = 20 + rows.length * lineH;
   doc.roundedRect(M, y, W, h, 4).fillAndStroke(SOFT, LINE);
   doc.fontSize(8).fillColor(CYAN).font('Helvetica-Bold').text(title.toUpperCase(), M + pad, y + 7);
@@ -186,7 +221,7 @@ function signatures(doc, v, y) {
 
 /** One voucher on the current page. */
 function voucherPage(doc, v, branding) {
-  letterhead(doc, branding);
+  letterhead(doc, branding, M, v.disbursement_type);
   titleBlock(doc, v);
 
   let y = Math.max(doc.y, M + 96) + 6;
@@ -207,6 +242,10 @@ function voucherPage(doc, v, branding) {
     ['Project', v.project_code],
     ['Work order', v.work_order_code],
     ['Client', v.client_name],
+    // Owner disbursements identify their statement and period instead.
+    ['Statement', v.statement_code || undefined],
+    ['Period', v.period_label || undefined],
+    ['Property', v.property_label || undefined],
   ], y);
 
   y = block(doc, 'How it was paid', [
@@ -214,10 +253,11 @@ function voucherPage(doc, v, branding) {
     ['Reference', v.reference],
     ['Paid on', dateText(v.paid_on)],
     ['Recorded by', v.paid_by],
-    ['Voucher type', v.disbursement_type === 'provider'
-      ? 'Provider payout — against a signed work order'
-      : 'Direct cost — paid by Seventh Sky'],
-    ['Recharged to client', v.billable_to_client ? 'Yes — billed on to the client' : 'No — absorbed by Seventh Sky'],
+    ['Voucher type', VOUCHER_TYPE[v.disbursement_type] || VOUCHER_TYPE.direct],
+    // Only meaningful where a cost can be recharged. An owner disbursement is
+    // the owner's own money being passed on, so the line is simply omitted.
+    ['Recharged to client', v.disbursement_type === 'owner' ? undefined
+      : (v.billable_to_client ? 'Yes — billed on to the client' : 'No — absorbed by Seventh Sky')],
   ], y);
 
   if (v.notes) y = block(doc, 'Notes', [['', v.notes]], y);
@@ -227,7 +267,8 @@ function voucherPage(doc, v, branding) {
 
 /** A payment run: the summary first, then a voucher for each line. */
 function runSummary(doc, run, branding) {
-  letterhead(doc, branding);
+  // A run is all one kind, so the summary takes its line from the first voucher.
+  letterhead(doc, branding, M, run.vouchers?.[0]?.disbursement_type);
   const x = M + W * 0.62;
   const w = W * 0.38;
   doc.fontSize(20).fillColor(NAVY).font('Helvetica-Bold').text('PAYMENT RUN', x, M, { width: w, align: 'right' });

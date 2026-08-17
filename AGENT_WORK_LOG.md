@@ -2883,3 +2883,81 @@ palette all still present. Stale locations, not regressions.
   Tank has ~60 screens behind its sidebar while Commercial and Rural have zero
   dedicated screens between them. Short Term Stay was the right second console
   precisely because its screens already existed.
+
+---
+
+## COMPLETED — Owner disbursements: ledger, vouchers and payment runs
+**Agent:** Claude (Short Term Stay) · **Date:** 2026-08-13
+**Files:** new `backend/migrations/0092-sts-owner-disbursements.js`,
+new `backend/models/shortStayMoney.js`, new `backend/services/stsLedger.service.js`,
+new `backend/controllers/stsOwnerDisbursement.controller.js`,
+new `backend/routes/stsOwnerDisbursement.routes.js`, `backend/server.js`,
+`backend/services/shortTermStay.service.js` (fee bug), `backend/services/wtVoucher.service.js`,
+new `admin-portal/src/screens/shortstay/OwnerPayDrawer.jsx`,
+new `admin-portal/src/screens/shortstay/OwnerPaymentRunDrawer.jsx`,
+`admin-portal/src/screens/shortstay/OwnerDisbursement.jsx`
+
+### What paying an owner used to be
+Three columns stamped on their statement and a status moved along an enum. That
+records that money moved; it does not record the movement. It produced no
+document for the owner, appeared in no journal, and **could not be undone** — a
+paid statement could only go to `closed`.
+
+The bulk path was worse: the screen looped one PATCH per owner counting
+`ok++ / fail++`. If the third of eight failed, three owners were paid, five were
+not, and the operator got "Disbursed 3 owners, 5 failed" with no way to tell
+which — from a screen whose entire job is paying people.
+
+### What it is now
+The provider disbursement treatment, applied to owner money.
+
+- **`sts_money_events`** — append-only, one transaction and one lock per post,
+  idempotency key unique per branch, reversals as compensating rows. What an
+  owner has been paid is SUM over their rows; the statement's own columns are a
+  cache recomputed from it.
+- **A SEPARATE ledger from `wt_money_events`, deliberately.** Water Tank's
+  journal and bank statement query on branch alone with no vertical filter, so
+  short-stay money in that table would silently change Water Tank's reported
+  cash and margin. Two service lines, two sets of books — asserted directly.
+- **Numbered branded voucher** (`OPV-nnnn`) per payment, and a **payment run**
+  that settles several owners atomically under one batch reference, producing
+  one document: a summary page for the bank line, then a voucher per owner.
+- **The amount comes from the statement**, not from a box. Part payments are
+  allowed and checked against what remains, so a statement cannot be paid twice
+  over. Statements not yet sent are shown as blocked rather than hidden.
+
+### Two defects fixed on the way
+- **`fixed_monthly_fee` was ignored.** The fee applied `revenue_share_percent`
+  alone, so an owner on a pure fixed retainer was charged NOTHING and the
+  statement paid them the entire takings — Seventh Sky earning zero on that
+  property, and the figure looking deliberate. Flagged in this log on 3 Aug and
+  left; fixed now, because a disbursement system that pays the wrong number is
+  worse than none.
+- **The voucher letterhead was hard-coded** to "WATER TANK CLEANING &
+  MAINTENANCE" — true while water tank was the only thing issuing vouchers, a
+  small lie the moment a short-stay owner received one. It now follows the kind
+  of payment. One voucher design still serves the whole company.
+
+### Verified
+69 new assertions; full suite **959 across 21 suites, 0 failures**. Balances are
+asserted against the LEDGER, never the statement columns. Four concurrent
+identical requests: all answered, one posted. A run whose second line is already
+settled leaves the FIRST line unposted. A rendered owner voucher was read back
+field by field.
+
+Three of my own errors were caught by the tests rather than by me: the `due`
+endpoint passed `scope.branch_id`, which is undefined for a super_admin;
+the first test suite dated every payment in the future, so the API correctly
+refused all of them; and two assertions grepped whole files including the
+comments documenting the very fixes they were checking.
+
+### NOT done
+- **Browser QA.** The Chrome extension has been disconnected for six sessions.
+  API-, build- and PDF-verified; not opened on screen.
+- **The two ledgers now share a discipline but not an implementation.**
+  Extracting a common append/reverse/balance core is worth doing, but as its own
+  change with the money suites as the safety net — not folded into a feature.
+- The single-owner `OwnerPayDrawer` is built and tested but not yet wired to a
+  per-row button on the statements screen; the payment run covers the bulk case
+  the request was about.
+- Housekeeping still has no "Awaiting QC" state (needs an enum value).

@@ -4,6 +4,7 @@ import api from '../../services/api';
 import { Spinner } from '../../ui/kit';
 import { useToast } from '../../context/ToastContext';
 import { bdt, bdtFull, ScreenHead } from './common';
+import OwnerPaymentRunDrawer from './OwnerPaymentRunDrawer';
 
 // Default period = current month
 const monthBounds = () => {
@@ -25,7 +26,7 @@ export default function OwnerDisbursement({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [checked, setChecked] = useState({});
-  const [ref, setRef] = useState('');
+  const [runOpen, setRunOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -56,29 +57,23 @@ export default function OwnerDisbursement({ onBack }) {
     catch (e) { toast.error(errMsg(e)); } finally { setBusy(false); }
   };
 
-  // Bulk disburse = ensure statements exist, mark sent (if ready) then paid with the reference
-  const disburse = async () => {
+  /*
+   * Disbursement now goes through the money ledger rather than a loop of status
+   * PATCHes.
+   *
+   * What was here posted one PATCH per owner and counted `ok++ / fail++`. If the
+   * third of eight failed, three owners were paid, five were not, and the
+   * operator got "Disbursed 3 owners, 5 failed" with no way to tell which — from
+   * a screen whose whole job is paying people. It also produced no voucher and
+   * could not be undone: a statement marked paid could only move to `closed`.
+   *
+   * The run drawer posts atomically, issues a numbered voucher per owner, and
+   * shares one batch reference so the bank line reconciles as the single
+   * transfer it actually was.
+   */
+  const openRunForSelection = () => {
     if (!selectedRows.length) return toast.error('Select at least one owner to disburse');
-    if (!ref.trim()) return toast.error('Enter a disbursement reference (e.g. bank batch no.)');
-    setBusy(true);
-    let ok = 0, fail = 0;
-    try {
-      // make sure statements are generated for the period
-      await api.post('/short-stay/owner-statements/generate', { start, end }).catch(() => {});
-      const fresh = await api.get('/short-stay/owner-statements', { params: { start, end } });
-      const byOwner = Object.fromEntries((fresh.data || []).map((r) => [r.owner_contact_id, r]));
-      for (const sel of selectedRows) {
-        const stmt = byOwner[sel.owner_contact_id];
-        if (!stmt?.statement_id) { fail++; continue; }
-        try {
-          if (stmt.payment_status === 'ready') await api.patch(`/short-stay/owner-statements/${stmt.statement_id}/status`, { status: 'sent' });
-          await api.patch(`/short-stay/owner-statements/${stmt.statement_id}/status`, { status: 'paid', disbursement_reference: ref.trim(), disbursement_method: 'bank_transfer' });
-          ok++;
-        } catch { fail++; }
-      }
-      toast[fail ? 'error' : 'success'](`Disbursed ${ok} owner${ok === 1 ? '' : 's'}${fail ? `, ${fail} failed` : ''}`);
-      setChecked({}); setRef(''); await load();
-    } catch (e) { toast.error(errMsg(e)); } finally { setBusy(false); }
+    setRunOpen(true);
   };
 
   return (
@@ -142,10 +137,21 @@ export default function OwnerDisbursement({ onBack }) {
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '14px 18px', borderTop: '1px solid var(--line-soft)', flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}><b>{selectedRows.length}</b> selected · <b>{bdt(selectedTotal)}</b> to disburse</span>
             <div className="sp" style={{ flex: 1 }} />
-            <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Disbursement reference (bank batch no.)" style={{ ...inp, minWidth: 260 }} />
-            <button className="pm-btn primary" disabled={busy || !selectedRows.length} onClick={disburse}><Banknote size={15} /> {busy ? 'Processing…' : 'Disburse selected'}</button>
+            <span className="ph" style={{ fontSize: 12 }}>
+              Statements must be generated and sent before they can be paid.
+            </span>
+            <button className="pm-btn primary" disabled={busy} onClick={openRunForSelection}>
+              <Banknote size={15} /> Open payment run
+            </button>
           </div>
         </div>
+      )}
+
+      {runOpen && (
+        <OwnerPaymentRunDrawer
+          onClose={() => { setRunOpen(false); load(); }}
+          onDone={() => { setChecked({}); load(); }}
+        />
       )}
     </div>
   );

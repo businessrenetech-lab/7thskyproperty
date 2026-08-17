@@ -2540,7 +2540,18 @@ class ShortTermStayService {
       const key = m.primary_owner_contact_id;
       const revenue = revByProp[m.property_id] || 0;
       const expenses = (hkByProp[m.property_id] || 0) + (incByProp[m.property_id] || 0);
-      const fee = revenue * (num(m.revenue_share_percent) / 100);
+      /*
+       * Both halves of the fee. This used to apply `revenue_share_percent`
+       * alone, so an owner on a FIXED monthly fee — the whole point of the
+       * `fixed_monthly_fee` column — was charged nothing, and the statement paid
+       * them the entire takings. Seventh Sky earned zero on that property and
+       * the figure looked deliberate.
+       *
+       * A management package may carry either, or both: a base retainer plus a
+       * share of what the property earns. Adding them is what the column pair
+       * describes.
+       */
+      const fee = (revenue * (num(m.revenue_share_percent) / 100)) + num(m.fixed_monthly_fee);
       const payable = revenue - fee - expenses;
       if (!byOwner[key]) byOwner[key] = { owner_contact_id: key, owner_name: m.primary_owner?.full_name || m.primary_owner?.company_name || 'Owner', properties: [], property_ids: [], revenue: 0, expenses: 0, fees: 0, owner_payable: 0, revenue_share_percent: num(m.revenue_share_percent) };
       const o = byOwner[key];

@@ -155,6 +155,7 @@ mount('/api/rprm', './routes/rprm.routes');
 mount('/api/rptm', './routes/rptm.routes');
 mount('/api/sts', './routes/sts.routes');
 mount('/api/short-stay-verification', './routes/shortStayVerification.routes');
+mount('/api/sts-disbursements', './routes/stsOwnerDisbursement.routes');
 mount('/api/wt-ops', './routes/waterTankOps.routes');
 mount('/api/wt-providers', './routes/waterTankProviders.routes');
 mount('/api/public/water-tank-provider', './routes/publicWaterTankProvider.routes');
