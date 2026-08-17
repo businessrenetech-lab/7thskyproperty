@@ -28,6 +28,7 @@ const crypto = require('crypto');
 const { Op } = require('sequelize');
 const sequelize = require('../config/db.config');
 const M = require('../models/waterTankOps');
+const P = require('../models/waterTankProviders');
 
 const num = (v) => Number(v || 0);
 const round2 = (v) => Math.round((num(v) + Number.EPSILON) * 100) / 100;
@@ -176,18 +177,38 @@ const providerWorkOrder = (w, paid = 0) => ({
   signed_at: w.wo_signed_at,
 });
 
+/**
+ * A day counter that answers "is this about to bite me?".
+ *
+ * Compliance is the single most common reason a provider is suspended, and the
+ * provider is always the last to know because the expiry lives in Seventh Sky's
+ * system and not theirs. Surfacing the number of days is the whole value.
+ */
+const daysUntil = (d) => (d ? Math.ceil((new Date(d) - Date.now()) / 864e5) : null);
+
 async function providerDossier(provider) {
   const scope = { branch_id: provider.branch_id };
-  const [workOrders, payouts] = await Promise.all([
-    M.WtWorkOrder.findAll({
-      where: {
-        ...scope,
-        [Op.or]: [{ provider_id: provider.id }, { provider_name: provider.business_name }],
-      },
-      order: [['id', 'DESC']], raw: true,
-    }).catch(() => []),
-    M.WtMoneyEvent.findAll({
-      where: { ...scope, subject_type: 'work_order' }, raw: true,
+  const mine = { [Op.or]: [{ provider_id: provider.id }, { provider_name: provider.business_name }] };
+
+  const [
+    workOrders, payouts, reports, documents, audits, agreements, rates,
+    protectedClients, complaints, incidents, messages, vouchers,
+  ] = await Promise.all([
+    M.WtWorkOrder.findAll({ where: { ...scope, ...mine }, order: [['id', 'DESC']], raw: true }).catch(() => []),
+    M.WtMoneyEvent.findAll({ where: { ...scope, subject_type: 'work_order' }, raw: true }).catch(() => []),
+    P.WtServiceReport.findAll({ where: { ...scope, ...mine }, order: [['id', 'DESC']], raw: true }).catch(() => []),
+    P.WtProviderDocument.findAll({ where: { ...scope, provider_id: provider.id }, order: [['expiry_date', 'ASC']], raw: true }).catch(() => []),
+    P.WtProviderAudit.findAll({ where: { ...scope, provider_id: provider.id }, order: [['id', 'DESC']], raw: true }).catch(() => []),
+    P.WtProviderAgreement.findAll({ where: { ...scope, provider_id: provider.id }, order: [['version_no', 'DESC']], raw: true }).catch(() => []),
+    P.WtProviderAgreementRate.findAll({ where: { ...scope }, raw: true }).catch(() => []),
+    P.WtProtectedClient.findAll({ where: { ...scope, provider_id: provider.id }, raw: true }).catch(() => []),
+    M.WtComplaint.findAll({ where: { ...scope, provider_name: provider.business_name }, order: [['id', 'DESC']], raw: true }).catch(() => []),
+    M.WtIncident.findAll({ where: { ...scope, provider_name: provider.business_name }, order: [['id', 'DESC']], raw: true }).catch(() => []),
+    M.WtCommLog.findAll({ where: { ...scope, client_name: provider.business_name }, order: [['logged_at', 'DESC']], limit: 60, raw: true }).catch(() => []),
+    // Payment vouchers ARE the provider's receipt. They had no way to see one.
+    M.WtProjectDisbursement.findAll({
+      where: { ...scope, payee: provider.business_name, status: 'Paid' },
+      order: [['paid_on', 'DESC']], raw: true,
     }).catch(() => []),
   ]);
 
@@ -197,14 +218,42 @@ async function providerDossier(provider) {
   const shaped = workOrders.map((w) => providerWorkOrder(w, Math.abs(paidBy[w.id] || 0)));
   const open = shaped.filter((w) => !['completed', 'verified', 'closed', 'cancelled'].includes(lower(w.status)));
 
+  const live = agreements.find((a) => lower(a.status) === 'active') || agreements[0] || null;
+  const liveRates = live ? rates.filter((r) => r.agreement_id === live.id) : [];
+
+  const docs = documents.map((d) => ({
+    id: d.id,
+    category: d.category,
+    doc_type: d.doc_type,
+    doc_number: d.doc_number,
+    issuer: d.issuer,
+    sum_insured: round2(d.sum_insured),
+    issue_date: d.issue_date,
+    expiry_date: d.expiry_date,
+    verified: !!d.verified,
+    status: d.status,
+    days_to_expiry: daysUntil(d.expiry_date),
+    // `file_url` is deliberately withheld — the provider uploaded it, and
+    // re-serving arbitrary stored paths from a token-authenticated route is a
+    // file-read primitive waiting to be found. They can see WHAT is on file and
+    // when it lapses, which is what they actually need.
+  }));
+
+  const expiring = docs.filter((d) => d.days_to_expiry != null && d.days_to_expiry <= 45);
+
   return {
     provider: {
       code: provider.code,
       business_name: provider.business_name,
       contact_person: provider.contact_person,
+      contact_email: provider.contact_email,
+      contact_phone: provider.contact_phone,
       status: provider.status,
       approved_services: asArray(provider.approved_services),
-      rating: provider.rating,
+      coverage: provider.coverage,
+      specialty: provider.specialty,
+      onboarded_since: provider.onboarded_since,
+      rating: num(provider.rating),
     },
     work_orders: shaped,
     queues: {
@@ -213,11 +262,116 @@ async function providerDossier(provider) {
       in_progress: shaped.filter((w) => lower(w.status) === 'in progress'),
       awaiting_signature: shaped.filter((w) => w.needs_signature),
     },
+
+    /* What they did — their own filed reports, with the photos they took. */
+    reports: reports.map((r) => ({
+      code: r.code,
+      report_type: r.report_type,
+      work_order_code: r.work_order_code,
+      client_name: r.client_name,
+      site_address: r.site_address,
+      submitted_date: r.submitted_date,
+      status: r.status,
+      summary: r.summary,
+      findings: r.findings,
+      review_notes: r.review_notes,
+      reviewed_date: r.reviewed_date,
+      photos_before: asArray(r.photos_before),
+      photos_after: asArray(r.photos_after),
+      filed_via: r.filed_via,
+    })),
+
+    /* What they are paid, and on what terms. */
+    agreement: live ? {
+      code: live.code,
+      version_no: live.version_no,
+      status: live.status,
+      term_months: live.term_months,
+      notice_days: live.notice_days,
+      commission_pct: num(live.commission_pct),
+      payment_model: live.payment_model,
+      payout_trigger: live.payout_trigger,
+      payment_due_days: num(live.payment_due_days),
+      payment_terms: live.payment_terms,
+      effective_date: live.effective_date,
+      expiry_date: live.expiry_date,
+      completed_at: live.completed_at,
+      rates: liveRates.map((r) => ({
+        service_code: r.service_code, service_name: r.service_name,
+        // The AGREED rate is what they are actually paid; the proposed one is
+        // a negotiating position and showing it would invite an argument that
+        // has already been settled.
+        unit: r.unit, rate: round2(r.agreed_rate != null ? r.agreed_rate : r.standard_rate),
+        rate_status: r.rate_status, effective_from: r.effective_from,
+      })),
+    } : null,
+
+    /* Every payout, as a statement they can reconcile — with its voucher. */
+    payouts: vouchers.map((v) => ({
+      voucher_no: v.voucher_no,
+      code: v.code,
+      work_order_code: v.work_order_code,
+      description: v.description,
+      amount: round2(v.amount),
+      method: v.method,
+      reference: v.reference,
+      paid_on: v.paid_on,
+      batch_ref: v.batch_ref,
+    })),
+
+    compliance: {
+      documents: docs,
+      expiring,
+      audits: audits.map((a) => ({
+        code: a.code, audit_type: a.audit_type, scheduled_date: a.scheduled_date,
+        conducted_date: a.conducted_date, score: a.score, outcome: a.outcome,
+        findings: a.findings, corrective_actions: a.corrective_actions,
+        action_due_date: a.action_due_date, closed: !!a.closed, next_due_date: a.next_due_date,
+      })),
+    },
+
+    /*
+     * Complaints and incidents involving them. Shown because a provider whose
+     * rating is falling deserves to know why, and because the first they hear of
+     * a complaint should not be a suspension. The client's identity is included
+     * — they were on that client's site — but nothing about the client's billing.
+     */
+    issues: {
+      complaints: complaints.map((c) => ({
+        code: c.code, incident_type: c.incident_type, severity: c.severity,
+        status: c.status, logged_date: c.logged_date, work_order_code: c.work_order_code,
+        client_name: c.client_name, details: c.details, resolution: c.resolution,
+      })),
+      incidents: incidents.map((i) => ({
+        code: i.code, incident_type: i.incident_type, severity: i.severity,
+        status: i.status, incident_date: i.incident_date, location: i.location,
+        description: i.description, action_taken: i.action_taken,
+      })),
+    },
+
+    performance: {
+      jobs_completed: num(provider.jobs_completed),
+      completion_rate: num(provider.completion_rate),
+      complaint_rate: num(provider.complaint_rate),
+      rating: num(provider.rating),
+      rank: provider.rank,
+      protected_clients: protectedClients.length,
+      reports_filed: reports.length,
+      open_issues: complaints.filter((c) => !['resolved', 'closed'].includes(lower(c.status))).length,
+    },
+
+    messages: messages.map((m) => ({
+      channel: m.channel, direction: m.direction, summary: m.summary,
+      ref_type: m.ref_type, ref_code: m.ref_code, logged_at: m.logged_at,
+    })),
+
     totals: {
       open: open.length,
       earned: round2(shaped.reduce((s, w) => s + w.fee, 0)),
       paid: round2(shaped.reduce((s, w) => s + w.paid, 0)),
       outstanding: round2(shaped.reduce((s, w) => s + Math.max(0, w.outstanding), 0)),
+      expiring_documents: expiring.length,
+      open_issues: complaints.filter((c) => !['resolved', 'closed'].includes(lower(c.status))).length,
     },
   };
 }
@@ -295,13 +449,33 @@ async function clientDossier(client) {
     ? { [Op.or]: [{ client_code: client.code }, { client_name: client.name }] }
     : { client_name: client.name };
 
-  const [quotes, workOrders, invoices, amcs, visits, warranties] = await Promise.all([
+  const [
+    quotes, workOrders, invoices, amcs, visits, warranties,
+    reports, assessments, complaints, requests, projects, messages,
+  ] = await Promise.all([
     M.WtQuotation.findAll({ where: { ...scope, ...byClient }, order: [['id', 'DESC']], raw: true }).catch(() => []),
     M.WtWorkOrder.findAll({ where: { ...scope, ...byClient }, order: [['id', 'DESC']], raw: true }).catch(() => []),
     M.WtInvoice.findAll({ where: { ...scope, ...byClient }, order: [['id', 'DESC']], raw: true }).catch(() => []),
     M.WtAmcContract.findAll({ where: { ...scope, ...byClient }, order: [['id', 'DESC']], raw: true }).catch(() => []),
     M.WtAmcVisit.findAll({ where: { ...scope, client_name: client.name }, order: [['due_date', 'ASC']], raw: true }).catch(() => []),
     M.WtWarranty.findAll({ where: { ...scope, client_name: client.name }, order: [['id', 'DESC']], raw: true }).catch(() => []),
+    /*
+     * The service reports and site assessments for their OWN property, with the
+     * photographs taken inside their own tanks. This is the single largest thing
+     * the portal was missing: the evidence of the work exists, the client paid
+     * for it, and they had no way to look at it.
+     */
+    P.WtServiceReport.findAll({ where: { ...scope, ...byClient }, order: [['id', 'DESC']], raw: true }).catch(() => []),
+    M.WtSiteAssessment.findAll({ where: { ...scope, client_name: client.name }, order: [['id', 'DESC']], raw: true }).catch(() => []),
+    /*
+     * Their complaints. A client could RAISE one from this portal and then had
+     * no way to see whether anything had happened to it — which is worse than
+     * not offering the button, because it teaches them the button does nothing.
+     */
+    M.WtComplaint.findAll({ where: { ...scope, ...byClient }, order: [['id', 'DESC']], raw: true }).catch(() => []),
+    M.WtServiceRequest.findAll({ where: { ...scope, client_name: client.name }, order: [['id', 'DESC']], raw: true }).catch(() => []),
+    M.WtProject.findAll({ where: { ...scope, ...byClient }, order: [['id', 'DESC']], raw: true }).catch(() => []),
+    M.WtCommLog.findAll({ where: { ...scope, client_name: client.name }, order: [['logged_at', 'DESC']], limit: 60, raw: true }).catch(() => []),
   ]);
 
   // Drafts are not shown: an invoice or quotation the operator has not sent is
@@ -337,13 +511,124 @@ async function clientDossier(client) {
       code: w.code, warranty_type: w.warranty_type, status: w.status,
       start_date: w.start_date, expiry_date: w.expiry_date,
       coverage: w.coverage, terms: w.terms, work_order_code: w.work_order_code,
+      days_to_expiry: daysUntil(w.expiry_date),
     })),
+
+    /*
+     * The evidence. `reviewed`/`review_notes` are Seventh Sky's internal
+     * verification and are withheld — a client reading "photos unclear, sent
+     * back" would reasonably conclude the job was botched when it was the
+     * paperwork. What they get is what was found and what it looked like.
+     */
+    reports: reports.filter((r) => !['draft', 'sent back'].includes(lower(r.status))).map((r) => ({
+      code: r.code,
+      report_type: r.report_type,
+      work_order_code: r.work_order_code,
+      site_address: r.site_address,
+      provider_name: r.provider_name,
+      submitted_date: r.submitted_date,
+      summary: r.summary,
+      findings: r.findings,
+      photos_before: asArray(r.photos_before),
+      photos_after: asArray(r.photos_after),
+    })),
+
+    /* What was found at the property, including the tank profile. */
+    assessments: assessments.filter((a) => lower(a.status) !== 'draft').map((a) => ({
+      code: a.code,
+      assessed_date: a.assessed_date,
+      status: a.status,
+      tank_type: a.tank_type, tank_capacity: a.tank_capacity,
+      tank_material: a.tank_material, tank_location: a.tank_location,
+      water_source: a.water_source, last_cleaned: a.last_cleaned,
+      contamination: a.contamination, leakage: a.leakage,
+      access_safe: !!a.access_safe,
+      findings: a.findings,
+      structural_notes: a.structural_notes,
+      risks: asArray(a.risks),
+      recommended_services: asArray(a.recommended_services),
+      water_test: a.water_test || null,
+      photos: asArray(a.photos),
+      photos_after: asArray(a.photos_after),
+      assessor: a.assessor,
+    })),
+
+    /* Their own complaints, and what happened to them. */
+    complaints: complaints.map((c) => ({
+      code: c.code,
+      incident_type: c.incident_type,
+      severity: c.severity,
+      status: c.status,
+      logged_date: c.logged_date,
+      work_order_code: c.work_order_code,
+      details: c.details || c.disclosure,
+      resolution: c.resolution,
+      resolved_date: c.resolved_date,
+      acknowledged_at: c.acknowledged_at,
+      sla_due: c.sla_due,
+      raised_via: c.raised_via,
+    })),
+
+    /* Requests they made that have not yet become a job. */
+    requests: requests.map((r) => ({
+      code: r.code,
+      category: r.category,
+      specific_service: r.specific_service,
+      status: r.status,
+      priority: r.priority,
+      request_date: r.request_date,
+      preferred_date: r.preferred_date,
+      description: r.description,
+      // `assigned_officer` is withheld: which member of staff holds it is
+      // internal, and naming them invites the client to chase a person rather
+      // than the business.
+    })),
+
+    /* Where the work has got to, for anything running as a project. */
+    projects: projects.filter((p) => lower(p.status) !== 'draft').map((p) => ({
+      code: p.code, name: p.name, status: p.status,
+      site_address: p.site_address, progress: num(p.progress_pct),
+      start_date: p.start_date, scheduled_date: p.scheduled_date,
+      stage: p.stage,
+    })),
+
+    /*
+     * The conversation, so a client who writes in can see their own message on
+     * the record rather than sending it into silence. Internal notes are
+     * excluded — `channel: 'note'` is staff talking to each other.
+     */
+    messages: messages.filter((m) => lower(m.channel) !== 'note').map((m) => ({
+      channel: m.channel, direction: m.direction, summary: m.summary,
+      ref_type: m.ref_type, ref_code: m.ref_code, logged_at: m.logged_at,
+    })),
+
+    property: {
+      service_address: client.service_address,
+      district: client.district,
+      property_type: client.property_type,
+      tanks_count: num(client.tanks_count),
+      tank_type: client.tank_type,
+      tank_capacity: client.tank_capacity,
+      last_cleaning: client.last_cleaning,
+      amc_package: client.amc_package,
+      amc_status: client.amc_status,
+    },
+
     totals: {
       outstanding,
       invoices: liveInvoices.length,
       open_quotations: liveQuotes.filter((q) => lower(q.decision) === 'pending' || lower(q.decision) === 'sent').length,
       active_amc: amcs.filter((a) => lower(a.status) === 'active').length,
       upcoming_visits: visits.filter((v) => !['completed', 'cancelled'].includes(lower(v.status)) && v.due_date >= today()).length,
+      reports: reports.length,
+      open_complaints: complaints.filter((c) => !['resolved', 'closed'].includes(lower(c.status))).length,
+      active_warranties: warranties.filter((w) => lower(w.status) === 'active').length,
+      // Cover that lapses inside two months, so it can be renewed rather than
+      // discovered missing at the moment it is needed.
+      expiring_warranties: warranties.filter((w) => {
+        const d = daysUntil(w.expiry_date);
+        return lower(w.status) === 'active' && d != null && d >= 0 && d <= 60;
+      }).length,
     },
   };
 }

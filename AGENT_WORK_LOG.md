@@ -2735,3 +2735,80 @@ PDF is asserted to say so on its face.
 - Reports are per-branch and not yet exportable to CSV/Excel — PDF only, as asked.
 - The company address, phone and BIN are still unset in Settings, so report
   letterheads carry only a name and an email.
+
+---
+
+## COMPLETED — Client and provider portals rebuilt as full applications
+**Agent:** Claude (Water Tank console) · **Date:** 2026-08-13
+**Files:** `backend/services/wtPortal.service.js`,
+`admin-portal/src/screens/watertank/Portal.jsx` (rewritten as a shell),
+`admin-portal/src/screens/watertank/PortalClient.jsx` (new),
+`admin-portal/src/screens/watertank/PortalProvider.jsx` (new),
+`admin-portal/src/screens/watertank/portalBits.jsx` (new)
+
+### What they were
+Two single-scroll pages. The client saw quotations, invoices, a list of job
+dates and a message box; the provider saw job cards with accept/schedule/
+start/complete. Everything else the module knows about these two parties was
+invisible to them.
+
+### The sharpest gap
+A client could RAISE a complaint from the portal — built last session — and then
+had no way to see whether anything had happened to it. A button that appears to
+do nothing is worse than no button. That loop is now closed: complaints appear
+directly beneath the form with status, SLA and resolution.
+
+### Client portal — nine sections
+Overview · My property · Jobs · **Reports & photos** · Quotations · Invoices ·
+AMC & warranty · **Requests & complaints** · Messages.
+
+New: the service reports and site assessments for their own tanks WITH the
+before/after photographs (the evidence they paid for, previously invisible);
+tank profile and risks from the assessment; their complaints with live status;
+their service requests; project progress; the message thread; their property
+record; warranty expiry countdowns.
+
+### Provider portal — seven sections
+Overview · My jobs · **My reports** · **Earnings** · **Compliance** ·
+**Performance** · Messages.
+
+New: their agreement and rate card (what they are paid, when, and on what
+trigger); a payout statement with voucher numbers so they can match their bank;
+their own filed reports with photographs and Seventh Sky's review note;
+compliance documents with a DAYS-REMAINING countdown; audits with corrective
+actions; complaints and incidents about their work, with an explanation of why
+it matters.
+
+Compliance is the one that earns its keep. Lapsed cover is the commonest reason
+a provider is suspended, the expiry date lives in Seventh Sky's system rather
+than theirs, and the first they hear is being stood down. The countdown and the
+banner prevent the whole event.
+
+### Design decisions
+- **Tabs, not a longer scroll.** These are applications now. Tabs wrap for a
+  provider on a phone on a rooftop, and carry counts so a badge draws the eye.
+- **Alert banners above the tabs** for the things that bite: lapsed compliance,
+  overdue invoices, quotations blocking work, open complaints.
+- **Shared chrome in `portalBits`.** When the two portals drift into two
+  different-looking products, the next person to change one forgets the other.
+- **Asymmetric disclosure, deliberately.** The provider sees Seventh Sky's
+  review note on their own report — they need to know why it was sent back. The
+  client does not: "photos slightly dark" reads as a botched job.
+
+### Verified
+86 new assertions; full suite **832 across 19 suites, 0 failures**. The leak
+checks are the point and are exhaustive: the client payload contains no
+`provider_fee`, no `ss_fee` and neither figure as a raw value; the provider
+payload contains no invoice section and nothing the client was charged. Proven
+structurally too — a secret written onto the work order, the client and the
+provider records reaches neither portal, because every shape is an explicit
+whitelist. The stored `file_url` on compliance documents is withheld rather than
+re-served, since a token-authenticated path echo is a file-read primitive.
+
+### NOT done
+- **Browser QA.** The Chrome extension has been disconnected for four sessions.
+  All API-, build- and leak-verified; not opened on screen.
+- Clients cannot yet download signed agreements or work-order documents from the
+  portal — only invoices. Wiring the document store needs its own access rules.
+- No push/email digest of portal alerts; a provider still has to open the portal
+  to see a lapsing certificate.
