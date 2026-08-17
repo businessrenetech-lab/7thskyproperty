@@ -10,6 +10,7 @@ import { useToast } from "../context/ToastContext";
 import {
   Button, DataTable, EmptyState, SearchInput, Select, StatusBadge, Badge
 } from "../ui/kit";
+import { propertyFilePath, propertyWizardPath } from "./sales/paths";
 
 const unwrap = (payload) => payload?.data?.data ?? payload?.data ?? payload ?? {};
 const listFrom = (payload) => {
@@ -239,7 +240,7 @@ export default function PropertySellDashboard({ category = "residential", title 
             icon={Edit}
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/sales/properties/new/${row.id}?listing_type=sale&category=${encodeURIComponent(category)}`);
+              navigate(propertyWizardPath(category, row.id, `listing_type=sale&category=${encodeURIComponent(category)}`));
             }}
           >
             Edit
@@ -250,7 +251,7 @@ export default function PropertySellDashboard({ category = "residential", title 
             icon={ExternalLink}
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/sales/property/${row.id}`);
+              navigate(propertyFilePath(category, row.id));
             }}
           >
             View File
@@ -291,7 +292,7 @@ export default function PropertySellDashboard({ category = "residential", title 
               size="sm"
               icon={Plus}
               className="btn-primary"
-              onClick={() => navigate(`/sales/properties/new?listing_type=sale&category=${encodeURIComponent(category)}`)}
+              onClick={() => navigate(propertyWizardPath(category, null, `listing_type=sale&category=${encodeURIComponent(category)}`))}
             >
               New Sale Listing
             </Button>
@@ -399,7 +400,7 @@ export default function PropertySellDashboard({ category = "residential", title 
               (activity.current_sales || []).slice(0, 5).map((s) => (
                 <div
                   key={s.transaction_id}
-                  onClick={() => navigate(`/sales/property/${s.property_id}`)}
+                  onClick={() => navigate(propertyFilePath(category, s.property_id))}
                   style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--line-soft)", cursor: "pointer" }}
                 >
                   <div>
@@ -474,7 +475,7 @@ export default function PropertySellDashboard({ category = "residential", title 
           columns={columns}
           rows={filtered}
           loading={loading}
-          onRowClick={(row) => navigate(`/sales/property/${row.id}`)}
+          onRowClick={(row) => navigate(propertyFilePath(category, row.id))}
           empty={
             <EmptyState
               icon={Building2}

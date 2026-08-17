@@ -99,6 +99,7 @@ import CareAmc from './screens/CareAmc';
 import ShortStayHub from './screens/ShortStayHub';
 import ShortStayConsole from './screens/shortstay/ShortStayConsole';
 import PropertyMgmtConsole from './screens/PropertyMgmtConsole';
+import ResidentialConsole from './screens/ResidentialConsole';
 import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
 import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
 import Signing from './screens/Signing';
@@ -216,9 +217,9 @@ export default function App() {
             {/* Admin CRM (staff only) */}
             <Route element={<RequireAuth><AdminGate><Layout /></AdminGate></RequireAuth>}>
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/residential/buy" element={<DealsBoard category="residential" dealType="buy" title="Residential · Buy" desc="Buyer service — properties, buyers, agreements, commission, expenses and status." />} />
-              <Route path="/residential/sell" element={<PropertySellDashboard category="residential" title="Residential · Sell" desc="Seller service — listings, owners, agreements, commission and settlement." />} />
-              <Route path="/residential/enquiry" element={<SalesEnquiries category="residential" title="Residential · Buyer Enquiries" desc="Every buyer who enquired on a residential sale property." />} />
+              {/* Residential moved to its own console — see the route block
+                  below. Commercial and Rural still render these same three
+                  components here, with a different `category` prop. */}
               <Route path="/sales/property/:id" element={<SalesPropertyFile />} />
               <Route path="/sales/properties/new" element={<PropertyWizard />} />
               <Route path="/sales/properties/new/:id" element={<PropertyWizard />} />
@@ -424,6 +425,30 @@ export default function App() {
               <Route path="/property-management/landlord-bills" element={<LandlordBills />} />
               <Route path="/property-management/agreements" element={<RprmAgreements />} />
               <Route path="/property-management/tenancy-agreements" element={<TmAgreements />} />
+            </Route>
+
+            {/* Residential Sales — the fourth separated console.
+                Its three register screens are SHARED with Commercial and Rural,
+                which keep rendering them under /sales/* in the global admin;
+                only the `category` prop differs. `salesBase()` in
+                screens/sales/paths.js is the single place that decides which
+                base a click navigates under.
+                No agreements group yet: buyer and seller agreements are being
+                rewritten to work like the PM and TM builders and the documents
+                are still to come. A nav item pointing at nothing is worse than
+                no nav item. */}
+            <Route element={<RequireAuth><AdminGate><ResidentialConsole /></AdminGate></RequireAuth>}>
+              <Route path="/residential" element={<Navigate to="/residential/sell" replace />} />
+              <Route path="/residential/sell" element={<PropertySellDashboard category="residential" title="Residential · Sell" desc="Seller service — listings, owners, agreements, commission and settlement." />} />
+              <Route path="/residential/buy" element={<DealsBoard category="residential" dealType="buy" title="Residential · Buy" desc="Buyer service — properties, buyers, agreements, commission, expenses and status." />} />
+              <Route path="/residential/enquiry" element={<SalesEnquiries category="residential" title="Residential · Buyer Enquiries" desc="Every buyer who enquired on a residential sale property." />} />
+              {/* The deep workspace behind a listing, and the listing wizard. */}
+              <Route path="/residential/property/:id" element={<SalesPropertyFile />} />
+              <Route path="/residential/properties/new" element={<PropertyWizard />} />
+              <Route path="/residential/properties/new/:id" element={<PropertyWizard />} />
+              {/* Shared screens, filtered by their own query string. */}
+              <Route path="/residential/compliance" element={<Compliance />} />
+              <Route path="/residential/workflows" element={<Projects />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />

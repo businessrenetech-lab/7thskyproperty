@@ -3067,3 +3067,56 @@ what it is for.
 
 ### NOT done
 Browser QA — the Chrome extension has been disconnected for six sessions.
+
+---
+
+## COMPLETED — Residential Sales opens as its own console (the fourth)
+**Agent:** Claude (console pattern) · **Date:** 2026-08-13
+**Files:** new `admin-portal/src/screens/ResidentialConsole.jsx`,
+new `admin-portal/src/screens/sales/paths.js`,
+`admin-portal/src/config/consoles.js`, `admin-portal/src/App.jsx`,
+`admin-portal/src/ui/Layout.jsx`, `admin-portal/src/screens/PropertySellDashboard.jsx`,
+`admin-portal/src/screens/SalesEnquiries.jsx`
+
+Six destinations across four groups, in emerald over the same navy — cyan for
+Water Tank, amber for Short Term Stay, violet for Property Management. Nothing in
+`ui/ServiceConsole.jsx` changed for it.
+
+### The problem this console had that the others did not
+Its three register screens — `PropertySellDashboard`, `DealsBoard`,
+`SalesEnquiries` — are ONE set of components rendered three times. Residential,
+Commercial and Rural differ only by a `category` prop. Residential now opens in a
+console and the other two do not, so the same click has to lead to two different
+places: inside the console for residential, out to the global `/sales/*` screens
+for the rest.
+
+Six navigation sites across two files were hard-coding `/sales/...`. They now go
+through `salesBase(category)` in `screens/sales/paths.js` — one place that
+decides, rather than six chances to get it wrong. When Commercial and Rural get
+consoles, that is a one-line change.
+
+Commercial and Rural are untouched and asserted to be: their routes, their
+`/sales/*` property file and their grouped sidebar entries all still work.
+
+### No agreements group yet — deliberately
+Buyer and seller agreements are being rewritten to work the way the PM and TM
+builders do, and the documents have not arrived yet. No sales agreement screen
+exists in the codebase at all, so a nav entry would point at nothing. The group
+is left out with a comment saying why, so it reads as deferred rather than
+forgotten — and the route-reachability assertion would have refused it anyway.
+
+### Verified
+15 new assertions; full suite **998 across 21 suites, 0 failures**. The
+destination-count assertion caught my own miscount (I wrote seven, there are six)
+before it reached a commit.
+
+One build break on the way, entirely mine: the script that inserted the import
+used "the last line starting with `import`", which landed inside a multi-line
+`import { ... }` block and produced a syntax error. Caught by the build.
+
+### NOT done
+- **Browser QA.** The Chrome extension has been disconnected for six sessions.
+- **Buyer and seller agreements** — waiting on the updated documents.
+- Commercial and Rural still render in the global admin. They have no dedicated
+  screens at all, so a console for either would be chrome around three shared
+  components; worth doing when they have something of their own.

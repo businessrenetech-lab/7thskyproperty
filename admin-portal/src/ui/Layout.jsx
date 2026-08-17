@@ -11,13 +11,12 @@ import {
 const NAV = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { section: 'CRM' },
-  { key: 'residential', label: 'Residential', to: '/residential/sell', icon: Home, children: [
-    { to: '/residential/sell', label: 'Sales / Sell Dashboard' },
-    { to: '/residential/buy', label: 'Buy' },
-    { to: '/residential/enquiry', label: 'Buyer Enquiries' },
-    { to: '/compliance?category=residential', label: 'Compliance' },
-    { to: '/projects?vertical_key=properties', label: 'Checklists / Workflows' },
-  ] },
+  /*
+   * Residential Sales is its own operations console now, so it appears here as
+   * a single destination. Commercial and Rural still use the shared screens and
+   * keep their grouped entries below.
+   */
+  { to: '/residential/sell', label: 'Residential', icon: Home },
   /*
    * Property Management is its own operations console now, so it appears here as
    * a single destination — as Water Tank Services and Short Term Stay do. Its

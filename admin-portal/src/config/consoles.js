@@ -354,8 +354,83 @@ export const propertyMgmtConsole = {
   exitTo: '/dashboard',
 };
 
+/* ── Residential Sales ─────────────────────────────────────────────────── */
+
+/*
+ * Six destinations across four groups.
+ *
+ * Smaller than the other three consoles, and honestly so: residential sales owns
+ * five screens rather than twenty. What it lacks in breadth it has in depth —
+ * `SalesPropertyFile` is the largest screen in the repository, and the listing
+ * register is the way into it.
+ *
+ * NO AGREEMENTS GROUP YET. Buyer and seller agreements are being rewritten to
+ * work the way the PM and TM builders do, and the documents are still to come.
+ * A nav item pointing at a screen that does not exist is worse than no nav item,
+ * so the group is left out rather than stubbed — the route-reachability
+ * assertion would refuse it anyway.
+ *
+ * Compliance and Workflows are SHARED screens filtered by query string, routed
+ * inside the console at `/residential/*` so clicking one does not eject the
+ * operator back into the global admin.
+ */
+export const RESIDENTIAL_NAV = [
+  {
+    key: 'home',
+    label: 'Home',
+    items: [
+      { to: '/residential/sell', label: 'Sell Dashboard', icon: LayoutGrid, end: true },
+    ],
+  },
+  {
+    key: 'selling',
+    label: 'Selling',
+    items: [
+      { to: '/residential/properties/new?listing_type=sale&category=residential', label: 'New Listing', icon: Home },
+    ],
+  },
+  {
+    key: 'buying',
+    label: 'Buying',
+    items: [
+      { to: '/residential/buy', label: 'Deals', icon: Briefcase },
+      { to: '/residential/enquiry', label: 'Buyer Enquiries', icon: MessageSquareQuote },
+    ],
+  },
+  {
+    key: 'assurance',
+    label: 'Assurance',
+    items: [
+      { to: '/residential/compliance?category=residential', label: 'Compliance', icon: ShieldCheck },
+      { to: '/residential/workflows?vertical_key=properties', label: 'Checklists / Workflows', icon: Folder },
+    ],
+  },
+];
+
+export const residentialConsole = {
+  slug: 'residential',
+  storageKey: 'res.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Residential Sales',
+    icon: Home,
+    // Emerald, the fourth accent over the same navy: cyan for Water Tank, amber
+    // for Short Term Stay, violet for Property Management.
+    accent: '#10b981',
+    accentStrong: '#059669',
+    accentInk: '#047857',
+    accentTint: 'rgba(16,185,129,.12)',
+    accentTint2: '#d1fae5',
+  },
+  navGroups: RESIDENTIAL_NAV,
+  api: {},
+  contentClass: 'pm-scope',
+  exitTo: '/dashboard',
+};
+
 export const CONSOLES = {
   'water-tank': waterTankConsole,
   'short-stay': shortStayConsole,
   'property-management': propertyMgmtConsole,
+  residential: residentialConsole,
 };
