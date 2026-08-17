@@ -1,72 +1,40 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Eye, Trash2, Wallet, Send, Banknote } from 'lucide-react';
+import { Plus, Eye, Wallet, Send, Layers, FileText, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 import InvoiceCreateModal from './InvoiceCreateModal';
+import PaymentModal from './PaymentModal';
+import BulkPaymentModal from './BulkPaymentModal';
 import {
-  WtHead, WtTabs, Pill, dateFmt, bdt, StatCards, useCollection, RecordDrawer, useUrlTab,
-  WtDrawer, StatusCell, RowActions, Loading, EmptyState, useFocusedRecord, parseJson, toast, errText,
+  WtHead, WtTabs, Pill, dateFmt, bdt, StatCards, useCollection, useUrlTab,
+  RowActions, Loading, EmptyState, useFocusedRecord, parseJson, toast, errText,
 } from './common';
 
 const STATUSES = ['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled'];
 const TABS = ['All', ...STATUSES];
-const PAYOUTS = ['Not Due', 'Pending', 'Cleared'];
-
-const FIELDS = [
-  { key: 'client_name', label: 'Client name', required: true },
-  { key: 'project_id', label: 'Project ID' },
-  { key: 'inv_type', label: 'Invoice type' },
-  { key: 'amount', label: 'Amount (৳)', type: 'number', money: true },
-  { key: 'outstanding', label: 'Outstanding (৳)', type: 'number', money: true },
-  { key: 'due_date', label: 'Due date', type: 'date' },
-  { key: 'status', label: 'Status', type: 'select', options: STATUSES, pill: true },
-  { key: 'provider_payout', label: 'Provider payout', type: 'select', options: PAYOUTS, pill: true },
-];
 
 const num = (v) => Number(v || 0);
 
-/* Record a full or partial payment against an invoice. */
-function PaymentDrawer({ invoice, onClose, onConfirm }) {
-  const due = num(invoice.outstanding) || num(invoice.amount);
-  const [amount, setAmount] = useState(due);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-
-  const go = async () => {
-    const paid = Number(amount);
-    if (!(paid > 0)) { setErr('Enter an amount greater than zero.'); return; }
-    if (paid > due) { setErr(`Cannot exceed the outstanding balance of ${bdt(due)}.`); return; }
-    setBusy(true); setErr('');
-    const remaining = Math.round((due - paid) * 100) / 100;
-    try { await onConfirm({ outstanding: remaining, status: remaining <= 0 ? 'Paid' : invoice.status === 'Draft' ? 'Sent' : invoice.status }); }
-    catch (e) { setErr(errText(e, 'Could not record the payment')); setBusy(false); }
-  };
-
-  return (
-    <WtDrawer title="Record Payment" subtitle={`${invoice.code} · ${invoice.client_name}`} onClose={onClose}
-      footer={<><button className="wt-btn" onClick={onClose}>Cancel</button><button className="wt-btn primary" disabled={busy} onClick={go}>{busy ? 'Saving…' : 'Record payment'}</button></>}>
-      {err && <div className="wt-formerr">{err}</div>}
-      <div className="wt-note">Invoice total {bdt(invoice.amount)} · outstanding {bdt(due)}. Settling the balance in full marks the invoice Paid.</div>
-      <div className="wt-field">
-        <label>Amount received (৳)</label>
-        <input className="wt-input" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
-        <span className="hint">Leaves {bdt(Math.max(0, due - Number(amount || 0)))} outstanding.</span>
-      </div>
-    </WtDrawer>
-  );
-}
+/*
+ * Money on this screen used to be written by PATCHing `outstanding` and `status`
+ * straight onto the invoice row — which bypassed the ledger entirely, and, once
+ * generic invoice writes were closed off, simply answered 405. The row actions
+ * that did that (Record Payment, the inline Status and Provider Payout
+ * dropdowns, Delete) have been replaced by the controls that go through the
+ * single money writer. An editable field is a promise that editing works.
+ */
 
 export default function Invoices() {
   const nav = useNavigate();
-  const { rows, loading, error, reload, patch, remove } = useCollection('invoices');
+  const { rows, loading, error, reload } = useCollection('invoices');
   const [tab, setTab] = useState('All');
   useUrlTab(TABS, setTab);
   const [q, setQ] = useState('');
   const [creating, setCreating] = useState(false);
-  const [open, setOpen] = useState(null);
   const [paying, setPaying] = useState(null);
+  const [bulk, setBulk] = useState(false);
   const [project, setProject] = useState(null);
-  useFocusedRecord(rows, (r) => { setTab('All'); setOpen(r); });
+  useFocusedRecord(rows, (r) => { setTab('All'); nav(`/water-tank/invoices/${r.code}`); });
 
   // milestone schedule of the most recent open project
   useEffect(() => {
@@ -108,13 +76,6 @@ export default function Invoices() {
     };
   }, [rows]);
 
-  const current = open ? rows.find((r) => r.id === open.id) || open : null;
-
-  const recordPayment = async (body) => {
-    await patch(paying.id, body, body.status === 'Paid' ? `${paying.code} settled in full` : `Payment recorded on ${paying.code}`);
-    setPaying(null);
-  };
-
   return (
     <>
       <WtHead
@@ -122,6 +83,9 @@ export default function Invoices() {
         subtitle="Collect deposits, log progress payments, allocate disbursements"
         search={q} onSearch={setQ}
       >
+        {/* Starts from the client rather than the invoice, because a lump sum
+            arrives from a person, not from a document. */}
+        <button className="wt-btn" onClick={() => setBulk(true)}><Layers size={15} /> Bulk Payment</button>
         <button className="wt-btn primary" onClick={() => setCreating(true)}><Plus size={15} /> Create Invoice</button>
       </WtHead>
 
@@ -155,16 +119,34 @@ export default function Invoices() {
                     <td style={{ fontWeight: 700 }}>{bdt(r.amount)}</td>
                     <td className="muted">{dateFmt(r.due_date)}</td>
                     <td style={{ color: num(r.outstanding) > 0 ? 'var(--wt-red)' : 'var(--wt-muted)', fontWeight: num(r.outstanding) > 0 ? 700 : 400 }}>{bdt(r.outstanding)}</td>
-                    <td><StatusCell value={r.status} options={STATUSES} onChange={(body) => patch(r.id, body, `${r.code} → ${body.status}`)} /></td>
-                    <td><StatusCell value={r.provider_payout} options={PAYOUTS} field="provider_payout"
-                      onChange={(body) => patch(r.id, body, `${r.code} payout → ${body.provider_payout}`)} /></td>
+                    <td><Pill value={r.status} sm /></td>
+                    <td><Pill value={r.provider_payout} sm /></td>
                     <td>
                       <RowActions items={[
-                        { label: 'Open', icon: Eye, onClick: () => setOpen(r) },
-                        !settled && { label: 'Record Payment', icon: Wallet, onClick: () => setPaying(r) },
-                        s === 'draft' && { label: 'Mark Sent', icon: Send, onClick: () => patch(r.id, { status: 'Sent' }, `${r.code} marked sent`).catch((e) => toast.err(errText(e))) },
-                        s === 'paid' && (r.provider_payout || '').toLowerCase() !== 'cleared' && { label: 'Clear Provider Payout', icon: Banknote, onClick: () => patch(r.id, { provider_payout: 'Cleared' }, `${r.code} payout cleared`).catch((e) => toast.err(errText(e))) },
-                        { label: 'Delete', icon: Trash2, danger: true, onClick: () => remove(r.id, `${r.code} deleted`).catch((e) => toast.err(errText(e))) },
+                        { label: 'Open invoice', icon: Eye, onClick: () => nav(`/water-tank/invoices/${r.code}`) },
+                        // Draft money cannot be taken: the client has not been
+                        // asked for it yet, and the ledger refuses it outright.
+                        !settled && s !== 'draft' && { label: 'Record Payment', icon: Wallet, onClick: () => setPaying(r) },
+                        s === 'draft' && { label: 'Send invoice', icon: Send, onClick: () => nav(`/water-tank/invoices/${r.code}`) },
+                        { label: 'Download PDF', icon: FileText, onClick: () => window.open(`${api.defaults.baseURL || ''}/wt-invoices/${r.code}/pdf`, '_blank') },
+                        /*
+                         * Only a draft. An issued invoice is VOIDED rather than
+                         * deleted, so the numbering stays continuous and the
+                         * gap is explained — which is why this goes through the
+                         * invoice controller and not the generic delete the row
+                         * used to call.
+                         */
+                        s === 'draft' && {
+                          label: 'Delete draft',
+                          icon: Trash2,
+                          danger: true,
+                          onClick: async () => {
+                            // eslint-disable-next-line no-alert
+                            if (!window.confirm(`Delete draft ${r.code}? It has not been sent, so nothing is lost from the record.`)) return;
+                            try { await api.delete(`/wt-invoices/${r.code}`); toast.ok(`${r.code} deleted`); reload(); }
+                            catch (e) { toast.err(errText(e, 'Could not delete it')); }
+                          },
+                        },
                       ]} />
                     </td>
                   </tr>
@@ -200,18 +182,13 @@ export default function Invoices() {
         />
       )}
 
-      {current && !paying && (
-        <RecordDrawer
-          record={current} singular="invoice" fields={FIELDS} subtitle={current.client_name}
-          onClose={() => setOpen(null)}
-          onSave={(body) => patch(current.id, body)}
-          onDelete={() => remove(current.id, `${current.code} deleted`)}
-          advanceLabel="Record Payment"
-          onAdvance={['paid', 'cancelled'].includes((current.status || '').toLowerCase()) ? undefined : () => setPaying(current)}
-        />
+      {paying && (
+        <PaymentModal invoice={paying} onClose={() => { setPaying(null); reload(); }} onDone={reload} />
       )}
 
-      {paying && <PaymentDrawer invoice={paying} onClose={() => setPaying(null)} onConfirm={recordPayment} />}
+      {bulk && (
+        <BulkPaymentModal onClose={() => { setBulk(false); reload(); }} onDone={reload} />
+      )}
     </>
   );
 }

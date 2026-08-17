@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { WtHead, DatePicker, Loading, EmptyState, Pill, bdt, dateFmt, toast, errText, parseJson } from './common';
+import PaymentModal from './PaymentModal';
 
 /*
  * Invoice draft editor.
@@ -32,7 +33,6 @@ export default function InvoiceEditor() {
   const [dirty, setDirty] = useState(false);
   const [catQ, setCatQ] = useState('');
   const [payOpen, setPayOpen] = useState(false);
-  const [pay, setPay] = useState({ amount: '', method: '', reference: '', received_on: new Date().toISOString().slice(0, 10) });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -130,17 +130,6 @@ export default function InvoiceEditor() {
     finally { setBusy(''); }
   };
 
-  const recordPayment = async () => {
-    setBusy('pay');
-    try {
-      await api.post(`/wt-invoices/${code}/payments`, { ...pay, amount: Number(pay.amount) });
-      toast.ok('Payment recorded');
-      setPayOpen(false); setPay({ ...pay, amount: '', reference: '' });
-      await load();
-    } catch (e) { toast.err(errText(e, 'Could not record the payment')); }
-    finally { setBusy(''); }
-  };
-
   const openPdf = () => window.open(`/api/wt-invoices/${code}/pdf`, '_blank');
 
   if (loading) return <Loading />;
@@ -181,7 +170,7 @@ export default function InvoiceEditor() {
           </button>
         )}
         {!editable && !isVoid && (
-          <button className="wt-btn primary" onClick={() => setPayOpen((v) => !v)}><Wallet size={14} /> Record payment</button>
+          <button className="wt-btn primary" onClick={() => setPayOpen(true)}><Wallet size={14} /> Record payment</button>
         )}
         {!isVoid && <button className="wt-btn danger-ghost" disabled={busy === 'void'} onClick={voidIt}><Ban size={14} /> Void</button>}
         <Pill value={inv.status} />
@@ -204,25 +193,18 @@ export default function InvoiceEditor() {
         </div>
       )}
 
-      {payOpen && !editable && (
-        <div className="wt-card" style={{ padding: 18, marginBottom: 14 }}>
-          <div className="wt-sec-title" style={{ marginBottom: 10 }}>Record a payment</div>
-          <div className="wt-grid3">
-            <div className="wt-field"><label>Amount received (৳)</label>
-              <input className="wt-input" type="number" min="0" value={pay.amount} onChange={(e) => setPay({ ...pay, amount: e.target.value })} /></div>
-            <div className="wt-field"><label>Method</label>
-              <input className="wt-input" value={pay.method} onChange={(e) => setPay({ ...pay, method: e.target.value })} placeholder="bKash, bank, cash…" /></div>
-            <div className="wt-field"><label>Reference</label>
-              <input className="wt-input" value={pay.reference} onChange={(e) => setPay({ ...pay, reference: e.target.value })} /></div>
-            <div className="wt-field"><label>Received on</label>
-              <DatePicker value={pay.received_on} onChange={(v) => setPay({ ...pay, received_on: v })} /></div>
-            <div className="wt-field" style={{ justifyContent: 'flex-end' }}>
-              <button className="wt-btn primary" disabled={busy === 'pay' || !Number(pay.amount)} onClick={recordPayment}>
-                <Check size={14} /> Record
-              </button>
-            </div>
-          </div>
-        </div>
+      {/*
+        * The SAME dialog the register opens. This was a strip of inline fields
+        * here and a drawer there — two validations, two ideas of what a
+        * "reference" is, and a refund offered on neither. One component means
+        * money is taken the same way whichever screen the operator is on.
+        */}
+      {payOpen && (
+        <PaymentModal
+          invoice={inv}
+          onClose={() => { setPayOpen(false); load(); }}
+          onDone={() => load()}
+        />
       )}
 
       <div className="wt-split">

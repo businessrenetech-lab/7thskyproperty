@@ -40,9 +40,38 @@ const today = () => new Date().toISOString().slice(0, 10);
 const EVENT_TYPES = {
   client_receipt: { direction: 'in', subject: 'invoice' },
   client_receipt_reversal: { direction: 'in', subject: 'invoice' },
+  /*
+   * A refund is NOT a reversal, and the distinction is the point.
+   *
+   *   reversal — the entry was wrong. The money was never ours. The books
+   *              should read as though it had not been recorded, with the
+   *              mistake and its correction both visible.
+   *   refund   — the money DID arrive and we gave it back. Overpayment, a
+   *              cancelled job, a goodwill settlement. It is a real outward
+   *              movement that has to appear on the bank reconciliation and on
+   *              the client's statement as two events, not none.
+   *
+   * Conflating them is how a business ends up unable to explain where its cash
+   * went. So a refund carries a negative amount against the invoice — which
+   * makes the outstanding balance rise again, correctly — but its own type.
+   */
+  client_refund: { direction: 'out', subject: 'invoice' },
+  client_refund_reversal: { direction: 'out', subject: 'invoice' },
   provider_payout: { direction: 'out', subject: 'work_order' },
   provider_payout_reversal: { direction: 'out', subject: 'work_order' },
 };
+
+/** Methods a Bangladeshi client actually pays by, in the order they are used. */
+const PAYMENT_METHODS = [
+  { value: 'Cash', reference_label: 'Receipt number', reference_hint: 'Your own receipt book number, if you issued one.' },
+  { value: 'bKash', reference_label: 'TrxID', reference_hint: 'The 10-character transaction ID from the bKash message.', reference_required: true },
+  { value: 'Nagad', reference_label: 'TrxID', reference_hint: 'The transaction ID from the Nagad confirmation.', reference_required: true },
+  { value: 'Rocket', reference_label: 'TrxID', reference_hint: 'The transaction ID from the Rocket confirmation.', reference_required: true },
+  { value: 'Bank Transfer', reference_label: 'Transaction / slip number', reference_hint: 'What the bank statement will show.', reference_required: true },
+  { value: 'Cheque', reference_label: 'Cheque number & bank', reference_hint: 'Record it now; it is still uncleared money.', reference_required: true },
+  { value: 'Card', reference_label: 'Authorisation code', reference_hint: 'From the terminal slip.' },
+  { value: 'Adjustment', reference_label: 'Authority', reference_hint: 'Who approved writing this off against the balance.', reference_required: true },
+];
 
 class LedgerError extends Error {
   constructor(status, message, extra = {}) { super(message); this.status = status; Object.assign(this, extra); }
@@ -107,6 +136,8 @@ async function append(spec, { transaction }) {
       idempotency_key: key,
       reverses_event_id: spec.reverses_event_id || null,
       reversal_reason: spec.reversal_reason || null,
+      batch_ref: spec.batch_ref || null,
+      refund_reason: spec.refund_reason || null,
       project_id: spec.project_id || null,
       client_name: spec.client_name || null,
       provider_name: spec.provider_name || null,
@@ -192,6 +223,7 @@ async function recordClientReceipt(opts, { transaction } = {}) {
       reference: opts.reference,
       received_on: opts.received_on,
       idempotency_key: opts.idempotency_key,
+      batch_ref: opts.batch_ref,
       project_id: inv.project_id,
       client_name: inv.client_name,
       note: opts.note,
@@ -201,6 +233,132 @@ async function recordClientReceipt(opts, { transaction } = {}) {
 
     const after = await syncInvoiceCache(inv, { transaction: t });
     return { event, duplicate, invoice: inv, standing: after };
+  };
+
+  return transaction ? run(transaction) : sequelize.transaction(run);
+}
+
+/**
+ * One payment, several invoices — the lump sum.
+ *
+ * A client on an AMC pays ৳50,000 covering four months' invoices. Posting those
+ * one at a time through four separate requests has two failure modes that matter:
+ * the third can fail and leave the books half-applied with no record of intent,
+ * and the client's statement then shows four payments they did not make.
+ *
+ * So the whole allocation runs in ONE transaction — all of it lands or none of
+ * it does — and every row carries the same `batch_ref`, so the statement can
+ * show one payment applied across four invoices, which is what happened.
+ *
+ * The allocation is decided by the CALLER and validated here rather than being
+ * inferred: an operator who wants to pay the newest invoice first has a reason,
+ * and silently applying oldest-first would quietly overrule them.
+ */
+async function recordBatchClientReceipt(opts, { transaction } = {}) {
+  const lines = Array.isArray(opts.allocations) ? opts.allocations.filter((a) => round2(a.amount) > 0) : [];
+  if (!lines.length) throw new LedgerError(400, 'Allocate the payment to at least one invoice.');
+
+  const total = round2(lines.reduce((s, l) => s + num(l.amount), 0));
+  if (opts.total != null && Math.abs(round2(opts.total) - total) > 0.009) {
+    throw new LedgerError(400,
+      `The allocation comes to ${total}, but the payment received is ${round2(opts.total)}. Every taka has to be placed.`);
+  }
+
+  const batch = opts.batch_ref || `BATCH-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+
+  const run = async (t) => {
+    const results = [];
+    for (const line of lines) {
+      // Deliberately sequential. Each call locks its invoice row; running them
+      // concurrently inside one transaction would deadlock against itself.
+      const out = await recordClientReceipt({
+        branch_id: opts.branch_id,
+        invoice_id: line.invoice_id,
+        amount: line.amount,
+        method: opts.method,
+        reference: opts.reference,
+        received_on: opts.received_on,
+        note: opts.note,
+        batch_ref: batch,
+        // Each line needs its OWN key, or the second invoice in a batch of
+        // identical amounts would be swallowed as a duplicate of the first.
+        idempotency_key: opts.idempotency_key ? `${opts.idempotency_key}:${line.invoice_id}` : null,
+        actor: opts.actor,
+        actor_id: opts.actor_id,
+      }, { transaction: t });
+      results.push({
+        invoice_id: line.invoice_id,
+        invoice_code: out.invoice.code,
+        amount: round2(line.amount),
+        duplicate: out.duplicate,
+        outstanding: out.standing.outstanding,
+        status: out.invoice.status,
+      });
+    }
+    return { batch_ref: batch, total, applied: results };
+  };
+
+  return transaction ? run(transaction) : sequelize.transaction(run);
+}
+
+/**
+ * Give money back to a client.
+ *
+ * Bounded by what was actually received on this invoice — you cannot refund
+ * money that never arrived, and the check runs inside the lock so two refunds
+ * racing cannot together exceed the receipts.
+ *
+ * A refund raises the outstanding balance again, which is correct: the invoice
+ * is once more unpaid to that extent. If the refund is because the work is not
+ * happening, the invoice should be voided or credited separately — refunding
+ * alone leaves a debt the client does not owe, and that is a decision for a
+ * person, not something to infer here.
+ */
+async function recordClientRefund(opts, { transaction } = {}) {
+  const run = async (t) => {
+    const inv = await M.WtInvoice.findOne({
+      where: { id: opts.invoice_id, branch_id: opts.branch_id },
+      transaction: t, lock: t.LOCK.UPDATE,
+    });
+    if (!inv) throw new LedgerError(404, 'Invoice not found.');
+
+    const amount = round2(opts.amount);
+    if (!(amount > 0)) throw new LedgerError(400, 'Enter a refund amount greater than zero.');
+    if (!opts.reason || !String(opts.reason).trim()) {
+      throw new LedgerError(400, 'Give a reason — a refund is money leaving the business and the books must say why.');
+    }
+
+    const received = await balanceOf(
+      { branch_id: opts.branch_id, subject_type: 'invoice', subject_id: inv.id }, { transaction: t },
+    );
+    if (amount > received + 0.009) {
+      throw new LedgerError(400,
+        `You can refund at most ${round2(received)} — that is what has actually been received against this invoice.`,
+        { refundable: round2(received) });
+    }
+
+    const { event, duplicate } = await append({
+      branch_id: opts.branch_id,
+      event_type: 'client_refund',
+      subject_type: 'invoice',
+      subject_id: inv.id,
+      subject_code: inv.code,
+      // Negative, so the derived balance falls and the invoice owes again.
+      amount: -amount,
+      method: opts.method,
+      reference: opts.reference,
+      received_on: opts.refunded_on,
+      idempotency_key: opts.idempotency_key,
+      refund_reason: String(opts.reason).trim(),
+      project_id: inv.project_id,
+      client_name: inv.client_name,
+      note: opts.note,
+      actor: opts.actor,
+      actor_id: opts.actor_id,
+    }, { transaction: t });
+
+    const after = await syncInvoiceCache(inv, { transaction: t });
+    return { event, duplicate, invoice: inv, standing: after, refundable: round2(received - amount) };
   };
 
   return transaction ? run(transaction) : sequelize.transaction(run);
@@ -220,17 +378,26 @@ async function syncInvoiceCache(inv, { transaction } = {}) {
   const received = round2(events.reduce((s, e) => s + num(e.amount), 0));
   const standing = invoiceStanding(inv.toJSON(), received);
 
+  /*
+   * `kind` rather than a bare `reversal` flag, because three different things
+   * now carry a negative amount and a screen that cannot tell them apart will
+   * describe a refund as a correction. They are not the same event to a client.
+   */
   const payments = events.map((e) => ({
     event_id: e.id,
+    kind: e.event_type === 'client_refund' ? 'refund'
+      : num(e.amount) < 0 ? 'reversal' : 'receipt',
     amount: num(e.amount),
     method: e.method,
     reference: e.reference,
     received_on: e.received_on,
     by: e.actor,
     at: e.created_at,
-    reversal: num(e.amount) < 0,
+    reversal: num(e.amount) < 0 && e.event_type !== 'client_refund',
     reverses_event_id: e.reverses_event_id || null,
-    reason: e.reversal_reason || null,
+    batch_ref: e.batch_ref || null,
+    reason: e.reversal_reason || e.refund_reason || null,
+    note: e.note || null,
   }));
 
   const patch = {
@@ -370,7 +537,14 @@ async function reverse(opts, { transaction } = {}) {
       where: { id: opts.event_id, branch_id: opts.branch_id }, transaction: t,
     });
     if (!original) throw new LedgerError(404, 'That money movement was not found.');
-    if (num(original.amount) < 0) throw new LedgerError(409, 'This entry is itself a reversal.');
+    /*
+     * A refund carries a negative amount but IS reversible — one entered by
+     * mistake has to be correctable like any other. What cannot be reversed is a
+     * reversal, because that is just the original entry again by another name.
+     */
+    if (String(original.event_type).endsWith('_reversal')) {
+      throw new LedgerError(409, 'This entry is itself a reversal — reverse the original instead.');
+    }
 
     const already = await M.WtMoneyEvent.findOne({
       where: { branch_id: opts.branch_id, reverses_event_id: original.id }, transaction: t,
@@ -442,9 +616,10 @@ async function journal({ branch_id, from, to, direction, limit = 200 }) {
 }
 
 module.exports = {
-  LedgerError, EVENT_TYPES,
+  LedgerError, EVENT_TYPES, PAYMENT_METHODS,
   balanceOf, historyOf, journal,
-  recordClientReceipt, recordProviderPayout, reverse,
+  recordClientReceipt, recordBatchClientReceipt, recordClientRefund,
+  recordProviderPayout, reverse,
   syncInvoiceCache, syncWorkOrderCache,
   round2,
 };

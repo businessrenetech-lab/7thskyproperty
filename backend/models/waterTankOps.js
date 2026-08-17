@@ -568,6 +568,11 @@ const WtMoneyEvent = sequelize.define('WtMoneyEvent', {
   idempotency_key: { type: D.STRING(120), allowNull: false },
   reverses_event_id: D.INTEGER,
   reversal_reason: D.STRING(255),
+  // 0090 — groups the rows that were ONE payment across several invoices, and
+  // records why money was given back. A refund is not a reversal: a reversal
+  // says the entry was wrong, a refund says the money arrived and we returned it.
+  batch_ref: D.STRING(40),
+  refund_reason: D.STRING(255),
   project_id: D.STRING(30),
   client_name: D.STRING(200),
   provider_name: D.STRING(160),

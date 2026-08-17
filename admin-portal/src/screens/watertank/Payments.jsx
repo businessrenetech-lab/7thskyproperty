@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Banknote, RefreshCw, Wallet, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { Banknote, RefreshCw, Wallet, ArrowDownLeft, ArrowUpRight, Layers } from 'lucide-react';
 import api from '../../services/api';
 import {
   WtHead, WtTabs, Pill, dateFmt, bdt, WtDrawer, Loading, EmptyState, toast, errText,
 } from './common';
+import BulkPaymentModal from './BulkPaymentModal';
 
 /*
  * Payments & Disbursements — both sides of the money on a water-tank job.
@@ -77,6 +78,7 @@ export default function Payments() {
   const [tab, setTab] = useState('Client Receivables');
   const [receipt, setReceipt] = useState(null);
   const [payout, setPayout] = useState(null);
+  const [bulk, setBulk] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true); setError('');
@@ -133,7 +135,13 @@ export default function Payments() {
     <>
       <WtHead title="Payments & Disbursements" subtitle="Client receipts and third-party provider payouts">
         <button className="wt-btn" onClick={load}><RefreshCw size={14} /> Refresh</button>
+        {/* This screen is about receivables, so the lump-sum dialog belongs here
+            as much as on the invoice register — an operator chasing a balance
+            should not have to go elsewhere to bank the payment. */}
+        <button className="wt-btn primary" onClick={() => setBulk(true)}><Layers size={14} /> Bulk Payment</button>
       </WtHead>
+
+      {bulk && <BulkPaymentModal onClose={() => { setBulk(false); load(); }} onDone={load} />}
 
       <div className="wt-kpis">
         <div className="wt-card wt-kpi">

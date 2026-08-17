@@ -19,6 +19,12 @@ router.get('/client-lookup', canRead, ctrl.clientLookup);
 router.get('/amc/:amcCode/preview', canRead, ctrl.previewAmc);
 router.post('/amc/:amcCode/generate', canTransact, ctrl.createFromAmc);
 
+// Who owes what, grouped by client rather than by invoice — the question an
+// operator asks when someone turns up to pay. Declared before /:code.
+router.get('/collections', canRead, ctrl.collections);
+// One lump sum across several invoices, posted atomically.
+router.post('/payments/bulk', canTransact, ctrl.bulkPayment);
+
 router.get('/', canRead, ctrl.list);
 router.post('/', canTransact, ctrl.create);
 
@@ -31,6 +37,10 @@ router.post('/:code/payments', canTransact, ctrl.recordPayment);
 // Reversing a receipt is a correction to the books, so it sits with the people
 // who can bind the business rather than with everyone who can record one.
 router.post('/:code/payments/:eventId/reverse', canAdminister, ctrl.reversePayment);
+// Refunding is money LEAVING the business — not a correction to a mistake — so
+// it sits with administrators alongside reversal rather than with everyone who
+// can take a payment in.
+router.post('/:code/refunds', canAdminister, ctrl.refund);
 router.post('/:code/void', canTransact, ctrl.void);
 
 router.get('/:code', canRead, ctrl.detail);

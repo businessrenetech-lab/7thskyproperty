@@ -2513,3 +2513,73 @@ customer portal complaint form renders with the client's own jobs. Build clean.
   create path; the register now has the good one. Consolidating them is a
   follow-up.
 - Warranty claims (calling on cover) are still a status change, not a workflow.
+
+---
+
+## COMPLETED — Record Payment, Bulk Payment and Client Refunds
+**Agent:** Claude (Water Tank console) · **Date:** 2026-08-13
+**Files:** `backend/migrations/0090-money-batch-and-refunds.js` (new),
+`backend/models/waterTankOps.js`, `backend/services/wtLedger.service.js`,
+`backend/controllers/waterTankInvoice.controller.js`,
+`backend/routes/waterTankInvoice.routes.js`,
+`admin-portal/src/screens/watertank/PaymentModal.jsx` (new),
+`admin-portal/src/screens/watertank/BulkPaymentModal.jsx` (new),
+`admin-portal/src/screens/watertank/Invoices.jsx`,
+`admin-portal/src/screens/watertank/InvoiceEditor.jsx`,
+`admin-portal/src/screens/watertank/Payments.jsx`
+
+### What was found first
+The existing "Record Payment" on the invoice register was a right-hand drawer
+that PATCHed `outstanding` and `status` straight onto the invoice row. Two
+things were wrong: it bypassed the ledger entirely, and — since Phase 1 closed
+generic invoice writes — it had been answering **405** and doing nothing at all.
+The inline Status and Provider Payout dropdowns on the same table used the same
+dead path. The button had been broken, silently, not merely unsafe.
+
+### What was built
+- **Centred Record Payment modal**, replacing the drawer, posting through
+  `/wt-invoices/:code/payments` — the single money writer. Used by BOTH the
+  register and the invoice detail page, which previously had two different
+  payment forms with two validations.
+- **Idempotency from the UI.** The ledger has always accepted a key; nothing
+  sent one. The modal mints one per opening, so a double-click, a slow network
+  and a Retry all resolve to one receipt. Proven with four concurrent requests:
+  all answered, one posted.
+- **Method-aware references.** bKash/Nagad/Rocket/Bank/Cheque require one and
+  are asked for it by its real name (TrxID, cheque number); cash is not. The
+  list comes from the API so the screen cannot drift from what reconciliation
+  expects.
+- **Duplicate warning before committing**, not after.
+- **Bulk payment**: one client, one lump sum, several invoices. Starts from a
+  new `/wt-invoices/collections` (who owes what, grouped by client code — a name
+  is not an identity), offers oldest-first allocation, and refuses to post while
+  a single taka is unallocated. Posts atomically: all invoices update or none.
+  Every row carries a shared `batch_ref`, so a statement shows ONE payment
+  across four invoices rather than four payments.
+- **Client refunds**, deliberately separate from reversal. A reversal says the
+  entry was wrong; a refund says the money arrived and we gave it back. They
+  read differently on a client statement and reconcile differently against the
+  bank, so `client_refund` is its own event type with its own reason column and
+  its own direction. Bounded by what was actually received, inside the lock.
+  Refunding raises the outstanding balance again, which is correct.
+- **Role split honoured**: `accounts` can take money in and post a bulk payment;
+  refunding and reversing sit with administrators. Proven with fixture users.
+
+### Verified
+66 new assertions; full suite **611 across 16 suites, 0 failures**. Balances are
+asserted against the LEDGER, never the cached column. Two of my own mistakes were
+caught by writing the tests: a role expectation that was wrong (a
+`property_manager` correctly cannot touch cash — `canTransact` is finance-only),
+and a fixture that pre-stringified a JSON column, which double-encoded it.
+
+### NOT done
+- **Browser QA of the three screens.** The Chrome extension disconnected partway
+  through this session and would not reconnect, so the modals have not been
+  opened on screen. Everything is API- and build-verified; the layout is not.
+- An invoice is worth the sum of its LINES. One live row (`INV-DD90495`) carries
+  an amount of 100 with no line items, so it is worth zero and cannot take a
+  payment. The modal now explains this instead of showing "exceeds the
+  outstanding balance of 0", but the row itself still needs its lines filled in.
+- Overpayment still cannot be parked as a client credit balance; the ledger
+  refuses to take more than is owed. A credit-note subsystem is a separate piece
+  of work, and inventing somewhere to put unexplained money would be worse.

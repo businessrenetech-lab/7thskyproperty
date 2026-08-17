@@ -18,6 +18,7 @@ const { getBranding } = require('../services/wtBranding.service');
 const { num, round2, today, eq, asArray } = svc;
 const actorOf = (req) => req.user?.name || req.user?.email || 'Operations';
 const daysTo = (d) => (d ? Math.ceil((new Date(d) - Date.now()) / 864e5) : null);
+const bdtish = (v) => `৳${round2(num(v)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /*
  * Sequelize hands JSON columns back as STRINGS on this MySQL setup, so an
@@ -76,6 +77,13 @@ exports.reference = asyncHandler(async (req, res) => {
     statuses: svc.INVOICE_STATUSES,
     types: svc.INVOICE_TYPES,
     editable_statuses: svc.EDITABLE_STATUSES,
+    /*
+     * Payment methods live on the server so the reference an operator is asked
+     * for matches the method: a bKash payment needs a TrxID, a cheque needs its
+     * number, and a screen carrying its own list drifts from what the ledger and
+     * the reconciliation expect.
+     */
+    payment_methods: ledger.PAYMENT_METHODS,
     catalog: catalogRows.map((i) => {
       let tags = i.tags; if (typeof tags === 'string') { try { tags = JSON.parse(tags); } catch { tags = {}; } }
       return { code: i.code, name: i.name, unit: i.unit, standard_price: num(i.base_price), group: (tags || {}).group || 'service' };
@@ -340,10 +348,15 @@ exports.recordPayment = asyncHandler(async (req, res) => {
     });
     await inv.reload();
 
-    // A receipt the client can see without asking. Only on a NEW posting — a
-    // replayed request must not send a second thank-you for the same money.
+    /*
+     * A receipt the client can see without asking. Only on a NEW posting — a
+     * replayed request must not send a second thank-you for the same money —
+     * and only if the operator asked for one. Some payments are internal
+     * adjustments the client should not be emailed about, and a checkbox that
+     * quietly did nothing would be worse than not offering the choice.
+     */
     let receiptMailed = false;
-    if (!out.duplicate) {
+    if (!out.duplicate && req.body?.email_receipt !== false) {
       const notify = require('../services/wtNotify.service');
       const m = await notify.onPaymentReceived(inv.toJSON(), out.event.amount);
       receiptMailed = m.sent;
@@ -397,6 +410,177 @@ exports.paymentHistory = asyncHandler(async (req, res) => {
   const inv = await loadInvoice(req, res); if (!inv) return;
   const rows = await ledger.historyOf({ branch_id: inv.branch_id, subject_type: 'invoice', subject_id: inv.id });
   res.json({ rows, received: await ledger.balanceOf({ branch_id: inv.branch_id, subject_type: 'invoice', subject_id: inv.id }) });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Collections: what a client owes, one lump sum, and money given back
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * GET /collections?q= — clients with money outstanding, newest debt first.
+ *
+ * Built for the question an operator actually asks at the counter: "someone is
+ * paying — what do they owe?" Searching invoice by invoice cannot answer that,
+ * because a client with four unpaid invoices appears four times and their total
+ * debt appears nowhere.
+ */
+exports.collections = asyncHandler(async (req, res) => {
+  const scope = branchScope(req);
+  const q = String(req.query.q || '').trim().toLowerCase();
+
+  const invoices = await M.WtInvoice.findAll({
+    where: { ...scope, status: { [Op.notIn]: ['Draft', 'Void', 'Cancelled'] } },
+    order: [['due_date', 'ASC'], ['id', 'ASC']], raw: true,
+  }).catch(() => []);
+
+  const byClient = new Map();
+  for (const inv of invoices) {
+    const outstanding = round2(num(inv.outstanding));
+    if (outstanding <= 0.009) continue;
+    // Group on the client CODE where there is one; a name is not an identity,
+    // and two clients called "Hasan Villa" must not share a balance.
+    const key = inv.client_code || `name:${inv.client_name || 'Unknown'}`;
+    if (!byClient.has(key)) {
+      byClient.set(key, {
+        key,
+        client_code: inv.client_code || null,
+        client_name: inv.client_name || 'Unknown',
+        outstanding: 0,
+        invoice_count: 0,
+        oldest_due: inv.due_date || null,
+        overdue_count: 0,
+        invoices: [],
+      });
+    }
+    const c = byClient.get(key);
+    const overdue = inv.due_date ? daysTo(inv.due_date) < 0 : false;
+    c.outstanding = round2(c.outstanding + outstanding);
+    c.invoice_count += 1;
+    if (overdue) c.overdue_count += 1;
+    c.invoices.push({
+      id: inv.id,
+      code: inv.code,
+      inv_type: inv.inv_type,
+      project_id: inv.project_id,
+      amount: round2(num(inv.amount)),
+      paid: round2(num(inv.paid_amount)),
+      outstanding,
+      due_date: inv.due_date,
+      days_overdue: overdue ? Math.abs(daysTo(inv.due_date)) : 0,
+      status: inv.status,
+    });
+  }
+
+  let list = [...byClient.values()];
+  if (q) list = list.filter((c) => `${c.client_name} ${c.client_code || ''}`.toLowerCase().includes(q));
+  // Most owed first: that is the order the money matters in.
+  list.sort((a, b) => b.outstanding - a.outstanding);
+  res.json(list.slice(0, 60));
+});
+
+/**
+ * POST /payments/bulk — one payment, several invoices.
+ *
+ * The whole allocation posts in ONE transaction. A lump sum that half-applies is
+ * worse than one that fails outright: the operator sees a success for part of it,
+ * the client's balance is wrong, and nothing records what was meant to happen.
+ */
+exports.bulkPayment = asyncHandler(async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const body = req.body || {};
+  const allocations = Array.isArray(body.allocations) ? body.allocations : [];
+
+  try {
+    const out = await ledger.recordBatchClientReceipt({
+      branch_id: branchId,
+      allocations: allocations.map((a) => ({ invoice_id: Number(a.invoice_id), amount: num(a.amount) })),
+      total: body.total != null ? num(body.total) : null,
+      method: body.method || null,
+      reference: body.reference || null,
+      received_on: body.received_on || today(),
+      note: body.note || null,
+      idempotency_key: body.idempotency_key || null,
+      actor: actorOf(req),
+      actor_id: req.user?.id || null,
+    });
+
+    /*
+     * One email for the batch, not one per invoice. A client who made a single
+     * payment should not receive four receipts for it.
+     */
+    let receiptMailed = false;
+    const fresh = out.applied.filter((a) => !a.duplicate);
+    if (fresh.length && body.email_receipt !== false) {
+      const first = await M.WtInvoice.findOne({ where: { branch_id: branchId, id: allocations[0]?.invoice_id } });
+      if (first) {
+        const notify = require('../services/wtNotify.service');
+        const m = await notify.onPaymentReceived(first.toJSON(), out.total).catch(() => ({ sent: false }));
+        receiptMailed = m.sent;
+      }
+    }
+
+    res.json({
+      ...out,
+      receipt_emailed: receiptMailed,
+      message: fresh.length
+        ? `${bdtish(out.total)} applied across ${out.applied.length} invoice${out.applied.length === 1 ? '' : 's'}.`
+        : 'This payment was already recorded — nothing was posted twice.',
+    });
+  } catch (e) {
+    if (e instanceof ledger.LedgerError) return res.status(e.status).json({ error: e.message });
+    throw e;
+  }
+});
+
+/**
+ * POST /:code/refunds — give money back.
+ *
+ * Kept apart from the reversal endpoint on purpose. Reversing says the entry was
+ * wrong; refunding says the money arrived and we returned it. They read
+ * differently on a client statement and reconcile differently against the bank,
+ * so offering one control for both would guarantee the wrong one gets used.
+ */
+exports.refund = asyncHandler(async (req, res) => {
+  const inv = await loadInvoice(req, res); if (!inv) return;
+  try {
+    const out = await ledger.recordClientRefund({
+      branch_id: inv.branch_id,
+      invoice_id: inv.id,
+      amount: num(req.body?.amount),
+      reason: req.body?.reason,
+      method: req.body?.method || null,
+      reference: req.body?.reference || null,
+      refunded_on: req.body?.refunded_on || today(),
+      note: req.body?.note || null,
+      idempotency_key: req.body?.idempotency_key || null,
+      actor: actorOf(req),
+      actor_id: req.user?.id || null,
+    });
+    await inv.reload();
+
+    await M.WtCommLog.create({
+      branch_id: inv.branch_id, client_name: inv.client_name,
+      channel: 'note', direction: 'internal',
+      summary: `Refund of ${bdtish(Math.abs(num(out.event.amount)))} on ${inv.code} — ${req.body?.reason}`,
+      ref_type: 'invoices', ref_code: inv.code, logged_at: new Date(),
+    }).catch(() => {});
+
+    res.json({
+      invoice: shape(inv.toJSON()),
+      totals: out.standing.totals,
+      event: out.event,
+      refundable: out.refundable,
+      duplicate: out.duplicate,
+      message: out.duplicate
+        ? 'This refund was already recorded — nothing was posted twice.'
+        : `Refund of ${bdtish(Math.abs(num(out.event.amount)))} recorded. ${inv.code} now shows ${bdtish(inv.outstanding)} outstanding.`,
+    });
+  } catch (e) {
+    if (e instanceof ledger.LedgerError) {
+      return res.status(e.status).json({ error: e.message, ...(e.refundable != null ? { refundable: e.refundable } : {}) });
+    }
+    throw e;
+  }
 });
 
 /* ── void ── */
