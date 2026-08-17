@@ -81,13 +81,16 @@ export const WT_NAV_GROUPS = [
     items: [
       { to: '/water-tank/invoices', label: 'Invoices', icon: Receipt, needs: 'transact' },
       { to: '/water-tank/payments', label: 'Payments & Disbursements', icon: Banknote, needs: 'transact' },
+      // Reading what the business collected and spent is not a privilege
+      // reserved for the people who can move the money, so no `needs`.
+      { to: '/water-tank/reports', label: 'Reports', icon: FileBarChart },
     ],
   },
   {
     key: 'assurance',
     label: 'Assurance',
     items: [
-      { to: '/water-tank/reports', label: 'Service Reports', icon: FileBarChart },
+      { to: '/water-tank/service-reports', label: 'Service Reports', icon: FileBarChart },
       { to: '/water-tank/registers', label: 'Warranty & Issues', icon: ShieldCheck },
       { to: '/water-tank/complaints', label: 'Complaints', icon: AlertCircle },
     ],

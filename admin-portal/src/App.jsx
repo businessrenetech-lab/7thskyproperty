@@ -45,6 +45,7 @@ import WaterTankProviderDetail from './screens/watertank/providers/ProviderDetai
 import WaterTankProviderOnboarding from './screens/watertank/providers/ProviderOnboarding';
 import WTCompliance from './screens/watertank/Compliance';
 import WTServiceReports from './screens/watertank/ServiceReports';
+import WTReports from './screens/watertank/Reports';
 import WaterTankSettings from './screens/watertank/Settings';
 import WaterTankCatalogue from './screens/watertank/Catalogue';
 import WTWorkQueue from './screens/watertank/WorkQueue';
@@ -334,8 +335,13 @@ export default function App() {
               <Route path="/agreements/water-tank-provider/:id" element={<LegacyRedirect to="/water-tank/agreements/provider/:id" />} />
               <Route path="/agreements/water-tank-provider/:id/edit" element={<LegacyRedirect to="/water-tank/agreements/provider/:id/edit" />} />
               <Route path="/water-tank/compliance" element={<WTCompliance />} />
-              <Route path="/water-tank/reports" element={<WTServiceReports />} />
-              <Route path="/water-tank/reports/:code" element={<WTServiceReports />} />
+              {/* Accounting reports. Service Reports moved to /service-reports;
+                  old /reports/RPT-xxxx links are recognised by prefix inside
+                  the hub and forwarded, so nothing bookmarked breaks. */}
+              <Route path="/water-tank/reports" element={<WTReports />} />
+              <Route path="/water-tank/reports/:kind" element={<WTReports />} />
+              <Route path="/water-tank/service-reports" element={<WTServiceReports />} />
+              <Route path="/water-tank/service-reports/:code" element={<WTServiceReports />} />
               <Route path="/water-tank/agreements" element={<WTAgreementsHub />} />
               <Route path="/water-tank/work-queue" element={<WTWorkQueue />} />
               <Route path="/water-tank/amc" element={<WTAmc />} />

@@ -232,7 +232,7 @@ export default function WorkOrderDetail() {
       fields: [{ key: 'completion_notes', label: 'Completion notes', type: 'textarea', value: w.completion_notes || '' }],
       onSubmit: (f) => post('/complete', f, 'Work order completed'),
     }),
-    reports: () => nav('/water-tank/reports'),
+    reports: () => nav('/water-tank/service-reports'),
     verify: () => setStep({
       title: 'Verify completion', subtitle: `${w.code} · Sec. 9 Step 9`, submitLabel: 'Save verification',
       note: 'Confirm the work is done, the site is clean, reports are in and the client is satisfied.',
@@ -457,7 +457,7 @@ export default function WorkOrderDetail() {
                 <thead><tr><th style={{ width: 96 }}>Code</th><th>Type</th><th style={{ width: 130 }}>Submitted</th><th style={{ width: 120 }}>Status</th></tr></thead>
                 <tbody>
                   {d.reports.map((r) => (
-                    <tr key={r.id} className="click" onClick={() => nav(`/water-tank/reports?focus=${encodeURIComponent(r.code)}`)}>
+                    <tr key={r.id} className="click" onClick={() => nav(`/water-tank/service-reports?focus=${encodeURIComponent(r.code)}`)}>
                       <td className="id">{r.code}</td><td><strong>{r.report_type}</strong></td>
                       <td className="muted">{dateFmt(r.submitted_date)}</td><td><Pill value={r.status} sm /></td>
                     </tr>

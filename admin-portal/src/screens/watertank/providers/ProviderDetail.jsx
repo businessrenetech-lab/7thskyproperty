@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import api from '../../../services/api';
 import PortalLinkCard from '../PortalLinkCard';
+import ReportView from '../ReportView';
 import {
   WtHead, WtTabs, Pill, WtDrawer, Loading, EmptyState, dateFmt, dateTimeFmt, bdt,
   toast, errText, StatusCell, RowActions,
@@ -35,7 +36,7 @@ import {
  * provider is reachable from this page, with the clause reference beside it.
  */
 
-const TABS = ['Overview', 'Compliance', 'Insurance', 'Agreement & Territory', 'Work Orders', 'Reports', 'Audits', 'Protected Clients', 'Timeline'];
+const TABS = ['Overview', 'Compliance', 'Insurance', 'Agreement & Territory', 'Work Orders', 'Payouts', 'Reports', 'Audits', 'Protected Clients', 'Timeline'];
 const pct = (v) => (v == null ? '—' : `${v}%`);
 const hrs = (v) => (v ? `${v} h` : '—');
 
@@ -605,6 +606,31 @@ export default function ProviderDetail() {
         </div>
       )}
 
+      {/* ═══ PAYOUTS ═══
+          What this provider has been paid, from the SAME report engine that
+          produces the register-wide payout report — filtered to them. Two
+          implementations of "what have we paid this contractor" is one
+          conversation with a contractor that the business cannot win. */}
+      {tab === 'Payouts' && (
+        <>
+          <ReportView
+            kind="provider-payouts"
+            filters={{ provider: p.business_name }}
+            defaultPreset="1y"
+            title={`${p.business_name} — payouts`}
+          />
+          <div style={{ marginTop: 26 }}>
+            <div className="wt-sec-title" style={{ marginBottom: 10 }}>Work completed by this provider</div>
+            <ReportView
+              kind="service-completion"
+              filters={{ provider: p.business_name }}
+              defaultPreset="1y"
+              compact
+            />
+          </div>
+        </>
+      )}
+
       {/* ═══ REPORTS ═══ */}
       {tab === 'Reports' && (
         <div className="wt-card wt-tblcard">
@@ -613,7 +639,7 @@ export default function ProviderDetail() {
               <thead><tr><th style={{ width: 96 }}>Report</th><th style={{ width: 150 }}>Type</th><th>Client</th><th style={{ width: 108 }}>Work order</th><th style={{ width: 112 }}>Submitted</th><th style={{ width: 124 }}>Status</th></tr></thead>
               <tbody>
                 {d.reports.map((r) => (
-                  <tr key={r.id} className="click" onClick={() => nav(`/water-tank/reports?focus=${encodeURIComponent(r.code)}`)}>
+                  <tr key={r.id} className="click" onClick={() => nav(`/water-tank/service-reports?focus=${encodeURIComponent(r.code)}`)}>
                     <td className="id">{r.code}</td>
                     <td><strong>{r.report_type}</strong></td>
                     <td className="muted">{r.client_name || '—'}</td>

@@ -166,6 +166,7 @@ mount('/api/wt-projects', './routes/waterTankProject.routes');
 mount('/api/wt-amc', './routes/waterTankAmc.routes');
 mount('/api/wt-invoices', './routes/waterTankInvoice.routes');
 mount('/api/wt-disbursements', './routes/waterTankDisbursement.routes');
+mount('/api/wt-reports', './routes/waterTankReports.routes');
 mount('/api/wt-catalogue', './routes/waterTankCatalogue.routes');
 mount('/api/wt-agreement-hub', './routes/waterTankAgreementHub.routes');
 mount('/api/public/water-tank', './routes/publicWaterTank.routes');

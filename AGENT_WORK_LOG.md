@@ -2654,3 +2654,84 @@ voucher and run PDFs rendered and read back field by field.
   minutes in Settings and it materially improves every outbound document.
 - Direct costs marked "rechargeable" are flagged but do not raise a client
   invoice by themselves; wiring that to invoicing is a separate piece of work.
+
+---
+
+## COMPLETED — Accounting reports (5), with branded PDFs and date filters
+**Agent:** Claude (Water Tank console) · **Date:** 2026-08-13
+**Files:** `backend/services/wtReports.service.js` (new),
+`backend/services/wtReportPdf.service.js` (new),
+`backend/controllers/waterTankReports.controller.js` (new),
+`backend/routes/waterTankReports.routes.js` (new), `backend/server.js`,
+`admin-portal/src/screens/watertank/Reports.jsx` (new),
+`admin-portal/src/screens/watertank/ReportView.jsx` (new),
+`admin-portal/src/screens/watertank/WaterTankConsole.jsx`,
+`admin-portal/src/screens/watertank/clients/ClientDashboard.jsx`,
+`admin-portal/src/screens/watertank/providers/ProviderDetail.jsx`,
+`admin-portal/src/screens/watertank/WorkOrderDetail.jsx`, `admin-portal/src/App.jsx`
+
+### The shape of it
+Five reports were asked for and a sixth will be asked for eventually, so this is
+ONE engine with five definitions rather than five screens. Each definition
+declares what it selects, its COLUMNS, and how it summarises. Three consequences,
+all deliberate: the date filter cannot drift between reports (one resolver); the
+table and the branded PDF cannot disagree about what is in them (neither owns
+the column list); and the sixth report is a definition, not a screen plus an
+endpoint plus a PDF builder plus a date picker.
+
+Four of the five read the money ledger, so they are views of the same truth
+rather than five independent tallies. That is asserted directly: money in and
+money out on the bank statement must equal the money journal's own totals.
+
+### Reports
+1. **Client Payments** — receipts, refunds and corrections; refunds shown as
+   money OUT, not as negative receipts. By client and by method.
+2. **Provider Payouts** — by provider and by method.
+3. **Seventh Sky Payments** — direct costs by category and payee, separating
+   what is recoverable from clients from what the business absorbs.
+4. **Service Completion** — jobs finished, days taken, on-time %, verified,
+   contract value.
+5. **Bank Statement** — every movement in date order with a running balance,
+   carrying a real OPENING balance from everything before the range. A statement
+   that starts from zero mid-year cannot be reconciled against an account.
+
+Presets: today · yesterday · 7d · 14d · 30d · 1Y · custom from–to. Every report
+downloads as a branded landscape PDF with headline figures, a totals row and a
+breakdown page.
+
+### Per-party dashboards
+The client dashboard has a **Transactions** tab and the provider dashboard a
+**Payouts** tab, both built by the SAME engine with a filter applied. A dashboard
+total that disagreed with the report the same party is emailed would be worse
+than no dashboard; two implementations guarantee that eventually.
+
+### Three real bugs found by building this
+- **Every date preset was off by one in Dhaka.** `iso()` formatted local midnight
+  through `toISOString()`, and local midnight is 18:00 UTC the previous day — so
+  "Today" showed yesterday's takings. Silent, and the worst failure a reporting
+  module can have.
+- **Four provider payouts have a null `received_on`,** so filtering on it made
+  them invisible to every dated report including the bank statement. Now
+  COALESCEd to the entry date: slightly wrong beats absent.
+- **The statement was not chronological** — null-dated rows sorted first, so the
+  running balance went 12 Aug, 12 Aug, 09 Aug, 17 Aug. Ordered by the same
+  coalesced date now.
+
+### Routing
+`/water-tank/reports` is now the accounting hub; Service Reports moved to
+`/water-tank/service-reports`. Six links across four screens were repointed, and
+old `/reports/RPT-xxxx` links are recognised by prefix and forwarded, so nothing
+bookmarked breaks. Both entries sit in the sidebar — they are different things.
+
+### Verified
+64 new assertions; full suite **745 across 18 suites, 0 failures**. PDFs are
+checked by inflating them and confirming every declared column heading is
+printed, which is what stops the table and the print drifting apart. A filtered
+PDF is asserted to say so on its face.
+
+### NOT done
+- **Browser QA.** The Chrome extension has been disconnected for three sessions.
+  Everything is API-, build- and PDF-verified; the screens have not been opened.
+- Reports are per-branch and not yet exportable to CSV/Excel — PDF only, as asked.
+- The company address, phone and BIN are still unset in Settings, so report
+  letterheads carry only a name and an email.

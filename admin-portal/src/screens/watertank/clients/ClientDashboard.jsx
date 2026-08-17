@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import api from '../../../services/api';
 import PortalLinkCard from '../PortalLinkCard';
+import ReportView from '../ReportView';
 import {
   WtHead, WtTabs, Pill, Loading, EmptyState, DatePicker, WtDrawer, RowActions,
   dateFmt, dateTimeFmt, bdt, titleCase, toast, errText, parseJson,
@@ -33,7 +34,7 @@ import {
  * history, documents, AMC, complaints and the closure checklist.
  */
 
-const TABS = ['Overview', 'Journey', 'Service History', 'Account', 'AMC & Warranty', 'Complaints', 'Documents', 'Timeline'];
+const TABS = ['Overview', 'Journey', 'Service History', 'Account', 'Transactions', 'AMC & Warranty', 'Complaints', 'Documents', 'Timeline'];
 const initials = (n) => String(n || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 const pct = (v) => (v == null ? '—' : `${v}%`);
 
@@ -382,7 +383,7 @@ export default function ClientDashboard() {
                     else if (g.key === 'agreement') openAgreement();
                     else if (g.key === 'deposit') openDeposit();
                     else if (g.key === 'provider' || g.key === 'delivery') nav('/water-tank/work-orders');
-                    else if (g.key === 'reporting') nav('/water-tank/reports');
+                    else if (g.key === 'reporting') nav('/water-tank/service-reports');
                     else if (g.key === 'handover') openHandover();
                     else setTab('Overview');
                   }}>Resolve</button>
@@ -466,6 +467,31 @@ export default function ClientDashboard() {
                 {!d.quotations.length && !d.invoices.length && <tr className="wt-empty-row"><td colSpan={6}>Nothing billed yet.</td></tr>}
               </tbody>
             </table>
+          </div>
+        </>
+      )}
+
+      {/* ═══ TRANSACTIONS ═══
+          This client's statement of account, built by the SAME report engine
+          that produces the register-wide one — filtered to them. A dashboard
+          total that disagreed with the report the client is emailed would be
+          worse than no dashboard at all, and two implementations guarantee it. */}
+      {tab === 'Transactions' && (
+        <>
+          <ReportView
+            kind="client-payments"
+            filters={{ client: c.name }}
+            defaultPreset="1y"
+            title={`${c.name} — payments and refunds`}
+          />
+          <div style={{ marginTop: 26 }}>
+            <div className="wt-sec-title" style={{ marginBottom: 10 }}>Work completed for this client</div>
+            <ReportView
+              kind="service-completion"
+              filters={{ client: c.name }}
+              defaultPreset="1y"
+              compact
+            />
           </div>
         </>
       )}
@@ -578,7 +604,7 @@ export default function ClientDashboard() {
                   <th style={{ width: 112 }}>Submitted</th><th style={{ width: 118 }}>Status</th></tr></thead>
                 <tbody>
                   {d.reports.map((r) => (
-                    <tr key={r.id} className="click" onClick={() => nav(`/water-tank/reports?focus=${encodeURIComponent(r.code)}`)}>
+                    <tr key={r.id} className="click" onClick={() => nav(`/water-tank/service-reports?focus=${encodeURIComponent(r.code)}`)}>
                       <td className="id">{r.code}</td><td><strong>{r.report_type}</strong></td>
                       <td className="muted">{r.provider_name || '—'}</td><td className="muted">{dateFmt(r.submitted_date)}</td>
                       <td><Pill value={r.status} sm /></td>
