@@ -98,6 +98,7 @@ import CareInvoicing, { CustomerLists } from './screens/CareBilling';
 import CareQuotations from './screens/CareQuotations';
 import CareAmc from './screens/CareAmc';
 import ShortStayHub from './screens/ShortStayHub';
+import ShortStayConsole from './screens/shortstay/ShortStayConsole';
 import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
 import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
 import Signing from './screens/Signing';
@@ -138,6 +139,22 @@ function LegacyRedirect({ to }) {
   const { search, hash } = useLocation();
   const target = to.replace(/:([A-Za-z0-9_]+)/g, (m, k) => (params[k] != null ? params[k] : m));
   return <Navigate to={`${target}${search}${hash}`} replace />;
+}
+
+/*
+ * Short Term Stay used `?tab=bookings` when it was one hub screen inside the
+ * admin Layout. It is now a console with a path per screen, so this lifts the
+ * query parameter into the path — `?booking=` is kept, since that deep-links
+ * into check-in/out and is not a tab at all.
+ */
+function ShortStayTabRedirect() {
+  const { search, hash } = useLocation();
+  const params = new URLSearchParams(search);
+  const tab = params.get('tab');
+  params.delete('tab');
+  const rest = params.toString();
+  const target = `/short-stay${tab ? `/${tab}` : ''}${rest ? `?${rest}` : ''}${hash}`;
+  return <Navigate to={target} replace />;
 }
 
 // Send users to the right home: portal roles -> their portal, staff -> dashboard.
@@ -227,15 +244,17 @@ export default function App() {
                 <Route path="/property-management/risks" element={<PropertyRisks />} />
                 <Route path="/property-management/global-invoicing" element={<GlobalInvoicing />} />
               </Route>
-              {/* Short Term Stay (Airbnb style) */}
-              <Route element={<PmScopeLayout />}>
-                <Route path="/short-term-stay" element={<ShortStayHub />} />
-                <Route path="/short-term-stay/properties/new" element={<ShortStayPropertyOnboarding />} />
-                <Route path="/short-term-stay/properties/link" element={<ShortStayPropertyOnboarding />} />
-                <Route path="/short-term-stay/properties/:profileId" element={<ShortStayPropertyFile />} />
-                <Route path="/short-term-stay/properties/:profileId/edit" element={<ShortStayPropertyOnboarding />} />
-                <Route path="/short-term-stay/*" element={<ShortStayHub />} />
-              </Route>
+              {/* Short Term Stay moved to its own console at /short-stay/*.
+                  These keep every bookmark, dashboard tile and emailed link
+                  working: ?tab=bookings is lifted into the path, ?booking= is
+                  preserved because it deep-links into check-in/out. */}
+              <Route path="/short-term-stay" element={<ShortStayTabRedirect />} />
+              <Route path="/short-term-stay/properties/new" element={<LegacyRedirect to="/short-stay/properties/new" />} />
+              <Route path="/short-term-stay/properties/link" element={<LegacyRedirect to="/short-stay/properties/link" />} />
+              <Route path="/short-term-stay/properties/:profileId" element={<LegacyRedirect to="/short-stay/properties/:profileId" />} />
+              <Route path="/short-term-stay/properties/:profileId/edit" element={<LegacyRedirect to="/short-stay/properties/:profileId/edit" />} />
+              <Route path="/short-term-stay/*" element={<ShortStayTabRedirect />} />
+              <Route path="/agreements/short-term-rental" element={<LegacyRedirect to="/short-stay/agreements" />} />
               <Route path="/commercial/buy" element={<DealsBoard category="commercial" dealType="buy" title="Commercial · Buy" desc="Commercial buyer service — deals, buyers, agreements, commission and expenses." />} />
               <Route path="/commercial/sell" element={<PropertySellDashboard category="commercial" title="Commercial · Sell" desc="Commercial seller service — listings, owners, agreements and settlement." />} />
               <Route path="/commercial/enquiry" element={<SalesEnquiries category="commercial" title="Commercial · Buyer Enquiries" desc="Every buyer who enquired on a commercial sale property." />} />
@@ -362,6 +381,21 @@ export default function App() {
               <Route path="/water-tank/catalogue" element={<WaterTankCatalogue />} />
               <Route path="/water-tank/portal-accounts" element={<WTPortalAccounts />} />
               <Route path="/water-tank/settings" element={<WaterTankSettings />} />
+            </Route>
+
+            {/* Short Term Stay — the second separated operations console, sharing
+                the same ServiceConsole shell. Its sixteen screens still render
+                through ShortStayHub, which owns the create/action drawers they
+                all use; the tab now comes from the path rather than ?tab=. */}
+            <Route element={<RequireAuth><AdminGate><ShortStayConsole /></AdminGate></RequireAuth>}>
+              <Route path="/short-stay" element={<ShortStayHub />} />
+              {/* Declared before /:tab so a property route is not read as a tab. */}
+              <Route path="/short-stay/properties/new" element={<ShortStayPropertyOnboarding />} />
+              <Route path="/short-stay/properties/link" element={<ShortStayPropertyOnboarding />} />
+              <Route path="/short-stay/properties/:profileId" element={<ShortStayPropertyFile />} />
+              <Route path="/short-stay/properties/:profileId/edit" element={<ShortStayPropertyOnboarding />} />
+              <Route path="/short-stay/agreements" element={<StsAgreements />} />
+              <Route path="/short-stay/:tab" element={<ShortStayHub />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />

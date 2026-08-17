@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import api from '../services/api';
 import { Button, Drawer, Field, Input, Select, Textarea } from '../ui/kit';
 import { Combo } from '../ui/pickers';
@@ -36,14 +36,25 @@ const VALID = new Set([...SCREENS, ...Object.keys(STUBS)]);
 export default function ShortStayHub() {
   const toast = useToast();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const rawTab = searchParams.get('tab') || 'dashboard';
+  const [searchParams] = useSearchParams();
+  const { tab: routedTab } = useParams();
+  /*
+   * The tab lives in the PATH now (`/short-stay/bookings`), not in a query
+   * string, so a screen can be linked, bookmarked and shown in the sidebar as a
+   * destination rather than as one page with sixteen states.
+   *
+   * `?tab=` is still read as a fallback: old links redirect through this
+   * component, and anything that has not been repointed keeps working rather
+   * than silently landing on the dashboard.
+   */
+  const rawTab = routedTab || searchParams.get('tab') || 'dashboard';
   const activeTab = VALID.has(rawTab) ? rawTab : 'dashboard';
   const focusBooking = searchParams.get('booking') ? Number(searchParams.get('booking')) : null;
 
   const goTab = (id, extra = {}) => {
-    const next = id === 'dashboard' ? {} : { tab: id, ...(extra.booking ? { booking: String(extra.booking) } : {}) };
-    setSearchParams(next, { replace: true });
+    // `?booking=` survives the move — it is the deep link into check-in/out.
+    const qs = extra.booking ? `?booking=${encodeURIComponent(extra.booking)}` : '';
+    navigate(`/short-stay${id === 'dashboard' ? '' : `/${id}`}${qs}`, { replace: true });
   };
 
   const [refreshKey, setRefreshKey] = useState(0);
@@ -254,8 +265,8 @@ export default function ShortStayHub() {
   };
 
   const actions = {
-    addProperty: () => navigate('/short-term-stay/properties/new'),
-    editProperty: (p) => navigate(`/short-term-stay/properties/${p.id}/edit`),
+    addProperty: () => navigate('/short-stay/properties/new'),
+    editProperty: (p) => navigate(`/short-stay/properties/${p.id}/edit`),
     addBooking: () => { setBookingForm(EMPTY_BOOKING); setBookingDrawer(true); },
     activate: (p) => { setActivateReason(''); setActivateDrawer(p); },
     ownerTerms: (p) => { setOwnerForm({ primary_owner_contact_id: '', revenue_share_percent: 15 }); setOwnerDrawer({ property_id: p.property_id, title: p.public_headline || p.property?.title }); },

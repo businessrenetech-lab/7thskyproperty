@@ -419,7 +419,7 @@ export default function ShortStayPropertyFile() {
 
   return (
     <div className="ss-property-file">
-      <button type="button" className="pm-link ss-file-back" onClick={() => navigate('/short-term-stay?tab=properties')}><ArrowLeft size={14} /> All short-stay properties</button>
+      <button type="button" className="pm-link ss-file-back" onClick={() => navigate('/short-stay/properties')}><ArrowLeft size={14} /> All short-stay properties</button>
 
       <header className="ss-file-hero">
         <div className="ss-file-cover" style={cover ? { backgroundImage: `url("${fileSrc(cover)}")` } : undefined}>{!cover && <Building2 size={38} />}</div>
@@ -430,9 +430,9 @@ export default function ShortStayPropertyFile() {
           <div className="ss-file-code">{property.property_code || `Property #${property.id || profile.property_id}`} · Stay profile #{profile.id || profileId}</div>
         </div>
         <div className="ss-file-actions">
-          <Button variant="ghost" icon={Edit3} onClick={() => navigate(`/short-term-stay/properties/${profileId}/edit`)}>Edit</Button>
-          <Button variant="ghost" icon={CalendarDays} onClick={() => navigate('/short-term-stay?tab=bookings')}>Booking hub</Button>
-          <Button variant="ghost" icon={FileCheck2} onClick={() => navigate('/short-term-stay?tab=owner-agreements')}>Owner terms</Button>
+          <Button variant="ghost" icon={Edit3} onClick={() => navigate(`/short-stay/properties/${profileId}/edit`)}>Edit</Button>
+          <Button variant="ghost" icon={CalendarDays} onClick={() => navigate('/short-stay/bookings')}>Booking hub</Button>
+          <Button variant="ghost" icon={FileCheck2} onClick={() => navigate('/short-stay/owner-agreements')}>Owner terms</Button>
           <Button icon={Globe2} onClick={togglePublish} disabled={busy === 'publish'}>{busy === 'publish' ? 'Updating…' : profile.is_website_listed ? 'Unpublish' : 'Publish'}</Button>
         </div>
       </header>
@@ -451,9 +451,9 @@ export default function ShortStayPropertyFile() {
       <main className="ss-file-content" id={`section-${active}`}>{content?.()}</main>
 
       <div className="ss-file-mobile-actions">
-        <Link className="pm-btn" to={`/short-term-stay/properties/${profileId}/edit`}><Edit3 size={14} /> Edit</Link>
-        <button type="button" className="pm-btn" onClick={() => navigate('/short-term-stay?tab=bookings')}><CalendarDays size={14} /> Bookings</button>
-        <button type="button" className="pm-btn" onClick={() => navigate('/short-term-stay?tab=owner-agreements')}><FileCheck2 size={14} /> Terms</button>
+        <Link className="pm-btn" to={`/short-stay/properties/${profileId}/edit`}><Edit3 size={14} /> Edit</Link>
+        <button type="button" className="pm-btn" onClick={() => navigate('/short-stay/bookings')}><CalendarDays size={14} /> Bookings</button>
+        <button type="button" className="pm-btn" onClick={() => navigate('/short-stay/owner-agreements')}><FileCheck2 size={14} /> Terms</button>
         <button type="button" className="pm-btn" onClick={togglePublish} disabled={busy === 'publish'}><Globe2 size={14} /> {profile.is_website_listed ? 'Unpublish' : 'Publish'}</button>
         <button type="button" className="pm-btn" onClick={load}><RefreshCw size={14} /> Refresh</button>
       </div>

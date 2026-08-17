@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
-  LayoutDashboard, Home, Building2, KeyRound, Layers, ChevronDown,
+  LayoutDashboard, Home, Building2, KeyRound, Hotel, Layers, ChevronDown,
   Users, UserCheck, Filter, HardHat, ScrollText, FileText, FileSignature,
   Receipt, Wallet, BarChart3, Settings, ShieldCheck, LogOut, Bell, Menu, Briefcase, Wrench, ClipboardCheck, Trees, BookOpen, Tags,
 } from 'lucide-react';
@@ -11,14 +11,14 @@ import {
 const NAV = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { section: 'CRM' },
-  { key: 'residential', label: 'Residential', icon: Home, children: [
+  { key: 'residential', label: 'Residential', to: '/residential/sell', icon: Home, children: [
+    { to: '/residential/sell', label: 'Sales / Sell Dashboard' },
     { to: '/residential/buy', label: 'Buy' },
-    { to: '/residential/sell', label: 'Sell' },
     { to: '/residential/enquiry', label: 'Buyer Enquiries' },
     { to: '/compliance?category=residential', label: 'Compliance' },
     { to: '/projects?vertical_key=properties', label: 'Checklists / Workflows' },
   ] },
-  { key: 'pm', label: 'Property Management', icon: KeyRound, children: [
+  { key: 'pm', label: 'Property Management', to: '/property-management', icon: KeyRound, children: [
     { to: '/property-management', label: 'Dashboard' },
     { label: 'Rentals', group: true },
     { to: '/property-management/rentals', label: 'Properties' },
@@ -49,33 +49,50 @@ const NAV = [
     { to: '/property-management/reports', label: 'Reports' },
     { to: '/property-management/global-invoicing', label: 'Global Tenant Invoicing' },
   ] },
-  { key: 'commercial', label: 'Commercial', icon: Building2, children: [
+  /*
+   * Short Term Stay is its own operations console now, so it appears here as a
+   * single destination — exactly as Water Tank Services does under Services.
+   * Its sixteen screens live in that console's own sidebar rather than being
+   * repeated in this one.
+   */
+  { to: '/short-stay', label: 'Short Term Stay', icon: Hotel },
+  { key: 'commercial', label: 'Commercial', to: '/commercial/sell', icon: Building2, children: [
+    { to: '/commercial/sell', label: 'Sales / Sell Dashboard' },
     { to: '/commercial/buy', label: 'Buy' },
-    { to: '/commercial/sell', label: 'Sell' },
     { to: '/commercial/enquiry', label: 'Buyer Enquiries' },
     { to: '/compliance?category=commercial', label: 'Compliance' },
     { to: '/projects?vertical_key=commercial_rent,commercial_sale', label: 'Checklists / Workflows' },
   ] },
-  { key: 'rural', label: 'Rural Properties', icon: Trees, children: [
+  { key: 'rural', label: 'Rural Properties', to: '/rural/sell', icon: Trees, children: [
+    { to: '/rural/sell', label: 'Sales / Sell Dashboard' },
     { to: '/rural/buy', label: 'Buy' },
-    { to: '/rural/sell', label: 'Sell' },
     { to: '/rural/enquiry', label: 'Buyer Enquiries' },
     { to: '/compliance?category=rural', label: 'Compliance' },
     { to: '/projects?vertical_key=rural_rent,rural_sale', label: 'Checklists / Workflows' },
   ] },
-  { key: 'care', label: 'Property Care Services', icon: Layers, children: [
+  { key: 'care', label: 'Services', icon: Layers, children: [
+    { group: true, label: 'Service Lines' },
+    { to: '/water-tank', label: 'Water Tank Services' },
+    { to: '/services/lines/air-conditioning', label: 'Air Conditioning' },
+    { to: '/services/lines/interior-design', label: 'Interior Design' },
+    { to: '/services/lines/removal', label: 'Removal Services' },
+    { to: '/services/lines/solar-energy', label: 'Solar & Energy' },
+    { to: '/services/lines/property-care-concierge', label: 'Property Care & Concierge' },
+    { to: '/services/lines/doc-verification', label: 'Doc Verification & Transfer' },
+    { group: true, label: 'Shared operations' },
     { to: '/property-care', label: 'Dashboard' },
     { to: '/property-care/enquiries', label: 'Enquiries' },
     { to: '/property-care/leads', label: 'Leads' },
     { to: '/property-care/quotations', label: 'Quotations' },
     { to: '/property-care/customers', label: 'Customer Lists' },
-    { to: '/services', label: 'Services' },
+    { to: '/services', label: 'Service Catalog' },
     { to: '/providers', label: 'Service Providers' },
     { to: '/property-care/work-orders', label: 'Work Orders & Service Tracking' },
     { to: '/property-care/amc', label: 'AMC Contracts' },
     { to: '/property-care/invoicing', label: 'Invoicing' },
-    { to: '/property-care/payments', label: 'Payments & Disbursements' },
-    { to: '/property-care/registers', label: 'Warranty & Issues' },
+    // Payments & Disbursements and Warranty & Issues now live in the Water Tank
+    // console (/water-tank/payments, /water-tank/registers); the old
+    // /property-care/* URLs redirect there.
   ] },
   { to: '/consultations', label: 'Consultations', icon: ClipboardCheck },
   { section: 'Operations' },
@@ -89,6 +106,11 @@ const NAV = [
   { to: '/leads', label: 'Leads', icon: Filter },
   { section: 'Documents & Signing' },
   { to: '/agreements', label: 'Agreements', icon: ScrollText },
+  { to: '/agreements/property-management', label: 'PM Agreements', icon: FileSignature },
+  { to: '/agreements/tenancy-management', label: 'TM Agreements', icon: FileSignature },
+  { to: '/agreements/short-term-rental', label: 'STS Agreements', icon: FileSignature },
+  { to: '/agreements/water-tank-customer', label: 'WT Customer Agreements', icon: FileSignature },
+  { to: '/agreements/water-tank-provider', label: 'WT Provider Agreements', icon: FileSignature },
   { to: '/agreement-templates', label: 'Agreement Templates', icon: FileSignature },
   { to: '/documents', label: 'Documents', icon: FileText },
   { to: '/signing', label: 'eSign Envelopes', icon: FileSignature },
@@ -109,14 +131,15 @@ const TITLES = {
   '/dashboard': 'Dashboard', '/residential/buy': 'Residential · Buy', '/residential/sell': 'Residential · Sell',
   '/property-management': 'Property Management', '/property-management/rentals': 'Rentals', '/property-management/global-invoicing': 'Global Tenant Invoicing',
   '/property-management/applications': 'Tenant Applications', '/property-management/enquiries': 'Rental Enquiries', '/property-management/assessments': 'Rental Assessments', '/property-management/statements': 'Owner Statements', '/property-management/renewals': 'Renewals', '/property-management/vacancies': 'Vacancy Notices', '/property-management/settlements': 'Deposit Settlements', '/property-management/disbursements': 'Disbursements & Payouts', '/property-management/utilities': 'Utilities & Bills', '/property-management/tenant-requests': 'Tenant Requests', '/property-management/arrears': 'Arrears Actions', '/property-management/marketing': 'Rental Marketing', '/property-management/expense-approvals': 'Expense Approvals', '/property-management/risks': 'Risk Register', '/property-management/reports': 'Rental Reports',
-  '/commercial/buy': 'Commercial · Buy', '/commercial/sell': 'Commercial · Sell', '/services': 'Property Care Services', '/services/lines': 'Service Lines',
+  '/short-term-stay': 'Short Term Stay',
+  '/commercial/buy': 'Commercial · Buy', '/commercial/sell': 'Commercial · Sell', '/services': 'Service Catalog', '/services/lines': 'Service Lines',
+  '/services/lines/water-tank': 'Water Tank Services', '/services/lines/air-conditioning': 'Air Conditioning', '/services/lines/interior-design': 'Interior Design', '/services/lines/removal': 'Removal Services', '/services/lines/solar-energy': 'Solar & Energy', '/services/lines/property-care-concierge': 'Property Care & Concierge', '/services/lines/doc-verification': 'Doc Verification & Transfer',
   '/projects': 'Projects',
   '/work-orders': 'Work Orders', '/inspections': 'Inspections',
   '/contacts': 'Contacts', '/role-onboarding': 'Role Onboarding', '/clients': 'Clients', '/leads': 'Leads', '/providers': 'Service Providers',
-  '/property-care': 'Property Care · Dashboard', '/property-care/work-orders': 'Work Orders & Service Tracking', '/property-care/invoicing': 'Service Invoicing', '/property-care/payments': 'Payments & Disbursements', '/property-care/enquiries': 'Service Enquiries', '/property-care/leads': 'Service Leads', '/property-care/customers': 'Customer Lists', '/property-care/quotations': 'Quotations', '/property-care/amc': 'AMC Contracts', '/property-care/registers': 'Warranty & Issues',
-  '/consultations': 'Consultations', '/compliance': 'Compliance',
+  '/property-care': 'Property Care · Dashboard', '/property-care/work-orders': 'Work Orders & Service Tracking', '/property-care/invoicing': 'Service Invoicing', '/property-care/enquiries': 'Service Enquiries', '/property-care/leads': 'Service Leads', '/property-care/customers': 'Customer Lists', '/property-care/quotations': 'Quotations', '/property-care/amc': 'AMC Contracts',   '/consultations': 'Consultations', '/compliance': 'Compliance',
   '/rural/buy': 'Rural · Buy', '/rural/sell': 'Rural · Sell',
-  '/agreements': 'Agreements', '/agreement-templates': 'Agreement Templates', '/documents': 'Documents', '/signing': 'eSign Envelopes',
+  '/agreements': 'Agreements', '/agreements/property-management': 'PM Agreements', '/agreements/tenancy-management': 'TM Agreements', '/agreements/short-term-rental': 'STS Agreements', '/agreements/water-tank-customer': 'WT Customer Agreements', '/agreements/water-tank-provider': 'WT Provider Agreements', '/agreement-templates': 'Agreement Templates', '/documents': 'Documents', '/signing': 'eSign Envelopes',
   '/invoices': 'Tenant Invoices', '/landlord-bills': 'Landlord Bills', '/rental-receipts': 'Rental Receipts', '/folios': 'Folios', '/account-categories': 'Account Categories', '/payments': 'Payments', '/reports': 'Reports', '/users': 'Users & Roles', '/settings': 'Settings',
 };
 
@@ -147,13 +170,20 @@ export default function Layout() {
               const isOpen = !!expanded[n.key];
               return (
                 <div key={n.key}>
-                  <div className={`nav-item ${isOpen ? '' : ''}`} onClick={() => toggle(n.key)}>
+                  <div
+                    className={`nav-item ${loc.pathname.startsWith('/' + n.key) || (n.to && loc.pathname === n.to) ? 'active' : ''}`}
+                    onClick={() => {
+                      if (!expanded[n.key]) toggle(n.key);
+                      if (n.to) nav(n.to);
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <n.icon size={18} /> {n.label}
                     <ChevronDown size={15} style={{ marginLeft: 'auto', transition: 'transform .2s', transform: isOpen ? 'rotate(180deg)' : 'none' }} />
                   </div>
                   {isOpen && (
                     <div style={{ marginLeft: 14, paddingLeft: 10, borderLeft: '1px solid var(--border)' }}>
-                      {n.children.map((c, ci) => c.group ? (
+                      {n.children.filter((c) => !c.roles || c.roles.includes(user?.role)).map((c, ci) => c.group ? (
                         <div key={`${n.key}-group-${ci}`} style={{
                           margin: ci === 0 ? '4px 0 6px' : '14px 0 6px',
                           padding: '6px 10px',

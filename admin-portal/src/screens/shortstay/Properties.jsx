@@ -47,8 +47,8 @@ export default function Properties({ actions = {}, refreshKey }) {
         title="Short stay properties"
         desc={`${rows.length} unit${rows.length === 1 ? '' : 's'} · readiness, owner agreements and listing status at a glance.`}
         actions={canManage ? <>
-          <button type="button" className="pm-btn" onClick={() => navigate('/short-term-stay/properties/link')}><Link2 size={15} /> Load existing</button>
-          <button type="button" className="pm-btn primary" onClick={() => navigate('/short-term-stay/properties/new')}><Plus size={15} /> Create new</button>
+          <button type="button" className="pm-btn" onClick={() => navigate('/short-stay/properties/link')}><Link2 size={15} /> Load existing</button>
+          <button type="button" className="pm-btn primary" onClick={() => navigate('/short-stay/properties/new')}><Plus size={15} /> Create new</button>
         </> : null}
       />
 
@@ -82,11 +82,11 @@ export default function Properties({ actions = {}, refreshKey }) {
               </tr></thead>
               <tbody>
                 {filtered.map((p) => (
-                  <tr key={p.id} className={canManage ? 'ss-clickable-row' : undefined} role={canManage ? 'link' : undefined} tabIndex={canManage ? 0 : undefined} aria-label={canManage ? `Open ${p.public_headline || p.property?.title || 'short-stay property'}` : undefined} onClick={canManage ? () => navigate(`/short-term-stay/properties/${p.id}`) : undefined} onKeyDown={canManage ? (event) => { if (event.target === event.currentTarget && event.key === 'Enter') navigate(`/short-term-stay/properties/${p.id}`); } : undefined}>
+                  <tr key={p.id} className={canManage ? 'ss-clickable-row' : undefined} role={canManage ? 'link' : undefined} tabIndex={canManage ? 0 : undefined} aria-label={canManage ? `Open ${p.public_headline || p.property?.title || 'short-stay property'}` : undefined} onClick={canManage ? () => navigate(`/short-stay/properties/${p.id}`) : undefined} onKeyDown={canManage ? (event) => { if (event.target === event.currentTarget && event.key === 'Enter') navigate(`/short-stay/properties/${p.id}`); } : undefined}>
                     <td>
                       <div className="pm-who">
                         <div className="pm-avatar">{initials(p.public_headline || p.property?.title || 'ST')}</div>
-                        <div>{canManage ? <button type="button" className="ss-property-open" onClick={() => navigate(`/short-term-stay/properties/${p.id}`)}>{p.public_headline || p.property?.title || 'Serviced stay'}</button> : <strong>{p.public_headline || p.property?.title || 'Serviced stay'}</strong>}<div className="ph">{p.property?.district || `#${p.property_id}`}</div></div>
+                        <div>{canManage ? <button type="button" className="ss-property-open" onClick={() => navigate(`/short-stay/properties/${p.id}`)}>{p.public_headline || p.property?.title || 'Serviced stay'}</button> : <strong>{p.public_headline || p.property?.title || 'Serviced stay'}</strong>}<div className="ph">{p.property?.district || `#${p.property_id}`}</div></div>
                       </div>
                     </td>
                     <td style={{ fontSize: 12.5 }}>{p.owner_name || '—'}</td>
@@ -99,8 +99,8 @@ export default function Properties({ actions = {}, refreshKey }) {
                     <td style={{ fontSize: 12.5 }}>{p.next_booking ? <><div style={{ fontWeight: 600 }}>{fmtDate(p.next_booking.check_in_date)}</div><div className="ph" style={{ fontSize: 11, color: 'var(--muted)' }}>{p.next_booking.guest_name || p.next_booking.booking_code}</div></> : <span style={{ color: 'var(--muted)' }}>—</span>}</td>
                     <td style={{ textAlign: 'right' }}>
                       {canManage && <div style={{ display: 'inline-flex', gap: 6 }}>
-                        <button type="button" className="pm-btn" style={btn} onClick={(event) => { event.stopPropagation(); navigate(`/short-term-stay/properties/${p.id}`); }}><FolderOpen size={13} /> Open</button>
-                        <button type="button" className="pm-btn" style={btn} onClick={(event) => { event.stopPropagation(); navigate(`/short-term-stay/properties/${p.id}/edit`); }}><Pencil size={13} /> Edit</button>
+                        <button type="button" className="pm-btn" style={btn} onClick={(event) => { event.stopPropagation(); navigate(`/short-stay/properties/${p.id}`); }}><FolderOpen size={13} /> Open</button>
+                        <button type="button" className="pm-btn" style={btn} onClick={(event) => { event.stopPropagation(); navigate(`/short-stay/properties/${p.id}/edit`); }}><Pencil size={13} /> Edit</button>
                         {p.status !== 'active' && <button type="button" className="pm-btn" style={btn} onClick={(event) => { event.stopPropagation(); actions.activate?.(p); }}><ShieldCheck size={13} /> Activate</button>}
                         <button type="button" className="pm-btn" style={btn} onClick={(event) => { event.stopPropagation(); actions.ownerTerms?.(p); }}><FileSignature size={13} /> Owner terms</button>
                         <button type="button" className={`pm-btn ${p.is_website_listed ? 'primary' : ''}`} style={btn} onClick={(event) => { event.stopPropagation(); actions.toggleWebsite?.(p); }}><Globe size={13} /> {p.is_website_listed ? 'Listed' : 'List'}</button>
@@ -120,7 +120,7 @@ export default function Properties({ actions = {}, refreshKey }) {
               <div className="pm-card-body" style={{ padding: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
                   <div>
-                    {canManage ? <button type="button" className="ss-property-open card-title" onClick={() => navigate(`/short-term-stay/properties/${p.id}`)}>{p.public_headline || p.property?.title || 'Serviced stay'}</button> : <strong>{p.public_headline || p.property?.title || 'Serviced stay'}</strong>}
+                    {canManage ? <button type="button" className="ss-property-open card-title" onClick={() => navigate(`/short-stay/properties/${p.id}`)}>{p.public_headline || p.property?.title || 'Serviced stay'}</button> : <strong>{p.public_headline || p.property?.title || 'Serviced stay'}</strong>}
                     <div style={{ fontSize: 12, color: 'var(--muted)' }}>{p.property?.district || `#${p.property_id}`} · {capacity(p)}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}><div style={{ fontWeight: 780, fontSize: 16, color: 'var(--navy)' }}>{bdt(p.base_nightly_rate)}</div><div style={{ fontSize: 11, color: 'var(--muted)' }}>/ night</div></div>
@@ -132,8 +132,8 @@ export default function Properties({ actions = {}, refreshKey }) {
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>Owner: {p.owner_name || '—'}{p.revenue_share_percent != null ? ` · ${p.revenue_share_percent}% share` : ''}</div>
                 {canManage && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <button type="button" className="pm-btn" style={btn} onClick={() => navigate(`/short-term-stay/properties/${p.id}`)}><FolderOpen size={13} /> Open</button>
-                  <button type="button" className="pm-btn" style={btn} onClick={() => navigate(`/short-term-stay/properties/${p.id}/edit`)}><Pencil size={13} /> Edit</button>
+                  <button type="button" className="pm-btn" style={btn} onClick={() => navigate(`/short-stay/properties/${p.id}`)}><FolderOpen size={13} /> Open</button>
+                  <button type="button" className="pm-btn" style={btn} onClick={() => navigate(`/short-stay/properties/${p.id}/edit`)}><Pencil size={13} /> Edit</button>
                   {p.status !== 'active' && <button type="button" className="pm-btn" style={btn} onClick={() => actions.activate?.(p)}><ShieldCheck size={13} /> Activate</button>}
                   <button type="button" className="pm-btn" style={btn} onClick={() => actions.ownerTerms?.(p)}><FileSignature size={13} /> Owner terms</button>
                   <button type="button" className={`pm-btn ${p.is_website_listed ? 'primary' : ''}`} style={btn} onClick={() => actions.toggleWebsite?.(p)} aria-label={p.is_website_listed ? 'Unpublish property' : 'Publish property'}><Globe size={13} /></button>

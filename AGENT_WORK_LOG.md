@@ -2812,3 +2812,74 @@ re-served, since a token-authenticated path echo is a file-read primitive.
   portal — only invoices. Wiring the document store needs its own access rules.
 - No push/email digest of portal alerts; a provider still has to open the portal
   to see a lapsing certificate.
+
+---
+
+## COMPLETED — Short Term Stay opens as its own console; shared shell extracted
+**Agent:** Claude (console pattern) · **Date:** 2026-08-13
+**Files:** new `admin-portal/src/ui/ServiceConsole.jsx`,
+new `admin-portal/src/config/consoles.js`,
+new `admin-portal/src/screens/shortstay/ShortStayConsole.jsx`,
+`admin-portal/src/screens/watertank/WaterTankConsole.jsx` (now a thin wrapper),
+`admin-portal/src/screens/ShortStayHub.jsx`, `admin-portal/src/App.jsx`,
+`admin-portal/src/ui/Layout.jsx`, plus link repointing in
+`screens/shortstay/{Properties,ShortStayPropertyFile,ShortStayPropertyOnboarding}.jsx`
+
+### Step 0 first: Short Term Stay was committed
+Every STS file was untracked — ten models, six migrations, four route files,
+three controllers, two services, sixteen screens, the public website pages. One
+bad checkout from gone. Committed unchanged as a rollback point before anything
+was restructured (commit "chore(short-stay): commit the Short Term Stay module").
+
+### What changed
+Water Tank opened as a separated console; Short Term Stay was one hub screen
+inside the global admin Layout, navigated by `?tab=bookings`, with fifteen
+children crowding the shared sidebar. Its screens were already real — only the
+shell was missing.
+
+- **`ui/ServiceConsole.jsx`** — the Water Tank shell with its five hard-coded
+  seams (nav, brand, endpoints, storage key, CSS import) turned into a config.
+  Both consoles now render through it; neither carries sidebar markup any more.
+- **`config/consoles.js`** — one entry per vertical. Property Management adds
+  itself here plus a route block, and gets the whole shell.
+- **Theming without touching CSS.** The accent is an inline custom property on
+  the console root, so Short Term Stay is amber over the same navy and no second
+  stylesheet exists. `var(--wt-accent)` is used 450 times; it all follows.
+- **Screens untouched.** All sixteen are written in `pm-design.css` (284 `pm-*`
+  references, zero `wt-*`), so the shell hosts them via `contentClass: 'pm-scope'`
+  rather than restyling sixteen files.
+
+### Three defects fixed on the way
+- **The console footer was hard-coded** to "Dhaka Ops Center /
+  admin@seventhsky.com" and never read `useAuth()` — every operator saw somebody
+  else's name in the corner of a console they were signed into.
+- **`owner-disbursement` had no sidebar entry at all.** A working 153-line bulk
+  payout screen reachable only from a button on Payments. It now has one, and a
+  test asserts every hub tab is reachable from the nav so it cannot recur.
+- **STS Agreements** sat in the global Documents section, away from its module.
+  Now in the console's Agreements group (the old link still redirects).
+
+### Verified
+56 new assertions (`test-consoles.js`); full suite **888 across 20 suites, 0
+failures**. The reachability assertion was proved by sabotage: removing the
+owner-disbursement nav entry fails three assertions and names the screen.
+
+Three older suites asserted sidebar behaviour by reading `WaterTankConsole.jsx`
+and failed after the extraction. Each was checked against the new files before
+being repointed — 8 groups, collapse memory, `inHere`, `groupTotal`, filtered
+palette all still present. Stale locations, not regressions.
+
+### NOT done
+- **Browser QA.** The Chrome extension has been disconnected for five sessions.
+  Build- and assertion-verified only; not opened on screen.
+- **No badges or ⌘K search for Short Term Stay** — both need `work-queue` and
+  `search` endpoints it does not have. The shell supports them the day they
+  exist; until then its nav gates on `roles:` as it already did.
+- The two known STS business-logic bugs are untouched and still open:
+  `shortTermStay.service.js` ignores `fixed_monthly_fee` in owner statements,
+  and Housekeeping has no "Awaiting QC" state.
+- Property Management, Residential Sales, Commercial and Rural are unchanged.
+  Sequencing note: the shell buys ~400 lines of reuse per vertical, but Water
+  Tank has ~60 screens behind its sidebar while Commercial and Rural have zero
+  dedicated screens between them. Short Term Stay was the right second console
+  precisely because its screens already existed.

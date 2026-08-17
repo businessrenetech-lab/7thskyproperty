@@ -164,7 +164,7 @@ export default function ShortStayPropertyOnboarding() {
   const chooseMode = (nextMode) => {
     if (editing) return;
     setMode(nextMode);
-    navigate(nextMode === 'existing' ? '/short-term-stay/properties/link' : '/short-term-stay/properties/new', { replace: true });
+    navigate(nextMode === 'existing' ? '/short-stay/properties/link' : '/short-stay/properties/new', { replace: true });
   };
 
   const buildPropertyPayload = () => Object.fromEntries(Object.entries(property).map(([key, value]) => {
@@ -195,7 +195,7 @@ export default function ShortStayPropertyOnboarding() {
       const savedId = savedProfile.id || record.profile_id || profileId;
       if (!savedId) throw new Error('The API did not return the short-stay profile id.');
       toast.success(editing ? 'Short-stay property updated.' : 'Short-stay property created.');
-      navigate(`/short-term-stay/properties/${savedId}`);
+      navigate(`/short-stay/properties/${savedId}`);
     } catch (error) {
       toast.error(error.response?.data?.error || error.message || 'Could not save the property.');
     } finally {
@@ -209,7 +209,7 @@ export default function ShortStayPropertyOnboarding() {
     <div className="ss-onboard">
       <div className="pm-head">
         <div>
-          <button type="button" className="pm-link" onClick={() => navigate(editing ? `/short-term-stay/properties/${profileId}` : '/short-term-stay?tab=properties')}><ArrowLeft size={14} /> Back to properties</button>
+          <button type="button" className="pm-link" onClick={() => navigate(editing ? `/short-stay/properties/${profileId}` : '/short-stay/properties')}><ArrowLeft size={14} /> Back to properties</button>
           <div className="pm-eyebrow" style={{ marginTop: 10 }}>Short Term Stay</div>
           <h1>{editing ? 'Edit property listing' : 'Onboard a stay property'}</h1>
           <div className="pm-meta">Canonical property details and guest-facing stay settings in one record.</div>
