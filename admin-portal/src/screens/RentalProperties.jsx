@@ -611,7 +611,16 @@ export default function RentalProperties() {
                             </div>
                           </div>
                           <div className="card-pad" style={{ padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px' }}>
-                            <KV k="Tenant Name" v={t.tenant?.full_name || '—'} />
+                            <KV k="Tenant Name" v={
+                              t.tenant ? (
+                                <span
+                                  onClick={() => navigate(`/clients?contact=${t.tenant.id}`)}
+                                  style={{ color: 'var(--cyan)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline dotted' }}
+                                >
+                                  {t.tenant.full_name} ↗
+                                </span>
+                              ) : '—'
+                            } />
                             <KV k="Contact Phone" v={t.tenant?.primary_phone || '—'} />
                             <KV k="Lease Start" v={t.lease_start || '—'} />
                             <KV k="Lease End" v={t.lease_end || '—'} />

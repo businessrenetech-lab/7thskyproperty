@@ -1,5 +1,6 @@
 import "./globals.css";
 import { Plus_Jakarta_Sans, Outfit } from "next/font/google";
+import Link from "next/link";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -90,15 +91,21 @@ export default function RootLayout({ children }) {
         {/* Simple Header */}
         <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <Link href="/" className="flex min-w-0 items-center gap-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
               <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center font-extrabold text-white">
                 S7
               </div>
-              <span className="text-lg font-bold tracking-tight text-white">Seventh Sky Properties</span>
-            </div>
-            <a href="tel:+8801913373581" className="text-xs sm:text-sm font-semibold text-blue-400 hover:text-blue-300">
-              Call: +880 1913-373581
-            </a>
+              <span className="hidden text-lg font-bold tracking-tight text-white sm:inline">Seventh Sky Properties</span>
+              <span className="text-base font-bold tracking-tight text-white sm:hidden">Seventh Sky</span>
+            </Link>
+            <nav className="flex items-center gap-3 sm:gap-5" aria-label="Primary navigation">
+              <Link href="/short-stays" className="text-xs font-semibold text-slate-300 transition hover:text-white sm:text-sm">
+                Short Stays
+              </Link>
+              <a href="tel:+8801913373581" className="hidden text-xs font-semibold text-blue-400 transition hover:text-blue-300 md:inline sm:text-sm">
+                Call: +880 1913-373581
+              </a>
+            </nav>
           </div>
         </header>
 

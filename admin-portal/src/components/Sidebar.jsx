@@ -4,7 +4,7 @@ import {
   FileText, BarChart3, Calendar, Layers, GraduationCap, CreditCard, Package, Zap,
   ChevronRight, ChevronDown, Sun, Moon, Wallet, PieChart, TrendingUp, BookOpenCheck,
   Receipt, Shield, Scale, Globe, Lock, Clock, Briefcase, Award, Network, UserCheck, X,
-  Fingerprint
+  Fingerprint, Hotel
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,7 @@ const ALL_SECTIONS = [
       { name: 'Cockpit',          icon: <LayoutDashboard size={18} />, id: 'dashboard' },
       { name: 'Intelligence Hub', icon: <BarChart3 size={18} />,       id: 'reports' },
       { name: 'CRM Pipeline',     icon: <Layers size={18} />,          id: 'crm' },
+      { name: 'Short Term Stay',  icon: <Hotel size={18} />,           id: 'short-term-stay' },
       { name: 'Students',         icon: <GraduationCap size={18} />,   id: 'students' },
       { name: 'LMS Batches',      icon: <BookOpen size={18} />,        id: 'lms' },
     ]

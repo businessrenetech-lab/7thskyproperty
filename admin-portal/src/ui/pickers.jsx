@@ -47,20 +47,20 @@ export function Combo({ endpoint, labelFn, value, onChange, placeholder = 'Selec
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      <div className="input" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="input" aria-haspopup="listbox" aria-expanded={open} style={{ width: '100%', display: 'flex', alignItems: 'center', cursor: 'pointer', textAlign: 'left' }} onClick={() => setOpen((o) => !o)}>
         <span style={{ flex: 1, color: picked ? 'var(--text)' : 'var(--muted-2)' }}>{picked ? labelFn(picked) : placeholder}</span>
         <ChevronDown size={15} color="var(--muted)" />
-      </div>
+      </button>
       {open && (
-        <div className="card" style={{ position: 'absolute', zIndex: 60, top: '105%', left: 0, right: 0, boxShadow: 'var(--shadow-lg)', maxHeight: 280, overflow: 'auto' }}>
+        <div className="card" role="listbox" style={{ position: 'absolute', zIndex: 60, top: '105%', left: 0, right: 0, boxShadow: 'var(--shadow-lg)', maxHeight: 280, overflow: 'auto' }}>
           <div style={{ padding: 8, borderBottom: '1px solid var(--border)' }}>
             <input className="input" autoFocus placeholder="Type to search…" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           {loading ? <div style={{ padding: 14 }}><span className="spinner" /></div>
             : rows.length ? rows.map((r) => (
-              <div key={r.id} className="nav-item" style={{ margin: 4 }} onClick={() => { setPicked(r); onChange?.(r.id, r); setOpen(false); }}>
+              <button type="button" role="option" aria-selected={value === r.id} key={r.id} className="nav-item" style={{ width: 'calc(100% - 8px)', margin: 4, border: 0, textAlign: 'left' }} onClick={() => { setPicked(r); onChange?.(r.id, r); setOpen(false); }}>
                 {value === r.id && <Check size={14} color="var(--primary)" />} {labelFn(r)}
-              </div>
+              </button>
             )) : <div style={{ padding: 14, color: 'var(--muted)', fontSize: 13 }}>No matches.</div>}
         </div>
       )}

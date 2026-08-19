@@ -32,6 +32,18 @@ const REQUIREMENTS = {
     D('poa_document', 'POA / local representative document', { required: false }),
     D('joint_owner_consent', 'Joint owner consent', { required: false }),
   ],
+  sts_owner: [
+    D('nid_passport', 'NID / Passport', { front_back: true, reference: true }),
+    D('ownership_document', 'Ownership document', { expiry: false }),
+    D('property_proof', 'Utility bill / property proof'),
+    D('bank_details', 'Bank / payment details', { reference: true }),
+    D('joint_owner_consent', 'Joint owner consent', { required: false }),
+  ],
+  guest: [
+    D('nid_passport', 'NID / Passport', { front_back: true, reference: true }),
+    D('photo', 'Guest Photo / ID verification', { required: false }),
+    D('emergency_contact', 'Emergency contact details', { required: false }),
+  ],
   buyer: [
     D('nid_passport', 'NID / Passport', { front_back: true, reference: true }),
     D('proof_of_funds', 'Proof of funds'),

@@ -50,6 +50,40 @@ async function onKycChange(doc) {
       await p.update(patch);
     }
   }
+
+  if (doc.related_type === 'short_stay_owner') {
+    const EnvelopeSigner = require('../models/EnvelopeSigner');
+    const SigningEnvelope = require('../models/SigningEnvelope');
+    const ShortStayOwnerManagement = require('../models/ShortStayOwnerManagement');
+    const ShortStayPropertyProfile = require('../models/ShortStayPropertyProfile');
+    const signers = await EnvelopeSigner.findAll({ where: { contact_id: doc.related_id, role: 'landlord' } });
+    for (const signer of signers) {
+      const envelope = await SigningEnvelope.findOne({
+        where: { id: signer.envelope_id, related_type: 'short_stay_management', branch_id: doc.branch_id, status: 'completed' },
+      });
+      if (envelope) {
+        if (result.all_verified) {
+          try { await require('./partyRoleActivation.service').activateShortStayManagementAfterKyc(envelope.id); } catch (e) { /* non-fatal */ }
+        } else {
+          const management = await ShortStayOwnerManagement.findOne({ where: { property_id: envelope.related_id, branch_id: envelope.branch_id } });
+          if (management?.status === 'active') await management.update({ status: 'pending_signature' });
+          const profile = await ShortStayPropertyProfile.findOne({ where: { property_id: envelope.related_id, branch_id: envelope.branch_id } });
+          if (profile && ['ready', 'active'].includes(profile.status)) await profile.update({ status: 'readiness_pending', is_website_listed: false });
+        }
+      }
+    }
+  }
+
+  if (doc.related_type === 'short_stay_booking') {
+    const ShortStayBooking = require('../models/ShortStayBooking');
+    const SigningEnvelope = require('../models/SigningEnvelope');
+    const booking = await ShortStayBooking.findOne({ where: { id: doc.related_id, branch_id: doc.branch_id } });
+    if (booking?.agreement_envelope_id) {
+      const envelope = await SigningEnvelope.findOne({ where: { id: booking.agreement_envelope_id, branch_id: booking.branch_id, status: 'completed' } });
+      if (envelope && result.all_verified && booking.status === 'pending_verification') await booking.update({ status: 'pending_payment' });
+      if (envelope && !result.all_verified && ['pending_payment', 'confirmed', 'ready_checkin'].includes(booking.status)) await booking.update({ status: 'pending_verification' });
+    }
+  }
   return result;
 }
 

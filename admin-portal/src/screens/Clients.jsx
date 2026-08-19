@@ -1,16 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Activity, ArrowLeft, Building2, Calendar, CheckCircle2, ChevronRight, Crown,
-  DollarSign, ExternalLink, FileCheck2, FileText, Globe2, Mail, MessageSquare,
-  Pencil, Phone, Plus, Receipt, ShieldCheck, Sparkles, Trash2, UserCheck,
-  UserPlus, Users, WalletCards, Wrench
+  DollarSign, ExternalLink, FileCheck2, FileText, Globe2, Mail, MapPin, MessageSquare,
+  Pencil, Phone, Plus, Receipt, ShieldCheck, Sparkles, Trash2, User, UserCheck,
+  UserPlus, Users, WalletCards, Wrench, CreditCard, Send, Lock, Shield
 } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import {
   Badge, Button, DataTable, Drawer, EmptyState, Field, Input, PageHead,
-  SearchInput, Select, Spinner, StatCard, StatusBadge, Textarea
+  SearchInput, Select, Spinner, StatusBadge, Textarea
 } from '../ui/kit';
 import FileUpload, { fileSrc } from '../ui/FileUpload';
 
@@ -43,8 +43,76 @@ const getInitials = (name) => {
   return name.slice(0, 2).toUpperCase();
 };
 
+// Executive High-Density KPI Card
+const CompactKpi = ({ icon: Icon, label, value, tone = 'blue', sub }) => {
+  const tones = {
+    blue: { bg: 'linear-gradient(135deg, #f0f7ff 0%, #e0f2fe 100%)', border: '#bae6fd', iconBg: '#0284c7', text: '#0369a1' },
+    green: { bg: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', border: '#bbf7d0', iconBg: '#16a34a', text: '#15803d' },
+    amber: { bg: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', border: '#fde68a', iconBg: '#d97706', text: '#b45309' },
+    sky: { bg: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', border: '#e2e8f0', iconBg: '#475569', text: '#334155' },
+  }[tone] || tones.blue;
+
+  return (
+    <div style={{
+      background: tones.bg,
+      border: `1px solid ${tones.border}`,
+      borderRadius: 12,
+      padding: '10px 14px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      boxShadow: '0 1px 3px rgba(13,27,47,0.04)',
+    }}>
+      <div style={{
+        width: 36,
+        height: 36,
+        borderRadius: 9,
+        background: tones.iconBg,
+        color: '#ffffff',
+        display: 'grid',
+        placeItems: 'center',
+        flexShrink: 0,
+        boxShadow: '0 2px 6px rgba(0,0,0,0.12)'
+      }}>
+        <Icon size={18} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--muted)' }}>
+          {label}
+        </div>
+        <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)', lineHeight: 1.2, marginTop: 1, fontVariantNumeric: 'tabular-nums' }}>
+          {value}
+        </div>
+        {sub && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>}
+      </div>
+    </div>
+  );
+};
+
+// Compact Key-Value Row with Lucide Icon
+const InfoRow = ({ icon: Icon, label, value, isCode }) => (
+  <div style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '8px 12px',
+    borderRadius: 8,
+    background: 'var(--surface-2)',
+    border: '1px solid var(--line-soft)',
+    fontSize: 12.5
+  }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: 'var(--muted)', fontWeight: 600 }}>
+      {Icon && <Icon size={14} style={{ color: 'var(--cyan)' }} />}
+      {label}
+    </span>
+    <span style={{ fontWeight: 700, color: 'var(--ink)', textAlign: 'right' }}>
+      {isCode ? <span className="code-chip" style={{ fontSize: 11, padding: '2px 7px' }}>{value}</span> : (value || '—')}
+    </span>
+  </div>
+);
+
 const roleBadges = (client) => (
-  <div className="wrap-gap" style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+  <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>
     {ROLE_FIELDS.filter(([key]) => client[key]).map(([key, label]) => (
       <Badge
         key={key}
@@ -63,6 +131,8 @@ const roleBadges = (client) => (
 
 export default function Clients() {
   const toast = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -110,9 +180,9 @@ export default function Clients() {
     load();
   }, [load]);
 
-  // Deep link: /clients?client=<id> or /clients?contact=<contact_id> opens that client's workspace directly
+  // Deep link handling: /clients?client=<id> or /clients?contact=<contact_id>
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     const clientId = params.get('client') || params.get('id');
     const contactId = params.get('contact');
     if (clientId) {
@@ -126,7 +196,7 @@ export default function Clients() {
         }
       }).catch(() => {});
     }
-  }, [loadDetail, toast]);
+  }, [location.search, loadDetail, toast]);
 
   const stats = useMemo(() => ({
     active: rows.filter((row) => row.status === 'active').length,
@@ -143,6 +213,7 @@ export default function Clients() {
         onBack={() => {
           setSelectedId(null);
           setDetail(null);
+          navigate('/clients', { replace: true });
           load();
         }}
         reload={() => loadDetail(selectedId)}
@@ -155,18 +226,21 @@ export default function Clients() {
       key: 'client_info',
       header: 'Client Profile',
       render: (row) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div className="pm-avatar" style={{ fontSize: 13, fontWeight: 700 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="pm-avatar" style={{
+            width: 32, height: 32, borderRadius: 8, fontSize: 11, fontWeight: 800,
+            background: 'linear-gradient(135deg, #0ea5e9, #0284c7)'
+          }}>
             {getInitials(row.Contact?.full_name)}
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span className="code-chip">{row.client_code}</span>
+              <span className="code-chip" style={{ fontSize: 11, padding: '1px 6px' }}>{row.client_code}</span>
               {row.Contact?.company_name && (
                 <span className="cell-sub" style={{ fontSize: 11 }}>({row.Contact.company_name})</span>
               )}
             </div>
-            <div className="cell-strong" style={{ marginTop: 3, fontSize: 14 }}>
+            <div className="cell-strong" style={{ marginTop: 2, fontSize: 13.5 }}>
               {row.Contact?.full_name || '—'}
             </div>
           </div>
@@ -177,14 +251,14 @@ export default function Clients() {
       key: 'contact',
       header: 'Contact Details',
       render: (row) => (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Phone size={13} style={{ color: 'var(--muted)' }} />
+        <div style={{ fontSize: 12.5 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Phone size={12} style={{ color: 'var(--cyan)' }} />
             <span>{row.Contact?.primary_phone || '—'}</span>
-            {row.Contact?.whatsapp && <Badge tone="green" style={{ fontSize: 10, padding: '1px 5px' }}>WA</Badge>}
+            {row.Contact?.whatsapp && <Badge tone="green" style={{ fontSize: 9, padding: '0px 4px' }}>WA</Badge>}
           </div>
-          <div className="cell-sub" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-            <Mail size={12} />
+          <div className="cell-sub" style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 1 }}>
+            <Mail size={11} />
             <span>{row.Contact?.email || 'No email registered'}</span>
           </div>
         </div>
@@ -192,7 +266,7 @@ export default function Clients() {
     },
     {
       key: 'roles',
-      header: 'Relationships & Roles',
+      header: 'Roles & Relationships',
       render: roleBadges,
     },
     {
@@ -200,24 +274,24 @@ export default function Clients() {
       header: 'Segment',
       render: (row) => (
         <Badge tone={row.client_segment === 'vip' ? 'amber' : row.client_segment === 'priority' ? 'blue' : 'grey'}>
-          {row.client_segment === 'vip' && <Crown size={12} style={{ marginRight: 3 }} />}
+          {row.client_segment === 'vip' && <Crown size={11} style={{ marginRight: 3 }} />}
           {String(row.client_segment || 'standard').toUpperCase()}
         </Badge>
       ),
     },
     {
       key: 'location',
-      header: 'City / District',
+      header: 'District / Region',
       render: (row) => row.Contact?.district || row.Contact?.city || '—',
     },
     {
       key: 'portal',
-      header: 'Portal',
+      header: 'Portal Access',
       render: (row) => (
         row.portal_enabled ? (
           <Badge tone="green" dot>Active Login</Badge>
         ) : (
-          <span className="cell-sub">Not enabled</span>
+          <span className="cell-sub" style={{ fontSize: 12 }}>Not enabled</span>
         )
       ),
     },
@@ -230,42 +304,44 @@ export default function Clients() {
 
   return (
     <div className="pm-scope">
-      <div className="pm-head">
+      <div className="pm-head" style={{ marginBottom: 14 }}>
         <div>
-          <div className="pm-eyebrow">Client Intelligence & Care</div>
-          <h1>Client Relationship Directory</h1>
-          <div className="pm-meta">
-            Unified 360° view of clients, property holdings, legal agreements, service history and financials.
+          <div className="pm-eyebrow">Client Intelligence &amp; Care</div>
+          <h1 style={{ fontSize: 22 }}>Client Directory</h1>
+          <div className="pm-meta" style={{ fontSize: 12.5 }}>
+            Unified 360° portfolio, legal agreements, property care history &amp; financials.
           </div>
         </div>
         <div className="pm-head-actions">
-          <Button icon={UserPlus} className="btn-primary" onClick={() => setCreateDrawer(true)}>
+          <Button icon={UserPlus} className="btn-primary" size="sm" onClick={() => setCreateDrawer(true)}>
             Add New Client
           </Button>
         </div>
       </div>
 
-      <div className="stats-grid" style={{ marginBottom: 18 }}>
-        <StatCard icon={Users} label="Total Clients" value={total} tone="blue" />
-        <StatCard icon={UserCheck} label="Active Relationships" value={stats.active} tone="green" />
-        <StatCard icon={Crown} label="VIP & Priority Clients" value={stats.vip + stats.priority} tone="amber" />
-        <StatCard icon={Globe2} label="Portal Users Enabled" value={stats.portal} tone="sky" />
+      {/* High Density KPI Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginBottom: 14 }}>
+        <CompactKpi icon={Users} label="Total Clients" value={total} tone="blue" />
+        <CompactKpi icon={UserCheck} label="Active Clients" value={stats.active} tone="green" />
+        <CompactKpi icon={Crown} label="VIP & Priority" value={stats.vip + stats.priority} tone="amber" />
+        <CompactKpi icon={Globe2} label="Portal Users" value={stats.portal} tone="sky" />
       </div>
 
-      <div className="card" style={{ marginBottom: 16, padding: 14 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px 200px', gap: 12 }}>
+      {/* Filter & Search Toolbar */}
+      <div className="card" style={{ marginBottom: 12, padding: '10px 14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px 180px', gap: 10 }}>
           <SearchInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search clients by name, phone, email, company, code or district…"
+            placeholder="Search by client name, phone, email, code or district…"
           />
-          <Select value={segment} onChange={(e) => setSegment(e.target.value)}>
+          <Select value={segment} onChange={(e) => setSegment(e.target.value)} style={{ padding: '6px 10px', fontSize: 12.5 }}>
             <option value="">All Segments</option>
             <option value="vip">VIP Clients</option>
             <option value="priority">Priority Clients</option>
             <option value="standard">Standard Clients</option>
           </Select>
-          <Select value={role} onChange={(e) => setRole(e.target.value)}>
+          <Select value={role} onChange={(e) => setRole(e.target.value)} style={{ padding: '6px 10px', fontSize: 12.5 }}>
             <option value="">All Roles</option>
             <option value="buyer">Buyers</option>
             <option value="seller">Sellers</option>
@@ -277,13 +353,24 @@ export default function Clients() {
         </div>
       </div>
 
-      <div className="tabs" style={{ marginBottom: 16 }}>
+      {/* Pill Filter Tabs */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 12, overflowX: 'auto' }}>
         {ROLE_TABS.map((tab) => (
           <button
             type="button"
             key={tab.key}
-            className={`tab ${role === tab.key ? 'active' : ''}`}
             onClick={() => setRole(tab.key)}
+            style={{
+              padding: '5px 12px',
+              fontSize: 12,
+              fontWeight: role === tab.key ? 700 : 600,
+              borderRadius: 20,
+              border: role === tab.key ? '1px solid var(--cyan)' : '1px solid var(--line)',
+              background: role === tab.key ? 'var(--cyan-weak)' : 'var(--surface)',
+              color: role === tab.key ? 'var(--navy)' : 'var(--muted)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
           >
             {tab.label}
           </button>
@@ -297,9 +384,9 @@ export default function Clients() {
           loading={loading}
           onRowClick={(row) => loadDetail(row.id)}
         />
-        <div className="pagination" style={{ padding: '12px 18px' }}>
-          <span>Showing {rows.length} of {total} client relationship records</span>
-          <span className="cell-sub">Click any row to open the complete 360° client workspace</span>
+        <div className="pagination" style={{ padding: '10px 16px', fontSize: 12 }}>
+          <span>Showing {rows.length} of {total} client records</span>
+          <span className="cell-sub">Click any row to open full 360° client workspace</span>
         </div>
       </div>
 
@@ -353,12 +440,12 @@ function CreateClientDrawer({ onClose, onSuccess }) {
   return (
     <Drawer
       title="Add New Client Profile"
-      width={680}
+      width={640}
       onClose={onClose}
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button onClick={save} disabled={busy} className="btn-primary">
+          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button onClick={save} disabled={busy} size="sm" className="btn-primary">
             {busy ? <Spinner /> : 'Create Client Profile'}
           </Button>
         </>
@@ -413,24 +500,24 @@ function CreateClientDrawer({ onClose, onSuccess }) {
         </Field>
       </div>
 
-      <div className="form-section-title" style={{ margin: '16px 0 10px' }}>Client Role Relationships</div>
-      <div className="wrap-gap" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+      <div className="form-section-title" style={{ margin: '14px 0 8px', fontSize: 13, fontWeight: 700 }}>Client Role Relationships</div>
+      <div className="wrap-gap" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
         {ROLE_FIELDS.map(([key, label]) => (
-          <label key={key} className="card" style={{ padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label key={key} className="card" style={{ padding: '8px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
             <input
               type="checkbox"
               checked={!!form[key]}
               onChange={(e) => setForm({ ...form, [key]: e.target.checked })}
             />
-            <span style={{ fontSize: 13, fontWeight: 600 }}>{label}</span>
+            <span style={{ fontWeight: 600 }}>{label}</span>
           </label>
         ))}
       </div>
 
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 14 }}>
         <Field label="Initial Relationship Notes">
           <Textarea
-            rows={4}
+            rows={3}
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
             placeholder="Record client preferences, property requirements or background info…"
@@ -483,9 +570,9 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
 
   if (loading || !detail) {
     return (
-      <div className="pm-scope" style={{ padding: 80, textAlign: 'center' }}>
+      <div className="pm-scope" style={{ padding: 60, textAlign: 'center' }}>
         <Spinner />
-        <div style={{ marginTop: 12, color: 'var(--muted)' }}>Loading complete 360° client workspace…</div>
+        <div style={{ marginTop: 10, color: 'var(--muted)', fontSize: 13 }}>Loading 360° Client Workspace…</div>
       </div>
     );
   }
@@ -549,7 +636,7 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
       setDrawer('');
       await reload();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to dispatch or log communication');
+      toast.error(error.response?.data?.error || 'Failed to log communication');
     } finally {
       setBusy(false);
     }
@@ -605,8 +692,8 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
       header: 'Description',
       render: (row) => (
         <div>
-          <div className="cell-strong">{row.title || row.invoice_type || 'Property Invoice'}</div>
-          <div className="cell-sub">Issued {date(row.issue_date)} · Due {date(row.due_date)}</div>
+          <div className="cell-strong" style={{ fontSize: 13 }}>{row.title || row.invoice_type || 'Property Invoice'}</div>
+          <div className="cell-sub" style={{ fontSize: 11 }}>Issued {date(row.issue_date)} · Due {date(row.due_date)}</div>
         </div>
       ),
     },
@@ -630,214 +717,253 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
 
   return (
     <div className="pm-scope">
-      <div style={{ marginBottom: 14 }}>
-        <Button variant="ghost" icon={ArrowLeft} onClick={onBack}>
-          Back to Client Directory
-        </Button>
+      <div style={{ marginBottom: 10 }}>
+        <button
+          type="button"
+          onClick={onBack}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '4px 10px',
+            borderRadius: 8,
+            border: '1px solid var(--line)',
+            background: 'var(--surface)',
+            color: 'var(--muted)',
+            fontSize: 12,
+            fontWeight: 650,
+            cursor: 'pointer'
+          }}
+        >
+          <ArrowLeft size={13} /> Back to Directory
+        </button>
       </div>
 
-      {/* Top Command Banner Header */}
-      <div className="card" style={{ padding: 22, borderTop: '4px solid var(--cyan)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-            <div className="pm-avatar" style={{ width: 56, height: 56, borderRadius: 16, fontSize: 20, fontWeight: 800 }}>
+      {/* Executive Command Header Banner */}
+      <div className="card" style={{
+        padding: '14px 18px',
+        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+        border: '1px solid var(--line)',
+        borderLeft: '5px solid var(--cyan)',
+        borderRadius: 14,
+        boxShadow: '0 2px 8px rgba(13,27,47,0.04)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div className="pm-avatar" style={{
+              width: 44, height: 44, borderRadius: 12, fontSize: 16, fontWeight: 800,
+              background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', boxShadow: '0 3px 10px rgba(14,165,233,0.3)'
+            }}>
               {getInitials(contact?.full_name)}
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <span className="code-chip" style={{ fontSize: 13, padding: '4px 10px' }}>{client.client_code}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span className="code-chip" style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px' }}>{client.client_code}</span>
                 <StatusBadge status={client.status} />
-                {client.client_segment === 'vip' && (
-                  <Badge tone="amber"><Crown size={12} style={{ marginRight: 4 }} /> VIP Client</Badge>
-                )}
-                {client.client_segment === 'priority' && (
-                  <Badge tone="blue">Priority Client</Badge>
-                )}
-                {contact?.is_nrb && <Badge tone="sky">NRB Client</Badge>}
+                {client.client_segment === 'vip' && <Badge tone="amber"><Crown size={11} style={{ marginRight: 3 }} /> VIP</Badge>}
+                {client.client_segment === 'priority' && <Badge tone="blue">Priority</Badge>}
+                {contact?.is_nrb && <Badge tone="sky">NRB</Badge>}
+                {roleBadges(client)}
               </div>
 
-              <h1 style={{ margin: '8px 0 4px', fontSize: 26, fontWeight: 800 }}>
-                {contact?.full_name}
+              <h2 style={{ margin: '4px 0 2px', fontSize: 20, fontWeight: 800, color: 'var(--ink)' }}>
+                {contact?.full_name || 'Client Workspace'}
                 {contact?.company_name && (
-                  <span style={{ fontSize: 15, color: 'var(--muted)', fontWeight: 500, marginLeft: 8 }}>
-                    — {contact.company_name}
+                  <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 500, marginLeft: 6 }}>
+                    ({contact.company_name})
                   </span>
                 )}
-              </h1>
+              </h2>
 
-              <div className="cell-sub" style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', fontSize: 13 }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <Phone size={13} /> {contact?.primary_phone || 'No phone'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, color: 'var(--muted)', flexWrap: 'wrap' }}>
+                {contact?.primary_phone && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <Phone size={12} style={{ color: 'var(--cyan)' }} /> {contact.primary_phone}
+                  </span>
+                )}
+                {contact?.email && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <Mail size={12} style={{ color: 'var(--cyan)' }} /> {contact.email}
+                  </span>
+                )}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <MapPin size={12} style={{ color: 'var(--muted)' }} /> {[contact?.area, contact?.city, contact?.district].filter(Boolean).join(', ') || 'Dhaka'}
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <Mail size={13} /> {contact?.email || 'No email'}
-                </span>
-                <span>Location: {[contact?.area, contact?.city, contact?.district].filter(Boolean).join(', ') || 'Dhaka'}</span>
               </div>
-
-              <div style={{ marginTop: 10 }}>{roleBadges(client)}</div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <Button variant="ghost" icon={Pencil} onClick={() => setDrawer('edit')}>
-              Edit Profile &amp; KYC
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button variant="ghost" size="sm" icon={Pencil} onClick={() => setDrawer('edit')}>
+              Edit Profile
             </Button>
-            <Button icon={Mail} onClick={() => setDrawer('message')}>
-              Contact / Send Email
+            <Button variant="ghost" size="sm" icon={Mail} onClick={() => setDrawer('message')}>
+              Contact
             </Button>
             {!client.portal_enabled && (
-              <Button icon={Globe2} className="btn-primary" onClick={() => setDrawer('portal')}>
-                Enable Portal Access
+              <Button size="sm" icon={Globe2} className="btn-primary" onClick={() => setDrawer('portal')}>
+                Enable Portal
               </Button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Top 360° KPI StatCards */}
-      <div className="stats-grid" style={{ margin: '16px 0' }}>
-        <StatCard
+      {/* 4-Column Executive KPI Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, margin: '12px 0' }}>
+        <CompactKpi
           icon={Receipt}
           label="Total Invoiced"
           value={money(summary.invoice_total)}
           tone="blue"
         />
-        <StatCard
+        <CompactKpi
           icon={WalletCards}
           label="Outstanding Balance"
           value={money(summary.outstanding_total)}
           tone={Number(summary.outstanding_total) > 0 ? 'amber' : 'green'}
         />
-        <StatCard
+        <CompactKpi
           icon={UserCheck}
           label="Payments Received"
           value={money(summary.received_total)}
           tone="green"
         />
-        <StatCard
+        <CompactKpi
           icon={Building2}
-          label="Properties & Care"
-          value={`${summary.tenancies || 0} Leases · ${summary.work_orders || 0} Work Orders`}
+          label="Holdings &amp; Care"
+          value={`${summary.tenancies || 0} Leases`}
+          sub={`${summary.work_orders || 0} Work Orders`}
           tone="sky"
         />
       </div>
 
-      {/* Tabs Bar with Counts */}
-      <div className="tabs" style={{ marginBottom: 16 }}>
-        <button
-          type="button"
-          className={`tab ${tab === 'overview' ? 'active' : ''}`}
-          onClick={() => setTab('overview')}
-        >
-          📊 Overview
-        </button>
-        <button
-          type="button"
-          className={`tab ${tab === 'properties' ? 'active' : ''}`}
-          onClick={() => setTab('properties')}
-        >
-          🏠 Properties &amp; Tenancies ({tenancies.length + amcContracts.length})
-        </button>
-        <button
-          type="button"
-          className={`tab ${tab === 'care' ? 'active' : ''}`}
-          onClick={() => setTab('care')}
-        >
-          🛠️ Care &amp; Work Orders ({careWorkOrders.length + careEnquiries.length})
-        </button>
-        <button
-          type="button"
-          className={`tab ${tab === 'accounting' ? 'active' : ''}`}
-          onClick={() => setTab('accounting')}
-        >
-          💳 Financials &amp; Invoices ({invoices.length})
-        </button>
-        <button
-          type="button"
-          className={`tab ${tab === 'kyc' ? 'active' : ''}`}
-          onClick={() => setTab('kyc')}
-        >
-          📑 Agreements &amp; KYC ({allDocuments.length})
-        </button>
-        <button
-          type="button"
-          className={`tab ${tab === 'activity' ? 'active' : ''}`}
-          onClick={() => setTab('activity')}
-        >
-          💬 Timeline &amp; Activity ({communications.length})
-        </button>
-        <button
-          type="button"
-          className={`tab ${tab === 'portal' ? 'active' : ''}`}
-          onClick={() => setTab('portal')}
-        >
-          🌐 Portal &amp; Security
-        </button>
+      {/* Modern Segmented Navigation Tabs */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: 4,
+        background: 'var(--surface-3)',
+        borderRadius: 12,
+        border: '1px solid var(--line)',
+        marginBottom: 14,
+        overflowX: 'auto'
+      }}>
+        {[
+          { key: 'overview', label: 'Overview', icon: Activity },
+          { key: 'properties', label: 'Properties & Leases', icon: Building2, count: tenancies.length + amcContracts.length },
+          { key: 'care', label: 'Work Orders & Care', icon: Wrench, count: careWorkOrders.length + careEnquiries.length },
+          { key: 'accounting', label: 'Financials & Invoices', icon: Receipt, count: invoices.length },
+          { key: 'kyc', label: 'Agreements & KYC', icon: FileCheck2, count: allDocuments.length },
+          { key: 'activity', label: 'Timeline & History', icon: MessageSquare, count: communications.length },
+          { key: 'portal', label: 'Portal & Security', icon: ShieldCheck },
+        ].map((t) => {
+          const Icon = t.icon;
+          const active = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                fontSize: 12,
+                fontWeight: active ? 700 : 600,
+                color: active ? 'var(--navy)' : 'var(--muted)',
+                background: active ? '#ffffff' : 'transparent',
+                borderRadius: 8,
+                border: 'none',
+                boxShadow: active ? '0 1px 3px rgba(13,27,47,0.08)' : 'none',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <Icon size={14} color={active ? 'var(--cyan)' : 'currentColor'} />
+              <span>{t.label}</span>
+              {t.count > 0 && (
+                <span style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: '1px 6px',
+                  borderRadius: 10,
+                  background: active ? 'var(--cyan-weak)' : 'var(--surface-2)',
+                  color: active ? 'var(--navy)' : 'var(--muted-2)'
+                }}>
+                  {t.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tab 1: Overview */}
       {tab === 'overview' && (
-        <div className="pm-grid" style={{ gridTemplateColumns: '1.1fr 0.9fr' }}>
+        <div className="pm-grid" style={{ gridTemplateColumns: '1.1fr 0.9fr', gap: 12 }}>
           <div className="pm-col">
             <section className="pm-card">
-              <div className="pm-card-h">
-                <div className="ic"><UserCheck size={18} /></div>
+              <div className="pm-card-h" style={{ padding: '12px 16px' }}>
+                <div className="ic" style={{ width: 28, height: 28 }}><UserCheck size={16} /></div>
                 <div>
-                  <h3>Identity &amp; Profile Summary</h3>
-                  <div className="hsub">Personal details, contact info and KYC numbers</div>
+                  <h3 style={{ fontSize: 13.5 }}>Identity &amp; Profile Summary</h3>
+                  <div className="hsub" style={{ fontSize: 11 }}>Personal details, contact numbers &amp; tax KYC</div>
                 </div>
               </div>
-              <div className="pm-card-body">
-                <Info label="Full Name" value={contact?.full_name} />
-                <Info label="Company Name" value={contact?.company_name} />
-                <Info label="Primary Phone" value={contact?.primary_phone} />
-                <Info label="WhatsApp" value={contact?.whatsapp} />
-                <Info label="Email Address" value={contact?.email} />
-                <Info label="Preferred Channel" value={contact?.preferred_contact_method} />
-                <Info label="Registered Address" value={[contact?.address_line1, contact?.area, contact?.city, contact?.district].filter(Boolean).join(', ')} />
-                <Info label="National ID (NID)" value={contact?.national_id} />
-                <Info label="Passport No." value={contact?.passport_no} />
-                <Info label="TIN Number" value={contact?.tin} />
+              <div className="pm-card-body" style={{ padding: '0 16px 14px', display: 'grid', gap: 6 }}>
+                <InfoRow icon={User} label="Full Name" value={contact?.full_name} />
+                <InfoRow icon={Building2} label="Company Name" value={contact?.company_name} />
+                <InfoRow icon={Phone} label="Primary Phone" value={contact?.primary_phone} />
+                <InfoRow icon={MessageSquare} label="WhatsApp" value={contact?.whatsapp} />
+                <InfoRow icon={Mail} label="Email Address" value={contact?.email} />
+                <InfoRow icon={Send} label="Preferred Channel" value={contact?.preferred_contact_method} />
+                <InfoRow icon={MapPin} label="Registered Address" value={[contact?.address_line1, contact?.area, contact?.city, contact?.district].filter(Boolean).join(', ')} />
+                <InfoRow icon={CreditCard} label="National ID (NID)" value={contact?.national_id} isCode />
+                <InfoRow icon={FileText} label="Passport No." value={contact?.passport_no} isCode />
+                <InfoRow icon={Receipt} label="TIN Number" value={contact?.tin} isCode />
               </div>
             </section>
           </div>
 
-          <div className="pm-col">
+          <div className="pm-col" style={{ gap: 12 }}>
             <section className="pm-card">
-              <div className="pm-card-h">
-                <div className="ic"><Building2 size={18} /></div>
+              <div className="pm-card-h" style={{ padding: '12px 16px' }}>
+                <div className="ic" style={{ width: 28, height: 28 }}><Building2 size={16} /></div>
                 <div>
-                  <h3>Onboarding Role Profiles</h3>
-                  <div className="hsub">Every active role profile &amp; envelope agreement</div>
+                  <h3 style={{ fontSize: 13.5 }}>Onboarding Role Profiles</h3>
+                  <div className="hsub" style={{ fontSize: 11 }}>Active relationship roles &amp; agreements</div>
                 </div>
               </div>
-              <div className="pm-card-body">
+              <div className="pm-card-body" style={{ padding: '0 16px 14px' }}>
                 {(detail.roleProfiles || []).length ? (
                   detail.roleProfiles.map((profile) => (
                     <div
                       key={profile.id}
                       onClick={() => navigate(`/role-onboarding?profile_id=${profile.id}`)}
                       style={{
-                        padding: 12,
-                        marginBottom: 8,
+                        padding: '10px 12px',
+                        marginBottom: 6,
                         border: '1px solid var(--line)',
-                        borderRadius: 10,
+                        borderRadius: 8,
                         background: 'var(--surface-2)',
                         cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
                       }}
                     >
-                      <div className="between">
-                        <div>
-                          <b style={{ textTransform: 'capitalize' }}>
-                            {(profile.role_type || '').replace('_', ' ')}
-                          </b>
-                          <div className="cell-sub">{profile.property?.title || 'General client relationship'}</div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <StatusBadge status={profile.status} />
-                          {profile.envelope && <StatusBadge status={profile.envelope.status} />}
-                        </div>
+                      <div>
+                        <b style={{ textTransform: 'capitalize', fontSize: 13 }}>
+                          {(profile.role_type || '').replace('_', ' ')}
+                        </b>
+                        <div className="cell-sub" style={{ fontSize: 11 }}>{profile.property?.title || 'General client relationship'}</div>
+                      </div>
+                      <div style={{ textAlign: 'right', display: 'flex', gap: 4 }}>
+                        <StatusBadge status={profile.status} />
                       </div>
                     </div>
                   ))
@@ -852,23 +978,23 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
             </section>
 
             <section className="pm-card">
-              <div className="pm-card-h">
-                <div className="ic"><Activity size={18} /></div>
+              <div className="pm-card-h" style={{ padding: '12px 16px' }}>
+                <div className="ic" style={{ width: 28, height: 28 }}><Activity size={16} /></div>
                 <div>
-                  <h3>Recent Timeline Activity</h3>
-                  <div className="hsub">Last communications with client</div>
+                  <h3 style={{ fontSize: 13.5 }}>Recent Timeline History</h3>
+                  <div className="hsub" style={{ fontSize: 11 }}>Last recorded communications</div>
                 </div>
               </div>
-              <div className="pm-card-body">
+              <div className="pm-card-body" style={{ padding: '0 16px 14px' }}>
                 {communications.slice(0, 4).length ? (
                   communications.slice(0, 4).map((item) => (
-                    <div key={item.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--line-soft)' }}>
-                      <div className="between">
+                    <div key={item.id} style={{ padding: '6px 0', borderBottom: '1px solid var(--line-soft)', fontSize: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <b>{item.subject || item.channel}</b>
-                        <span className="cell-sub">{date(item.occurred_at)}</span>
+                        <span className="cell-sub" style={{ fontSize: 11 }}>{date(item.occurred_at)}</span>
                       </div>
-                      <div className="cell-sub" style={{ marginTop: 2, fontSize: 12 }}>
-                        {item.body ? (item.body.length > 80 ? item.body.slice(0, 80) + '…' : item.body) : 'No description'}
+                      <div className="cell-sub" style={{ marginTop: 2, fontSize: 11.5 }}>
+                        {item.body ? (item.body.length > 70 ? item.body.slice(0, 70) + '…' : item.body) : 'No notes'}
                       </div>
                     </div>
                   ))
@@ -883,41 +1009,41 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
 
       {/* Tab 2: Properties & Tenancies */}
       {tab === 'properties' && (
-        <div style={{ display: 'grid', gap: 16 }}>
+        <div style={{ display: 'grid', gap: 12 }}>
           <section className="pm-card">
-            <div className="pm-card-h">
-              <div className="ic"><Building2 size={18} /></div>
+            <div className="pm-card-h" style={{ padding: '12px 16px' }}>
+              <div className="ic" style={{ width: 28, height: 28 }}><Building2 size={16} /></div>
               <div>
-                <h3>Tenancies &amp; Lease Holdings</h3>
-                <div className="hsub">Active and past property leases where client is tenant or landlord</div>
+                <h3 style={{ fontSize: 14 }}>Tenancies &amp; Lease Holdings</h3>
+                <div className="hsub" style={{ fontSize: 11 }}>Active and past property leases where client is tenant or landlord</div>
               </div>
             </div>
             {tenancies.length ? (
-              <div className="pm-card-body">
-                <div className="pm-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+              <div className="pm-card-body" style={{ padding: '0 16px 14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
                   {tenancies.map((ten) => (
-                    <div key={ten.id} className="card" style={{ padding: 16, borderLeft: '4px solid var(--navy)' }}>
-                      <div className="between">
-                        <span className="code-chip">{ten.tenancy_code}</span>
+                    <div key={ten.id} className="card" style={{ padding: 12, borderLeft: '4px solid var(--navy)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span className="code-chip" style={{ fontSize: 11 }}>{ten.tenancy_code}</span>
                         <StatusBadge status={ten.status} />
                       </div>
-                      <h4 style={{ margin: '8px 0 4px', fontSize: 16 }}>{ten.Property?.title || 'Property Lease'}</h4>
-                      <div className="cell-sub">{ten.Property?.address}, {ten.Property?.city}</div>
-                      <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13 }}>
+                      <h4 style={{ margin: '6px 0 2px', fontSize: 14, fontWeight: 700 }}>{ten.Property?.title || 'Property Lease'}</h4>
+                      <div className="cell-sub" style={{ fontSize: 11.5 }}>{ten.Property?.address}, {ten.Property?.city}</div>
+                      <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 12 }}>
                         <div>
-                          <div className="cell-sub">Monthly Rent</div>
+                          <div className="cell-sub" style={{ fontSize: 11 }}>Monthly Rent</div>
                           <b>{money(ten.monthly_rent)}</b>
                         </div>
                         <div>
-                          <div className="cell-sub">Service Charge</div>
+                          <div className="cell-sub" style={{ fontSize: 11 }}>Service Charge</div>
                           <b>{money(ten.service_charge)}</b>
                         </div>
                         <div>
-                          <div className="cell-sub">Lease Start</div>
+                          <div className="cell-sub" style={{ fontSize: 11 }}>Lease Start</div>
                           <div>{date(ten.lease_start)}</div>
                         </div>
                         <div>
-                          <div className="cell-sub">Lease End</div>
+                          <div className="cell-sub" style={{ fontSize: 11 }}>Lease End</div>
                           <div>{date(ten.lease_end)}</div>
                         </div>
                       </div>
@@ -926,31 +1052,31 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
                 </div>
               </div>
             ) : (
-              <EmptyState icon={Building2} title="No tenancies found" sub="This client is not linked to any active lease tenancy records." />
+              <EmptyState icon={Building2} title="No tenancies found" sub="This client is not linked to any active lease records." />
             )}
           </section>
 
           <section className="pm-card">
-            <div className="pm-card-h">
-              <div className="ic"><Wrench size={18} /></div>
+            <div className="pm-card-h" style={{ padding: '12px 16px' }}>
+              <div className="ic" style={{ width: 28, height: 28 }}><Wrench size={16} /></div>
               <div>
-                <h3>Annual Property Care (AMC) Contracts</h3>
-                <div className="hsub">Subscribed maintenance &amp; inspection packages</div>
+                <h3 style={{ fontSize: 14 }}>Annual Property Care (AMC) Contracts</h3>
+                <div className="hsub" style={{ fontSize: 11 }}>Subscribed maintenance &amp; inspection packages</div>
               </div>
             </div>
             {amcContracts.length ? (
-              <div className="pm-card-body">
-                <div className="pm-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+              <div className="pm-card-body" style={{ padding: '0 16px 14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
                   {amcContracts.map((amc) => (
-                    <div key={amc.id} className="card" style={{ padding: 16 }}>
-                      <div className="between">
-                        <span className="code-chip">{amc.contract_code}</span>
+                    <div key={amc.id} className="card" style={{ padding: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span className="code-chip" style={{ fontSize: 11 }}>{amc.contract_code}</span>
                         <StatusBadge status={amc.status} />
                       </div>
-                      <h4 style={{ margin: '8px 0 4px', fontSize: 15 }}>{amc.service_name || 'Property Maintenance Contract'}</h4>
-                      <div className="cell-sub">{amc.site_address}</div>
-                      <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                        <span>Annual Value: <b>{money(amc.annual_value)}</b></span>
+                      <h4 style={{ margin: '6px 0 2px', fontSize: 13.5 }}>{amc.service_name || 'Property Maintenance Package'}</h4>
+                      <div className="cell-sub" style={{ fontSize: 11.5 }}>{amc.site_address}</div>
+                      <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                        <span>Annual: <b>{money(amc.annual_value)}</b></span>
                         <span>Visits: <b>{amc.visits_done} / {amc.visits_per_year}</b></span>
                       </div>
                     </div>
@@ -966,29 +1092,29 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
 
       {/* Tab 3: Care & Work Orders */}
       {tab === 'care' && (
-        <div style={{ display: 'grid', gap: 16 }}>
+        <div style={{ display: 'grid', gap: 12 }}>
           <section className="pm-card">
-            <div className="pm-card-h">
-              <div className="ic"><Wrench size={18} /></div>
+            <div className="pm-card-h" style={{ padding: '12px 16px' }}>
+              <div className="ic" style={{ width: 28, height: 28 }}><Wrench size={16} /></div>
               <div>
-                <h3>Maintenance &amp; Service Work Orders</h3>
-                <div className="hsub">All property care service requests and execution orders</div>
+                <h3 style={{ fontSize: 14 }}>Maintenance &amp; Service Work Orders</h3>
+                <div className="hsub" style={{ fontSize: 11 }}>All property care service requests and execution orders</div>
               </div>
             </div>
             {careWorkOrders.length ? (
-              <div className="pm-card-body">
-                <div className="pm-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
+              <div className="pm-card-body" style={{ padding: '0 16px 14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 10 }}>
                   {careWorkOrders.map((wo) => (
-                    <div key={wo.id} className="card" style={{ padding: 16, borderLeft: '4px solid var(--cyan)' }}>
-                      <div className="between">
-                        <span className="code-chip">{wo.work_order_code}</span>
+                    <div key={wo.id} className="card" style={{ padding: 12, borderLeft: '4px solid var(--cyan)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span className="code-chip" style={{ fontSize: 11 }}>{wo.work_order_code}</span>
                         <StatusBadge status={wo.status} />
                       </div>
-                      <h4 style={{ margin: '8px 0 4px', fontSize: 15 }}>{wo.service?.name || wo.service_name || 'Service Order'}</h4>
-                      <div className="cell-sub">{wo.site_address || 'No site address'}</div>
-                      <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 style={{ margin: '6px 0 2px', fontSize: 14 }}>{wo.service?.name || wo.service_name || 'Service Order'}</h4>
+                      <div className="cell-sub" style={{ fontSize: 11.5 }}>{wo.site_address || 'No site address'}</div>
+                      <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                          <div className="cell-sub">Value</div>
+                          <div className="cell-sub" style={{ fontSize: 11 }}>Value</div>
                           <b>{money(wo.service_value)}</b>
                         </div>
                         <Badge tone={wo.payment_status === 'paid' ? 'green' : 'amber'}>
@@ -1005,21 +1131,21 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
           </section>
 
           <section className="pm-card">
-            <div className="pm-card-h">
-              <div className="ic"><MessageSquare size={18} /></div>
+            <div className="pm-card-h" style={{ padding: '12px 16px' }}>
+              <div className="ic" style={{ width: 28, height: 28 }}><MessageSquare size={16} /></div>
               <div>
-                <h3>Care Enquiries &amp; Service Requests</h3>
-                <div className="hsub">Initial enquiries and quotes</div>
+                <h3 style={{ fontSize: 14 }}>Care Enquiries &amp; Service Requests</h3>
+                <div className="hsub" style={{ fontSize: 11 }}>Initial support requests and quotes</div>
               </div>
             </div>
             {careEnquiries.length ? (
-              <div className="pm-card-body">
+              <div className="pm-card-body" style={{ padding: '0 16px 14px' }}>
                 {careEnquiries.map((enq) => (
-                  <div key={enq.id} className="between" style={{ padding: '10px 0', borderBottom: '1px solid var(--line-soft)' }}>
+                  <div key={enq.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--line-soft)', fontSize: 12.5 }}>
                     <div>
-                      <span className="code-chip">{enq.enquiry_code}</span>
+                      <span className="code-chip" style={{ fontSize: 11 }}>{enq.enquiry_code}</span>
                       <span style={{ fontWeight: 600, marginLeft: 8 }}>{enq.service_interest || 'Property Service'}</span>
-                      <div className="cell-sub">{enq.message}</div>
+                      <div className="cell-sub" style={{ fontSize: 11.5 }}>{enq.message}</div>
                     </div>
                     <Badge tone={enq.stage === 'won' ? 'green' : 'blue'}>{enq.stage}</Badge>
                   </div>
@@ -1032,26 +1158,26 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
         </div>
       )}
 
-      {/* Tab 4: Financials & Accounting */}
+      {/* Tab 4: Financials & Invoices */}
       {tab === 'accounting' && (
-        <div style={{ display: 'grid', gap: 16 }}>
+        <div style={{ display: 'grid', gap: 12 }}>
           <section className="pm-card">
-            <div className="pm-card-h">
-              <div className="ic"><Receipt size={18} /></div>
+            <div className="pm-card-h" style={{ padding: '12px 16px' }}>
+              <div className="ic" style={{ width: 28, height: 28 }}><Receipt size={16} /></div>
               <div>
-                <h3>Client Invoices</h3>
-                <div className="hsub">All Property management and service invoices</div>
+                <h3 style={{ fontSize: 14 }}>Client Invoices</h3>
+                <div className="hsub" style={{ fontSize: 11 }}>All property management and service invoices</div>
               </div>
             </div>
             <DataTable columns={invoiceColumns} rows={invoices} />
           </section>
 
           <section className="pm-card">
-            <div className="pm-card-h">
-              <div className="ic"><WalletCards size={18} /></div>
+            <div className="pm-card-h" style={{ padding: '12px 16px' }}>
+              <div className="ic" style={{ width: 28, height: 28 }}><WalletCards size={16} /></div>
               <div>
-                <h3>Payments Ledger</h3>
-                <div className="hsub">Incoming and outgoing payment history</div>
+                <h3 style={{ fontSize: 14 }}>Payments Ledger</h3>
+                <div className="hsub" style={{ fontSize: 11 }}>Incoming and outgoing payment history</div>
               </div>
             </div>
             <DataTable columns={paymentColumns} rows={payments} />
@@ -1062,36 +1188,36 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
       {/* Tab 5: Agreements & KYC */}
       {tab === 'kyc' && (
         <section className="pm-card">
-          <div className="pm-card-h">
-            <div className="ic"><FileCheck2 size={18} /></div>
+          <div className="pm-card-h" style={{ padding: '12px 16px' }}>
+            <div className="ic" style={{ width: 28, height: 28 }}><FileCheck2 size={16} /></div>
             <div>
-              <h3>Private Client Documents &amp; KYC Verification</h3>
-              <div className="hsub">Identity documents, NID, Passport, TIN and legal files</div>
+              <h3 style={{ fontSize: 14 }}>Private Client Documents &amp; KYC Verification</h3>
+              <div className="hsub" style={{ fontSize: 11 }}>Identity documents, NID, Passport, TIN and legal files</div>
             </div>
-            <div className="sp" />
+            <div style={{ flex: 1 }} />
             <Button size="sm" icon={Plus} onClick={() => setDrawer('document')}>
               Upload Document
             </Button>
             <Button size="sm" variant="ghost" icon={Pencil} onClick={() => setDrawer('edit')}>
-              Edit Identification Numbers
+              Edit Identification
             </Button>
           </div>
 
-          <div className="pm-card-body">
-            <div className="stats-grid" style={{ marginBottom: 16 }}>
-              <StatCard
+          <div className="pm-card-body" style={{ padding: '0 16px 14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginBottom: 14 }}>
+              <CompactKpi
                 icon={ShieldCheck}
                 label="National ID (NID)"
                 value={contact?.national_id || 'Not Provided'}
                 tone={contact?.national_id ? 'green' : 'amber'}
               />
-              <StatCard
+              <CompactKpi
                 icon={FileCheck2}
                 label="Passport No."
                 value={contact?.passport_no || 'Not Provided'}
                 tone={contact?.passport_no ? 'green' : 'amber'}
               />
-              <StatCard
+              <CompactKpi
                 icon={Receipt}
                 label="TIN Number"
                 value={contact?.tin || 'Not Provided'}
@@ -1100,30 +1226,36 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
             </div>
 
             {allDocuments.length ? (
-              <div className="pm-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
                 {allDocuments.map((doc) => (
-                  <div key={`${doc.party_role_profile_id ? 'kyc' : 'contact'}-${doc.id}`} className="card" style={{ padding: 14 }}>
-                    <div className="between">
+                  <div key={`${doc.party_role_profile_id ? 'kyc' : 'contact'}-${doc.id}`} className="card" style={{ padding: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div>
-                        <b>{doc.title || doc.doc_type || doc.document_type}</b>
-                        <div className="cell-sub" style={{ textTransform: 'capitalize' }}>
+                        <b style={{ fontSize: 13 }}>{doc.title || doc.doc_type || doc.document_type}</b>
+                        <div className="cell-sub" style={{ textTransform: 'capitalize', fontSize: 11 }}>
                           {(doc.doc_type || doc.document_type || '').replace('_', ' ')}
                         </div>
                       </div>
                       {!doc.party_role_profile_id && (
-                        <Button size="sm" variant="ghost" icon={Trash2} onClick={() => removeDocument(doc.id)} />
+                        <button
+                          type="button"
+                          onClick={() => removeDocument(doc.id)}
+                          style={{ border: 'none', background: 'transparent', color: 'var(--bad)', cursor: 'pointer', padding: 2 }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       )}
                     </div>
                     {(doc.file_url || doc.file_url_back) && (
-                      <div className="wrap-gap" style={{ marginTop: 10 }}>
+                      <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {doc.file_url && (
-                          <a className="btn btn-ghost btn-sm" href={fileSrc(doc.file_url)} target="_blank" rel="noreferrer">
-                            View Document File
+                          <a className="btn btn-ghost btn-sm" href={fileSrc(doc.file_url)} target="_blank" rel="noreferrer" style={{ fontSize: 11, padding: '3px 8px' }}>
+                            <ExternalLink size={11} /> View Document
                           </a>
                         )}
                         {doc.file_url_back && (
-                          <a className="btn btn-ghost btn-sm" href={fileSrc(doc.file_url_back)} target="_blank" rel="noreferrer">
-                            View Back Page
+                          <a className="btn btn-ghost btn-sm" href={fileSrc(doc.file_url_back)} target="_blank" rel="noreferrer" style={{ fontSize: 11, padding: '3px 8px' }}>
+                            <ExternalLink size={11} /> View Back Page
                           </a>
                         )}
                       </div>
@@ -1145,54 +1277,54 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
       {/* Tab 6: Timeline & Activity */}
       {tab === 'activity' && (
         <section className="pm-card">
-          <div className="pm-card-h">
-            <div className="ic"><MessageSquare size={18} /></div>
+          <div className="pm-card-h" style={{ padding: '12px 16px' }}>
+            <div className="ic" style={{ width: 28, height: 28 }}><MessageSquare size={16} /></div>
             <div>
-              <h3>Communication &amp; Interaction History</h3>
-              <div className="hsub">Emails, phone calls, WhatsApp messages and internal notes</div>
+              <h3 style={{ fontSize: 14 }}>Communication &amp; Interaction History</h3>
+              <div className="hsub" style={{ fontSize: 11 }}>Emails, phone calls, WhatsApp messages and internal notes</div>
             </div>
-            <div className="sp" />
+            <div style={{ flex: 1 }} />
             <Button size="sm" icon={Plus} onClick={() => setDrawer('message')}>
               Log Activity / Send Message
             </Button>
           </div>
-          <div className="pm-card-body">
+          <div className="pm-card-body" style={{ padding: '0 16px 14px' }}>
             {communications.length ? (
               communications.map((item) => (
                 <div
                   key={item.id}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '40px 1fr auto',
-                    gap: 12,
-                    padding: '14px 0',
+                    gridTemplateColumns: '36px 1fr auto',
+                    gap: 10,
+                    padding: '10px 0',
                     borderBottom: '1px solid var(--line-soft)',
                   }}
                 >
                   <div
                     style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 10,
+                      width: 34,
+                      height: 34,
+                      borderRadius: 8,
                       background: 'var(--cyan-weak)',
                       color: 'var(--navy)',
                       display: 'grid',
                       placeItems: 'center',
                     }}
                   >
-                    {item.channel === 'email' ? <Mail size={17} /> :
-                     item.channel === 'call' ? <Phone size={17} /> :
-                     <MessageSquare size={17} />}
+                    {item.channel === 'email' ? <Mail size={15} /> :
+                     item.channel === 'call' ? <Phone size={15} /> :
+                     <MessageSquare size={15} />}
                   </div>
                   <div>
-                    <div className="wrap-gap" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <b>{item.subject || item.channel}</b>
-                      <Badge tone="grey">{item.channel}</Badge>
-                      <Badge tone={item.direction === 'inbound' ? 'green' : 'blue'}>{item.direction}</Badge>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <b style={{ fontSize: 13 }}>{item.subject || item.channel}</b>
+                      <Badge tone="grey" style={{ fontSize: 10 }}>{item.channel}</Badge>
+                      <Badge tone={item.direction === 'inbound' ? 'green' : 'blue'} style={{ fontSize: 10 }}>{item.direction}</Badge>
                     </div>
-                    <div style={{ marginTop: 6, whiteSpace: 'pre-wrap', fontSize: 13 }}>{item.body}</div>
+                    <div style={{ marginTop: 4, whiteSpace: 'pre-wrap', fontSize: 12.5, color: 'var(--ink)' }}>{item.body}</div>
                   </div>
-                  <div className="cell-sub">{date(item.occurred_at)}</div>
+                  <div className="cell-sub" style={{ fontSize: 11 }}>{date(item.occurred_at)}</div>
                 </div>
               ))
             ) : (
@@ -1208,21 +1340,21 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
 
       {/* Tab 7: Portal & Security */}
       {tab === 'portal' && (
-        <div className="pm-grid" style={{ gridTemplateColumns: '1.1fr 0.9fr' }}>
+        <div className="pm-grid" style={{ gridTemplateColumns: '1.1fr 0.9fr', gap: 12 }}>
           <section className="pm-card">
-            <div className="pm-card-h">
-              <div className="ic"><Globe2 size={18} /></div>
+            <div className="pm-card-h" style={{ padding: '12px 16px' }}>
+              <div className="ic" style={{ width: 28, height: 28 }}><Globe2 size={16} /></div>
               <div>
-                <h3>Client Self-Service Portal Access</h3>
-                <div className="hsub">Give client online login to view invoices, properties and agreements</div>
+                <h3 style={{ fontSize: 14 }}>Client Self-Service Portal Access</h3>
+                <div className="hsub" style={{ fontSize: 11 }}>Give client online login to view invoices, properties and agreements</div>
               </div>
             </div>
-            <div className="pm-card-body">
+            <div className="pm-card-body" style={{ padding: '16px' }}>
               {client.portal_enabled ? (
-                <div style={{ padding: 24, textAlign: 'center', background: 'var(--good-bg)', borderRadius: 12 }}>
-                  <ShieldCheck size={36} color="var(--good)" style={{ margin: '0 auto 8px' }} />
-                  <h3 style={{ margin: 0, color: 'var(--good)' }}>Portal Login Active</h3>
-                  <div className="cell-sub" style={{ marginTop: 4 }}>
+                <div style={{ padding: 20, textAlign: 'center', background: 'var(--good-bg)', borderRadius: 10 }}>
+                  <ShieldCheck size={32} color="var(--good)" style={{ margin: '0 auto 6px' }} />
+                  <h3 style={{ margin: 0, color: 'var(--good)', fontSize: 16 }}>Portal Login Active</h3>
+                  <div className="cell-sub" style={{ marginTop: 4, fontSize: 12.5 }}>
                     This client can log in using their email <b>{contact?.email}</b>.
                   </div>
                 </div>
@@ -1231,7 +1363,7 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
                   icon={Globe2}
                   title="Client Portal Disabled"
                   sub="Create a password and enable self-service login access for this client."
-                  action={<Button onClick={() => setDrawer('portal')}>Enable Portal Access</Button>}
+                  action={<Button size="sm" onClick={() => setDrawer('portal')}>Enable Portal Access</Button>}
                 />
               )}
             </div>
@@ -1243,12 +1375,12 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
       {drawer === 'edit' && (
         <Drawer
           title="Edit Client Profile &amp; KYC"
-          width={740}
+          width={700}
           onClose={() => setDrawer('')}
           footer={
             <>
-              <Button variant="ghost" onClick={() => setDrawer('')}>Cancel</Button>
-              <Button onClick={saveProfile} disabled={busy} className="btn-primary">
+              <Button variant="ghost" size="sm" onClick={() => setDrawer('')}>Cancel</Button>
+              <Button onClick={saveProfile} disabled={busy} size="sm" className="btn-primary">
                 {busy ? <Spinner /> : 'Save Profile Changes'}
               </Button>
             </>
@@ -1308,10 +1440,10 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
             </Field>
           </div>
 
-          <div className="form-section-title" style={{ margin: '16px 0 10px' }}>Active Client Relationships</div>
-          <div className="wrap-gap" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+          <div className="form-section-title" style={{ margin: '14px 0 8px', fontSize: 13, fontWeight: 700 }}>Active Client Relationships</div>
+          <div className="wrap-gap" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             {ROLE_FIELDS.map(([key, label]) => (
-              <label key={key} className="card" style={{ padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label key={key} className="card" style={{ padding: '8px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
                 <input
                   type="checkbox"
                   checked={!!edit[key]}
@@ -1322,9 +1454,9 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
             ))}
           </div>
 
-          <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: 14 }}>
             <Field label="Internal Relationship &amp; Care Notes">
-              <Textarea rows={4} value={edit.notes || ''} onChange={(e) => setEdit({ ...edit, notes: e.target.value })} />
+              <Textarea rows={3} value={edit.notes || ''} onChange={(e) => setEdit({ ...edit, notes: e.target.value })} />
             </Field>
           </div>
         </Drawer>
@@ -1333,18 +1465,18 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
       {drawer === 'message' && (
         <Drawer
           title="Contact Client / Log Communication"
-          width={640}
+          width={600}
           onClose={() => setDrawer('')}
           footer={
             <>
-              <Button variant="ghost" onClick={() => setDrawer('')}>Cancel</Button>
-              <Button onClick={sendMessage} disabled={busy} className="btn-primary">
+              <Button variant="ghost" size="sm" onClick={() => setDrawer('')}>Cancel</Button>
+              <Button onClick={sendMessage} disabled={busy} size="sm" className="btn-primary">
                 {busy ? <Spinner /> : message.send_now && ['email', 'sms', 'whatsapp'].includes(message.channel) ? 'Send & Log' : 'Log Activity'}
               </Button>
             </>
           }
         >
-          <div style={{ display: 'grid', gap: 14 }}>
+          <div style={{ display: 'grid', gap: 12 }}>
             <Field label="Communication Channel">
               <Select
                 value={message.channel}
@@ -1371,10 +1503,10 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
             </Field>
             <Field label="Message / Log Notes">
               <Textarea
-                rows={8}
+                rows={6}
                 value={message.body}
                 onChange={(e) => setMessage({ ...message, body: e.target.value })}
-                placeholder="Type your message content or call outcome summary here…"
+                placeholder="Type message content or interaction notes…"
               />
             </Field>
             {['email', 'sms', 'whatsapp'].includes(message.channel) && (
@@ -1384,7 +1516,7 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
                   checked={message.send_now}
                   onChange={(e) => setMessage({ ...message, send_now: e.target.checked })}
                 />
-                <span style={{ fontSize: 13, fontWeight: 600 }}>Send now to client &amp; record to timeline</span>
+                <span style={{ fontSize: 12.5, fontWeight: 600 }}>Send now to client &amp; record to timeline</span>
               </label>
             )}
           </div>
@@ -1394,18 +1526,18 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
       {drawer === 'document' && (
         <Drawer
           title="Upload Private Client Document"
-          width={600}
+          width={560}
           onClose={() => setDrawer('')}
           footer={
             <>
-              <Button variant="ghost" onClick={() => setDrawer('')}>Cancel</Button>
-              <Button onClick={addDocument} disabled={busy} className="btn-primary">
+              <Button variant="ghost" size="sm" onClick={() => setDrawer('')}>Cancel</Button>
+              <Button onClick={addDocument} disabled={busy} size="sm" className="btn-primary">
                 {busy ? <Spinner /> : 'Save Document'}
               </Button>
             </>
           }
         >
-          <div style={{ display: 'grid', gap: 14 }}>
+          <div style={{ display: 'grid', gap: 12 }}>
             <Field label="Document Category">
               <Select
                 value={document.doc_type}
@@ -1448,18 +1580,18 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
       {drawer === 'portal' && (
         <Drawer
           title="Enable Client Portal Login"
-          width={560}
+          width={520}
           onClose={() => setDrawer('')}
           footer={
             <>
-              <Button variant="ghost" onClick={() => setDrawer('')}>Cancel</Button>
-              <Button onClick={enablePortal} disabled={busy} className="btn-primary">
+              <Button variant="ghost" size="sm" onClick={() => setDrawer('')}>Cancel</Button>
+              <Button onClick={enablePortal} disabled={busy} size="sm" className="btn-primary">
                 {busy ? <Spinner /> : 'Create Credentials &amp; Enable'}
               </Button>
             </>
           }
         >
-          <div style={{ display: 'grid', gap: 14 }}>
+          <div style={{ display: 'grid', gap: 12 }}>
             <Field label="Login Email" required>
               <Input
                 type="email"

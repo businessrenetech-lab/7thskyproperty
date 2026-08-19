@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { User, Home, CalendarClock, Wallet } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { User, Home, CalendarClock, Wallet, ExternalLink } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { PageHead, DataTable, StatusBadge, Drawer, SearchInput, KV, Spinner, Badge, Button } from '../ui/kit';
@@ -10,6 +11,7 @@ const money = (v) => (v == null ? '—' : 'BDT ' + Number(v).toLocaleString());
 
 export default function Rentals() {
   const toast = useToast();
+  const navigate = useNavigate();
   const [rows, setRows] = useState([]); const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sel, setSel] = useState(null); const [detail, setDetail] = useState(null); const [mode, setMode] = useState('tenant');
@@ -29,12 +31,12 @@ export default function Rentals() {
   };
 
   const NameBtn = ({ children, onClick }) => (
-    <span onClick={(e) => { e.stopPropagation(); onClick(); }} style={{ color: 'var(--primary-700)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline dotted' }}>{children}</span>
+    <span onClick={(e) => { e.stopPropagation(); onClick(); }} style={{ color: 'var(--cyan)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline dotted' }}>{children}</span>
   );
 
   const columns = [
-    { key: 'owner', header: 'Owner', render: (r) => r.owner ? <NameBtn onClick={() => open(r, 'owner')}>{r.owner.full_name}</NameBtn> : '—' },
-    { key: 'tenant', header: 'Tenant', render: (r) => r.tenant ? <NameBtn onClick={() => open(r, 'tenant')}>{r.tenant.full_name}</NameBtn> : '—' },
+    { key: 'owner', header: 'Owner', render: (r) => r.owner ? <NameBtn onClick={() => navigate(`/clients?contact=${r.owner.id}`)}>{r.owner.full_name} ↗</NameBtn> : '—' },
+    { key: 'tenant', header: 'Tenant', render: (r) => r.tenant ? <NameBtn onClick={() => navigate(`/clients?contact=${r.tenant.id}`)}>{r.tenant.full_name} ↗</NameBtn> : '—' },
     { key: 'property', header: 'Property', render: (r) => <span className="cell-sub">{r.Property?.title || r.Property?.property_code || '—'}</span> },
     { key: 'move_in', header: 'Move in', render: (r) => r.move_in_date || '—' },
     { key: 'security', header: 'Security', render: (r) => money(r.security_deposit) },
@@ -70,7 +72,21 @@ export default function Rentals() {
               <KV k="Location" v={[detail.data.Property?.area, detail.data.Property?.district].filter(Boolean).join(', ')} />
 
               <div className="form-section-title"><User size={13} /> {mode === 'tenant' ? 'Tenant' : 'Owner'}</div>
-              <KV k="Name" v={mode === 'tenant' ? detail.data.tenant?.full_name : detail.data.owner?.full_name} />
+              <KV k="Name" v={
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>{mode === 'tenant' ? detail.data.tenant?.full_name : detail.data.owner?.full_name}</span>
+                  {(mode === 'tenant' ? detail.data.tenant?.id : detail.data.owner?.id) && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon={ExternalLink}
+                      onClick={() => navigate(`/clients?contact=${mode === 'tenant' ? detail.data.tenant?.id : detail.data.owner?.id}`)}
+                    >
+                      Open 360° Client Dashboard
+                    </Button>
+                  )}
+                </div>
+              } />
               <KV k="Phone" v={mode === 'tenant' ? detail.data.tenant?.primary_phone : detail.data.owner?.primary_phone} />
               <KV k="Email" v={mode === 'tenant' ? detail.data.tenant?.email : detail.data.owner?.email} />
 

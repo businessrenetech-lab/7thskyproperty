@@ -25,18 +25,12 @@ const nextConfig = {
   // In dev, the gateway proxy handles routing, but these rewrites still work
   // as a convenience if running Next.js standalone.
   async rewrites() {
-    if (process.env.NODE_ENV === 'production') {
-      // On single-origin hosts (e.g. Hostinger) the Express API lives on its
-      // own subdomain. Proxy the website's relative /api and /uploads calls to
-      // it so no client code needs absolute URLs and no CORS is required.
-      const apiOrigin = (process.env.NEXT_PUBLIC_API_ORIGIN || '').replace(/\/+$/, '');
-      if (!apiOrigin) return [];
-      return [
-        { source: '/api/:path*', destination: `${apiOrigin}/api/:path*` },
-        { source: '/uploads/:path*', destination: `${apiOrigin}/uploads/:path*` },
-      ];
-    }
-    return [
+    const apiOrigin = (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_ORIGIN || '').replace(/\/+$/, '');
+    const rules = apiOrigin ? [
+      { source: '/api/:path*', destination: `${apiOrigin}/api/:path*` },
+      { source: '/uploads/:path*', destination: `${apiOrigin}/uploads/:path*` },
+    ] : [];
+    if (process.env.NODE_ENV !== 'production') rules.push(
       {
         source: '/admin',
         destination: 'http://localhost:5174/admin/',
@@ -45,7 +39,8 @@ const nextConfig = {
         source: '/admin/:path*',
         destination: 'http://localhost:5174/admin/:path*',
       },
-    ];
+    );
+    return rules;
   },
 };
 

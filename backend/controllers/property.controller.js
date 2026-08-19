@@ -380,7 +380,23 @@ exports.updateOnboardingItem = asyncHandler(async (req, res) => {
 exports.update = asyncHandler(async (req, res) => {
   const p = await Property.findOne({ where: { id: req.params.id, ...branchScope(req) } });
   if (!p) return res.status(404).json({ error: 'Property not found.' });
-  await p.update(deriveUtilitiesActive(pick(req.body, FIELDS)));
+  const data = deriveUtilitiesActive(pick(req.body, FIELDS));
+  if (req.body.status) {
+    if (['listed', 'available'].includes(req.body.status)) {
+      data.is_published = true;
+      data.listing_status = 'active';
+    } else if (['under_offer', 'reserved'].includes(req.body.status)) {
+      data.is_published = true;
+      data.listing_status = 'under_offer';
+    } else if (['draft', 'withdrawn', 'cancelled'].includes(req.body.status)) {
+      data.is_published = false;
+      data.listing_status = req.body.status;
+    } else if (['settled', 'sold'].includes(req.body.status)) {
+      data.is_published = false;
+      data.listing_status = 'sold';
+    }
+  }
+  await p.update(data);
   res.json({ data: p, message: 'Property updated.' });
 });
 

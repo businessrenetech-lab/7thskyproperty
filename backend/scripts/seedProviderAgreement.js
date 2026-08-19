@@ -26,6 +26,9 @@ const FIELDS = [
   // Commission & Fees (staff fill — Seventh Sky's commercial terms; feeds provider payout)
   F('commission_pct', "Seventh Sky Commission (% of Service Provider charges)", 'percentage', 'Commission & Fees', { required: false }),
   F('ss_fee_notes', 'Seventh Sky Fees / Payment Terms (notes)', 'textarea', 'Commission & Fees', { required: false }),
+  F('payment_model', 'Payment Model', 'select', 'Commission & Fees', { required: false, options: ['Project Based', 'AMC', 'Emergency / Call-Out'] }),
+  F('payout_trigger', 'Provider Payout Trigger', 'select', 'Commission & Fees', { required: false, options: ['Completion Verified', 'Client Payment Received', 'Approved Milestone'] }),
+  F('payment_due_days', 'Payment Due After Trigger (Days)', 'number', 'Commission & Fees', { required: false, default: '7' }),
 
   // Service Provider Account Details (THE PROVIDER FILLS THESE ON THEIR INTAKE)
   F('sp_account_name', 'Account Holder Name', 'text', 'Provider Account Details', { required: false, signer_fill: true }),
@@ -489,6 +492,9 @@ ${ul(['Response Times', 'Emergency Call-Out Times', 'Cleaning Completion Standar
 <h3>Schedule E – Work Order Template</h3>
 <p>(To be completed and signed separately for each individual client/project assigned by Seventh Sky.)</p>
 <p>Work Order Number: __________<br/>Client Name: __________<br/>Site Address: __________<br/>Service Category: __________<br/>Scope of Work: __________<br/>Materials: __________<br/>Labour: __________<br/>Project Value: __________<br/>Payment Milestones: __________<br/>Commencement Date: __________<br/>Completion Date: __________<br/>Special Conditions: __________<br/>Approved by Seventh Sky: __________<br/>Accepted by Service Provider: __________</p>
+
+<h3>Schedule F – Agreed Provider Rate Schedule</h3>
+${V('provider_rate_schedule')}
 
 <p style="text-align:center;margin-top:18px"><strong>END OF MASTER SERVICE DELIVERY PROVIDER AGREEMENT</strong></p>
 `;

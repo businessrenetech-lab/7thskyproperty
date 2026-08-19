@@ -149,17 +149,29 @@ function detectCheckboxGroups(html) {
   return groups.filter((g) => g.options.length && isSelectionGroup(g));
 }
 
-/** Fill a template's HTML with values. */
+const escapeHtml = (value) => String(value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+/** Fill a template's HTML with values. Dynamic values are always treated as text. */
 function merge(contentHtml, values = {}, opts = {}) {
   let html = contentHtml;
-  // 1. {{key}} placeholders
+  // 1. Optional blocks: {{#if key}}...{{/if}}
+  html = html.replace(/\{\{#if\s+([a-z0-9_]+)\s*\}\}([\s\S]*?)\{\{\/if\}\}/gi, (m, key, body) => {
+    const value = values[key];
+    return value == null || value === '' || (Array.isArray(value) && !value.length) ? '' : body;
+  });
+  // 2. {{key}} placeholders
   html = html.replace(/\{\{\s*([a-z0-9_]+)\s*\}\}/gi, (m, key) => {
     const v = values[key];
     if (v == null || v === '') return opts.keepEmpty ? '<span style="border-bottom:1px solid #999;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>' : '__________';
-    if (Array.isArray(v)) return v.join(', ');
-    return String(v);
+    if (Array.isArray(v)) return v.map(escapeHtml).join(', ');
+    return escapeHtml(v);
   });
-  // 2. checkbox_group selections → flip ☐ to ☒ for chosen options
+  // 3. checkbox_group selections → flip ☐ to ☒ for chosen options
   for (const key of Object.keys(values)) {
     const v = values[key];
     if (Array.isArray(v)) for (const opt of v) {

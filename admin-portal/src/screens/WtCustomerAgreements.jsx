@@ -203,14 +203,23 @@ export default function WtCustomerAgreements() {
   );
 }
 
+/*
+ * Fetch the signing link through the audited Water Tank endpoint rather than
+ * reading a token out of a list payload. A token is the signature authority
+ * itself, so issuing one is recorded: who asked, for whom, and when.
+ */
 async function copyLink(a, toast) {
   try {
-    const r = await api.get(`/signing/envelopes/${a.id}`);
-    const s = (r.data?.data?.signers || []).find((x) => ['sent', 'viewed', 'pending'].includes(x.status)) || (r.data?.data?.signers || [])[0];
-    if (!s?.access_token) return toast.error('No active signing link');
-    const url = `${window.location.origin}/admin/sign/${s.access_token}`;
-    try { await navigator.clipboard.writeText(url); toast.success('Signing link copied'); } catch { window.prompt('Signing link:', url); }
-  } catch { toast.error('Could not fetch link'); }
+    const { data: hub } = await api.get(`/wt-agreement-hub/${a.id}`);
+    const signer = (hub?.agreement?.signers || []).find((x) => x.status !== 'signed' && x.status !== 'declined');
+    if (!signer) return toast.error('Every party has already signed.');
+    const { data } = await api.post(`/wt-agreement-hub/${a.id}/signing-link/${signer.id}`);
+    const url = `${window.location.origin}${data.signing_path}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(`Link for ${signer.name} copied — treat it as their signature`);
+    } catch { window.prompt('Signing link:', url); }
+  } catch (e) { toast.error(e?.response?.data?.error || 'Could not issue the signing link'); }
 }
 
 function Builder({ onDone, onCancel, projectCode }) {

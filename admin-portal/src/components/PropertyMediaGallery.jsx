@@ -82,13 +82,14 @@ export default function PropertyMediaGallery({
             <div className="acts">
               {m.media_type === "image" && m.file_url !== featuredUrl && (
                 <button
+                  type="button"
                   title="Set as cover photo"
                   onClick={() => setFeatured(m)}
                 >
                   <Star size={13} />
                 </button>
               )}
-              <button title="Remove" onClick={() => remove(m)}>
+              <button type="button" title="Remove" onClick={() => remove(m)}>
                 <Trash2 size={13} />
               </button>
             </div>

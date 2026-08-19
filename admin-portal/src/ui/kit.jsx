@@ -25,10 +25,10 @@ export const Badge = ({ tone = 'grey', children, dot }) => (
 
 // Map common statuses to badge tones
 const TONE = {
-  active: 'green', available: 'green', completed: 'green', paid: 'green', approved: 'green', signed: 'green', valid: 'green',
+  active: 'green', available: 'green', completed: 'green', paid: 'green', approved: 'green', signed: 'green', valid: 'green', matched: 'green', reconciled: 'green', cleared: 'green',
   draft: 'grey', inactive: 'grey', closed: 'grey', archived: 'grey', cancelled: 'grey',
   pending: 'amber', follow_up: 'amber', partially_paid: 'amber', partial: 'amber', sent: 'amber', expiring: 'amber', in_progress: 'amber', due: 'amber',
-  new: 'blue', contacted: 'blue', meeting: 'blue', reserved: 'blue', prospect: 'blue', viewed: 'blue',
+  new: 'blue', contacted: 'blue', meeting: 'blue', reserved: 'blue', prospect: 'blue', viewed: 'blue', unmatched: 'blue',
   lost: 'red', overdue: 'red', declined: 'red', voided: 'red', expired: 'red', suspended: 'red', terminated: 'red', arrears: 'red',
 };
 export const StatusBadge = ({ status }) => {
@@ -55,30 +55,58 @@ export const StatCard = ({ icon: Icon, label, value, tone = 'blue', trend }) => 
   );
 };
 
-export const Field = ({ label, required, children, full }) => (
-  <div className="field" style={full ? { gridColumn: '1 / -1' } : undefined}>
-    {label && <label>{label}{required && <span className="req"> *</span>}</label>}
-    {children}
-  </div>
-);
+export const Field = ({ label, required, children, full }) => {
+  const generatedId = React.useId();
+  const control = React.isValidElement(children) && !children.props.id
+    ? React.cloneElement(children, { id: generatedId })
+    : children;
+  const controlId = React.isValidElement(control) ? control.props.id : undefined;
+  return (
+    <div className="field" style={full ? { gridColumn: '1 / -1' } : undefined}>
+      {label && <label htmlFor={controlId}>{label}{required && <span className="req"> *</span>}</label>}
+      {control}
+    </div>
+  );
+};
 
 export const Input = (props) => <input className="input" {...props} />;
 export const Textarea = (props) => <textarea className="textarea" {...props} />;
 export const Select = ({ children, ...rest }) => <select className="select" {...rest}>{children}</select>;
 
-export const Drawer = ({ title, onClose, children, footer, width }) => (
-  <>
-    <div className="overlay" onClick={onClose} />
-    <aside className="drawer" style={width ? { width } : undefined}>
-      <div className="drawer-head">
-        <h2>{title}</h2>
-        <button className="btn btn-ghost btn-icon" onClick={onClose}><X size={18} /></button>
-      </div>
-      <div className="drawer-body">{children}</div>
-      {footer && <div className="drawer-foot">{footer}</div>}
-    </aside>
-  </>
-);
+export const Drawer = ({ title, onClose, children, footer, width }) => {
+  const titleId = React.useId();
+  const drawerRef = React.useRef(null);
+  const closeRef = React.useRef(null);
+  React.useEffect(() => {
+    const previous = document.activeElement;
+    closeRef.current?.focus();
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); onClose(); return; }
+      if (event.key !== 'Tab' || !drawerRef.current) return;
+      const focusable = [...drawerRef.current.querySelectorAll('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [href]')];
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => { document.removeEventListener('keydown', onKeyDown); previous?.focus?.(); };
+  }, [onClose]);
+  return (
+    <>
+      <div className="overlay" onClick={onClose} aria-hidden="true" />
+      <aside ref={drawerRef} className="drawer" role="dialog" aria-modal="true" aria-labelledby={titleId} style={width ? { width } : undefined}>
+        <div className="drawer-head">
+          <h2 id={titleId}>{title}</h2>
+          <button ref={closeRef} type="button" className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Close drawer"><X size={18} /></button>
+        </div>
+        <div className="drawer-body">{children}</div>
+        {footer && <div className="drawer-foot">{footer}</div>}
+      </aside>
+    </>
+  );
+};
 
 export const EmptyState = ({ icon: Icon = Inbox, title, sub, action }) => (
   <div className="empty">

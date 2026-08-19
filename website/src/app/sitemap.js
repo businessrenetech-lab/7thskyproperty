@@ -1,6 +1,9 @@
 import { getApiBase } from "@/lib/api";
+import { fetchPublicJson } from "@/lib/serverApi";
+import { normalizeListingsResponse, SITE_URL } from "@/lib/shortStay";
 
-const SITE_URL = "https://languageacademy.com.bd";
+export const dynamic = "force-dynamic";
+
 
 async function getCourses() {
   try {
@@ -29,13 +32,20 @@ async function getBranches() {
   } catch { return []; }
 }
 
+async function getShortStays() {
+  const payload = await fetchPublicJson("/api/public/short-stay/listings?limit=100", { fallback: [] });
+  return normalizeListingsResponse(payload).listings;
+}
+
 export default async function sitemap() {
   const courses = await getCourses();
   const blogs = await getBlogs();
   const branches = await getBranches();
+  const shortStays = await getShortStays();
 
   const staticRoutes = [
     { url: `${SITE_URL}`, lastModified: new Date(), changeFrequency: "weekly", priority: 1.0 },
+    { url: `${SITE_URL}/short-stays`, lastModified: new Date(), changeFrequency: "daily", priority: 0.95 },
     { url: `${SITE_URL}/courses`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE_URL}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE_URL}/contact`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
@@ -68,7 +78,14 @@ export default async function sitemap() {
       priority: branch.type === "head" ? 0.85 : 0.75,
     }));
 
-  const allRoutes = [...staticRoutes, ...courseRoutes, ...blogRoutes, ...branchRoutes];
+  const shortStayRoutes = shortStays.map((listing) => ({
+    url: `${SITE_URL}/short-stays/${listing.slug}`,
+    lastModified: listing.updatedAt ? new Date(listing.updatedAt) : new Date(),
+    changeFrequency: "daily",
+    priority: listing.featured ? 0.9 : 0.8,
+  }));
+
+  const allRoutes = [...staticRoutes, ...courseRoutes, ...blogRoutes, ...branchRoutes, ...shortStayRoutes];
   const uniqueRoutes = [];
   const visitedUrls = new Set();
 

@@ -3141,3 +3141,25 @@ used "the last line starting with `import`", which landed inside a multi-line
   recreated. Next: the full 14-screen Short Term Stay rebuild from the mockup
   (`Seventh Sky - Short Term Stay.html`) + backend read endpoints, scoped but not
   started. Nothing else of mine is pending.
+
+### 2026-08-19 13:05 | Claude Code (Opus 4.8) | COMPLETED | Full-system build snapshot — rebuild admin dist + commit concurrent module work
+- Request: "Build latest version for the whole system and commit push to git"
+  (template: prior successful build commit 10b84eb2, which committed source +
+  rebuilt dist together).
+- Scope: Whole working tree on this machine — the committed artifact is brought
+  in line with current source across every in-flight module.
+- Changes: Ran `npm run build:admin` (vite) → regenerated the tracked
+  `admin-portal/dist` bundle (old hashed assets removed, new ones added). Then
+  committed the full working tree: concurrent multi-session source (RPRM + RPTM
+  service agreements incl. new screens/controllers/routes/services/seed scripts,
+  short-stay owner disbursements, Clients/Rentals/Vacancies/RentalProperties,
+  Care dashboard, pm-design.css, kit.jsx, pickers.jsx, several backend
+  controllers/services, website src) plus the rebuilt dist, so dist matches src.
+- Verification: `npm run build:admin` succeeded — 1997 modules transformed, 0
+  errors, built in ~14s, so the entire current tree compiles. `website/.next` is
+  not tracked; the deploy rebuilds it (`DEPLOY_HOSTINGER.md`). Excluded the
+  413KB design-input file `Seventh Sky - Short Term Stay.html` from the commit.
+- Handoff: This is a snapshot commit that bundles work authored by other
+  concurrent agents/sessions — their changes are preserved, not claimed. If any
+  in-flight feature was mid-change, this ships its current state; owners should
+  verify their own module against this snapshot.

@@ -30,6 +30,34 @@ exports.list = asyncHandler(async (req, res) => {
   };
   if (req.query.role && roleMap[req.query.role]) where[roleMap[req.query.role]] = true;
 
+  if (req.query.contact_id) {
+    where.contact_id = req.query.contact_id;
+    let client = await Client.findOne({
+      where,
+      include: [Contact],
+    });
+    if (!client) {
+      const contact = await Contact.findOne({ where: { id: req.query.contact_id, ...branchScope(req) } });
+      if (contact) {
+        const { generateCode } = require('../utils/codeGenerator');
+        const clientCode = await generateCode(Client, 'client_code', 'SSPC-CL-');
+        const newClient = await Client.create({
+          branch_id: contact.branch_id,
+          contact_id: contact.id,
+          client_code: clientCode,
+          is_buyer: true,
+          is_tenant: true,
+          status: 'active',
+        });
+        await contact.update({ is_client: true, is_buyer: true });
+        client = await Client.findOne({ where: { id: newClient.id }, include: [Contact] });
+      }
+    }
+    if (client) {
+      return res.json({ data: [client], pagination: { page: 1, limit: 1, total: 1, pages: 1 } });
+    }
+  }
+
   const contactWhere = {};
   if (req.query.search) {
     const s = `%${req.query.search}%`;
@@ -53,9 +81,13 @@ exports.getOne = asyncHandler(async (req, res) => {
     include: [{ model: Contact, include: [{ model: ContactDocument, as: 'documents' }] }],
   });
   if (!client) return res.status(404).json({ error: 'Client not found.' });
+
+  const contact = client.Contact;
+  const contactId = contact?.id || 0;
+
   const communications = await Communication.findAll({
-    where: { branch_id: client.branch_id, [Op.or]: [{ entity_type: 'client', entity_id: client.id }, { entity_type: 'contact', entity_id: client.Contact?.id || 0 }] },
-    order: [['occurred_at', 'DESC']], limit: 50,
+    where: { branch_id: client.branch_id, [Op.or]: [{ entity_type: 'client', entity_id: client.id }, { entity_type: 'contact', entity_id: contactId }] },
+    order: [['occurred_at', 'DESC']], limit: 100,
   });
 
   const invoices = await PropertyInvoice.findAll({
@@ -63,7 +95,7 @@ exports.getOne = asyncHandler(async (req, res) => {
       branch_id: client.branch_id,
       [Op.or]: [
         { client_id: client.id },
-        client.Contact ? { contact_id: client.Contact.id } : null
+        contactId ? { contact_id: contactId } : null
       ].filter(Boolean)
     },
     order: [['created_at', 'DESC']],
@@ -82,8 +114,8 @@ exports.getOne = asyncHandler(async (req, res) => {
     limit: 200
   });
 
-  const roleProfiles = client.Contact ? await PartyRoleProfile.findAll({
-    where: { contact_id: client.Contact.id, branch_id: client.branch_id },
+  const roleProfiles = contactId ? await PartyRoleProfile.findAll({
+    where: { contact_id: contactId, branch_id: client.branch_id },
     include: [
       { model: Property, as: 'property', attributes: ['id', 'property_code', 'title', 'address', 'area', 'district'] },
       { model: SigningEnvelope, as: 'envelope', attributes: ['id', 'envelope_code', 'title', 'status', 'sent_at', 'completed_at'] },
@@ -95,6 +127,49 @@ exports.getOne = asyncHandler(async (req, res) => {
     where: { branch_id: client.branch_id, party_role_profile_id: { [Op.in]: profileIds } },
     order: [['created_at', 'DESC']],
   }) : [];
+
+  // Related Tenancies
+  const Tenancy = require('../models/Tenancy');
+  const tenancies = contactId ? await Tenancy.findAll({
+    where: {
+      branch_id: client.branch_id,
+      [Op.or]: [{ tenant_contact_id: contactId }, { owner_contact_id: contactId }]
+    },
+    include: [{ model: Property, attributes: ['id', 'property_code', 'title', 'address', 'area', 'city', 'district'] }],
+    order: [['created_at', 'DESC']],
+    limit: 50
+  }) : [];
+
+  // Related Care Work Orders
+  const CareWorkOrder = require('../models/CareWorkOrder');
+  const ServiceItem = require('../models/ServiceItem');
+  const ServiceProvider = require('../models/ServiceProvider');
+  const careWorkOrders = contactId ? await CareWorkOrder.findAll({
+    where: { branch_id: client.branch_id, customer_contact_id: contactId },
+    include: [
+      { model: ServiceItem, as: 'service', attributes: ['id', 'name', 'code'] },
+      { model: ServiceProvider, as: 'provider', attributes: ['id', 'provider_code', 'company_name'] }
+    ],
+    order: [['created_at', 'DESC']],
+    limit: 50
+  }) : [];
+
+  // Related AMC Contracts
+  const CareAmcContract = require('../models/CareAmcContract');
+  const amcContracts = contactId ? await CareAmcContract.findAll({
+    where: { branch_id: client.branch_id, customer_contact_id: contactId },
+    order: [['created_at', 'DESC']],
+    limit: 50
+  }) : [];
+
+  // Related Care Enquiries
+  const CareEnquiry = require('../models/CareEnquiry');
+  const careEnquiries = contactId ? await CareEnquiry.findAll({
+    where: { branch_id: client.branch_id, customer_contact_id: contactId },
+    order: [['created_at', 'DESC']],
+    limit: 50
+  }) : [];
+
   const invoiceTotal = invoices.reduce((sum, invoice) => sum + Number(invoice.total || 0), 0);
   const outstandingTotal = invoices.reduce((sum, invoice) => sum + Number(invoice.balance || 0), 0);
   const receivedTotal = payments
@@ -109,6 +184,10 @@ exports.getOne = asyncHandler(async (req, res) => {
     registerEntries,
     roleProfiles,
     kycDocuments,
+    tenancies,
+    careWorkOrders,
+    amcContracts,
+    careEnquiries,
     summary: {
       invoice_total: invoiceTotal,
       outstanding_total: outstandingTotal,
@@ -116,8 +195,70 @@ exports.getOne = asyncHandler(async (req, res) => {
       communications: communications.length,
       documents: (client.Contact?.documents || []).length + kycDocuments.length,
       role_profiles: roleProfiles.length,
+      tenancies: tenancies.length,
+      work_orders: careWorkOrders.length,
+      amc_contracts: amcContracts.length,
+      enquiries: careEnquiries.length,
     },
   });
+});
+
+// POST /api/clients
+// Create new client or promote contact to client
+exports.create = asyncHandler(async (req, res) => {
+  const { generateCode } = require('../utils/codeGenerator');
+  const { contact_id, full_name, email, primary_phone, company_name, district, is_buyer, is_seller, is_landlord, is_tenant, is_service_client, is_nrb_client, client_segment, notes } = req.body;
+
+  let contact;
+  if (contact_id) {
+    contact = await Contact.findOne({ where: { id: contact_id, ...branchScope(req) } });
+    if (!contact) return res.status(404).json({ error: 'Selected contact not found.' });
+  } else {
+    if (!full_name || !full_name.trim()) return res.status(400).json({ error: 'Full name is required.' });
+    const contactCode = await generateCode(Contact, 'contact_code', 'SSPC-CT-');
+    contact = await Contact.create({
+      branch_id: req.user?.branch_id || 1,
+      contact_code: contactCode,
+      full_name: full_name.trim(),
+      email: email ? email.trim() : null,
+      primary_phone: primary_phone ? primary_phone.trim() : null,
+      company_name: company_name ? company_name.trim() : null,
+      district: district ? district.trim() : null,
+      is_client: true,
+      created_by: req.user?.id || null,
+    });
+  }
+
+  const existingClient = await Client.findOne({ where: { contact_id: contact.id, ...branchScope(req) } });
+  if (existingClient) {
+    return res.status(400).json({ error: 'A client profile already exists for this contact.' });
+  }
+
+  const clientCode = await generateCode(Client, 'client_code', 'SSPC-CL-');
+  const newClient = await Client.create({
+    branch_id: contact.branch_id || req.user?.branch_id || 1,
+    contact_id: contact.id,
+    client_code: clientCode,
+    is_buyer: !!is_buyer,
+    is_seller: !!is_seller,
+    is_landlord: !!is_landlord,
+    is_tenant: !!is_tenant,
+    is_service_client: !!is_service_client,
+    is_nrb_client: !!is_nrb_client,
+    client_segment: client_segment || 'standard',
+    status: 'active',
+    notes: notes || null,
+    created_by: req.user?.id || null,
+  });
+
+  await contact.update({ is_client: true });
+
+  const result = await Client.findOne({
+    where: { id: newClient.id },
+    include: [Contact],
+  });
+
+  res.status(201).json({ data: result, message: 'New client profile created successfully.' });
 });
 
 // POST /api/clients/:id/communications

@@ -29,14 +29,14 @@ export default function CareDashboard() {
         {kpi('pm-kpi--cyan', ClipboardList, 'Open work orders', m.work_orders?.open ?? 0, `${m.work_orders?.total ?? 0} total`, '/property-care/work-orders')}
         {kpi('pm-kpi--green', HardHat, 'Active providers', m.providers?.active ?? 0, `${m.providers?.total ?? 0} onboarded`, '/providers')}
         {kpi('pm-kpi--navy', TrendingUp, 'Our income', bdt(m.revenue?.our_income), 'from service fees', null)}
-        {kpi('pm-kpi--amber', CreditCard, 'Provider payable', bdt(m.provider_payable), 'to disburse', '/property-care/payments')}
+        {kpi('pm-kpi--amber', CreditCard, 'Provider payable', bdt(m.provider_payable), 'to disburse', '/water-tank/payments')}
       </div>
 
       {kpiData && (
         <div className="pm-card" style={{ marginTop: 18 }}>
           <div className="pm-card-h"><div className="ic"><TrendingUp size={16} /></div><h3>Service KPIs</h3></div>
           <div className="pm-card-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12 }}>
-            {[['Completion rate', kpiData.completion_rate + '%', '/property-care/work-orders'], ['AMC active', kpiData.amc_active, '/property-care/amc'], ['Warranties active', kpiData.warranties_active, '/property-care/registers'], ['Complaints open', kpiData.complaints_open, '/property-care/registers'], ['Incidents open', kpiData.incidents_open, '/property-care/registers']].map(([l, v, to]) => (
+            {[['Completion rate', kpiData.completion_rate + '%', '/property-care/work-orders'], ['AMC active', kpiData.amc_active, '/property-care/amc'], ['Warranties active', kpiData.warranties_active, '/water-tank/registers'], ['Complaints open', kpiData.complaints_open, '/water-tank/registers'], ['Incidents open', kpiData.incidents_open, '/water-tank/registers']].map(([l, v, to]) => (
               <div key={l} onClick={() => to && nav(to)} style={{ cursor: to ? 'pointer' : 'default', background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 12, padding: '14px 16px' }}>
                 <div style={{ fontSize: 11, textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 650 }}>{l}</div>
                 <div className="pm-num" style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>{v}</div>
@@ -82,7 +82,7 @@ export default function CareDashboard() {
       <div className="pm-card" style={{ marginTop: 18 }}>
         <div className="pm-card-h"><div className="ic"><Layers size={16} /></div><h3>Quick links</h3></div>
         <div className="pm-card-body" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {[['Enquiries', '/property-care/enquiries'], ['Leads', '/property-care/leads'], ['Customers', '/property-care/customers'], ['Services', '/services'], ['Service Providers', '/providers'], ['Work Orders', '/property-care/work-orders'], ['Invoicing', '/property-care/invoicing'], ['Payments & Disbursements', '/property-care/payments']].map(([l, t]) => (
+          {[['Enquiries', '/property-care/enquiries'], ['Leads', '/property-care/leads'], ['Customers', '/property-care/customers'], ['Services', '/services'], ['Service Providers', '/providers'], ['Work Orders', '/property-care/work-orders'], ['Invoicing', '/property-care/invoicing'], ['Payments & Disbursements', '/water-tank/payments']].map(([l, t]) => (
             <button key={t} className="pm-pill" onClick={() => nav(t)}>{l}</button>
           ))}
         </div>

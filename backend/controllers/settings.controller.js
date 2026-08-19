@@ -63,6 +63,11 @@ const DEFAULT_SETTINGS = [
   { setting_key: 'CONTACT_MAP_EMBED', setting_value: '', description: 'Google Maps Embed URL', is_secret: false, category: 'contact' },
 
   // ── Branding & Business ─────────────────────────────────
+  // ── Company identity (printed on quotations, invoices and agreements) ──
+  { setting_key: 'COMPANY_WEBSITE', setting_value: '', description: 'Website shown on client documents', is_secret: false, category: 'branding' },
+  { setting_key: 'COMPANY_TRADE_LICENCE', setting_value: '', description: 'Trade Licence number (document footer)', is_secret: false, category: 'branding' },
+  { setting_key: 'COMPANY_BIN', setting_value: '', description: 'BIN — Business Identification Number (document footer)', is_secret: false, category: 'branding' },
+  { setting_key: 'COMPANY_TIN', setting_value: '', description: 'TIN — Taxpayer Identification Number', is_secret: false, category: 'branding' },
   { setting_key: 'BRAND_NAME', setting_value: 'Seventh Sky Property Care', description: 'Business / Brand Name', is_secret: false, category: 'branding' },
   { setting_key: 'BRAND_TAGLINE', setting_value: 'Real estate service, property care, and client management', description: 'Brand Tagline', is_secret: false, category: 'branding' },
   { setting_key: 'BRAND_LOGO_URL', setting_value: '', description: 'Logo URL (light version)', is_secret: false, category: 'branding' },

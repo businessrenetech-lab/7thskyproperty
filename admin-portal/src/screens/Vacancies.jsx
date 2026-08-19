@@ -34,7 +34,11 @@ export default function Vacancies() {
   const columns = [
     { key: 'notice_code', header: 'Notice', render: (r) => <span className="code-chip">{r.notice_code}</span> },
     { key: 'property', header: 'Property', render: (r) => r.property?.title || '—' },
-    { key: 'tenant', header: 'Tenant', render: (r) => r.tenant?.full_name || '—' },
+    { key: 'tenant', header: 'Tenant', render: (r) => r.tenant ? (
+      <span onClick={(e) => { e.stopPropagation(); nav(`/clients?contact=${r.tenant.id}`); }} style={{ color: 'var(--cyan)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline dotted' }}>
+        {r.tenant.full_name} ↗
+      </span>
+    ) : '—' },
     { key: 'intended_vacate_date', header: 'Vacate date', render: (r) => <strong>{r.intended_vacate_date}</strong> },
     { key: 'notice', header: 'Notice period', render: (r) => (
       <span style={{ color: r.notice_period_met ? 'var(--success)' : 'var(--warning)' }}>

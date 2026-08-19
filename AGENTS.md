@@ -4,6 +4,28 @@ This file is the practical guide for any developer or AI agent changing this cod
 Read it before you touch anything. For *how the system works* (data flow, subsystems),
 see **ARCHITECTURE.md** next to this file.
 
+## Shared Agent Coordination (mandatory)
+
+`AGENT_WORK_LOG.md` is the shared, persistent handoff record for all human and AI
+contributors. This workflow is automatic and does not require the user to request it again.
+
+For every task, including investigation, documentation, and no-code tasks:
+
+1. Before doing substantive work, read `AGENT_WORK_LOG.md` and run `git status` to identify
+   active, completed, blocked, and uncommitted work from other contributors.
+2. Append a `STARTED` entry to `AGENT_WORK_LOG.md` before changing project files. Include
+   your identity, requested outcome, and intended scope.
+3. Preserve concurrent work. Never edit or remove another contributor's log entry, and
+   never revert, overwrite, stage, or claim their project changes. If scopes overlap,
+   inspect carefully and document the coordination decision.
+4. Before ending the task, append a `COMPLETED`, `BLOCKED`, or `PAUSED` entry. List files
+   changed, decisions made, exact verification and results, and any remaining work.
+5. Update the log even when no files changed or verification failed. Do not include secrets,
+   credentials, tokens, `.env` values, or private customer data.
+
+The log is append-only. Follow its entry template exactly enough that another agent can
+resume without relying on chat history. Updating it is part of the definition of done.
+
 ---
 
 ## 0. What this repo is

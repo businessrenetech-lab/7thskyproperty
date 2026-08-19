@@ -32,7 +32,10 @@ const loadByToken = (token) => EnvelopeSigner.findOne({ where: { access_token: t
 
 // Where a KYC document is filed for an envelope. Prefer the linked role entity
 // so activation automation (party_role / service_provider) fires; else the envelope.
-function kycTargetFor(env) {
+function kycTargetFor(env, signer) {
+  if (env.related_type === 'short_stay_management' && signer?.contact_id) {
+    return { related_type: 'short_stay_owner', related_id: signer.contact_id };
+  }
   if (env.related_type && env.related_id) return { related_type: env.related_type, related_id: env.related_id };
   return { related_type: 'envelope', related_id: env.id };
 }
@@ -53,7 +56,7 @@ exports.view = asyncHandler(async (req, res) => {
   if (ctx.error) return res.status(ctx.error).json({ error: ctx.message });
   const { signer, env } = ctx;
   const role = roleFor(env, signer);
-  const target = kycTargetFor(env);
+  const target = kycTargetFor(env, signer);
   const policy = env.kyc_policy || 'flexible';
 
   const docs = await KycDocument.findAll({ where: { ...target, role }, raw: true });
@@ -113,7 +116,7 @@ exports.upload = asyncHandler(async (req, res) => {
   if (!document_type) return res.status(400).json({ error: 'document_type is required.' });
 
   const role = roleFor(env, signer);
-  const target = kycTargetFor(env);
+  const target = kycTargetFor(env, signer);
   const file_url = `/uploads/documents/${path.basename(req.file.path)}`;
 
   // Reuse an existing row for this doc type (re-upload / back side), else create.
@@ -142,8 +145,8 @@ exports.upload = asyncHandler(async (req, res) => {
 exports.removeDoc = asyncHandler(async (req, res) => {
   const ctx = await loadIntake(req.params.token);
   if (ctx.error) return res.status(ctx.error).json({ error: ctx.message });
-  const { env } = ctx;
-  const target = kycTargetFor(env);
+  const { env, signer } = ctx;
+  const target = kycTargetFor(env, signer);
   const row = await KycDocument.findOne({ where: { id: req.params.id, ...target } });
   if (!row) return res.status(404).json({ error: 'Document not found.' });
   if (row.status === 'verified') return res.status(409).json({ error: 'A verified document cannot be removed.' });
@@ -160,7 +163,7 @@ exports.sign = asyncHandler(async (req, res) => {
   const role = roleFor(env, signer);
 
   if (policy === 'strict' && requirementsFor(role).length) {
-    const docs = await KycDocument.findAll({ where: { ...kycTargetFor(env), role }, raw: true });
+    const docs = await KycDocument.findAll({ where: { ...kycTargetFor(env, signer), role }, raw: true });
     const kyc = evaluate(role, docs);
     if (!kyc.all_submitted) {
       const missing = kyc.items.filter((i) => i.required && !i.uploaded).map((i) => i.label);
