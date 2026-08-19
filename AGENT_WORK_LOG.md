@@ -3120,3 +3120,24 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Commercial and Rural still render in the global admin. They have no dedicated
   screens at all, so a console for either would be chrome around three shared
   components; worth doing when they have something of their own.
+
+### 2026-08-19 12:40 | Claude Code (Opus 4.8) | COMPLETED | Add DESIGN.md + Short Term Stay QA report (docs only)
+- Request: Study the Short Term Stay mockup, produce a system design doc and a QA
+  report, then commit and push. (The mockup rebuild itself is planned, not yet coded.)
+- Scope: Two new root docs only — `DESIGN.md`, `QA_SHORT_TERM_STAY_REPORT.md`. No
+  source/`dist` changes. A prior session's Short Term Stay module is already
+  committed and pushed (`a1ceab5`, `10e896f`, `0857c52`).
+- Changes: `DESIGN.md` — full design-system reference (base theme + `.pm-scope`
+  cockpit: palettes, typography, tokens, component kit, screen patterns, front-end
+  integration contract). `QA_SHORT_TERM_STAY_REPORT.md` — end-to-end QA of the
+  short-stay workflow with the bugs fixed.
+- Verification: Committed ONLY these two files (+ this log entry). `git status`
+  confirmed ~30 other modified/untracked files belong to concurrent sessions
+  (Rentals, Clients, RPRM/RPTM, website, pm-design.css, kit.jsx) and were left
+  untouched. `dist` deliberately NOT committed — a build over other sessions'
+  uncommitted `src` would bake in their WIP; the server rebuilds `dist` on deploy
+  per `DEPLOY_HOSTINGER.md`.
+- Handoff: Deploy instructions already exist (`DEPLOY_HOSTINGER.md`) — not
+  recreated. Next: the full 14-screen Short Term Stay rebuild from the mockup
+  (`Seventh Sky - Short Term Stay.html`) + backend read endpoints, scoped but not
+  started. Nothing else of mine is pending.
