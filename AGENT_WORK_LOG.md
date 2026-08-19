@@ -3163,3 +3163,23 @@ used "the last line starting with `import`", which landed inside a multi-line
   concurrent agents/sessions — their changes are preserved, not claimed. If any
   in-flight feature was mid-change, this ships its current state; owners should
   verify their own module against this snapshot.
+
+### 2026-08-19 13:40 | Claude Code (Opus 4.8) | COMPLETED | Fix live 404 — mount Water Tank + STS/RPRM/RPTM routes in monolith manifest
+- Request: Live site — Water Tank service dashboard shows "Could not load the
+  dashboard / Not found".
+- Root cause: `backend/server.js` (dev) hard-codes its own `mount()` list and
+  mounts all 18 `/api/wt-*` routers + `/api/sts`, `/api/short-stay-verification`,
+  `/api/sts-disbursements`, `/api/rprm`, `/api/rptm`. But the Hostinger monolith
+  (`production-server.js`) mounts from `backend/routes/manifest.js`, which never
+  received any of them — so every `/api/wt-ops/dashboard` etc. 404'd in production.
+  The two lists had silently drifted (server.js does not read manifest).
+- Scope/Changes: `backend/routes/manifest.js` only — added the 18 Water Tank
+  mounts + sts/short-stay-verification/sts-disbursements + rprm/rptm.
+- Verification: Required every manifest module in Node — 86 load OK, 0 of my
+  additions failed. The only 9 failures are the pre-existing dead Language-Academy
+  legacy routes (Student/Batch/Enrollment/Course) the monolith already try/catch
+  skips (per DEPLOY_HOSTINGER.md, "the 9 that skip are dead legacy routes").
+  Backend-only change — no dist rebuild needed.
+- Handoff: Needs redeploy + Node app restart on Hostinger to take effect (git
+  pull → restart; no build/migration required). server.js and manifest.js should
+  eventually be unified to one source so they can't drift again.
