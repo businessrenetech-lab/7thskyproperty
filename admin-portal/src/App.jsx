@@ -38,6 +38,7 @@ import Services from './screens/Services';
 import ServiceCatalog from './screens/ServiceCatalog';
 import ServiceLineDashboard from './screens/services/ServiceLineDashboard';
 import WaterTankConsole from './screens/watertank/WaterTankConsole';
+import AirConditioningConsole from './screens/watertank/AirConditioningConsole';
 import WaterTankDashboard from './screens/watertank/Dashboard';
 import WaterTankProviders from './screens/watertank/providers/ProviderDirectory';
 import WaterTankProviderDetail from './screens/watertank/providers/ProviderDetail';
@@ -186,6 +187,7 @@ export default function App() {
             <Route path="/reference/:token" element={<EmployerReference />} />
             <Route path="/provider-register/:token" element={<ProviderRegister />} />
             <Route path="/water-tank-provider-onboard/:token" element={<WaterTankProviderOnboard />} />
+            <Route path="/air-condition-provider-onboard/:token" element={<WaterTankProviderOnboard />} />
             {/* Provider and customer portals. PUBLIC by design — the token in the
                 URL is the credential, so this must sit outside RequireAuth. */}
             <Route path="/portal/:token" element={<WTPortal />} />
@@ -368,6 +370,66 @@ export default function App() {
               <Route path="/water-tank/catalogue" element={<WaterTankCatalogue />} />
               <Route path="/water-tank/portal-accounts" element={<WTPortalAccounts />} />
               <Route path="/water-tank/settings" element={<WaterTankSettings />} />
+            </Route>
+            {/* ── Air Conditioning console — same screens as Water Tank, scoped to AC ── */}
+            <Route element={<RequireAuth><AdminGate><AirConditioningConsole /></AdminGate></RequireAuth>}>
+              <Route path="/air-conditioning" element={<WaterTankDashboard />} />
+              <Route path="/air-conditioning/clients" element={<WTClients />} />
+              <Route path="/air-conditioning/clients/new" element={<WTClientCreate />} />
+              <Route path="/air-conditioning/clients/:code" element={<WTClientDetail />} />
+              <Route path="/air-conditioning/service-requests" element={<WTServiceRequests />} />
+              <Route path="/air-conditioning/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/air-conditioning/site-assessments" element={<WTSiteAssessments />} />
+              <Route path="/air-conditioning/site-assessments/new" element={<WTAssessmentForm />} />
+              <Route path="/air-conditioning/site-assessments/:code" element={<WTAssessmentDetail />} />
+              <Route path="/air-conditioning/site-assessments/:code/edit" element={<WTAssessmentForm />} />
+              <Route path="/air-conditioning/site-assessments/:code/quotation" element={<WTQuotationBuilder />} />
+              <Route path="/air-conditioning/site-assessments/:code/quotation/:quoteCode/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/air-conditioning/quotations" element={<WTQuotations />} />
+              <Route path="/air-conditioning/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/air-conditioning/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/air-conditioning/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/air-conditioning/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/air-conditioning/work-orders" element={<WTWorkOrders />} />
+              <Route path="/air-conditioning/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/air-conditioning/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/air-conditioning/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/air-conditioning/projects" element={<WTProjects />} />
+              <Route path="/air-conditioning/projects/new" element={<WTProjectForm />} />
+              <Route path="/air-conditioning/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/air-conditioning/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/air-conditioning/providers" element={<WaterTankProviders />} />
+              <Route path="/air-conditioning/providers/new" element={<WaterTankProviderOnboarding />} />
+              <Route path="/air-conditioning/providers/:id" element={<WaterTankProviderDetail />} />
+              <Route path="/air-conditioning/providers/:code/edit" element={<WaterTankProviderOnboarding />} />
+              <Route path="/air-conditioning/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/air-conditioning/agreements/provider" element={<WtProviderAgreements />} />
+              <Route path="/air-conditioning/agreements/provider/new" element={<WtProviderAgreements />} />
+              <Route path="/air-conditioning/agreements/provider/:id" element={<WtProviderAgreements />} />
+              <Route path="/air-conditioning/agreements/provider/:id/edit" element={<WtProviderAgreements />} />
+              <Route path="/air-conditioning/compliance" element={<WTCompliance />} />
+              <Route path="/air-conditioning/reports" element={<WTReports />} />
+              <Route path="/air-conditioning/reports/:kind" element={<WTReports />} />
+              <Route path="/air-conditioning/service-reports" element={<WTServiceReports />} />
+              <Route path="/air-conditioning/service-reports/:code" element={<WTServiceReports />} />
+              <Route path="/air-conditioning/agreements" element={<WTAgreementsHub />} />
+              <Route path="/air-conditioning/work-queue" element={<WTWorkQueue />} />
+              <Route path="/air-conditioning/amc" element={<WTAmc />} />
+              <Route path="/air-conditioning/amc/create-amc" element={<WTAmcForm />} />
+              <Route path="/air-conditioning/amc/:code" element={<WTAmcDetail />} />
+              <Route path="/air-conditioning/invoices" element={<WTInvoices />} />
+              <Route path="/air-conditioning/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/air-conditioning/payments" element={<WTPayments />} />
+              <Route path="/air-conditioning/calendar" element={<WTCalendar />} />
+              <Route path="/air-conditioning/registers" element={<WTRegisters />} />
+              <Route path="/air-conditioning/registers/:kind" element={<WTRegisters />} />
+              <Route path="/air-conditioning/registers/:kind/:code" element={<WTRegisters />} />
+              <Route path="/air-conditioning/complaints" element={<WTComplaints />} />
+              <Route path="/air-conditioning/complaints/:code" element={<WTComplaints />} />
+              <Route path="/air-conditioning/communication" element={<WTCommLog />} />
+              <Route path="/air-conditioning/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/air-conditioning/portal-accounts" element={<WTPortalAccounts />} />
+              <Route path="/air-conditioning/settings" element={<WaterTankSettings />} />
             </Route>
 
             {/* Short Term Stay — the second separated operations console, sharing

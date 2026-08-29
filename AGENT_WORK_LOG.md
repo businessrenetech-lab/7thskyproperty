@@ -3693,3 +3693,27 @@ used "the last line starting with `import`", which landed inside a multi-line
   a physical-duplication fallback checklist (with the server.js↔manifest.js drift warning),
   and a Debt register to keep duplicated code in lockstep until unified.
 - Docs only; no code change.
+
+### 2026-08-29 21:30 | Claude Code (Opus 4.8) | STARTED | Air Conditioning service — duplicate Water Tank (branch air-conditioning/phase-0-duplicate)
+- Request: create a new Air Conditioning console duplicating Water Tank; SOPs at
+  Downloads/Air Conditioning/SOP; agreements to be shared later. Core-workflow edits
+  must auto-propagate across services (per SERVICE_MODULE_DUPLICATION.md).
+- Milestone 1 (foundation + AC window), all additive & WT-safe:
+  * backend/config/serviceLines.js — service registry (WT + AC manifests from the AC SOP:
+    AC adds Electrical/Refrigerant/Safety compliance + Professional Indemnity/Equipment
+    insurance; ACCM-* code prefixes; air_conditioning_csa vertical; violet accent).
+  * controllerHelpers — serviceScope(req)/resolveServiceLine(req) (defaults water_tank).
+  * migration 0093 — additive service_line column on 26 wt_* tables (default water_tank,
+    backfilled); ran OK. Models: service_line added to the shared `base` in both WT models.
+  * admin api.js — sends X-Service-Line=air_conditioning when the path is /air-conditioning/*.
+  * consoles.js — airConditioningConsole (nav rebased from WATER_TANK_NAV to
+    /air-conditioning/*, violet); registered in CONSOLES. AirConditioningConsole.jsx shell.
+  * App.jsx — 57 AC routes reusing the WT screen components + public AC onboarding route.
+  * common.jsx — svcBase() helper for milestone-2 intra-screen path parameterization.
+- Verified: backend loads; admin build passes; WT still returns its data.
+- KNOWN (milestone 2, the "edit each by each"): controllers don't yet apply serviceScope to
+  their where-clauses, so AC currently shares WT data (provider directory returns 6 for
+  both). Next: swap branchScope→wtScope (branch+service) across WT controllers and set
+  service_line on create paths; parametrize the catalogue vertical by service line; then AC
+  is fully isolated. Also intra-screen nav() links still point at /water-tank (svcBase pass).
+- Handoff: WIP on the AC branch. Not merged to main.

@@ -9,6 +9,8 @@ const sequelize = require('../config/db.config');
 const base = {
   id: { type: D.INTEGER, autoIncrement: true, primaryKey: true },
   branch_id: { type: D.INTEGER, allowNull: false, defaultValue: 1 },
+  // Owning service line (water_tank, air_conditioning, …); defaults to water_tank.
+  service_line: { type: D.STRING(40), allowNull: false, defaultValue: 'water_tank' },
 };
 
 /* Sec. 5 Step 2 (compliance) + Step 3 (insurance) registers. */

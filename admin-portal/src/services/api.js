@@ -38,6 +38,15 @@ api.interceptors.request.use(
     if (branchId) {
       config.headers['X-Branch-Id'] = branchId;
     }
+    // Tell the backend which service line this request is for, derived from the
+    // console the user is in (/air-conditioning/* → air_conditioning, else the
+    // Water Tank default). The shared controllers scope their data by this.
+    try {
+      const p = window.location?.pathname || '';
+      if (p.includes('/air-conditioning') || p.includes('/air-condition-provider-onboard')) {
+        config.headers['X-Service-Line'] = 'air_conditioning';
+      }
+    } catch { /* non-browser context */ }
     return config;
   },
   (error) => {

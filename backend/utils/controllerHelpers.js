@@ -20,6 +20,21 @@ function resolveBranchId(req, bodyBranchId) {
   return req.branchId ?? req.user?.branch_id ?? bodyBranchId ?? null;
 }
 
+/**
+ * The service line for this request, defaulting to Water Tank when unset so
+ * existing single-service behaviour is unchanged. Set by the resolveServiceLine
+ * middleware from the X-Service-Line header (or a route mount). Use like
+ * branchScope: spread serviceScope(req) into a shared-table `where`.
+ */
+const { DEFAULT_SERVICE_LINE, SERVICE_LINE_KEYS } = require('../config/serviceLines');
+function resolveServiceLine(req) {
+  const raw = req.serviceLine || req.header?.('X-Service-Line') || req.headers?.['x-service-line'];
+  return SERVICE_LINE_KEYS.includes(raw) ? raw : DEFAULT_SERVICE_LINE;
+}
+function serviceScope(req) {
+  return { service_line: resolveServiceLine(req) };
+}
+
 /** Parse pagination params -> { limit, offset, page }. */
 function getPagination(req, defaultLimit = 25, maxLimit = 100) {
   let limit = parseInt(req.query.limit, 10) || defaultLimit;
@@ -37,4 +52,4 @@ function pick(body, allowed) {
   return out;
 }
 
-module.exports = { asyncHandler, branchScope, resolveBranchId, getPagination, pick };
+module.exports = { asyncHandler, branchScope, resolveBranchId, getPagination, pick, resolveServiceLine, serviceScope };

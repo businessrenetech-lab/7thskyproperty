@@ -4,7 +4,9 @@
  */
 const { DataTypes: D } = require('sequelize');
 const sequelize = require('../config/db.config');
-const base = { id: { type: D.INTEGER, autoIncrement: true, primaryKey: true }, branch_id: { type: D.INTEGER, allowNull: false, defaultValue: 1 } };
+// service_line tags every row with its owning service (water_tank, air_conditioning, …).
+// Defaults to water_tank so existing rows and single-service callers are unchanged.
+const base = { id: { type: D.INTEGER, autoIncrement: true, primaryKey: true }, branch_id: { type: D.INTEGER, allowNull: false, defaultValue: 1 }, service_line: { type: D.STRING(40), allowNull: false, defaultValue: 'water_tank' } };
 
 const WtClient = sequelize.define('WtClient', {
   ...base,

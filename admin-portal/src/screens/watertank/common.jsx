@@ -9,6 +9,14 @@ import { Spinner } from '../../ui/kit';
 
 /* Shared toolkit for the Water Tank operations screens (wt-scope). */
 
+// The current console's URL base, so shared screens navigate within whichever
+// service the user is in (/air-conditioning/* vs /water-tank/*). Use it in place
+// of a hard-coded '/water-tank' prefix: nav(`${svcBase()}/quotations`).
+export const svcBase = () => {
+  try { return (window.location.pathname || '').includes('/air-conditioning') ? '/air-conditioning' : '/water-tank'; }
+  catch { return '/water-tank'; }
+};
+
 export const bdt = (v) => '৳' + Number(v || 0).toLocaleString('en-BD');
 export const money = (v) => (v == null || v === '' ? '—' : bdt(v));
 export const dateFmt = (v) => {

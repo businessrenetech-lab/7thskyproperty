@@ -418,8 +418,42 @@ export const residentialConsole = {
   exitTo: '/dashboard',
 };
 
+/* ── Air Conditioning ──────────────────────────────────────────────────────
+ * Air Conditioning runs the exact same workflow as Water Tank, so its console is
+ * derived from the Water Tank nav — the same groups and screens, rebased onto
+ * /air-conditioning/* and given a violet accent. The shared screens are scoped to
+ * Air Conditioning data by the X-Service-Line header (services/api.js), and the
+ * backend by serviceScope(req). See SERVICE_MODULE_DUPLICATION.md. */
+const rebaseNav = (groups, fromBase, toBase) => groups.map((g) => ({
+  ...g,
+  key: `ac-${g.key}`,
+  items: g.items.map((it) => ({ ...it, to: it.to.replace(fromBase, toBase) })),
+}));
+
+export const AIR_CONDITIONING_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/air-conditioning');
+
+export const airConditioningConsole = {
+  slug: 'air-conditioning',
+  storageKey: 'ac.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Air Conditioning Services',
+    icon: Sparkles,
+    accent: '#7c3aed',          // violet — tells the AC console apart from WT cyan
+    accentStrong: '#6d28d9',
+    accentInk: '#5b21b6',
+    accentTint: 'rgba(124,58,237,.12)',
+    accentTint2: '#ede9fe',
+  },
+  navGroups: AIR_CONDITIONING_NAV,
+  // Shared Water Tank ops endpoints, scoped to Air Conditioning by the header.
+  api: { capabilities: '/wt-ops/capabilities', workQueue: '/wt-ops/work-queue' },
+  exitTo: '/dashboard',
+};
+
 export const CONSOLES = {
   'water-tank': waterTankConsole,
+  'air-conditioning': airConditioningConsole,
   'short-stay': shortStayConsole,
   'property-management': propertyMgmtConsole,
   residential: residentialConsole,
