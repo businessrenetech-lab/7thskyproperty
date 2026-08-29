@@ -227,12 +227,32 @@ export default function QuotationDetail() {
             <button className="wt-btn" style={{ justifyContent: 'center' }} onClick={() => setSending(true)}>
               <Mail size={14} /> {q.sent_at ? 'Re-send to client' : 'Email to client'}
             </button>
-            <button className="wt-btn" style={{ justifyContent: 'center', borderColor: 'var(--wt-accent)', color: 'var(--wt-accent-ink)' }}
-              onClick={() => nav(q.source_assessment
-                ? `/water-tank/site-assessments/${q.source_assessment}/quotation/${q.code}/agreement`
-                : `/water-tank/quotations/${q.code}/agreement`)}>
-              <FileSignature size={14} /> {q.agreement_code ? 'Agreement raised' : 'Create Service Agreement'}
-            </button>
+            {/* When the client is already covered by an existing signed Customer
+                Service Agreement (and this quote hasn't raised its own), the
+                "Create Service Agreement" option is hidden — the existing
+                agreement governs the engagement (Clause 1), so no new one is
+                raised. It shows the covering agreement instead. */}
+            {(() => {
+              const coveredByExisting = !q.agreement_code
+                && String(client?.agreement_status || '').toLowerCase() === 'signed'
+                && !!client?.agreement_code;
+              if (coveredByExisting) {
+                return (
+                  <button className="wt-btn" style={{ justifyContent: 'center' }}
+                    onClick={() => nav('/water-tank/agreements/customer')}>
+                    <FileSignature size={14} /> Covered by {client.agreement_code}
+                  </button>
+                );
+              }
+              return (
+                <button className="wt-btn" style={{ justifyContent: 'center', borderColor: 'var(--wt-accent)', color: 'var(--wt-accent-ink)' }}
+                  onClick={() => nav(q.source_assessment
+                    ? `/water-tank/site-assessments/${q.source_assessment}/quotation/${q.code}/agreement`
+                    : `/water-tank/quotations/${q.code}/agreement`)}>
+                  <FileSignature size={14} /> {q.agreement_code ? 'Agreement raised' : 'Create Service Agreement'}
+                </button>
+              );
+            })()}
             {q.source_assessment && (
               <button className="wt-btn" style={{ justifyContent: 'center' }}
                 onClick={() => nav(`/water-tank/site-assessments/${q.source_assessment}`)}>

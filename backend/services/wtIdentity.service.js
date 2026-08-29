@@ -93,17 +93,23 @@ async function ensureClient(branchId, { client_code, client_name, ...extra } = {
 async function ensureProject(branchId, client, hint = {}, transaction, dryRun = false) {
   if (!client) return null;
 
+  // An explicit project link always wins — the record already belongs to a project.
   if (hint.project_id) {
     const byCode = await M.WtProject.findOne({ where: { branch_id: branchId, code: hint.project_id }, transaction });
     if (byCode) return byCode;
   }
 
-  const open = await M.WtProject.findOne({
-    where: { branch_id: branchId, client_name: client.name, status: 'Open' },
-    order: [['id', 'DESC']],
-    transaction,
-  });
-  if (open) return open;
+  // `forceNew` opens a fresh project even when the client has an open one, so a new
+  // engagement (a newly approved quotation / new agreement) gets its own project and
+  // its work orders do not pile up under an earlier engagement's project.
+  if (!hint.forceNew) {
+    const open = await M.WtProject.findOne({
+      where: { branch_id: branchId, client_name: client.name, status: 'Open' },
+      order: [['id', 'DESC']],
+      transaction,
+    });
+    if (open) return open;
+  }
   if (dryRun || client.__virtual) return { code: '(new project)', client_name: client.name, __virtual: true };
 
   return M.WtProject.create({

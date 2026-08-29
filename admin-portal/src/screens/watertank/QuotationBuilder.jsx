@@ -405,14 +405,30 @@ export default function QuotationBuilder() {
                 <button className="wt-btn" style={{ justifyContent: 'center' }} disabled={!lines.length} onClick={openSend}>
                   <Mail size={14} /> Email to client
                 </button>
-                {quote && (
-                  <button className="wt-btn" style={{ justifyContent: 'center', borderColor: 'var(--wt-accent)', color: 'var(--wt-accent-ink)' }}
-                    onClick={() => nav(standalone
-                      ? `/water-tank/quotations/${quote.code}/agreement`
-                      : `/water-tank/site-assessments/${a.code}/quotation/${quote.code}/agreement`)}>
-                    <FileSignature size={14} /> Create Service Agreement <ChevronRight size={13} />
-                  </button>
-                )}
+                {quote && (() => {
+                  // Hidden when the client is already covered by a signed Customer
+                  // Service Agreement and this quote hasn't raised its own — the
+                  // existing agreement governs the engagement (Clause 1).
+                  const coveredByExisting = !quote.agreement_code
+                    && String(client?.agreement_status || '').toLowerCase() === 'signed'
+                    && !!client?.agreement_code;
+                  if (coveredByExisting) {
+                    return (
+                      <button className="wt-btn" style={{ justifyContent: 'center' }}
+                        onClick={() => nav('/water-tank/agreements/customer')}>
+                        <FileSignature size={14} /> Covered by {client.agreement_code} <ChevronRight size={13} />
+                      </button>
+                    );
+                  }
+                  return (
+                    <button className="wt-btn" style={{ justifyContent: 'center', borderColor: 'var(--wt-accent)', color: 'var(--wt-accent-ink)' }}
+                      onClick={() => nav(standalone
+                        ? `/water-tank/quotations/${quote.code}/agreement`
+                        : `/water-tank/site-assessments/${a.code}/quotation/${quote.code}/agreement`)}>
+                      <FileSignature size={14} /> Create Service Agreement <ChevronRight size={13} />
+                    </button>
+                  );
+                })()}
               </div>
               {quote?.sent_at && (
                 <span className="cell-sub" style={{ textAlign: 'center' }}>Emailed to {quote.sent_to}</span>

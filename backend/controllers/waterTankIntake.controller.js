@@ -240,11 +240,12 @@ exports.createRequest = asyncHandler(async (req, res) => {
   }
 
   // ── project file ──
-  // A project opens only when a quotation is approved. If this client already has
-  // an open project (a repeat engagement) we attach to it, but we never create one
-  // at intake — the request, assessment and quotation live without a project until
-  // the quotation is approved (see setDecision in waterTankQuotation.controller).
-  const project = await M.WtProject.findOne({ where: { ...scope, client_name: client.name, status: 'Open' } });
+  // A project opens only when a quotation is approved, and every new engagement
+  // gets its OWN project — so intake never attaches to a client's existing open
+  // project (that would pool a new engagement's work orders under an old one).
+  // The request/assessment/quotation live without a project until approval, which
+  // opens a fresh one and back-fills the chain (see setDecision).
+  const project = null;
 
   // ── the request itself ──
   const request = await M.WtServiceRequest.create({

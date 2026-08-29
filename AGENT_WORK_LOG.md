@@ -3417,3 +3417,34 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Handoff: redeploy + restart on Hostinger. Remaining: surface signed agreements
   inside the CLIENT Documents tab (today it lists quotations + reports; clients
   have no separate doc store) — offered as the next increment.
+
+### 2026-08-29 11:11 | OpenCode (GPT-5.6) | STARTED | Read-only Water Tank end-to-end QA and audit
+- Request: Check Claude's Water Tank QA progress and agent logs; independently audit every Water Tank sidebar destination, agreement creation/editing/signing, frontend, backend, UX, accessibility, and end-to-end workflow; provide recommendations to Claude without changing current application code.
+- Scope: Read-only review of `WATER_TANK_QA_REPORT.md`, `ASSESSMENT_GPT_WATER_TANK.md`, Water Tank frontend/backend source and tests, current local runtime and browser flows. Only this mandatory append-only log will be edited.
+- Changes: None to application code.
+- Verification: Read the complete shared work log and Water Tank conventions; checked `git status --short --branch` and found only the pre-existing untracked `Seventh Sky - Short Term Stay.html`; loaded report-only QA, backend, UX, and accessibility audit guidance.
+- Handoff: Preserve all application files and runtime data. Revalidate Claude's August 19 findings against the current branch because several were subsequently addressed and later agreement/document changes introduced new open follow-ups.
+
+### 2026-08-29 12:05 | Claude Code (Opus 4.8) | COMPLETED | WT: every new engagement opens its own project; hide "Create Agreement" when covered
+- Request: a new agreement for an existing client must ALWAYS open a new project
+  (otherwise all work orders pile under the same project); and on the quotation
+  window, if the client is covered by an existing agreement, hide "Create Customer
+  Agreement".
+- Changes:
+  * wtIdentity.service ensureProject — new `forceNew` hint: opens a fresh project
+    even when the client has an open one (an explicit hint.project_id still wins).
+  * waterTankQuotation.controller setDecision — on Approved, ensureProject is now
+    called with forceNew (unless the quote is already tied to a specific project),
+    so every approved quotation opens its OWN project and back-fills the chain.
+  * waterTankIntake.controller createRequest — no longer attaches a new request to
+    the client's existing open project (was the real cause of pooling); requests/
+    assessments/quotations stay project-less until approval.
+  * QuotationDetail.jsx + QuotationBuilder.jsx — when the client has a signed
+    Customer Service Agreement and this quote hasn't raised its own, the "Create
+    Service Agreement" button is replaced by "Covered by <agreement code>".
+- Verified: two service requests for the SAME client, each approved, opened two
+  DIFFERENT projects (WTCM-P0026, P0027); a first request came through with
+  project null. build:admin passed; dist rebuilt. Test rows cleaned up (approved
+  quotes can't be deleted by design — a few harmless local dev rows remain).
+- Handoff: redeploy + restart on Hostinger. Note: this overrides the earlier
+  "reuse the client's open project" behaviour by explicit request.

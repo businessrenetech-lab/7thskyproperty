@@ -228,8 +228,10 @@ exports.setDecision = asyncHandler(async (req, res) => {
     }) || { code: quote.client_code, name: quote.client_name };
     const project = await identity.ensureProject(quote.branch_id, client, {
       project_id: quote.project_id || undefined,
+      forceNew: !quote.project_id,
       title: 'Water Tank Service',
       stage: 'Agreement',
+      detail: `Opened on approval of quotation ${quote.code}`,
     });
     if (project && project.code) {
       await quote.update({ project_id: project.code });
