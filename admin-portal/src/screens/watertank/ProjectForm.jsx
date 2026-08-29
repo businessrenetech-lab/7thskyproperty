@@ -682,7 +682,7 @@ export default function ProjectForm() {
 
               <div className="wt-field" style={{ maxWidth: 320 }}><label>Origin</label>
                 <select className="wt-select" value={f.origin} onChange={(e) => set('origin', e.target.value)}>
-                  {['Direct', 'Enquiry', 'Service Request', 'Assessment', 'Quotation', 'AMC', 'Referral', 'Repeat Client'].map((o) => <option key={o}>{o}</option>)}
+                  {['Direct', 'Service Request', 'Assessment', 'Quotation', 'AMC', 'Referral', 'Repeat Client'].map((o) => <option key={o}>{o}</option>)}
                 </select></div>
 
               {/* link an existing upstream record so the chain is not duplicated */}
@@ -706,11 +706,6 @@ export default function ProjectForm() {
                     <select className="wt-select" value={f.quotation_code} onChange={(e) => set('quotation_code', e.target.value)}>
                       <option value="">None</option>
                       {(ref?.unlinked?.quotations || []).map((q) => <option key={q.code} value={q.code}>{q.code} — {q.client_name} — {bdt(q.total)}</option>)}
-                    </select></div>
-                  <div className="wt-field"><label>Enquiry</label>
-                    <select className="wt-select" value={f.enquiry_code} onChange={(e) => set('enquiry_code', e.target.value)}>
-                      <option value="">None</option>
-                      {(ref?.unlinked?.enquiries || []).map((en) => <option key={en.code} value={en.code}>{en.code} — {en.client_name}</option>)}
                     </select></div>
                 </div>
               </div>

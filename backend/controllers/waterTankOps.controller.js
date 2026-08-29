@@ -9,6 +9,7 @@ const { asyncHandler, branchScope, resolveBranchId } = require('../utils/control
 const M = require('../models/waterTankOps');
 const P = require('../models/waterTankProviders');
 const identity = require('../services/wtIdentity.service');
+const invoiceSvc = require('../services/wtInvoice.service');
 const sequelize = require('../config/db.config');
 
 const ENTITIES = {
@@ -736,19 +737,27 @@ exports.dashboard = asyncHandler(async (req, res) => {
   ];
 
   // ── real finance figures (no placeholders) ──
+  // Recompute every invoice through the SAME computeTotals() the Invoices list
+  // and overview use, so the dashboard can never disagree with the invoice
+  // screens. (Was: the raw stored `amount` column, which had drifted from the
+  // recomputed line totals — the dashboard read 174,755 while the list read
+  // 138,155 for the same invoices.)
+  const iTot = new Map(inv.map((i) => [i, invoiceSvc.computeTotals(i)]));
+  const iAmt = (i) => num(iTot.get(i).amount);
+  const iOut = (i) => num(iTot.get(i).outstanding);
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
   const paid = inv.filter((i) => eq(i.status, 'paid'));
   const paidThisMonth = paid.filter((i) => new Date(i.updatedAt || i.createdAt) >= monthStart);
   const finance = {
-    outstanding: pendingInv.reduce((s, i) => s + num(i.outstanding || i.amount), 0),
+    outstanding: pendingInv.reduce((s, i) => s + iOut(i), 0),
     outstanding_count: pendingInv.length,
-    paid_this_month: paidThisMonth.reduce((s, i) => s + num(i.amount), 0),
+    paid_this_month: paidThisMonth.reduce((s, i) => s + iAmt(i), 0),
     paid_this_month_count: paidThisMonth.length,
     overdue_count: inv.filter((i) => eq(i.status, 'overdue')).length,
-    overdue_amount: inv.filter((i) => eq(i.status, 'overdue')).reduce((s, i) => s + num(i.outstanding || i.amount), 0),
-    pending_payout: inv.filter((i) => eq(i.provider_payout, 'pending')).reduce((s, i) => s + num(i.amount), 0),
+    overdue_amount: inv.filter((i) => eq(i.status, 'overdue')).reduce((s, i) => s + iOut(i), 0),
+    pending_payout: inv.filter((i) => eq(i.provider_payout, 'pending')).reduce((s, i) => s + iAmt(i), 0),
     pending_payout_count: inv.filter((i) => eq(i.provider_payout, 'pending')).length,
-    invoiced_total: inv.reduce((s, i) => s + num(i.amount), 0),
+    invoiced_total: inv.reduce((s, i) => s + iAmt(i), 0),
   };
 
   // ── real complaint/SLA figures ──

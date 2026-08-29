@@ -3201,3 +3201,33 @@ used "the last line starting with `import`", which landed inside a multi-line
   committed the rebuilt admin-portal/dist alongside the source (matches the
   10b84eb2 pattern). Not yet browser-verified on the live URL — needs redeploy.
 - Handoff: Backend unchanged. Redeploy + restart on Hostinger to see it live.
+
+### 2026-08-19 15:30 | Claude Code (Opus 4.8) | COMPLETED | Water Tank end-to-end QA + 3 safe fixes + standardise intake on Service Requests
+- Request: Full QA of the Water Tank service (UI/UX, workflow, endpoints, calcs);
+  then fix the three safe issues and standardise intake on Service Requests.
+- QA: exercised 51 read endpoints with a super-admin token — all 200, 0 errors.
+  Report written to WATER_TANK_QA_REPORT.md (health ~7/10; engine solid, workflow
+  needs consolidation). Verified quotation math correct (Q-1055: 8000+5%=8400).
+- Fixes:
+  * M1 (backend/controllers/waterTankOps.controller.js) — dashboard finance now
+    recomputes every invoice via wtInvoice.service computeTotals() instead of the
+    stale raw `amount` column. invoiced_total 174,755 → 138,155, now equal to the
+    invoice list and overview.
+  * M2 (backend/controllers/waterTankInvoice.controller.js) — Draft/Void invoices
+    no longer report an `outstanding` in the list; the overview `outstanding`
+    excludes drafts (they stay in `draft_value`). Stops drafts inflating receivables.
+  * L1 (backend/routes/waterTankQuotation.routes.js) — GET /wt-quotes now returns a
+    JSON 404 pointing at /wt-ops/quotations instead of falling through to SPA HTML.
+  * H2 (admin-portal/src/screens/watertank/ServiceRequestNew.jsx + ProjectForm.jsx)
+    — retired the separate "Enquiry" object: removed the dead enquiry-conversion
+    path and the Enquiry origin option + linkage select. Service Request is the
+    single intake; "enquiry" stays only as channel/stage metadata.
+- Verification: all three backend modules load; backend restarted; re-probed —
+  invoiced_total 138,155 == list; drafts-with-outstanding 0; GET /wt-quotes JSON.
+  npm run build:admin passed (0 errors); rebuilt dist committed.
+- NEW data finding (not auto-fixed — financial record): INV-0484 has status "Paid"
+  but a full 25,600 outstanding (marked paid with no payment recorded). Surfaced by
+  the M1 switch to computeTotals. Needs an operator to correct the invoice.
+- Handoff: redeploy + restart on Hostinger for the live site. Larger workflow items
+  (single front-door entry, provider-agreement gate, nest WOs under Projects) are
+  in the report, pending sign-off.

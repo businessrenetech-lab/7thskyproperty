@@ -20,7 +20,6 @@ const lineTotal = (l) => Number(l.price || 0) * (Number(l.qty) || 1);
 export default function ServiceRequestNew() {
   const nav = useNavigate();
   const [params] = useSearchParams();
-  const fromEnquiry = params.get('enquiry');
   const fromClient = params.get('client');
   const routeParam = params.get('route'); // 'assessment' | 'quotation'
 
@@ -92,29 +91,9 @@ export default function ServiceRequestNew() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromClient, routeParam]);
 
-  // pre-fill from an enquiry
-  useEffect(() => {
-    if (!fromEnquiry) return;
-    api.get('/wt-intake/enquiries', { params: { q: fromEnquiry } })
-      .then(({ data }) => {
-        const e = (data.rows || []).find((x) => x.code === fromEnquiry);
-        if (!e) return;
-        const svc = Array.isArray(e.services_requested) ? e.services_requested
-          : (() => { try { return JSON.parse(e.services_requested || '[]'); } catch { return []; } })();
-        setF((s) => ({
-          ...s,
-          client_name: e.client_name || '', phone: e.phone || '', email: e.email || '',
-          address: e.site_address || '', district: e.district || '',
-          property_type: e.property_type || '', tank_type: e.tank_type || '',
-          tanks_count: e.tanks_count || '', preferred_date: e.preferred_date || '',
-          services_requested: svc, specific_service: svc[0] || '',
-          description: e.message || '', source: e.source || 'Website',
-          enquiry_code: e.code,
-        }));
-        setStep(1);
-      })
-      .catch(() => {});
-  }, [fromEnquiry]);
+  // Intake is standardised on the Service Request — there is no separate
+  // "enquiry" record to convert from. A lead arriving by any channel is captured
+  // here directly; the channel is recorded on the client, not as a parallel object.
 
   // client lookup
   const runLookup = useCallback((term) => {
@@ -223,7 +202,7 @@ export default function ServiceRequestNew() {
           {' › '}<span style={{ color: 'var(--wt-accent-ink)' }}>New request</span>
         </div>}
         title="New Service Request"
-        subtitle={f.enquiry_code ? `Converting enquiry ${f.enquiry_code}` : 'Sec. 5 — client enquiry through to assessment or quotation'}
+        subtitle="Sec. 5 — the single intake for a water-tank job, through to assessment or quotation"
       >
         <button className="wt-btn" onClick={() => nav('/water-tank/service-requests')}><X size={14} /> Cancel</button>
       </WtHead>

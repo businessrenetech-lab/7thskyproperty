@@ -163,7 +163,10 @@ exports.list = asyncHandler(async (req, res) => {
     const dte = daysTo(r.due_date);
     return {
       ...r,
-      amount: t.amount, outstanding: t.outstanding,
+      amount: t.amount,
+      // A draft is not money owed yet, and a void never was — so it carries no
+      // "outstanding". `amount` still shows what the draft will bill when raised.
+      outstanding: (eq(r.status, 'draft') || eq(r.status, 'void')) ? 0 : t.outstanding,
       line_count: t.lines.length,
       days_to_due: dte,
       overdue: !eq(r.status, 'draft') && !eq(r.status, 'void') && t.outstanding > 0 && dte != null && dte < 0,
@@ -187,7 +190,8 @@ exports.overview = asyncHandler(async (req, res) => {
     overdue: overdue.length,
     invoiced: round2(totals.reduce((s, t) => s + t.amount, 0)),
     collected: round2(totals.reduce((s, t) => s + t.paid_amount + t.advance_applied, 0)),
-    outstanding: round2(totals.reduce((s, t) => s + t.outstanding, 0)),
+    // Drafts are billed value, not receivables — they live in `draft_value`, not here.
+    outstanding: round2(live.reduce((s, r, i) => s + (eq(r.status, 'draft') ? 0 : totals[i].outstanding), 0)),
     overdue_value: round2(overdue.reduce((s, r) => s + svc.computeTotals(r).outstanding, 0)),
     draft_value: round2(drafts.reduce((s, r) => s + svc.computeTotals(r).amount, 0)),
   });

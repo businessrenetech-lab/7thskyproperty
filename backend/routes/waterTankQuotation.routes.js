@@ -10,6 +10,14 @@ const ctrl = require('../controllers/waterTankQuotation.controller');
 
 router.use(authMiddleware);
 
+// There is no quotation collection on this router — the list is served by the
+// register at /api/wt-ops/quotations. Answer the bare path with a JSON 404 so a
+// stray GET /wt-quotes returns an honest error instead of falling through to the
+// SPA's index.html (which any caller would then try to JSON.parse).
+router.get('/', canRead, (req, res) => res.status(404).json({
+  error: 'No quotation collection here. Use GET /api/wt-ops/quotations for the list.',
+}));
+
 // build a quotation from a site assessment
 // Direct quotation (Sec. 7 Step 5 — no site assessment behind it).
 router.get('/agreement-position', canRead, ctrl.agreementPosition);
