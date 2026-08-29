@@ -3601,3 +3601,15 @@ used "the last line starting with `import`", which landed inside a multi-line
     responsive sidebar (23 routes overflow at 390px); a11y contrast/labels; migrations
     0090-0092 pending (run on deploy); no automated test suite; JS bundle size.
 - Redeploy + restart on Hostinger.
+
+### 2026-08-29 17:05 | Claude Code (Opus 4.8) | COMPLETED | Run pending migrations 0090–0092 (WT/STS money schema)
+- Request: run the pending migrations.
+- Inspected first — all three are additive & idempotent: up() only addColumn/createTable/
+  addIndex (+ widen project_code to nullable in 0091), guarded by describeTable; removals
+  are confined to down(). No data-loss operations in the up path.
+- Ran `npx sequelize-cli db:migrate` (development): 0090, 0091, 0092 all migrated OK.
+- Verified: migrate:status shows all three 'up'; wt_money_events.batch_ref + refund_reason
+  present; sts_money_events + sts_owner_disbursements tables created; app health 200 and
+  the money/disbursement endpoints respond.
+- DEPLOY NOTE: this migrated the LOCAL dev DB only. Hostinger's DB must be migrated on
+  deploy — run `cd backend && npx sequelize-cli db:migrate` there after pulling.
