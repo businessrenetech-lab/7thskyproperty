@@ -11,7 +11,10 @@
  * posts to. It deliberately exposes no pricing.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+// Branch + service-line scope for wt_* reads (never spread onto ServiceItem, which
+// is separated by `vertical`, not service_line).
+const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
 const ServiceItem = require('../models/ServiceItem');
 
@@ -92,6 +95,7 @@ exports.publicEnquiry = asyncHandler(async (req, res) => {
   const services = Array.isArray(b.services_requested) ? b.services_requested : [];
   const row = await M.WtServiceRequest.create({
     branch_id: branchId,
+    service_line: resolveServiceLine(req),
     code: await nextCode(M.WtServiceRequest, 'SR-', 4, 1095, branchId),
     request_date: today(),
     client_name: name,
@@ -111,7 +115,7 @@ exports.publicEnquiry = asyncHandler(async (req, res) => {
   });
 
   await M.WtCommLog.create({
-    branch_id: branchId, client_name: name, channel: 'note', direction: 'inbound',
+    branch_id: branchId, service_line: resolveServiceLine(req), client_name: name, channel: 'note', direction: 'inbound',
     summary: `Website service request ${row.code} received from ${row.source}`,
     ref_type: 'service-requests', ref_code: row.code, logged_at: new Date(),
   }).catch(() => {});
@@ -201,7 +205,7 @@ exports.requestReference = asyncHandler(async (req, res) => {
  * closes off the originating enquiry.
  */
 exports.createRequest = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const branchId = resolveBranchId(req);
   const b = req.body || {};
 
@@ -222,6 +226,7 @@ exports.createRequest = asyncHandler(async (req, res) => {
   if (!client) {
     client = await M.WtClient.create({
       branch_id: branchId,
+      service_line: resolveServiceLine(req),
       code: await nextCode(M.WtClient, 'WTCM-C', 4, 1, branchId),
       name: b.client_name,
       client_type: b.client_type || 'Residential',
@@ -250,6 +255,7 @@ exports.createRequest = asyncHandler(async (req, res) => {
   // ── the request itself ──
   const request = await M.WtServiceRequest.create({
     branch_id: branchId,
+    service_line: resolveServiceLine(req),
     code: await nextCode(M.WtServiceRequest, 'SR-', 4, 1095, branchId),
     request_date: b.request_date || today(),
     client_name: client.name,
@@ -282,7 +288,7 @@ exports.createRequest = asyncHandler(async (req, res) => {
   // ── branch A: schedule the site assessment ──
   if (needsAssessment) {
     const assessment = await M.WtSiteAssessment.create({
-      branch_id: branchId,
+      branch_id: branchId, service_line: resolveServiceLine(req),
       code: await nextCode(M.WtSiteAssessment, 'SA-', 4, 402, branchId),
       client_name: client.name,
       project_id: project ? project.code : null,
@@ -309,7 +315,7 @@ exports.createRequest = asyncHandler(async (req, res) => {
     const vat = b.vat_exempt ? 0 : Math.round(net * 0.05 * 100) / 100;
 
     const quotation = await M.WtQuotation.create({
-      branch_id: branchId,
+      branch_id: branchId, service_line: resolveServiceLine(req),
       code: await nextCode(M.WtQuotation, 'Q-', 4, 1049, branchId),
       client_name: client.name,
       project_id: project ? project.code : null,
@@ -354,7 +360,7 @@ exports.createRequest = asyncHandler(async (req, res) => {
   }
 
   await M.WtCommLog.create({
-    branch_id: branchId, client_name: client.name, channel: 'note', direction: 'outbound',
+    branch_id: branchId, service_line: resolveServiceLine(req), client_name: client.name, channel: 'note', direction: 'outbound',
     summary: needsAssessment
       ? `Service request ${request.code} raised — site assessment ${out.assessment.code} scheduled for ${b.assessment_date}`
       : `Service request ${request.code} raised — quotation ${out.quotation.code} prepared`,
