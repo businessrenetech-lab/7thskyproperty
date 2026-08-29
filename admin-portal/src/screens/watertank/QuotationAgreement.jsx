@@ -60,6 +60,8 @@ export default function QuotationAgreement() {
           // Schedule A — services the agreement covers (Clause 3). Priced services
           // are added automatically by the engine; this holds any extra ticks.
           services: Array.isArray(d0.services) ? d0.services : [],
+          // Schedule D — warranty summary & project-requirement ticks.
+          checklist: Array.isArray(d0.checklist) ? d0.checklist : [],
           pricing_input: { advance_percent: '', advance_amount: '', ...(d0.pricing_input || {}) },
           schedule_b: {
             project_no: '', work_order_no: '', quotation_no: '',
@@ -264,6 +266,16 @@ export default function QuotationAgreement() {
     const i = arr.indexOf(item);
     if (i >= 0) arr.splice(i, 1); else arr.push(item);
     return { ...s, services: arr };
+  });
+
+  // Schedule D — warranty summary & project requirements (ticked items).
+  const checklistGroups = meta.checklist_groups || {};
+  const chkList = draft.checklist || [];
+  const toggleChecklist = (item) => setDraft((s) => {
+    const arr = [...(s.checklist || [])];
+    const i = arr.indexOf(item);
+    if (i >= 0) arr.splice(i, 1); else arr.push(item);
+    return { ...s, checklist: arr };
   });
   const sb = draft.schedule_b || {};
   const isBusinessClient = ['commercial', 'industrial', 'institutional']
@@ -685,6 +697,30 @@ export default function QuotationAgreement() {
                 <div className="wt-costrow total"><span>Total Contract Value</span><span className="amt">{bdt(summary.summary?.total_contract_value)}</span></div>
               </div>
             )}
+          </div>
+
+          {/* ── Schedule D — warranty summary & project requirements ── */}
+          <div className="wt-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="wt-sec-title">Schedule D — warranty summary &amp; project requirements</div>
+            <div className="muted" style={{ fontSize: 12.5 }}>
+              Tick what this agreement's Schedule D should state — warranty coverage and the
+              project requirements the client confirms.
+            </div>
+            {Object.keys(checklistGroups).length === 0 ? (
+              <div className="muted" style={{ fontSize: 12.5 }}>Loading the warranty list…</div>
+            ) : Object.entries(checklistGroups).map(([g, items]) => (
+              <div key={g}>
+                <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--wt-accent-ink)', margin: '6px 0' }}>{g}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px' }}>
+                  {items.map((it) => (
+                    <label key={it} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={chkList.includes(it)} onChange={() => toggleChecklist(it)} />
+                      {it}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* ── who signs ── */}

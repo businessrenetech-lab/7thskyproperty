@@ -3468,3 +3468,17 @@ used "the last line starting with `import`", which landed inside a multi-line
   (WTCM-C0034, all fields); duplicate name returns the existing client. build passed.
 - Handoff: redeploy + restart on Hostinger. The registerProject endpoint still
   exists for any explicit "open project from client" action.
+
+### 2026-08-29 13:05 | Claude Code (Opus 4.8) | COMPLETED | WT agreement — add editable Schedule D (warranty summary)
+- Report: on /water-tank/quotations/:code/agreement, "SCHEDULE D — Warranty Summary"
+  showed in the document but had no input option on the left (edit) side.
+- Cause: QuotationAgreement.jsx (the streamlined agreement screen) rendered Schedule
+  A/B/C inputs but never Schedule D, and never initialised draft.checklist — while
+  the engine renders Schedule D from data.checklist. (The full builder,
+  WtCustomerAgreements Step 4, did have it.)
+- Change (frontend, QuotationAgreement.jsx): initialise draft.checklist; add a
+  "Schedule D — warranty summary & project requirements" card rendering
+  meta.checklist_groups (Warranty Coverage, Project Requirements) as checkboxes
+  bound to draft.checklist. Ticks flow into the live preview and the sent document.
+- Verified: meta returns the two checklist groups; build:admin passed; dist committed.
+- Handoff: redeploy + restart on Hostinger.
