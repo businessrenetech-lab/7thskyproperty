@@ -8,6 +8,7 @@ const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, standardHeaders: 
 router.use(limiter);
 
 router.get('/:token', ctrl.viewByToken);
+router.get('/:token/signed-document', ctrl.signedByToken);
 router.post('/:token/sign', ctrl.signByToken);
 router.post('/:token/decline', ctrl.declineByToken);
 

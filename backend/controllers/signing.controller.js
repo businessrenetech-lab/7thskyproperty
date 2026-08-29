@@ -230,6 +230,19 @@ exports.viewByToken = asyncHandler(async (req, res) => {
   } });
 });
 
+// Public: the fully-signed copy, served by the party's own token — used by the
+// link in the completion email. Only available once the envelope is completed.
+exports.signedByToken = asyncHandler(async (req, res) => {
+  const signer = await loadByToken(req.params.token);
+  if (!signer) return res.status(404).send('Invalid or expired link.');
+  const env = await SigningEnvelope.findByPk(signer.envelope_id);
+  if (!env) return res.status(404).send('Not found.');
+  if (env.status !== 'completed') return res.status(409).send('This agreement is not fully signed yet.');
+  const built = await require('../services/wtSignedDocument.service').buildSignedDocument(env.get({ plain: true }));
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  return res.send(built.html);
+});
+
 exports.signByToken = asyncHandler(async (req, res) => {
   const signer = await loadByToken(req.params.token);
   if (!signer) return res.status(404).json({ error: 'Invalid signing link.' });
@@ -292,6 +305,11 @@ exports.signByToken = asyncHandler(async (req, res) => {
     await env.update({ status: 'completed', completed_at: new Date(), content_hash: hash });
     await audit(env.id, 'completed', req, null, null, { content_hash: hash });
     await handleEnvelopeCompleted(env);
+    // Water Tank agreements: email the party a link to the signed copy and file it.
+    try {
+      await require('../services/wtAgreementCompletion.service')
+        .onCompleted(env, `${req.protocol}://${req.get('host')}`);
+    } catch (e) { console.error('[wt-agreement-completion]', e.message); }
     return res.json({ message: 'Document fully signed and completed.', completed: true, content_hash: hash });
   }
   if (env.signing_order_enforced) {

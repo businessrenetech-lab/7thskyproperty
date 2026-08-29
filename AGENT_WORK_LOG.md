@@ -3395,3 +3395,25 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Handoff: the completion pipeline (signed PDF → email to customer/provider →
   save under Documents) is planned separately — it hinges on a PDF-generation
   decision (no server-side HTML→PDF engine today; only pdfkit).
+
+### 2026-08-19 21:00 | Claude Code (Opus 4.8) | COMPLETED | WT agreement completion pipeline — email signed copy + file it
+- Request (part 2): once all parties sign, send the signed agreement to the
+  customer/provider email, and save it under their Documents tab.
+- Decision: signed-HTML + link approach (server has no HTML→PDF engine; only
+  pdfkit). Clients surface the doc from the register; providers file it.
+- Changes (backend):
+  * New services/wtAgreementCompletion.service.js — onCompleted(env, baseUrl):
+    for water_tank_customer_agreement / water_tank_provider_agreement, emails the
+    principal (client/provider) a secure link to their fully-signed copy, and for
+    providers upserts a WtProviderDocument (category 'agreement', file_url = link).
+  * signing.controller signByToken — after handleEnvelopeCompleted, calls the WT
+    completion hook (best-effort, try/catch so signing never fails).
+  * signing.controller signedByToken + GET /api/sign/:token/signed-document (public,
+    rate-limited) — serves the fully-signed HTML by the party's own token (used by
+    the email link); 409 until completed, 404 for a bad token.
+- Verified: modules load; the token endpoint returns the signed HTML (200) for a
+  completed envelope and 404 for a bogus token; email is simulated until SMTP is
+  configured. Staff already have "download signed copy" in AgreementsHub.
+- Handoff: redeploy + restart on Hostinger. Remaining: surface signed agreements
+  inside the CLIENT Documents tab (today it lists quotations + reports; clients
+  have no separate doc store) — offered as the next increment.
