@@ -27,7 +27,7 @@ import PortalLinkCard from '../PortalLinkCard';
 import ReportView from '../ReportView';
 import {
   WtHead, WtTabs, Pill, WtDrawer, Loading, EmptyState, dateFmt, dateTimeFmt, bdt,
-  toast, errText, StatusCell, RowActions,
+  toast, errText, StatusCell, RowActions, parseJson,
 } from '../common';
 
 /*
@@ -475,6 +475,40 @@ export default function ProviderDetail() {
                 <div>
                   <div className="wt-sec-title" style={{ marginBottom: 6 }}>Equipment &amp; Resources</div>
                   <p style={{ fontSize: 12.5, color: 'var(--wt-ink-2)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{p.equipment_summary}</p>
+                </div>
+              )}
+              {(() => {
+                const rates = parseJson(p.proposed_rates, []) || [];
+                return Array.isArray(rates) && rates.length ? (
+                  <div>
+                    <div className="wt-sec-title" style={{ marginBottom: 6 }}>Proposed Rates (from submission)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      {rates.slice(0, 12).map((r, i) => (
+                        <div key={r.code || i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+                          <span className="muted">{r.name || r.code}</span>
+                          <strong>{bdt(r.proposed_rate ?? r.standard_price ?? 0)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+              {(() => {
+                const b = parseJson(p.bank_details, {}) || {};
+                const rows = [['Account name', b.account_name], ['Bank', b.bank_name], ['Branch', b.branch], ['Account no.', b.account_number], ['Routing', b.routing_number], ['Mobile banking', b.mobile_banking]].filter(([, v]) => v);
+                return rows.length ? (
+                  <div>
+                    <div className="wt-sec-title" style={{ marginBottom: 6 }}>Payment / Bank Details (from submission)</div>
+                    <div className="wt-profile">
+                      {rows.map(([k, v]) => <div className="f" key={k}><div className="k">{k}</div><div className="v">{v}</div></div>)}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+              {p.availability_notes && (
+                <div>
+                  <div className="wt-sec-title" style={{ marginBottom: 6 }}>Availability Notes</div>
+                  <p style={{ fontSize: 12.5, color: 'var(--wt-ink-2)', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap' }}>{p.availability_notes}</p>
                 </div>
               )}
               {p.capability_notes && (

@@ -72,7 +72,27 @@ function AgreementBuilder({ id }) {
   const selectProvider = (row, catalogOverride = catalog) => {
     const proposed = parseArray(row.proposed_rates);
     const selected = proposed.map((rate) => ({ code: rate.code, agreed_price: rate.proposed_rate ?? rate.standard_price })).filter((rate) => (catalogOverride || []).some((item) => item.code === rate.code));
-    setProvider(row); setForm((current) => ({ ...current, provider_id: row.id, services: parseArray(row.service_categories), bank_details: parseObject(row.bank_details, {}), cumilla_exclusive: !!row.cumilla_exclusive, pricing_input: { selected } }));
+    setProvider(row);
+    setForm((current) => ({
+      ...current,
+      provider_id: row.id,
+      services: parseArray(row.service_categories),
+      bank_details: parseObject(row.bank_details, {}),
+      cumilla_exclusive: !!row.cumilla_exclusive,
+      pricing_input: { selected },
+      // Prefill the provider's legal identity from the onboarding submission so the
+      // template inputs show it already filled — the operator confirms, not retypes.
+      template_values: {
+        ...(current.template_values || {}),
+        sp_business_name: row.business_name || current.template_values?.sp_business_name || '',
+        sp_rep_name: row.contact_person || current.template_values?.sp_rep_name || '',
+        sp_rep_phone: row.contact_phone || current.template_values?.sp_rep_phone || '',
+        sp_rep_email: row.contact_email || current.template_values?.sp_rep_email || '',
+        registered_address: row.address || current.template_values?.registered_address || '',
+        trade_licence_no: row.trade_licence_no || row.trade_licence || current.template_values?.trade_licence_no || '',
+        company_registration_no: row.registration_no || current.template_values?.company_registration_no || '',
+      },
+    }));
   };
   const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const setNested = (parent, key, value) => setForm((current) => ({ ...current, [parent]: { ...(current[parent] || {}), [key]: value } }));

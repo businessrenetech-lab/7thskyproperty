@@ -319,8 +319,12 @@ async function buildAgreement(data = {}) {
     sp_routing_number: bank.routing_number || '', sp_mobile_banking: bank.mobile_banking || '',
     ss_rep_name: org.represented_by || '', ss_rep_position: org.position || '',
     ss_rep_phone: org.phone || '', ss_rep_email: org.email || '',
+    // The provider stores its contact as contact_person/contact_phone/contact_email
+    // (what the onboarding invitation collects); read those first so the agreement
+    // actually carries the provider's real representative, phone and email.
     sp_rep_name: p.represented_by || p.contact_person || '', sp_rep_position: p.position || '',
-    sp_rep_phone: p.phone || '', sp_rep_email: p.email || '', sp_business_name: p.business_name || '',
+    sp_rep_phone: p.contact_phone || p.phone || '', sp_rep_email: p.contact_email || p.email || '',
+    sp_business_name: p.business_name || '',
     witness1_name: witnesses[0]?.name || '', witness1_nid: witnesses[0]?.nid || '',
     witness2_name: witnesses[1]?.name || '', witness2_nid: witnesses[1]?.nid || '',
 

@@ -3635,3 +3635,26 @@ used "the last line starting with `import`", which landed inside a multi-line
     instead of "Send for signature".
 - Verified: the previously-failing token now loads (200); backend loads; admin build passed.
 - Handoff: redeploy + restart on Hostinger.
+
+### 2026-08-29 18:30 | Claude Code (Opus 4.8) | COMPLETED | Provider agreement prefill + provider dashboard shows full submission
+- Request: on /water-tank/agreements/provider/new?provider=SP-0022 prefill everything
+  from the provider invitation; show provider submission records + submitted documents
+  on the provider dashboard; more automation.
+- Findings: the builder already prefilled services/bank/rates/cumilla via selectProvider,
+  and buildAgreement derives most identity at render — but (a) the provider's contact
+  phone/email never reached the agreement (it read p.phone/p.email; the provider stores
+  contact_phone/contact_email), and (b) the form didn't visibly prefill the legal identity.
+  The dashboard already showed the business profile + categories + coverage + equipment +
+  documents, but not proposed rates / bank / availability.
+- Changes:
+  * wtProviderAgreement.service — sp_rep_phone/email now read contact_phone/contact_email
+    first, so the agreement carries the provider's real contact.
+  * WtProviderAgreements selectProvider — also prefills template_values (sp_business_name,
+    sp_rep_name/phone/email, registered_address, trade_licence_no, company_registration_no)
+    from the provider so the template inputs show the invitation data already filled.
+  * ProviderDetail Overview — added "Proposed Rates", "Payment/Bank Details" and
+    "Availability Notes" from the submission (parsed with parseJson, since these columns
+    are stored as JSON strings). Documents already appear in the Compliance/Insurance tabs.
+- Verified: SP-0022 detail returns contact + 4 documents; proposed_rates/bank_details are
+  JSON strings (now parsed). build passed.
+- Handoff: redeploy + restart on Hostinger.
