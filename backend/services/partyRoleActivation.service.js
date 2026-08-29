@@ -610,12 +610,12 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
     }
 
     /*
-     * SSPC-WTCM-PWO-01 — both parties have signed the Project Work Order.
-     * The provider is thereby onboarded to the project: the work order advances,
-     * the client is told who is coming, and the provider receives the branded
-     * work order and the execution certificate as PDFs.
+     * Project Work Order (SSPC-*-PWO-01) — both parties have signed. The provider
+     * is thereby onboarded to the project: the work order advances, the client is
+     * told who is coming, and the provider receives the branded work order and the
+     * execution certificate as PDFs. Suffix-matched across service lines.
      */
-    if (envelope.related_type === 'water_tank_work_order') {
+    if (String(envelope.related_type || '').endsWith('_work_order')) {
       const M = require('../models/waterTankOps');
       // P is used below for the provider event. It was previously only required
       // in the provider-agreement block above, so this block threw a

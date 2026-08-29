@@ -8,7 +8,8 @@
  * → invoice.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine, catalogueVertical } = require('../utils/controllerHelpers');
+const { getServiceLine } = require('../config/serviceLines');
 // Branch + service-line scope (this controller queries only wt_* tables).
 const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
@@ -447,23 +448,25 @@ const partiesFor = async (req, wo) => {
   return {
     provider: provider || {},
     org: { represented_by: wo.project_manager || req.user?.name || '', position: 'Project Manager', email: req.user?.email || '' },
+    // The work order carries its own service_line (Phase 0); fall back to the
+    // request's so the document renders the right service line's vocabulary.
+    service_line: wo.service_line || resolveServiceLine(req),
   };
 };
 
 /** GET /wt-work-orders/document/reference — the document's own vocabulary. */
 exports.documentReference = asyncHandler(async (req, res) => {
+  // Vocabulary + catalogue for the active service line (Section 3 taxonomy,
+  // Section 4 fields, warranty rows and checklist all vary by service).
+  const vocab = woDoc.documentVocab(resolveServiceLine(req));
   res.json({
-    property_types: woDoc.PROPERTY_TYPES,
-    service_groups: woDoc.SERVICE_GROUPS,
-    tank_fields: woDoc.TANK_FIELDS,
+    ...vocab,
     timeline_fields: woDoc.TIMELINE_FIELDS,
     amc_fields: woDoc.AMC_FIELDS,
     cost_rows: woDoc.COST_ROWS,
     payment_methods: woDoc.PAYMENT_METHODS,
-    warranty_rows: woDoc.WARRANTY_ROWS,
-    checklist_groups: woDoc.CHECKLIST_GROUPS,
     default_payment_schedule: woDoc.DEFAULT_PAYMENT_SCHEDULE,
-    catalog: await woDoc.getCatalog(resolveBranchId(req)),
+    catalog: await woDoc.getCatalog(resolveBranchId(req), { vertical: catalogueVertical(req) }),
   });
 });
 
@@ -581,10 +584,13 @@ exports.sendDocument = asyncHandler(async (req, res) => {
   const result = await sequelize.transaction(async (transaction) => {
     const envelope = await SigningEnvelope.create({
       branch_id: wo.branch_id,
-      envelope_code: await generateCode(SigningEnvelope, 'envelope_code', 'ENV-WTPWO-', 6),
+      envelope_code: await generateCode(SigningEnvelope, 'envelope_code',
+        resolveServiceLine(req) === 'air_conditioning' ? 'ENV-ACPWO-' : 'ENV-WTPWO-', 6),
       title: `${built.title} — ${wo.client_name}`,
       document_html: built.html,
-      related_type: 'water_tank_work_order', related_id: wo.id,
+      // The work order's own service line drives its related_type so the hub,
+      // signing completion and downstream records all resolve to the right service.
+      related_type: `${wo.service_line || resolveServiceLine(req)}_work_order`, related_id: wo.id,
       status: 'sent', sent_at: new Date(), expires_at: expires, signing_order_enforced: true,
       kyc_role: 'provider', kyc_policy: 'none',
       terms: built.terms,

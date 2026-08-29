@@ -31,7 +31,7 @@ const dateText = (v) => (v ? new Date(v).toLocaleDateString('en-GB', { day: '2-d
 const M = 48;                       // page margin
 const W = 595.28 - M * 2;           // A4 content width
 
-function render(build) {
+function render(build, brand = {}) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: M, bufferPages: true });
     const chunks = [];
@@ -39,24 +39,25 @@ function render(build) {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
     try { build(doc); } catch (e) { reject(e); return; }
-    addPageNumbers(doc);
+    addPageNumbers(doc, brand);
     doc.end();
   });
 }
 
-function addPageNumbers(doc) {
+function addPageNumbers(doc, brand = {}) {
   const range = doc.bufferedPageRange();
+  const footer = brand.footer || 'Water Tank C & M — Project Work Order';
   for (let i = range.start; i < range.start + range.count; i += 1) {
     doc.switchToPage(i);
     doc.fontSize(7.5).fillColor(MUTED).font('Helvetica')
-      .text(`Water Tank C & M — Project Work Order  ·  V0.2  ·  © Seventh Sky Pty Ltd  ·  Page ${i - range.start + 1} of ${range.count}`,
+      .text(`${footer}  ·  V0.2  ·  © Seventh Sky Pty Ltd  ·  Page ${i - range.start + 1} of ${range.count}`,
         M, 800, { width: W, align: 'center' });
   }
 }
 
-function letterhead(doc, title, subtitle, meta) {
+function letterhead(doc, title, subtitle, meta, brand = {}) {
   doc.fontSize(16).fillColor(NAVY).font('Helvetica-Bold').text('Seventh Sky Property Care', M, M, { width: W, align: 'center' });
-  doc.fontSize(9).fillColor(CYAN).font('Helvetica-Bold').text('WATER TANK CLEANING & MAINTENANCE', { width: W, align: 'center' });
+  doc.fontSize(9).fillColor(CYAN).font('Helvetica-Bold').text(brand.subtitle || 'WATER TANK CLEANING & MAINTENANCE', { width: W, align: 'center' });
   doc.moveDown(0.5);
   doc.fontSize(13).fillColor(INK).font('Helvetica-Bold').text(String(title).toUpperCase(), { width: W, align: 'center' });
   if (subtitle) doc.fontSize(8.5).fillColor('#4b5563').font('Helvetica').text(subtitle, { width: W, align: 'center' });
@@ -175,6 +176,10 @@ function checkGrid(doc, options, selectedSet, columns = 3) {
 async function buildWorkOrderPdf(wo, extra = {}) {
   const provider = extra.provider || {};
   const org = extra.org || {};
+  // Same per-service content pack the HTML document uses, so the emailed PDF
+  // carries the right service line's branding, taxonomy and doc number.
+  const pack = doc0.packForWo(extra.vertical || extra.service_line || wo.service_line);
+  const brand = { subtitle: pack.header_subtitle.replace(/&amp;/g, '&'), footer: `${pack.division} — Project Work Order` };
   const summary = doc0.computeTotals(wo);
   const schedule = doc0.computePaymentSchedule(wo, summary.total);
   const selections = asObject(wo.service_selections);
@@ -185,7 +190,7 @@ async function buildWorkOrderPdf(wo, extra = {}) {
 
   return render((doc) => {
     letterhead(doc, 'Project Work Order', '(Under Service Delivery Provider Master Agreement)',
-      `Document No: SSPC-WTCM-PWO-01  ·  Version: 0.2  ·  Effective Date: ${dateText(wo.date_issued)}`);
+      `Document No: ${pack.doc_no}  ·  Version: 0.2  ·  Effective Date: ${dateText(wo.date_issued)}`, brand);
 
     heading(doc, 'Section 1 — Project Information');
     keyValues(doc, [
@@ -201,17 +206,17 @@ async function buildWorkOrderPdf(wo, extra = {}) {
       ['Service Address', wo.site_address],
     ]);
     subheading(doc, 'Property Type');
-    checkGrid(doc, doc0.PROPERTY_TYPES, new Set([String(wo.property_type || '').toLowerCase()]), 4);
+    checkGrid(doc, pack.property_types, new Set([String(wo.property_type || '').toLowerCase()]), 4);
 
     heading(doc, 'Section 3 — Services Requested');
-    Object.entries(doc0.SERVICE_GROUPS).forEach(([group, options]) => {
+    Object.entries(pack.service_groups).forEach(([group, options]) => {
       const chosen = new Set(asArray(selections[group]).map((v) => String(v).toLowerCase()));
       subheading(doc, group);
       checkGrid(doc, options, chosen, 3);
     });
 
-    heading(doc, 'Section 4 — Tank Details');
-    keyValues(doc, doc0.TANK_FIELDS.map(([key, label]) => [label, tank[key]]));
+    heading(doc, pack.section4_label);
+    keyValues(doc, pack.section4_fields.map(([key, label]) => [label, tank[key]]));
 
     heading(doc, 'Section 5 — Scope of Work');
     subheading(doc, 'Description');
@@ -279,10 +284,10 @@ async function buildWorkOrderPdf(wo, extra = {}) {
 
     heading(doc, 'Section 9 — Warranty');
     table(doc, [{ label: 'Warranty', w: 0.6 }, { label: 'Period', w: 0.4 }],
-      doc0.WARRANTY_ROWS.map(([key, label]) => ({ cells: [label, warranty[key] || '—'] })), '');
+      pack.warranty_rows.map(([key, label]) => ({ cells: [label, warranty[key] || '—'] })), '');
 
     heading(doc, 'Section 10 — Project Checklist');
-    Object.entries(doc0.CHECKLIST_GROUPS).forEach(([group, options]) => {
+    Object.entries(pack.checklist_groups).forEach(([group, options]) => {
       const chosen = new Set(asArray(checklist[group]).map((v) => String(v).toLowerCase()));
       subheading(doc, group);
       checkGrid(doc, options, chosen, 2);
@@ -309,15 +314,17 @@ async function buildWorkOrderPdf(wo, extra = {}) {
       'This Work Order becomes effective when signed by both Parties through the Seventh Sky electronic signing system. The electronic record, audit trail and content hash constitute proof of execution.',
       M, doc.y, { width: W },
     );
-  });
+  }, brand);
 }
 
 /* ── execution certificate for the completed envelope ───────────────── */
 
 async function buildExecutionPdf(envelope, signers = [], wo = {}) {
+  const pack = doc0.packForWo(wo.service_line || envelope.related_type);
+  const brand = { subtitle: pack.header_subtitle.replace(/&amp;/g, '&'), footer: `${pack.division} — Certificate of Execution` };
   return render((doc) => {
     letterhead(doc, 'Certificate of Execution', 'Electronic signature record',
-      `Envelope: ${txt(envelope.envelope_code)}  ·  Document: ${txt(envelope.title)}`);
+      `Envelope: ${txt(envelope.envelope_code)}  ·  Document: ${txt(envelope.title)}`, brand);
 
     heading(doc, 'Document');
     keyValues(doc, [
@@ -340,7 +347,7 @@ async function buildExecutionPdf(envelope, signers = [], wo = {}) {
       'Each signature above was captured through the Seventh Sky electronic signing system against a single-use access token. The stored document, the audit trail and the content hash held against this envelope together constitute proof of execution.',
       M, doc.y, { width: W },
     );
-  });
+  }, brand);
 }
 
 module.exports = { buildWorkOrderPdf, buildExecutionPdf };

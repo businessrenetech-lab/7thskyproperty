@@ -3857,3 +3857,20 @@ used "the last line starting with `import`", which landed inside a multi-line
   ACS-004, 4 signature anchors, agreement_type air_conditioning_provider_master); WT still
   renders SSPC-WTCM-SDPMA-01.
 - NEXT: phase 2c project work order (two-party work-order agreement).
+
+### 2026-08-30 04:10 | Claude Code (Opus 4.8) | COMPLETED | AC milestone 3 (phase 2c) — AC Project Work Order + hardening
+- Made the Project Work Order document + PDFs per-service via content packs (WT_PACK / AC_PACK
+  in wtWorkOrderDoc.service): header subtitle/division, Section 3 service taxonomy, Section 4
+  (Tank Details ↔ Equipment Details with AC equipment fields), warranty rows, completion
+  checklist, property types, doc_no (SSPC-WTCM-PWO-01 / SSPC-ACS-PWO-01), terms.document_type.
+  buildWorkOrderDocument selects the pack from the WO's service_line (or the request).
+- wtWorkOrderPdf (emailed branded PDF + execution certificate) now takes the same pack:
+  letterhead subtitle, footer, doc_no and all section vocab follow the service line.
+- Controller: documentReference serves the active service line's vocab + AC catalogue; the
+  work-order envelope's related_type + code prefix (ENV-ACPWO-) resolve from the WO's
+  service_line. partyRoleActivation's "both signed the work order" hook is suffix-matched
+  (_work_order) so AC work orders onboard the provider + email the branded PDFs.
+- VERIFIED: WT and AC work-order HTML render their own doc_no/branding/Section-4/taxonomy;
+  AC work-order PDF (10.9 KB) and execution certificate (3.4 KB) build with %PDF- header.
+- Phase 2 (agreements) COMPLETE: customer, provider and work-order agreements all render per
+  service line off the shared engines. AC duplication is now feature-complete end-to-end.

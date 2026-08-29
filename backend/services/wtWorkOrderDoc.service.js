@@ -73,6 +73,73 @@ const CHECKLIST_GROUPS = {
     'Site Cleaned', 'After Photos Taken', 'Client Demonstration / Handover Completed', 'Warranty Issued', 'Client Acceptance Received'],
 };
 
+/* ── per-service content packs ──────────────────────────────────────────
+ * The Project Work Order is the same instrument for every service line — same
+ * ten sections, same pricing/checkbox machinery, same execution block. Only the
+ * document's vocabulary differs: header wording, the Section 3 service taxonomy,
+ * Section 4 (Tank vs Equipment details), the warranty rows and the completion
+ * checklist. Each service line supplies those as a pack; the builder is shared.
+ */
+const AC_PROPERTY_TYPES = ['House', 'Apartment', 'Office', 'Retail Shop', 'Restaurant', 'Café', 'School',
+  'Hospital', 'Warehouse', 'Factory', 'Commercial Building', 'Other'];
+
+const AC_SERVICE_GROUPS = {
+  'Consultation': ['Residential', 'Commercial'],
+  'Installation': ['Split System', 'Inverter', 'Cassette', 'Ducted', 'Commercial Installation'],
+  'Relocation': ['Residential', 'Commercial'],
+  'Maintenance': ['Preventive', 'Corrective', 'Fault Diagnosis'],
+  'Repairs': ['Compressor', 'Fan Motor', 'PCB', 'Sensor', 'Other'],
+  'Cleaning': ['Standard', 'Deep Chemical'],
+  'Refrigerant': ['Leak Detection', 'Gas Refill', 'Pressure Test'],
+  'AMC': ['Residential', 'Commercial'],
+  'Smart Climate': ['Wi-Fi Setup', 'Smart Thermostat', 'Energy Assessment'],
+  'Emergency': ['Priority Call', 'After Hours', 'Breakdown'],
+};
+
+const AC_EQUIPMENT_FIELDS = [
+  ['equipment_brand', 'Brand'], ['equipment_model', 'Model'], ['units_count', 'Quantity'],
+  ['equipment_capacity', 'Capacity'], ['serial_number', 'Serial Number'],
+  ['refrigerant_type', 'Refrigerant Type'], ['system_age', 'System Age'],
+];
+
+const AC_WARRANTY_ROWS = [
+  ['installation', 'Installation'], ['labour', 'Labour'], ['repair', 'Repairs'],
+  ['manufacturer', 'Manufacturer'], ['parts', 'Parts'],
+];
+
+const AC_CHECKLIST_GROUPS = {
+  'Before Work': ['Site Inspection Completed', 'Quotation Approved', 'Work Order Approved', 'Materials Available', 'Technician Assigned'],
+  'During Work': ['Safety Procedures Followed', 'Client Updated', 'Progress Photos Taken'],
+  Completion: ['Testing Completed', 'Site Cleaned', 'Client Demonstration Completed', 'Completion Photos Taken', 'Warranty Issued', 'Client Acceptance Received'],
+};
+
+const WT_PACK = {
+  doc_no: 'SSPC-WTCM-PWO-01',
+  header_subtitle: 'WATER TANK CLEANING &amp; MAINTENANCE',
+  division: 'Seventh Sky Water Tank Cleaning &amp; Maintenance Services',
+  document_type: 'water_tank_work_order',
+  property_types: PROPERTY_TYPES,
+  service_groups: SERVICE_GROUPS,
+  section4_label: 'Section 4 — Tank Details',
+  section4_fields: TANK_FIELDS,
+  warranty_rows: WARRANTY_ROWS,
+  checklist_groups: CHECKLIST_GROUPS,
+};
+const AC_PACK = {
+  doc_no: 'SSPC-ACS-PWO-01',
+  header_subtitle: 'AIR CONDITIONING SOLUTIONS',
+  division: 'Seventh Sky Air Conditioning Solutions',
+  document_type: 'air_conditioning_work_order',
+  property_types: AC_PROPERTY_TYPES,
+  service_groups: AC_SERVICE_GROUPS,
+  section4_label: 'Section 4 — Equipment Details',
+  section4_fields: AC_EQUIPMENT_FIELDS,
+  warranty_rows: AC_WARRANTY_ROWS,
+  checklist_groups: AC_CHECKLIST_GROUPS,
+};
+const WO_PACKS = { water_tank: WT_PACK, air_conditioning: AC_PACK };
+const packForWo = (v) => (String(v || '').startsWith('air_conditioning') ? AC_PACK : WT_PACK);
+
 const PRICING_NOTES = [
   "The above prices are based on Seventh Sky's Standard Price Schedule.",
   'The Agreed Price may differ from the Standard Price following negotiation, promotions or project-specific requirements.',
@@ -238,7 +305,9 @@ const SECTIONS = [
 function buildWorkOrderDocument(wo = {}, extra = {}) {
   const provider = extra.provider || {};
   const org = extra.org || {};
-  const doc_no = 'SSPC-WTCM-PWO-01';
+  // Service line comes from the caller (X-Service-Line) or the WO's own tag.
+  const pack = packForWo(extra.vertical || extra.service_line || wo.service_line);
+  const doc_no = pack.doc_no;
   const title = 'Project Work Order';
 
   const selections = asObject(wo.service_selections);
@@ -262,14 +331,14 @@ function buildWorkOrderDocument(wo = {}, extra = {}) {
     ['Client Name', wo.client_name], ['Company (if applicable)', wo.client_company],
     ['Contact Person', wo.client_contact_person], ['Phone', wo.client_phone], ['Email', wo.client_email],
     ['Service Address', wo.site_address],
-  ])}<div style="${H3}">Property Type</div>${checkboxes(PROPERTY_TYPES, propertySet, 4)}`);
+  ])}<div style="${H3}">Property Type</div>${checkboxes(pack.property_types, propertySet, 4)}`);
 
-  const s3 = section('s3', 'Section 3 — Services Requested', Object.entries(SERVICE_GROUPS).map(([group, options]) => {
+  const s3 = section('s3', 'Section 3 — Services Requested', Object.entries(pack.service_groups).map(([group, options]) => {
     const chosen = new Set(asArray(selections[group]).map((v) => String(v).toLowerCase()));
     return `<div style="${H3}">${esc(group)}</div>${checkboxes(options, chosen)}`;
   }).join(''));
 
-  const s4 = section('s4', 'Section 4 — Tank Details', kvTable(TANK_FIELDS.map(([key, label]) => [label, tank[key]])));
+  const s4 = section('s4', pack.section4_label, kvTable(pack.section4_fields.map(([key, label]) => [label, tank[key]])));
 
   const s5 = section('s5', 'Section 5 — Scope of Work', `<div style="${H3}">Description</div>
     <div style="font-size:12.5px;white-space:pre-wrap;margin-bottom:10px;">${wo.scope ? esc(wo.scope) : '__________'}</div>
@@ -313,11 +382,11 @@ function buildWorkOrderDocument(wo = {}, extra = {}) {
 
   const s9 = section('s9', 'Section 9 — Warranty', dataTable(
     [{ label: 'Warranty' }, { label: 'Period', width: '40%' }],
-    WARRANTY_ROWS.map(([key, label]) => [{ value: label }, { value: warranty[key] || '' }]),
+    pack.warranty_rows.map(([key, label]) => [{ value: label }, { value: warranty[key] || '' }]),
     'No warranty periods recorded.',
   ));
 
-  const s10 = section('s10', 'Section 10 — Project Checklist', Object.entries(CHECKLIST_GROUPS).map(([group, options]) => {
+  const s10 = section('s10', 'Section 10 — Project Checklist', Object.entries(pack.checklist_groups).map(([group, options]) => {
     const chosen = new Set(asArray(checklist[group]).map((v) => String(v).toLowerCase()));
     return `<div style="${H3}">${esc(group)}</div>${checkboxes(options, chosen, 2)}`;
   }).join(''));
@@ -353,7 +422,7 @@ function buildWorkOrderDocument(wo = {}, extra = {}) {
   <div style="border:1px solid #d9dee6;border-radius:10px;padding:14px 18px;margin:14px 0;background:#f8fafc;">
     <div style="font-weight:700;font-size:13px;color:#003768;margin-bottom:8px;">Table of Contents</div>
     <div style="columns:2;column-gap:32px;font-size:12.5px;line-height:1.9;">
-      ${SECTIONS.map(([id, label]) => `<div style="break-inside:avoid;"><a href="#${id}" style="color:#1e3a8a;text-decoration:none;">${esc(label)}</a></div>`).join('')}
+      ${SECTIONS.map(([id, label]) => `<div style="break-inside:avoid;"><a href="#${id}" style="color:#1e3a8a;text-decoration:none;">${esc(id === 's4' ? pack.section4_label : label)}</a></div>`).join('')}
     </div>
   </div>`;
 
@@ -361,11 +430,11 @@ function buildWorkOrderDocument(wo = {}, extra = {}) {
   <div style="font-family: Georgia,'Times New Roman',serif;color:#1f2430;line-height:1.6;font-size:14px;max-width:820px;margin:0 auto;">
     <div style="text-align:center;border-bottom:3px double #003768;padding-bottom:12px;">
       <div style="font-size:20px;font-weight:bold;color:#003768;">Seventh Sky Property Care</div>
-      <div style="font-size:13px;color:#12b6f3;font-weight:bold;letter-spacing:.04em;margin-top:2px;">WATER TANK CLEANING &amp; MAINTENANCE</div>
+      <div style="font-size:13px;color:#12b6f3;font-weight:bold;letter-spacing:.04em;margin-top:2px;">${pack.header_subtitle}</div>
       <div style="font-size:16px;font-weight:bold;margin-top:10px;text-transform:uppercase;">${esc(title)}</div>
       <div style="font-size:11.5px;color:#4b5563;margin-top:2px;">(Under Service Delivery Provider Master Agreement)</div>
       <div style="font-size:11px;color:#6b7280;margin-top:4px;">Document No: ${doc_no} · Version: 0.2 · Effective Date: ${or(wo.date_issued)}</div>
-      <div style="font-size:11px;color:#6b7280;">Division: Seventh Sky Water Tank Cleaning &amp; Maintenance Services</div>
+      <div style="font-size:11px;color:#6b7280;">Division: ${pack.division}</div>
     </div>
     ${toc}
     ${s1}${s2}${s3}${s4}${s5}${s6}${s7}${s8}${s9}${s10}${s11}
@@ -379,7 +448,7 @@ function buildWorkOrderDocument(wo = {}, extra = {}) {
     summary,
     payment_schedule: schedule,
     terms: {
-      document_type: 'water_tank_work_order', doc_no,
+      document_type: pack.document_type, doc_no,
       work_order_id: wo.id || null, work_order_code: wo.code || null,
       quotation_no: wo.quotation_no || null, project_id: wo.project_id || null,
       provider_id: wo.provider_id || provider.id || null, provider_name: wo.provider_name || provider.business_name || null,
@@ -450,9 +519,9 @@ function hydrateFromQuotation(wo, quotation, client) {
 }
 
 /** Catalogue used by the work-order builder to add priced lines by hand. */
-async function getCatalog(branchId) {
+async function getCatalog(branchId, { vertical = 'water_tank_csa' } = {}) {
   const rows = await ServiceItem.findAll({
-    where: { vertical: 'water_tank_csa', is_active: true, branch_id: branchId },
+    where: { vertical, is_active: true, branch_id: branchId },
     order: [['sort_order', 'ASC']], raw: true,
   });
   return rows.map((r) => ({
@@ -461,8 +530,22 @@ async function getCatalog(branchId) {
   }));
 }
 
+/** The document's own vocabulary for a service line, for the builder's reference endpoint. */
+function documentVocab(serviceLine = 'water_tank') {
+  const pack = packForWo(serviceLine);
+  return {
+    property_types: pack.property_types,
+    service_groups: pack.service_groups,
+    tank_fields: pack.section4_fields,
+    section4_label: pack.section4_label,
+    warranty_rows: pack.warranty_rows,
+    checklist_groups: pack.checklist_groups,
+  };
+}
+
 module.exports = {
   buildWorkOrderDocument, hydrateFromQuotation, computeTotals, computePaymentSchedule, getCatalog,
+  documentVocab, packForWo,
   PROPERTY_TYPES, SERVICE_GROUPS, TANK_FIELDS, TIMELINE_FIELDS, AMC_FIELDS,
   COST_ROWS, PAYMENT_METHODS, WARRANTY_ROWS, CHECKLIST_GROUPS, DEFAULT_PAYMENT_SCHEDULE,
 };
