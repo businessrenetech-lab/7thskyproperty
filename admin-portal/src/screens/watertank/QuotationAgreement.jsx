@@ -135,11 +135,21 @@ export default function QuotationAgreement() {
     return next;
   });
 
+  // An agreement was already raised from this quote when the quote carries an
+  // envelope id — the send action then becomes "resend" / "edit & resend".
+  const alreadySent = !!quote?.agreement_envelope_id;
+
   const send = async () => {
     if (!draft.client.full_name?.trim()) { setError('Client name is required.'); return; }
     if (!draft.client.email?.trim()) { setError('A client email address is required to send for signature.'); return; }
     setSending(true); setError('');
     try {
+      // "Edit & resend": the content of a sent document can't be changed, so a fresh
+      // agreement is raised from the edited draft and the previous one is voided so
+      // there are never two live agreements for the same quotation.
+      if (alreadySent) {
+        await api.post(`/wt-agreement-hub/${quote.agreement_envelope_id}/void`, { reason: 'Superseded by an edited agreement' }).catch(() => {});
+      }
       const { data } = await api.post('/wt-agreements/customer/agreements', draft);
       await api.post(`/wt-quotes/${quoteCode}/link-agreement`, {
         envelope_id: data.id, envelope_code: data.envelope_code,
@@ -147,6 +157,20 @@ export default function QuotationAgreement() {
       setSent(data);
       toast.ok(`Agreement ${data.envelope_code} sent to ${draft.client.email}`);
     } catch (e) { setError(errText(e, 'Could not create the agreement')); }
+    finally { setSending(false); }
+  };
+
+  // Resend re-issues and emails the current agreement's next pending signing link
+  // (no new document), through the audited hub endpoint.
+  const resend = async () => {
+    if (!quote?.agreement_envelope_id) return;
+    setSending(true); setError('');
+    try {
+      const { data } = await api.post(`/wt-agreement-hub/${quote.agreement_envelope_id}/resend`, {});
+      toast.ok(data.emailed
+        ? `Signing link re-sent to ${data.signer?.email || 'the next party'}`
+        : 'A fresh signing link was issued.');
+    } catch (e) { setError(errText(e, 'Could not resend the agreement')); }
     finally { setSending(false); }
   };
 
@@ -304,9 +328,20 @@ export default function QuotationAgreement() {
             {previewing ? <Loader2 size={14} className="wt-spin" /> : <RefreshCw size={14} />} Refresh preview
           </button>
           <button className="wt-btn" onClick={openPreview} disabled={!preview?.html}><Eye size={14} /> Full preview</button>
-          <button className="wt-btn primary" disabled={sending} onClick={send}>
-            {sending ? <><Loader2 size={14} className="wt-spin" /> Sending…</> : <><Send size={14} /> Send for signature</>}
-          </button>
+          {alreadySent ? (
+            <>
+              <button className="wt-btn" disabled={sending} onClick={send} title="Void the current agreement and send a new one with your edits">
+                {sending ? <Loader2 size={14} className="wt-spin" /> : <RefreshCw size={14} />} Edit &amp; resend
+              </button>
+              <button className="wt-btn primary" disabled={sending} onClick={resend}>
+                {sending ? <><Loader2 size={14} className="wt-spin" /> Sending…</> : <><Send size={14} /> Resend</>}
+              </button>
+            </>
+          ) : (
+            <button className="wt-btn primary" disabled={sending} onClick={send}>
+              {sending ? <><Loader2 size={14} className="wt-spin" /> Sending…</> : <><Send size={14} /> Send for signature</>}
+            </button>
+          )}
         </WtHead>
       </div>
 

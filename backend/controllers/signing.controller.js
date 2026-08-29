@@ -226,8 +226,19 @@ exports.viewByToken = asyncHandler(async (req, res) => {
   if (env.status === 'sent') await env.update({ status: 'viewed' });
   await audit(env.id, 'viewed', req, signer.id, signer.email);
 
+  // Render the document with signatures ALREADY captured by earlier parties placed
+  // into their boxes, so each signer sees who has signed before them rather than a
+  // blank form (and the last signer sees everyone else's signatures).
+  let renderedHtml = env.document_html;
+  try {
+    const allSigners = await EnvelopeSigner.findAll({ where: { envelope_id: env.id }, raw: true });
+    const allFields = await SignatureField.findAll({ where: { envelope_id: env.id }, raw: true });
+    renderedHtml = require('../services/wtSignedDocument.service')
+      .applySignatures(env.document_html, allSigners, allFields).html;
+  } catch { /* fall back to the raw document */ }
+
   res.json({ data: {
-    envelope: { code: env.envelope_code, title: env.title, document_html: env.document_html, status: env.status, message: env.message },
+    envelope: { code: env.envelope_code, title: env.title, document_html: renderedHtml, status: env.status, message: env.message },
     signer: { name: signer.name, email: signer.email, role: signer.role, status: signer.status },
     fields: env.fields,
   } });
@@ -299,10 +310,18 @@ exports.signByToken = asyncHandler(async (req, res) => {
   });
   await audit(env.id, 'signed', req, signer.id, signer.email);
 
-  // Advance next signer (order enforced) and check completion
+  // Advance next signer (order enforced) and check completion.
+  // Completion rule: every PRINCIPAL (client/provider + Seventh Sky) must sign, and
+  // — where witnesses exist — AT LEAST ONE witness must have signed. A second
+  // witness is a convenience, not a blocker, so the agreement is not held open
+  // waiting on a witness who never signs.
   const allSigners = await EnvelopeSigner.findAll({ where: { envelope_id: env.id }, order: [['signer_order', 'ASC']] });
-  const remaining = allSigners.filter((s) => s.status !== 'signed');
-  if (!remaining.length) {
+  const witnessSigners = allSigners.filter((s) => s.role === 'witness');
+  const principalSigners = allSigners.filter((s) => s.role !== 'witness');
+  const principalsAllSigned = principalSigners.every((s) => s.status === 'signed');
+  const witnessSatisfied = witnessSigners.length === 0 || witnessSigners.some((s) => s.status === 'signed');
+  const remaining = allSigners.filter((s) => s.status !== 'signed' && s.status !== 'declined');
+  if (principalsAllSigned && witnessSatisfied) {
     const signedData = JSON.stringify(allSigners.map((s) => ({ id: s.id, email: s.email, signed_at: s.signed_at })));
     // Tamper evidence must cover what was actually signed — include every captured
     // field value (the signatures and dates), not just the document + signer meta.

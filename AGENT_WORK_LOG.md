@@ -3613,3 +3613,25 @@ used "the last line starting with `import`", which landed inside a multi-line
   the money/disbursement endpoints respond.
 - DEPLOY NOTE: this migrated the LOCAL dev DB only. Hostinger's DB must be migrated on
   deploy — run `cd backend && npx sequelize-cli db:migrate` there after pulling.
+
+### 2026-08-29 17:45 | Claude Code (Opus 4.8) | COMPLETED | Signing UX fixes — load failure, resend buttons, see prior signatures, one-witness completion
+- Reports: sign link "unable to load"; "Send for signature" should become "Resend" (+ an
+  "Edit & resend"); a signer should see other parties' signatures already placed; with two
+  witnesses only one witness signature should be required to complete.
+- Fixes:
+  * Load failure — root cause was the /sign rate limiter (60 req/15min per IP) returning
+    429. Split into a generous read limiter (600/15min for GET view + signed-document) and
+    a tighter write limiter (60/15min for POST sign/decline). The failing token was valid.
+  * viewByToken now returns the document with EARLIER signers' signatures applied
+    (applySignatures over all signers/fields), so each party sees who has signed.
+  * Completion rule (signByToken): complete when all PRINCIPALS (client/provider + Seventh
+    Sky) have signed AND, where witnesses exist, at least ONE witness has signed. A second
+    witness is no longer a blocker.
+  * SignPage shows a read-only "already signed / fully signed / voided" state (with the
+    document) instead of a live form once this party is done or the envelope is finished.
+  * QuotationAgreement: when the quote already has an agreement envelope, the header shows
+    "Resend" (re-emails the current agreement's next pending link via the hub) and
+    "Edit & resend" (voids the current agreement and raises a fresh one from the edits),
+    instead of "Send for signature".
+- Verified: the previously-failing token now loads (200); backend loads; admin build passed.
+- Handoff: redeploy + restart on Hostinger.

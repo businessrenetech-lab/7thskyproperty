@@ -41,15 +41,25 @@ export default function SignPage() {
   if (done) return <div className="center-screen"><div className="card card-pad" style={{ maxWidth: 460, textAlign: 'center' }}><CheckCircle2 size={48} color="var(--success)" /><h2 style={{ marginTop: 12 }}>{done}</h2><p className="cell-sub">You may close this window.</p></div></div>;
 
   const { envelope, signer, fields = [] } = state;
-  // Once this party has signed (or declined), there is nothing left to do here —
-  // don't keep offering Sign / Decline on a signature that is already recorded.
-  if (signer.status === 'signed' || signer.status === 'declined') {
+  // Nothing to sign when this party is already done, or the whole agreement is
+  // finished/void/declined — show the document read-only instead of a live form.
+  const doneStatus = signer.status === 'signed' || signer.status === 'declined'
+    ? signer.status
+    : ['completed', 'voided', 'declined'].includes(envelope.status)
+      ? (envelope.status === 'completed' ? 'fully signed' : envelope.status)
+      : null;
+  if (doneStatus) {
     return (
-      <div className="center-screen"><div className="card card-pad" style={{ maxWidth: 460, textAlign: 'center' }}>
-        <CheckCircle2 size={48} color="var(--success)" />
-        <h2 style={{ marginTop: 12 }}>You have already {signer.status} this document.</h2>
-        <p className="cell-sub">No further action is needed. You may close this window.</p>
-      </div></div>
+      <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '24px 16px' }}>
+        <div style={{ maxWidth: 820, margin: '0 auto' }}>
+          <div className="card card-pad" style={{ marginBottom: 16, textAlign: 'center' }}>
+            <CheckCircle2 size={40} color="var(--success)" />
+            <h2 style={{ margin: '10px 0 2px' }}>This agreement is {doneStatus}.</h2>
+            <p className="cell-sub">No further action is needed. You may close this window.</p>
+          </div>
+          <div className="card card-pad" dangerouslySetInnerHTML={{ __html: envelope.document_html || '' }} />
+        </div>
+      </div>
     );
   }
   return (
