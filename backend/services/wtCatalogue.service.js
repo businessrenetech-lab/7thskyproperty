@@ -40,7 +40,15 @@ const sequelize = require('../config/db.config');
 const ServiceItem = require('../models/ServiceItem');
 const M = require('../models/waterTankOps');
 
-const VERTICAL = 'water_tank_csa';
+/*
+ * The catalogue is separated by `vertical`, one per service line
+ * (water_tank_csa, air_conditioning_csa, …). Water Tank is the default so every
+ * existing caller keeps working unchanged; the console passes its own vertical
+ * (and service line) through ctx / the listing options, and every read, write
+ * and history row then stays inside that service's schedule.
+ */
+const DEFAULT_VERTICAL = 'water_tank_csa';
+const verticalOf = (ctx = {}) => ctx.vertical || DEFAULT_VERTICAL;
 const num = (v) => Number(v || 0);
 const round2 = (v) => Math.round((num(v) + Number.EPSILON) * 100) / 100;
 const today = () => new Date().toISOString().slice(0, 10);
@@ -180,8 +188,8 @@ function resolveLine(selected = {}, catalogueByCode = {}, opts = {}) {
 }
 
 /** The live catalogue, keyed by code, for the resolver. */
-async function catalogueByCode(branchId, { includeArchived = false } = {}) {
-  const where = { vertical: VERTICAL };
+async function catalogueByCode(branchId, { includeArchived = false, vertical = DEFAULT_VERTICAL } = {}) {
+  const where = { vertical };
   if (!includeArchived) where.is_active = true;
   if (branchId) where.branch_id = branchId;
   const rows = await ServiceItem.findAll({ where, order: [['sort_order', 'ASC']], raw: true });
@@ -200,10 +208,15 @@ async function catalogueByCode(branchId, { includeArchived = false } = {}) {
  * (refuse a delete that was actually safe), which is the right way to be wrong
  * about whether a price is under contract.
  */
-async function usageOf(code, branchId) {
+async function usageOf(code, branchId, { serviceLine = null } = {}) {
   if (!code) return { total: 0, quotations: 0, work_orders: 0, invoices: 0, provider_rates: 0, agreements: 0 };
   const like = { [Op.like]: `%"${code}"%` };
-  const scope = branchId ? { branch_id: branchId } : {};
+  // Scope the count to this service line where the row carries one, so an item
+  // whose code was cloned across services counts only its own commitments.
+  const scope = {
+    ...(branchId ? { branch_id: branchId } : {}),
+    ...(serviceLine ? { service_line: serviceLine } : {}),
+  };
 
   const [quotations, workOrders, invoices, providerRates, agreements] = await Promise.all([
     M.WtQuotation.count({ where: { ...scope, lines: like } }).catch(() => 0),
@@ -248,7 +261,7 @@ async function recordHistory(spec, { transaction } = {}) {
         branch_id: spec.branch_id || 1,
         item_id: spec.item_id,
         code: spec.code || null,
-        vertical: VERTICAL,
+        vertical: spec.vertical || DEFAULT_VERTICAL,
         change_type: spec.change_type,
         old_price: spec.old_price ?? null,
         new_price: spec.new_price ?? null,
@@ -304,10 +317,10 @@ async function priceOn(code, date, branchId) {
  * Lifecycle
  * ──────────────────────────────────────────────────────────────────────────── */
 
-const nextCode = async (group, branchId) => {
+const nextCode = async (group, branchId, vertical = DEFAULT_VERTICAL) => {
   const prefix = group === 'material' ? 'MAT' : group === 'labour' ? 'LAB' : 'WTC';
   const rows = await ServiceItem.findAll({
-    where: { vertical: VERTICAL, code: { [Op.like]: `${prefix}-%` }, ...(branchId ? { branch_id: branchId } : {}) },
+    where: { vertical, code: { [Op.like]: `${prefix}-%` }, ...(branchId ? { branch_id: branchId } : {}) },
     attributes: ['code'], raw: true,
   });
   let max = 0;
@@ -319,16 +332,17 @@ const nextCode = async (group, branchId) => {
 };
 
 async function createItem(input, ctx) {
+  const vertical = verticalOf(ctx);
   const group = GROUPS.includes(input.group) ? input.group : 'service';
   if (!String(input.name || '').trim()) throw new CatalogueError(400, 'Give the item a name.');
 
-  const code = String(input.code || '').trim() || await nextCode(group, ctx.branch_id);
-  const clash = await ServiceItem.findOne({ where: { vertical: VERTICAL, code, ...(ctx.branch_id ? { branch_id: ctx.branch_id } : {}) } });
+  const code = String(input.code || '').trim() || await nextCode(group, ctx.branch_id, vertical);
+  const clash = await ServiceItem.findOne({ where: { vertical, code, ...(ctx.branch_id ? { branch_id: ctx.branch_id } : {}) } });
   if (clash) throw new CatalogueError(409, `Code ${code} is already used by "${clash.name}".`);
 
   return sequelize.transaction(async (t) => {
     const item = await ServiceItem.create({
-      branch_id: ctx.branch_id, vertical: VERTICAL, code,
+      branch_id: ctx.branch_id, vertical, code,
       name: String(input.name).trim(),
       description: input.description || null,
       unit: input.unit || null,
@@ -344,7 +358,7 @@ async function createItem(input, ctx) {
     }, { transaction: t });
 
     await recordHistory({
-      branch_id: ctx.branch_id, item_id: item.id, code, change_type: 'created',
+      branch_id: ctx.branch_id, item_id: item.id, code, vertical, change_type: 'created',
       new_price: round2(input.standard_price), new_name: item.name, new_unit: item.unit,
       new_active: true, effective_from: input.effective_from || today(),
       reason: input.reason || 'Item added to the schedule.',
@@ -363,11 +377,12 @@ async function createItem(input, ctx) {
  * are already signed. Everything else may change, and each change is recorded.
  */
 async function updateItem(id, input, ctx) {
-  const item = await ServiceItem.findOne({ where: { id, vertical: VERTICAL, ...(ctx.branch_id ? { branch_id: ctx.branch_id } : {}) } });
+  const vertical = verticalOf(ctx);
+  const item = await ServiceItem.findOne({ where: { id, vertical, ...(ctx.branch_id ? { branch_id: ctx.branch_id } : {}) } });
   if (!item) throw new CatalogueError(404, 'That catalogue item was not found.');
 
   const before = shape(item);
-  const usage = await usageOf(before.code, ctx.branch_id);
+  const usage = await usageOf(before.code, ctx.branch_id, { serviceLine: ctx.service_line });
 
   if (input.code && String(input.code).trim() !== before.code) {
     if (usage.total > 0) {
@@ -400,7 +415,7 @@ async function updateItem(id, input, ctx) {
     const renamed = after.name !== before.name || after.unit !== before.unit;
     if (priceMoved || renamed) {
       await recordHistory({
-        branch_id: ctx.branch_id, item_id: item.id, code: after.code,
+        branch_id: ctx.branch_id, item_id: item.id, code: after.code, vertical,
         change_type: priceMoved ? 'price_changed' : 'renamed',
         old_price: before.standard_price, new_price: after.standard_price,
         old_name: before.name, new_name: after.name,
@@ -431,14 +446,15 @@ async function updateItem(id, input, ctx) {
  * it keeps rendering from its snapshot.
  */
 async function archiveItem(id, ctx, { reason } = {}) {
-  const item = await ServiceItem.findOne({ where: { id, vertical: VERTICAL, ...(ctx.branch_id ? { branch_id: ctx.branch_id } : {}) } });
+  const vertical = verticalOf(ctx);
+  const item = await ServiceItem.findOne({ where: { id, vertical, ...(ctx.branch_id ? { branch_id: ctx.branch_id } : {}) } });
   if (!item) throw new CatalogueError(404, 'That catalogue item was not found.');
   const before = shape(item);
 
   return sequelize.transaction(async (t) => {
     await item.update({ is_active: false }, { transaction: t });
     await recordHistory({
-      branch_id: ctx.branch_id, item_id: item.id, code: before.code, change_type: 'archived',
+      branch_id: ctx.branch_id, item_id: item.id, code: before.code, vertical, change_type: 'archived',
       old_active: true, new_active: false, old_price: before.standard_price, new_price: before.standard_price,
       reason: reason || 'Withdrawn from the active schedule.',
       actor: ctx.actor, actor_id: ctx.actor_id,
@@ -448,13 +464,14 @@ async function archiveItem(id, ctx, { reason } = {}) {
 }
 
 async function restoreItem(id, ctx) {
-  const item = await ServiceItem.findOne({ where: { id, vertical: VERTICAL, ...(ctx.branch_id ? { branch_id: ctx.branch_id } : {}) } });
+  const vertical = verticalOf(ctx);
+  const item = await ServiceItem.findOne({ where: { id, vertical, ...(ctx.branch_id ? { branch_id: ctx.branch_id } : {}) } });
   if (!item) throw new CatalogueError(404, 'That catalogue item was not found.');
 
   return sequelize.transaction(async (t) => {
     await item.update({ is_active: true }, { transaction: t });
     await recordHistory({
-      branch_id: ctx.branch_id, item_id: item.id, code: item.code, change_type: 'restored',
+      branch_id: ctx.branch_id, item_id: item.id, code: item.code, vertical, change_type: 'restored',
       old_active: false, new_active: true, reason: 'Returned to the active schedule.',
       actor: ctx.actor, actor_id: ctx.actor_id,
     }, { transaction: t });
@@ -467,10 +484,11 @@ async function restoreItem(id, ctx) {
  * Anything else archives, so the audit trail stays intact.
  */
 async function deleteItem(id, ctx) {
-  const item = await ServiceItem.findOne({ where: { id, vertical: VERTICAL, ...(ctx.branch_id ? { branch_id: ctx.branch_id } : {}) } });
+  const vertical = verticalOf(ctx);
+  const item = await ServiceItem.findOne({ where: { id, vertical, ...(ctx.branch_id ? { branch_id: ctx.branch_id } : {}) } });
   if (!item) throw new CatalogueError(404, 'That catalogue item was not found.');
 
-  const usage = await usageOf(item.code, ctx.branch_id);
+  const usage = await usageOf(item.code, ctx.branch_id, { serviceLine: ctx.service_line });
   if (usage.total > 0) {
     throw new CatalogueError(409,
       `${item.code} is used by ${usage.total} priced record(s) and cannot be deleted. Archive it instead — it stops being offered and the existing documents stay intact.`,
@@ -484,7 +502,7 @@ async function deleteItem(id, ctx) {
 
 /** Duplicate an item as a starting point for a variant. */
 async function cloneItem(id, input, ctx) {
-  const src = await ServiceItem.findOne({ where: { id, vertical: VERTICAL, ...(ctx.branch_id ? { branch_id: ctx.branch_id } : {}) } });
+  const src = await ServiceItem.findOne({ where: { id, vertical: verticalOf(ctx), ...(ctx.branch_id ? { branch_id: ctx.branch_id } : {}) } });
   if (!src) throw new CatalogueError(404, 'That catalogue item was not found.');
   const s = shape(src);
   return createItem({
@@ -502,8 +520,8 @@ async function cloneItem(id, input, ctx) {
  * Listing
  * ──────────────────────────────────────────────────────────────────────────── */
 
-async function listItems({ branch_id, q, group, includeArchived, withUsage } = {}) {
-  const where = { vertical: VERTICAL };
+async function listItems({ branch_id, q, group, includeArchived, withUsage, vertical = DEFAULT_VERTICAL, service_line = null } = {}) {
+  const where = { vertical };
   if (branch_id) where.branch_id = branch_id;
   if (!includeArchived) where.is_active = true;
   if (group) where[Op.and] = [{ [Op.or]: [{ service_group: group }, { tags: { [Op.like]: `%"group":"${group}"%` } }] }];
@@ -521,13 +539,13 @@ async function listItems({ branch_id, q, group, includeArchived, withUsage } = {
   if (withUsage) {
     // Sequential rather than parallel: each usage check runs five counts, and
     // forty items at once is a needless burst against the connection pool.
-    for (const it of items) it.usage = await usageOf(it.code, branch_id);
+    for (const it of items) it.usage = await usageOf(it.code, branch_id, { serviceLine: service_line });
   }
   return items;
 }
 
 module.exports = {
-  VERTICAL, GROUPS, CatalogueError,
+  DEFAULT_VERTICAL, VERTICAL: DEFAULT_VERTICAL, GROUPS, CatalogueError,
   shape, snapshotOf, resolveLine, catalogueByCode,
   usageOf, recordHistory, historyOf, priceOn,
   listItems, createItem, updateItem, archiveItem, restoreItem, deleteItem, cloneItem, nextCode,

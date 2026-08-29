@@ -7,11 +7,20 @@
  * committed to. Editing a price list that signed agreements are built from
  * deserves its own surface, with usage in view and history kept.
  */
-const { asyncHandler, resolveBranchId } = require('../utils/controllerHelpers');
+const { asyncHandler, resolveBranchId, catalogueVertical, resolveServiceLine } = require('../utils/controllerHelpers');
 const svc = require('../services/wtCatalogue.service');
 
 const actorOf = (req) => req.user?.name || req.user?.email || 'Operations';
-const ctxOf = (req) => ({ branch_id: resolveBranchId(req), actor: actorOf(req), actor_id: req.user?.id || null });
+// The catalogue is per service line: each console reads and writes its own
+// vertical (water_tank_csa / air_conditioning_csa), and usage is counted within
+// its own service line so a code cloned across services stays isolated.
+const ctxOf = (req) => ({
+  branch_id: resolveBranchId(req),
+  vertical: catalogueVertical(req),
+  service_line: resolveServiceLine(req),
+  actor: actorOf(req),
+  actor_id: req.user?.id || null,
+});
 
 const fail = (res, e) => {
   if (e instanceof svc.CatalogueError) {
@@ -28,6 +37,8 @@ const fail = (res, e) => {
 exports.list = asyncHandler(async (req, res) => {
   const items = await svc.listItems({
     branch_id: resolveBranchId(req),
+    vertical: catalogueVertical(req),
+    service_line: resolveServiceLine(req),
     q: req.query.q || null,
     group: req.query.group || null,
     includeArchived: req.query.include_archived === '1' || req.query.include_archived === 'true',
@@ -53,12 +64,15 @@ exports.list = asyncHandler(async (req, res) => {
 /** GET /api/wt-catalogue/:id — one item, its usage and its full history. */
 exports.detail = asyncHandler(async (req, res) => {
   const branch = resolveBranchId(req);
-  const items = await svc.listItems({ branch_id: branch, includeArchived: true });
+  const items = await svc.listItems({
+    branch_id: branch, includeArchived: true,
+    vertical: catalogueVertical(req), service_line: resolveServiceLine(req),
+  });
   const item = items.find((i) => String(i.id) === String(req.params.id));
   if (!item) return res.status(404).json({ error: 'That catalogue item was not found.' });
 
   const [usage, history] = await Promise.all([
-    svc.usageOf(item.code, branch),
+    svc.usageOf(item.code, branch, { serviceLine: resolveServiceLine(req) }),
     svc.historyOf(item.id, branch),
   ]);
   res.json({ item, usage, history });
