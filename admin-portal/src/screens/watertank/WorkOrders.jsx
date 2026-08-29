@@ -5,7 +5,7 @@ import {
   Wallet, ClipboardCheck,
 } from 'lucide-react';
 import api from '../../services/api';
-import {
+import { useSvcNav,
   WtHead, WtTabs, StatCards, dateFmt, bdt, StatusCell, RowActions,
   Loading, EmptyState, useFocusedRecord, toast, errText,
 } from './common';
@@ -21,7 +21,7 @@ const TABS = ['All', ...STATUSES];
 const num = (v) => Number(v || 0);
 
 export default function WorkOrders() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [data, setData] = useState({ rows: [], summary: {} });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

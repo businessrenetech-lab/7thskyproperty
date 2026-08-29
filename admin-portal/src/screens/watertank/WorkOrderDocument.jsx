@@ -5,7 +5,7 @@ import {
   FileSignature, Copy, Ban, Plus, Trash2, Search, AlertTriangle, Lock, ShieldCheck,
 } from 'lucide-react';
 import api from '../../services/api';
-import { WtHead, Loading, EmptyState, Pill, DatePicker, bdt, dateFmt, toast, errText, parseJson } from './common';
+import { useSvcNav, WtHead, Loading, EmptyState, Pill, DatePicker, bdt, dateFmt, toast, errText, parseJson } from './common';
 
 /*
  * Project Work Order — SSPC-WTCM-PWO-01 v0.2.
@@ -96,7 +96,7 @@ function LineTable({ columns, rows, onChange, onRemove, onAdd, addLabel, empty }
 
 export default function WorkOrderDocument() {
   const { code } = useParams();
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [step, setStep] = useState(0);
   const [data, setData] = useState(null);
   const [ref, setRef] = useState(null);

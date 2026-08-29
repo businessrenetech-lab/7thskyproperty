@@ -6,7 +6,7 @@ import {
   Users, Wallet, ClipboardCheck, ArrowRight, Star, AlertTriangle,
 } from 'lucide-react';
 import api from '../../services/api';
-import {
+import { useSvcNav,
   WtHead, Pill, Loading, EmptyState, WtDrawer, DatePicker, RecordComments,
   dateFmt, dateTimeFmt, bdt, toast, errText,
 } from './common';
@@ -162,7 +162,7 @@ function StepDrawer({ title, subtitle, note, fields, submitLabel, danger, onClos
 
 export default function WorkOrderDetail() {
   const { code } = useParams();
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [d, setD] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

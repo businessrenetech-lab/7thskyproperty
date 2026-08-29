@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import api from '../../services/api';
-import { Pill } from './common';
+import { useSvcNav, Pill } from './common';
 
 /*
  * CommandPalette — one search box for the whole Water Tank console.
@@ -36,7 +36,7 @@ const DEEP = {
 };
 
 export default function CommandPalette({ open, onClose, nav: navItems }) {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [q, setQ] = useState('');
   const [hits, setHits] = useState([]);
   const [cursor, setCursor] = useState(0);

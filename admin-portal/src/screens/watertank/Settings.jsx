@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { WtHead, bdt, useCatalog, Loading, EmptyState, titleCase } from './common';
+import { WtHead, bdt, useCatalog, Loading, EmptyState, titleCase, svcBase } from './common';
 
 /* Settings — the WTC standard price schedule (live from the service catalog)
    plus the Water Tank SOP stages. Editing lives on the Price Schedule screen;
@@ -55,7 +55,7 @@ export default function Settings() {
             <h2 className="wt-section-title">Provider &amp; Customer Portals</h2>
             <p className="wt-subtitle" style={{ marginBottom: 0 }}>
               Logins are created and emailed automatically when a master or service agreement is
-              signed. <Link to="/water-tank/portal-accounts">Open Portal Accounts</Link> to invite
+              signed. <Link to={`${svcBase()}/portal-accounts`}>Open Portal Accounts</Link> to invite
               someone the automatic path missed, reset a password, or withdraw access.
             </p>
           </div>
@@ -74,7 +74,7 @@ export default function Settings() {
               <h2 className="wt-section-title">Standard Service Price Schedule</h2>
               <p className="wt-subtitle" style={{ marginBottom: 8 }}>
                 {items.length} item{items.length === 1 ? '' : 's'}, {priced.length} priced{avg ? `, average ${bdt(avg)}` : ''}. Quotations and agreements price from this list.
-                {' '}This is a read-only view — <Link to="/water-tank/catalogue">open the Price Schedule</Link> to add, edit, withdraw or see the change history of an item.
+                {' '}This is a read-only view — <Link to={`${svcBase()}/catalogue`}>open the Price Schedule</Link> to add, edit, withdraw or see the change history of an item.
               </p>
             </div>
             {groups.length > 1 && (

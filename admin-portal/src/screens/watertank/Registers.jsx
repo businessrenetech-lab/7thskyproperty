@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ShieldCheck, MessageSquareWarning, AlertOctagon, Plus, Eye, Trash2, ExternalLink } from 'lucide-react';
-import {
+import { useSvcNav,
   WtHead, WtTabs, Pill, StatCards, dateFmt, useCollection, RecordDrawer,
   StatusCell, RowActions, Loading, EmptyState, useFocusedRecord, useRoutedRecord, toast, errText,
 } from './common';
@@ -150,7 +150,7 @@ function Warranties() {
 
 /* ── Complaints (summary of the incident desk) ─────────────── */
 function ComplaintsRegister() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const { rows, loading, error, reload } = useCollection('complaints');
   const [q, setQ] = useState('');
   const [creating, setCreating] = useState(false);
@@ -319,7 +319,7 @@ export default function Registers() {
    * that way.
    */
   const { kind } = useParams();
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const fromPath = TABS.find((t) => t.value.toLowerCase() === String(kind || '').toLowerCase());
   const [tab, setTab] = useState(fromPath?.value || 'Warranties');
 

@@ -5,7 +5,7 @@ import {
   ClipboardList, Sparkles, Users, X, Loader2,
 } from 'lucide-react';
 import api from '../../../services/api';
-import { WtHead, DatePicker, EmptyState, toast, errText, Pill } from '../common';
+import { useSvcNav, WtHead, DatePicker, EmptyState, toast, errText, Pill } from '../common';
 
 /*
  * New Client — SSPC-WTCM-SOP-01 Sec. 5 Phase 1 (Client Enquiry).
@@ -27,7 +27,7 @@ const CLIENT_TYPES = ['Residential', 'Commercial', 'Industrial'];
 const initials = (n) => String(n || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
 export default function ClientCreate() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [step, setStep] = useState(0);
   const [ref, setRef] = useState(null);
   const [busy, setBusy] = useState(false);

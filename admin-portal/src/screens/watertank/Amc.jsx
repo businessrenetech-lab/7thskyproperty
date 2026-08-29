@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Eye, Trash2, RefreshCw, CalendarClock } from 'lucide-react';
-import {
+import { useSvcNav,
   WtHead, Pill, dateFmt, bdt, useCollection, CreateDrawer, RecordDrawer, WtDrawer, useUrlTab,
   StatusCell, RowActions, Loading, EmptyState, useFocusedRecord, toast, errText,
 } from './common';
@@ -54,7 +54,7 @@ function RenewDrawer({ contract, onClose, onConfirm }) {
 }
 
 export default function Amc() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const { rows, loading, error, reload, patch, remove } = useCollection('amc');
   const [pkg, setPkg] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');

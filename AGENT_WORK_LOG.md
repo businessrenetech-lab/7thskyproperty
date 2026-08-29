@@ -3786,3 +3786,19 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Remaining tail: wtCatalogue.service (Price Schedule screen) still uses a module-level
   VERTICAL='water_tank_csa' — the Price Schedule shows WT items regardless of console; small
   follow-up. Then the svcBase() intra-screen nav pass + rebuild dist.
+
+### 2026-08-30 01:30 | Claude Code (Opus 4.8) | COMPLETED | AC milestone 2e — intra-screen nav stays in the active service console
+- The shared Water Tank screens are reused for the AC console, but their intra-screen
+  deep-links were hard-coded to `/water-tank/...`, so clicking a row/crumb/action inside
+  an AC screen jumped back into the Water Tank console.
+- Added useSvcNav() to common.jsx — a drop-in wrapper for useNavigate that rebases any
+  `/water-tank` target onto the current console's base (svcBase(): /water-tank vs
+  /air-conditioning). Swapped `const nav = useNavigate()` → `const nav = useSvcNav()` across
+  all 39 shared screens (codemod), so all ~230 nav() call sites now stay in-console with
+  zero call-site edits. useRoutedRecord's internal nav is svc-aware too.
+- The handful of non-nav targets useSvcNav can't reach were fixed directly with svcBase():
+  AmcDetail (3 <Link>), Reports (<Navigate>), Settings (2 <Link>), ProjectForm
+  (window.open '/admin/...'), AssessmentForm (window.history.replaceState).
+- VERIFIED: admin-portal production build passes (1998 modules, no errors).
+- Rebuilt dist. AC duplication phase 0 is now functionally complete pending the AC
+  agreement templates (customer/provider/work-order) the client will supply.

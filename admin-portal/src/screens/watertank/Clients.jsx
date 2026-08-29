@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Filter, Eye, Trash2, FileText } from 'lucide-react';
 import api from '../../services/api';
-import { WtHead, useCollection, RecordDrawer, StatusCell, RowActions, Loading, EmptyState, toast, errText } from './common';
+import { useSvcNav, WtHead, useCollection, RecordDrawer, StatusCell, RowActions, Loading, EmptyState, toast, errText } from './common';
 
 const PER = 10;
 const STATUSES = ['New Lead', 'Assessment Scheduled', 'Active (AMC)', 'Completed', 'Dormant'];
@@ -27,7 +27,7 @@ const FIELDS = [
 ];
 
 export default function Clients() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const { rows, loading, error, reload, patch, remove } = useCollection('clients');
   const [open, setOpen] = useState(null);
   const [q, setQ] = useState('');

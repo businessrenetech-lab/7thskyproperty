@@ -5,7 +5,7 @@ import {
   CalendarClock, Wallet, ShieldCheck, Ban,
 } from 'lucide-react';
 import api from '../../services/api';
-import { WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText } from './common';
+import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText } from './common';
 
 /*
  * Edit a work order — full page, step by step, in the order the job runs:
@@ -25,7 +25,7 @@ const STATUSES = ['Draft', 'Issued', 'Accepted', 'In Progress', 'Completed', 'Ca
 
 export default function WorkOrderForm() {
   const { code } = useParams();
-  const nav = useNavigate();
+  const nav = useSvcNav();
 
   const [wo, setWo] = useState(null);
   const [ref, setRef] = useState(null);

@@ -5,7 +5,7 @@ import {
   Droplets, Wrench, Camera, PenLine, Save, Loader2, AlertTriangle,
 } from 'lucide-react';
 import api from '../../services/api';
-import { WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, parseJson } from './common';
+import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, parseJson } from './common';
 import WtPhotoGrid from './PhotoUpload';
 
 /*
@@ -30,7 +30,7 @@ const slug = (s) => `custom_${String(s).toLowerCase().replace(/[^a-z0-9]+/g, '_'
 
 export default function AssessmentForm() {
   const { code } = useParams();
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const isNew = !code;
 
   const [ref, setRef] = useState(null);

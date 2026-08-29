@@ -6,7 +6,7 @@ import {
   ShieldCheck, Clock, Receipt, ChevronRight,
 } from 'lucide-react';
 import api from '../../services/api';
-import {
+import { useSvcNav,
   WtHead, Pill, dateFmt, dateTimeFmt, bdt, Loading, EmptyState,
   DatePicker, parseJson, titleCase, toast, errText,
 } from './common';
@@ -27,7 +27,7 @@ const TABS = ['Overview', 'Lifecycle', 'Timeline', 'Work Orders', 'Billing', 'Do
 
 export default function ProjectDetail() {
   const { code } = useParams();
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [d, setD] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('Overview');

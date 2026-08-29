@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Banknote, RefreshCw, Wallet, ArrowDownLeft, ArrowUpRight, Layers, FileText } from 'lucide-react';
 import api from '../../services/api';
-import {
+import { useSvcNav,
   WtHead, WtTabs, Pill, dateFmt, bdt, WtDrawer, Loading, EmptyState, toast, errText,
 } from './common';
 import BulkPaymentModal from './BulkPaymentModal';
@@ -73,7 +73,7 @@ function AmountDrawer({ title, subtitle, label, maxAmount, note, onClose, onSubm
 }
 
 export default function Payments() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

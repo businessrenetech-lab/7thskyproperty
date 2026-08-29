@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, RefreshCw, Plus, ClipboardCheck, X, Check, FileText } from 'lucide-react';
 import api from '../../services/api';
-import {
+import { useSvcNav,
   WtHead,
   WtTabs,
   StatCards,
@@ -98,7 +98,7 @@ function FindingsDrawer({ audit, onClose, onSaved }) {
 }
 
 export default function Compliance() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [tab, setTab] = useState('Watchtower');
   const [alerts, setAlerts] = useState(null);
   const [audits, setAudits] = useState([]);

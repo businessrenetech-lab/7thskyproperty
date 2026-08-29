@@ -5,7 +5,7 @@ import {
   ChevronLeft, ChevronRight, Search, Loader2, ExternalLink, X,
 } from 'lucide-react';
 import api from '../../../services/api';
-import { WtHead, EmptyState, Loading, Pill, toast, errText, bdt } from '../common';
+import { useSvcNav, WtHead, EmptyState, Loading, Pill, toast, errText, bdt } from '../common';
 
 const STEPS = [
   { label: 'Application', hint: 'Identity and representative', icon: Building2 },
@@ -28,7 +28,7 @@ const blank = {
 
 export default function ProviderOnboarding() {
   const { code } = useParams();
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const editing = !!code;
   const [step, setStep] = useState(0);
   const [provider, setProvider] = useState(null);

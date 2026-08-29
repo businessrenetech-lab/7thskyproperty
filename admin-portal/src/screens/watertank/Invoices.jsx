@@ -5,7 +5,7 @@ import api from '../../services/api';
 import InvoiceCreateModal from './InvoiceCreateModal';
 import PaymentModal from './PaymentModal';
 import BulkPaymentModal from './BulkPaymentModal';
-import {
+import { useSvcNav,
   WtHead, WtTabs, Pill, dateFmt, bdt, StatCards, useCollection, useUrlTab,
   RowActions, Loading, EmptyState, useFocusedRecord, parseJson, toast, errText,
 } from './common';
@@ -25,7 +25,7 @@ const num = (v) => Number(v || 0);
  */
 
 export default function Invoices() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const { rows, loading, error, reload } = useCollection('invoices');
   const [tab, setTab] = useState('All');
   useUrlTab(TABS, setTab);

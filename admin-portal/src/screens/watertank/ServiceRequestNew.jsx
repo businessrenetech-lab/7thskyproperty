@@ -5,7 +5,7 @@ import {
   CalendarClock, FileText, Plus, RotateCcw, Loader2, Sparkles, Truck, Ban, AlertTriangle,
 } from 'lucide-react';
 import api from '../../services/api';
-import { WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText } from './common';
+import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText } from './common';
 
 /*
  * New Service Request — the front door of the water-tank operation.
@@ -18,7 +18,7 @@ const initials = (n) => String(n || '?').split(' ').map((w) => w[0]).slice(0, 2)
 const lineTotal = (l) => Number(l.price || 0) * (Number(l.qty) || 1);
 
 export default function ServiceRequestNew() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [params] = useSearchParams();
   const fromClient = params.get('client');
   const routeParam = params.get('route'); // 'assessment' | 'quotation'

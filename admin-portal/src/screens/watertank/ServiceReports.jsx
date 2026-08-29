@@ -4,7 +4,7 @@ import { Plus, RefreshCw, Check, RotateCcw, Trash2, Eye, Image, FileText } from 
 import api from '../../services/api';
 import ServiceReportModal from './ServiceReportModal';
 import Photos from './Photos';
-import {
+import { useSvcNav,
   WtHead,
   WtTabs,
   StatCards,
@@ -106,7 +106,7 @@ function ReportDrawer({ record, providers, onClose, onSaved }) {
 }
 
 export default function ServiceReports() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [rows, setRows] = useState([]);
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -5,8 +5,8 @@ import {
   CheckCircle2, AlertTriangle, User, MapPin,
 } from 'lucide-react';
 import api from '../../services/api';
-import {
-  WtHead, WtTabs, Pill, bdt, dateFmt, Loading, EmptyState, toast, errText, titleCase, WtDrawer,
+import { useSvcNav,
+  WtHead, WtTabs, Pill, bdt, dateFmt, Loading, EmptyState, toast, errText, titleCase, WtDrawer, svcBase,
 } from './common';
 
 /*
@@ -223,7 +223,7 @@ const Field = ({ label, children }) => (
 
 export default function AmcDetail() {
   const { code } = useParams();
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [d, setD] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -285,7 +285,7 @@ export default function AmcDetail() {
     <>
       <WtHead title={`${amc.code} — ${amc.package || 'Annual Maintenance Contract'}`}
         subtitle={amc.client_name}
-        crumb={<Link to="/water-tank/amc"><ArrowLeft size={13} /> All AMC contracts</Link>}>
+        crumb={<Link to={`${svcBase()}/amc`}><ArrowLeft size={13} /> All AMC contracts</Link>}>
         <button className="wt-btn" onClick={load}><RefreshCw size={14} /> Refresh</button>
         <button className="wt-btn" onClick={() => setEditing(true)}><Pencil size={14} /> Edit</button>
         {(stats.renewal_due || stats.expired) && (
@@ -397,7 +397,7 @@ export default function AmcDetail() {
               <div>
                 <h3 className="wt-section-title" style={{ fontSize: 13 }}>Invoices raised</h3>
                 {amcInvoices.length ? amcInvoices.map((i) => (
-                  <Field key={i.id} label={<Link to={`/water-tank/invoices/${i.code}`}>{i.code}</Link>}>
+                  <Field key={i.id} label={<Link to={`${svcBase()}/invoices/${i.code}`}>{i.code}</Link>}>
                     {bdt(i.amount)} <Pill value={i.status} sm />
                   </Field>
                 )) : <p className="wt-subtitle">No instalment invoices raised yet.</p>}
@@ -418,7 +418,7 @@ export default function AmcDetail() {
               <Field label="Contact">{amc.contact_person}</Field>
               <Field label="Phone">{amc.phone}</Field>
               <Field label="Email">{amc.email}</Field>
-              {client?.code && <Field label="Client file"><Link to={`/water-tank/clients/${client.code}`}>{client.code}</Link></Field>}
+              {client?.code && <Field label="Client file"><Link to={`${svcBase()}/clients/${client.code}`}>{client.code}</Link></Field>}
             </div>
             <div>
               <h3 className="wt-section-title" style={{ fontSize: 13, display: 'flex', gap: 7, alignItems: 'center' }}><MapPin size={14} /> Site</h3>

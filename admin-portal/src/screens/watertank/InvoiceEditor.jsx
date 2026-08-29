@@ -5,7 +5,7 @@ import {
   AlertTriangle, Check, Wallet, RefreshCw,
 } from 'lucide-react';
 import api from '../../services/api';
-import { WtHead, DatePicker, Loading, EmptyState, Pill, bdt, dateFmt, toast, errText, parseJson } from './common';
+import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, Pill, bdt, dateFmt, toast, errText, parseJson } from './common';
 import PaymentModal from './PaymentModal';
 
 /*
@@ -22,7 +22,7 @@ const blankLine = () => ({ code: '', name: '', description: '', qty: 1, unit: ''
 
 export default function InvoiceEditor() {
   const { code } = useParams();
-  const nav = useNavigate();
+  const nav = useSvcNav();
 
   const [inv, setInv] = useState(null);
   const [totals, setTotals] = useState(null);

@@ -5,7 +5,7 @@ import {
   Check, Clock, AlertTriangle, Copy, RefreshCw, Loader2, X, ShieldCheck, CalendarClock,
 } from 'lucide-react';
 import api from '../../services/api';
-import { WtHead, WtTabs, Pill, Loading, EmptyState, dateFmt, dateTimeFmt, toast, errText } from './common';
+import { useSvcNav, WtHead, WtTabs, Pill, Loading, EmptyState, dateFmt, dateTimeFmt, toast, errText } from './common';
 
 /*
  * Agreements register — every Water Tank document that goes out for signature,
@@ -24,7 +24,7 @@ const FAMILIES = [
 ];
 
 export default function AgreementsHub() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [rows, setRows] = useState([]);
   const [ov, setOv] = useState(null);
   const [loading, setLoading] = useState(true);

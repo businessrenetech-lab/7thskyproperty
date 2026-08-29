@@ -23,7 +23,7 @@ import {
 import api from '../../../services/api';
 import PortalLinkCard from '../PortalLinkCard';
 import ReportView from '../ReportView';
-import {
+import { useSvcNav,
   WtHead, WtTabs, Pill, Loading, EmptyState, DatePicker, WtDrawer, RowActions,
   dateFmt, dateTimeFmt, bdt, titleCase, toast, errText, parseJson,
 } from '../common';
@@ -92,7 +92,7 @@ function ActionDrawer({ title, subtitle, note, fields, submitLabel, onClose, onS
 
 export default function ClientDashboard() {
   const { code } = useParams();
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [d, setD] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

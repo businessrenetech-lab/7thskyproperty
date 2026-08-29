@@ -6,7 +6,7 @@ import {
   ShieldCheck, Trash2, Repeat,
 } from 'lucide-react';
 import api from '../../services/api';
-import { WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, Pill } from './common';
+import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, Pill, svcBase } from './common';
 
 /*
  * New Project — SSPC-WTCM-SOP-01 Sec. 4.
@@ -23,7 +23,7 @@ const initials = (n) => String(n || '?').split(' ').map((w) => w[0]).slice(0, 2)
 const lineTotal = (l) => Number(l.price || 0) * (Number(l.qty) || 1);
 
 export default function ProjectForm() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [params] = useSearchParams();
   const { code: editCode } = useParams();
   const isEdit = !!editCode;
@@ -454,7 +454,7 @@ export default function ProjectForm() {
                     <strong>Sec. 7 Step 6 —</strong> a signed Customer Service Agreement is required before work starts.
                     Create the project first, then raise the agreement from the project file, or go straight to{' '}
                     <span className="lnk" style={{ textDecoration: 'underline', cursor: 'pointer' }}
-                      onClick={() => window.open('/admin/water-tank/agreements/customer', '_blank')}>
+                      onClick={() => window.open(`/admin${svcBase()}/agreements/customer`, '_blank')}>
                       WT Customer Agreements
                     </span>.
                   </div>

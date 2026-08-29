@@ -5,7 +5,7 @@ import {
   Droplets, PenLine, Camera, Wrench, MessageSquare,
 } from 'lucide-react';
 import api from '../../services/api';
-import {
+import { useSvcNav,
   WtHead, Pill, Loading, EmptyState, dateFmt, bdt,
   toast, errText, parseJson,
 } from './common';
@@ -37,7 +37,7 @@ const Section = ({ icon: Icon, title, sop, right, children }) => (
 
 export default function AssessmentDetail() {
   const { code } = useParams();
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [rec, setRec] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

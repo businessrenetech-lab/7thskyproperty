@@ -17,6 +17,21 @@ export const svcBase = () => {
   catch { return '/water-tank'; }
 };
 
+// Service-aware navigate. These screens are shared across every service console
+// and were written with hard-coded `/water-tank/...` targets. Rather than touch
+// hundreds of call sites, this wraps useNavigate and rebases any `/water-tank`
+// path onto the current console's base, so a deep-link stays in the service the
+// user is actually in. Drop-in for `const nav = useNavigate()`.
+export function useSvcNav() {
+  const nav = useNavigate();
+  return useCallback((to, opts) => {
+    if (typeof to === 'string' && to.startsWith('/water-tank')) {
+      to = svcBase() + to.slice('/water-tank'.length);
+    }
+    return nav(to, opts);
+  }, [nav]);
+}
+
 export const bdt = (v) => '৳' + Number(v || 0).toLocaleString('en-BD');
 export const money = (v) => (v == null || v === '' ? '—' : bdt(v));
 export const dateFmt = (v) => {
@@ -237,7 +252,7 @@ export function useFocusedRecord(rows, onFocus) {
  */
 export function useRoutedRecord({ rows, base, current, setCurrent, key = 'code' }) {
   const { code } = useParams();
-  const nav = useNavigate();
+  const nav = useSvcNav();
 
   useEffect(() => {
     if (!code) { if (current) setCurrent(null); return; }

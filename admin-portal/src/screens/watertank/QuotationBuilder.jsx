@@ -5,7 +5,7 @@ import {
   RotateCcw, Sparkles, Eye, ChevronRight,
 } from 'lucide-react';
 import api from '../../services/api';
-import { WtHead, Loading, EmptyState, bdt, toast, errText } from './common';
+import { useSvcNav, WtHead, Loading, EmptyState, bdt, toast, errText } from './common';
 import QuotationSendDrawer from './QuotationSend';
 
 /*
@@ -20,7 +20,7 @@ const lineTotal = (l) => Number(l.price || 0) * (Number(l.qty) || 1);
 
 export default function QuotationBuilder() {
   const { code } = useParams();
-  const nav = useNavigate();
+  const nav = useSvcNav();
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);

@@ -4,7 +4,7 @@ import {
   RefreshCw, ChevronLeft, ChevronRight, CalendarDays, List, AlertTriangle, UserX,
 } from 'lucide-react';
 import api from '../../services/api';
-import { WtHead, Loading, EmptyState, errText, dateFmt, toast } from './common';
+import { useSvcNav, WtHead, Loading, EmptyState, errText, dateFmt, toast } from './common';
 
 /*
  * Calendar — the four scheduled things in this module, finally on one timeline.
@@ -66,7 +66,7 @@ function EventPill({ e, onClick }) {
 }
 
 export default function Calendar() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const now = new Date();
   const [cursor, setCursor] = useState({ y: now.getFullYear(), m: now.getMonth() });
   const [view, setView] = useState('month');

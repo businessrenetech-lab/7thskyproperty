@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, Trash2, ChevronRight, Send, FileSignature, Pencil, ClipboardList, Plus } from 'lucide-react';
-import {
+import { useSvcNav,
   WtHead, WtTabs, StatCards, dateFmt, bdt, useCollection, StatusCell, RowActions,
   Loading, EmptyState, useFocusedRecord, parseJson, toast, errText,
 } from './common';
@@ -19,7 +19,7 @@ const num = (v) => Number(v || 0);
 const lineCount = (r) => (parseJson(r.lines, []) || []).length;
 
 export default function Quotations() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const { rows, loading, error, reload, patch, remove } = useCollection('quotations');
   const [tab, setTab] = useState('All');
   const [q, setQ] = useState('');

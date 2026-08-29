@@ -4,7 +4,7 @@ import {
   RefreshCw, UserPlus, KeyRound, ShieldOff, ShieldCheck, Copy, Check, Mail, AlertTriangle,
 } from 'lucide-react';
 import api from '../../services/api';
-import {
+import { useSvcNav,
   WtHead, WtTabs, Pill, dateTimeFmt, Loading, EmptyState, toast, errText, titleCase,
 } from './common';
 
@@ -32,7 +32,7 @@ const FILTERS = [
 ];
 
 export default function PortalAccounts() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

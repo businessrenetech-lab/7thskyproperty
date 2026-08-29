@@ -6,7 +6,7 @@ import {
   AlertTriangle, Droplets,
 } from 'lucide-react';
 import api from '../../services/api';
-import { WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, dateFmt } from './common';
+import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, dateFmt } from './common';
 
 /*
  * New AMC — SSPC-WTCM-SOP-01 Sec. 10 (Phase 6, AMC Management).
@@ -22,7 +22,7 @@ import { WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, dateFmt }
 const initials = (n) => String(n || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
 export default function AmcForm() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [params] = useSearchParams();
 
   const [ref, setRef] = useState(null);

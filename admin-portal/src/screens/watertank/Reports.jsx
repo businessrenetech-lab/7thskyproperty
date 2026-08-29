@@ -3,7 +3,7 @@ import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import {
   Users, Truck, Building2, ClipboardCheck, Landmark,
 } from 'lucide-react';
-import { WtHead, WtTabs } from './common';
+import { useSvcNav, WtHead, WtTabs, svcBase } from './common';
 import ReportView from './ReportView';
 
 /*
@@ -54,7 +54,7 @@ const REPORTS = [
 
 export default function Reports() {
   const { kind } = useParams();
-  const nav = useNavigate();
+  const nav = useSvcNav();
 
   /*
    * `/water-tank/reports/RPT-0001` used to open a SERVICE report, and links to
@@ -63,7 +63,7 @@ export default function Reports() {
    * forwarded to where service reports now live.
    */
   if (kind && /^RPT-/i.test(kind)) {
-    return <Navigate to={`/water-tank/service-reports/${kind}`} replace />;
+    return <Navigate to={`${svcBase()}/service-reports/${kind}`} replace />;
   }
 
   const found = REPORTS.find((r) => r.kind === kind);

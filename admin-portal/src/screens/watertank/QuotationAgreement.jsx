@@ -4,7 +4,7 @@ import {
   FileSignature, Send, Loader2, Eye, RefreshCw, Check, ExternalLink, Copy, Search,
 } from 'lucide-react';
 import api from '../../services/api';
-import { WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText } from './common';
+import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText } from './common';
 
 /*
  * Customer Service Agreement, drafted from the quotation (Sec. 7 Step 6).
@@ -18,7 +18,7 @@ export default function QuotationAgreement() {
   // /site-assessments/:code/quotation/:quoteCode/agreement  or  /quotations/:code/agreement
   const quoteCode = params.quoteCode || params.code;
   const assessmentCode = params.quoteCode ? params.code : null;
-  const nav = useNavigate();
+  const nav = useSvcNav();
 
   const [draft, setDraft] = useState(null);
   const [quote, setQuote] = useState(null);

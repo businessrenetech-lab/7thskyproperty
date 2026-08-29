@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Plus, Eye, Trash2, FileText, CalendarClock, RefreshCw,
 } from 'lucide-react';
-import {
+import { useSvcNav,
   WtHead, WtTabs, Pill, StatCards, dateFmt, useCollection,
   RecordDrawer, StatusCell, RowActions, Loading, EmptyState, useFocusedRecord, useUrlTab,
   toast, errText,
@@ -37,7 +37,7 @@ const REQUEST_FIELDS = [
 ];
 
 export default function ServiceRequests() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
 
   // Intake is standardised on the Service Request — it is the single front door
   // for water-tank work. The old separate "Enquiries" register has been retired

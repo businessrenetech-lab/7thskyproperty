@@ -5,7 +5,7 @@ import {
   Send, MessageSquare, FileText, ClipboardList, ChevronRight, Eye,
 } from 'lucide-react';
 import api from '../../services/api';
-import {
+import { useSvcNav,
   WtHead, Pill, Loading, EmptyState, dateFmt, dateTimeFmt, bdt,
   toast, errText, parseJson,
 } from './common';
@@ -33,7 +33,7 @@ const Section = ({ icon: Icon, title, right, children }) => (
 
 export default function QuotationDetail() {
   const { code } = useParams();
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [q, setQ] = useState(null);
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);

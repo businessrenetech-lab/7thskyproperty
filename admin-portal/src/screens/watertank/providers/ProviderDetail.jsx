@@ -26,7 +26,7 @@ import {
 import api from '../../../services/api';
 import PortalLinkCard from '../PortalLinkCard';
 import ReportView from '../ReportView';
-import {
+import { useSvcNav,
   WtHead, WtTabs, Pill, WtDrawer, Loading, EmptyState, dateFmt, dateTimeFmt, bdt,
   toast, errText, StatusCell, RowActions, parseJson,
 } from '../common';
@@ -204,7 +204,7 @@ function ActionDrawer({ title, subtitle, note, fields, submitLabel, danger, onCl
 
 export default function ProviderDetail() {
   const { id } = useParams();
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [d, setD] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

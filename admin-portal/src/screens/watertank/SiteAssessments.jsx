@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Eye, ChevronRight, AlertTriangle, FileText } from 'lucide-react';
-import {
+import { useSvcNav,
   WtHead, WtTabs, StatCards, dateFmt, useCollection, StatusCell, RowActions,
   Loading, EmptyState, useFocusedRecord, parseJson, toast, errText,
 } from './common';
@@ -32,7 +32,7 @@ const hasHighRisk = (r) => (parseJson(r.risks, []) || [])
   .some((x) => ['high', 'critical'].includes(String(x.level || '').toLowerCase()));
 
 export default function SiteAssessments() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const { rows, loading, error, reload, patch, remove } = useCollection('site-assessments');
   const [tab, setTab] = useState('All');
   const [q, setQ] = useState('');

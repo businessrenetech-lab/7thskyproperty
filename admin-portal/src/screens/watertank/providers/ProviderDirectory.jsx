@@ -6,7 +6,7 @@ import {
   Wallet, LayoutGrid, Rows3, ArrowUpDown, MapPin, Percent, Star,
 } from 'lucide-react';
 import api from '../../../services/api';
-import { WtHead, Pill, Loading, EmptyState, errText, bdt } from '../common';
+import { useSvcNav, WtHead, Pill, Loading, EmptyState, errText, bdt } from '../common';
 
 /*
  * Service Providers — SSPC-WTCM-SOP-02 operations console.
@@ -88,7 +88,7 @@ function CommercialCell({ p }) {
 }
 
 export default function ProviderDirectory() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [data, setData] = useState(null);
   const [alerts, setAlerts] = useState(null);
   const [loading, setLoading] = useState(true);

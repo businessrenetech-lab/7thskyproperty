@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, ArrowRight, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
 import api from '../../services/api';
-import { WtHead, Loading, EmptyState, errText, dateFmt, bdt } from './common';
+import { useSvcNav, WtHead, Loading, EmptyState, errText, dateFmt, bdt } from './common';
 
 /*
  * My Work Queue — the one screen that answers "what needs me today".
@@ -35,7 +35,7 @@ const subtitleOf = (r) => [
 ].filter(Boolean).join(' · ');
 
 export default function WorkQueue() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

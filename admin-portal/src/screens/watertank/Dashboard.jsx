@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Briefcase, UserPlus, Shield, CreditCard, Star, RefreshCw, ChevronRight, AlertCircle } from 'lucide-react';
 import api from '../../services/api';
 import { Spinner } from '../../ui/kit';
-import { Pill, dateFmt, bdt, EmptyState } from './common';
+import { useSvcNav, Pill, dateFmt, bdt, EmptyState } from './common';
 
 /*
  * Water Tank — Operations Dashboard.
@@ -31,7 +31,7 @@ const FUNNEL_ROUTE = {
 const ALERT_COLOR = { red: 'var(--wt-red)', amber: 'var(--wt-amber)', blue: 'var(--wt-blue)', cyan: 'var(--wt-accent-ink)' };
 
 export default function WaterTankDashboard() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

@@ -4,7 +4,7 @@ import {
   Plus, Search, Repeat, AlertTriangle, FolderOpen, CheckCircle2, Wallet, Loader2,
 } from 'lucide-react';
 import api from '../../services/api';
-import {
+import { useSvcNav,
   WtHead, WtTabs, Pill, dateFmt, bdt, Loading, EmptyState, useUrlTab, toast, errText,
 } from './common';
 
@@ -18,7 +18,7 @@ const money = (v) => bdt(Number(v || 0));
 const STATUSES = ['Open', 'On Hold', 'Completed', 'Cancelled'];
 
 export default function Projects() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [rows, setRows] = useState([]);
   const [ov, setOv] = useState(null);
   const [loading, setLoading] = useState(true);

@@ -5,7 +5,7 @@ import {
   AlertTriangle, ClipboardList, ArrowRight,
 } from 'lucide-react';
 import api from '../../services/api';
-import { WtHead, Loading, EmptyState, bdt, dateFmt, toast, errText } from './common';
+import { useSvcNav, WtHead, Loading, EmptyState, bdt, dateFmt, toast, errText } from './common';
 
 /*
  * Direct quotation — Sec. 7 Step 5, "the job is well enough understood to price".
@@ -22,7 +22,7 @@ const initials = (n) => String(n || '?').split(' ').map((w) => w[0]).slice(0, 2)
 const VAT_RATE = 0.05;
 
 export default function QuotationDirect() {
-  const nav = useNavigate();
+  const nav = useSvcNav();
   const [ref, setRef] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
