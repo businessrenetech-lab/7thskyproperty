@@ -3802,3 +3802,19 @@ used "the last line starting with `import`", which landed inside a multi-line
 - VERIFIED: admin-portal production build passes (1998 modules, no errors).
 - Rebuilt dist. AC duplication phase 0 is now functionally complete pending the AC
   agreement templates (customer/provider/work-order) the client will supply.
+
+### 2026-08-30 02:10 | Claude Code (Opus 4.8) | COMPLETED | AC milestone 3 (phase 1) — real AC catalogue from client docs
+- Received the AC documents (Customer Service Agreement V0.2, Provider Master Agreement V0.2,
+  Project Work Order V0.2 + SOPs). Re-read both SOPs: the AC client (18-stage) and third-party
+  (onboarding→master agreement→Cumilla exclusivity→work order→delivery→audits→termination)
+  workflows are the SAME spine as Water Tank — no controller/workflow changes needed. AC-specific
+  provider due-diligence docs (Refrigerant Handling, Electrical Competency) are already in the AC
+  manifest.
+- Replaced the bootstrap catalogue (cloned WT items) with the genuine AC price schedule from the
+  agreement Schedule C: 30 services (ACS-001..030), 10 materials (MAT-001..010), 5 labour
+  (LAB-001..005), real BDT prices/units, installations+relocations+commercial assessment flagged
+  requires_site_assessment. scripts/seedAirConCatalog.js rewritten (idempotent, guarded against
+  reseeding over priced AC records).
+- VERIFIED: AC Price Schedule = 45 items (30/10/5); WT unchanged at 41. Reads isolated by vertical.
+- NEXT (phase 2): AC agreement templates (customer/provider/work-order) via the shared agreement
+  engine with AC clauses, keyed off the service manifest.
