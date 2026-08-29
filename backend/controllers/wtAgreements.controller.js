@@ -128,16 +128,23 @@ const customer = {
        * then the witnesses attest what they have just seen signed.
        */
       const org = body.org || {};
+      // The document states both parties must sign, so Seventh Sky's countersigner
+      // is REQUIRED — otherwise an agreement could be "fully executed" on the
+      // client's signature alone, contradicting the executed document.
+      const countersignEmail = org.email || req.user?.email || null;
+      if (!countersignEmail) {
+        const err = new Error('A Seventh Sky countersigner email is required — the agreement must be signed by both parties.');
+        err.status = 400;
+        throw err;
+      }
       const signerDefs = [
         { role: 'client', order: 1, name: party.full_name, email: party.email, phone: party.phone || null, label: 'Client' },
-      ];
-      if (org.email) {
-        signerDefs.push({
+        {
           role: 'staff_countersign', order: 2,
           name: org.represented_by || req.user?.name || 'Seventh Sky Property Care',
-          email: org.email, label: 'Seventh Sky', user_id: req.user?.id || null,
-        });
-      }
+          email: countersignEmail, label: 'Seventh Sky', user_id: req.user?.id || null,
+        },
+      ];
       (body.witnesses || []).forEach((w, i) => {
         if (!w?.name || !w?.email) return; // a witness without an email cannot be sent to
         signerDefs.push({
@@ -167,6 +174,20 @@ const customer = {
     });
 
     const first = out.links[0];
+    // Actually email the first signer their link. The envelope is marked "sent", so
+    // NOT emailing would make the UI's "Agreement sent to customer" a silent lie.
+    try {
+      if (first?.email) {
+        const { sendEmail } = require('../services/communication.service');
+        const url = `${req.protocol}://${req.get('host')}/admin/sign/${first.token}`;
+        await sendEmail(first.email, `Please sign: ${out.envelope.title}`,
+          `<p>Dear ${first.name || 'Sir/Madam'},</p>`
+          + `<p>Please review and sign your agreement <strong>${out.envelope.title}</strong> (${out.envelope.envelope_code}):</p>`
+          + `<p><a href="${url}">${url}</a></p><p>This link expires in 30 days.</p>`
+          + `<p>Thank you,<br/>Seventh Sky Property Care</p>`);
+      }
+    } catch (e) { console.error('[wt-customer-agreement-send]', e.message); }
+
     res.status(201).json({
       id: out.envelope.id, envelope_code: out.envelope.envelope_code, status: out.envelope.status,
       signing_token: first.token, signing_path: `/admin/sign/${first.token}`,

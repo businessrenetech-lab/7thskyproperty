@@ -20,7 +20,10 @@ const audit = (envelope_id, event, req, signer_id = null, actor_email = null, me
   }, { transaction });
 
 const envelopeIncludes = [
-  { model: EnvelopeSigner, as: 'signers' },
+  // NEVER serialize the signing secrets: access_token is bearer authority to sign
+  // as that party, and otp_code is their second factor. Read-level roles must not
+  // be able to read them out of an envelope detail.
+  { model: EnvelopeSigner, as: 'signers', attributes: { exclude: ['access_token', 'otp_code'] } },
   { model: SignatureField, as: 'fields' },
   { model: SigningAuditLog, as: 'audit_logs' },
 ];
@@ -301,7 +304,12 @@ exports.signByToken = asyncHandler(async (req, res) => {
   const remaining = allSigners.filter((s) => s.status !== 'signed');
   if (!remaining.length) {
     const signedData = JSON.stringify(allSigners.map((s) => ({ id: s.id, email: s.email, signed_at: s.signed_at })));
-    const hash = crypto.createHash('sha256').update((env.document_html || '') + signedData).digest('hex');
+    // Tamper evidence must cover what was actually signed — include every captured
+    // field value (the signatures and dates), not just the document + signer meta.
+    // Without this, altering a signature would not change the hash.
+    const allFields = await SignatureField.findAll({ where: { envelope_id: env.id }, order: [['id', 'ASC']], raw: true });
+    const fieldData = JSON.stringify(allFields.map((f) => ({ id: f.id, signer_id: f.signer_id, type: f.field_type, value: f.value })));
+    const hash = crypto.createHash('sha256').update((env.document_html || '') + signedData + fieldData).digest('hex');
     await env.update({ status: 'completed', completed_at: new Date(), content_hash: hash });
     await audit(env.id, 'completed', req, null, null, { content_hash: hash });
     await handleEnvelopeCompleted(env);
@@ -330,7 +338,18 @@ exports.signByToken = asyncHandler(async (req, res) => {
 exports.declineByToken = asyncHandler(async (req, res) => {
   const signer = await loadByToken(req.params.token);
   if (!signer) return res.status(404).json({ error: 'Invalid signing link.' });
+  // A decline must be subject to the same gates as a signature: an expired link,
+  // an already-signed/declined signer, or a finished envelope cannot be declined.
+  if (signer.token_expires_at && new Date(signer.token_expires_at) < new Date()) {
+    return res.status(410).json({ error: 'This signing link has expired.' });
+  }
+  if (signer.status === 'signed') return res.status(409).json({ error: 'You have already signed this document and cannot decline it.' });
+  if (signer.status === 'declined') return res.status(409).json({ error: 'You have already declined this document.' });
   const env = await SigningEnvelope.findByPk(signer.envelope_id);
+  if (!env) return res.status(404).json({ error: 'Document not found.' });
+  if (['completed', 'voided', 'declined'].includes(env.status)) {
+    return res.status(410).json({ error: `This document is already ${env.status} and can no longer be declined.` });
+  }
   await signer.update({ status: 'declined', declined_reason: req.body.reason || null });
   await env.update({ status: 'declined' });
   if (env.related_type === 'party_role') {

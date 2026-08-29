@@ -12,8 +12,10 @@ const AgreementTemplate = require('../models/AgreementTemplate');
 const { merge } = require('./docTemplate.service');
 
 const money = (v) => '৳' + Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
-const or = (v, f = '__________') => (v == null || v === '' ? f : v);
-const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+// Escapes user-supplied values — they end up in HTML rendered with
+// dangerouslySetInnerHTML, so an unescaped value would be a stored-XSS vector.
+const or = (v, f = '__________') => (v == null || v === '' ? f : esc(v));
 
 // ── Schedule A: authorised services (checkbox scope) ────────────────────
 const SERVICE_GROUPS = {

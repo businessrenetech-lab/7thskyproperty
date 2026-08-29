@@ -117,7 +117,18 @@ async function createFromSignedAgreement(envelope, options = {}) {
     ? await M.WtClient.findOne({ where: { branch_id: branchId, name: clientName }, transaction })
     : null;
 
-  const lines = quote ? asArray(quote.lines) : [];
+  // Read the agreement's OWN data (schedule_b + agreed_lines), not a legacy
+  // terms.property/terms.project shape that agreements never emit — and prefer the
+  // agreement's priced lines so the work order is never raised with zero services.
+  const sb = (terms || {}).schedule_b || {};
+  const agreedLines = asArray((terms || {}).agreed_lines);
+  const lines = agreedLines.length
+    ? agreedLines.map((l) => ({
+      kind: l.group === 'material' ? 'material' : l.group === 'labour' ? 'labour' : 'service',
+      code: l.code, name: l.name, qty: num(l.qty) || 1,
+      price: num(l.agreed_price), line_total: num(l.line_total), group: l.group,
+    }))
+    : (quote ? asArray(quote.lines) : []);
   const totalContract = num(summary.total_contract_value) || num(quote?.total);
   const ssFee = num(quote?.provider_allocation_fee);
   const providerFee = Math.max(0, num(quote?.service_charges) || (totalContract - ssFee));
@@ -129,14 +140,14 @@ async function createFromSignedAgreement(envelope, options = {}) {
     code: await nextCode(branchId, transaction),
     client_name: clientName || 'Unknown client',
     client_code: client?.code || null,
-    client_phone: client?.mobile || terms?.client?.phone || null,
-    site_address: client?.service_address || terms?.property?.address || null,
-    project_id: quote?.project_id || null,
-    category: lines[0]?.name || terms?.project?.summary || 'Water Tank Service',
-    scope: terms?.project?.scope || quote?.notes || null,
-    special_conditions: quote?.payment_terms || null,
-    target_date: terms?.project?.start_date || addDays(7),
-    scheduled_date: terms?.project?.start_date || null,
+    client_phone: client?.mobile || terms?.client?.phone || sb.site_contact_phone || null,
+    site_address: client?.service_address || sb.property_address || null,
+    project_id: quote?.project_id || (terms || {}).project_code || sb.project_no || null,
+    category: lines[0]?.name || 'Water Tank Service',
+    scope: sb.scope || quote?.notes || null,
+    special_conditions: sb.special_conditions || quote?.payment_terms || null,
+    target_date: sb.start_date || addDays(7),
+    scheduled_date: sb.start_date || null,
     status: 'Draft',
     provider_fee: providerFee,
     ss_fee: ssFee,

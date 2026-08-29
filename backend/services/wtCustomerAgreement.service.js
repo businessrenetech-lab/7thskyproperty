@@ -10,8 +10,11 @@
 const ServiceItem = require('../models/ServiceItem');
 
 const money = (v) => '৳' + Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
-const or = (v, f = '__________') => (v == null || v === '' ? f : v);
-const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+// Always HTML-escapes the value — user-supplied names, positions, NIDs etc. flow
+// into generated agreement HTML that is later rendered with dangerouslySetInnerHTML,
+// so an unescaped value would be a stored-XSS vector.
+const or = (v, f = '__________') => (v == null || v === '' ? f : esc(v));
 
 // ── Schedule A: selectable service groups (checkbox scope) ──────────────
 const SERVICE_GROUPS = {

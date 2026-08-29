@@ -297,11 +297,30 @@ exports.resend = asyncHandler(async (req, res) => {
   });
   await env.update({ expires_at: expires });
 
+  // Actually email the fresh link — a "resend" that rotates the token but never
+  // sends it just silently breaks the party's old link.
+  let emailed = false;
+  try {
+    if (target.email) {
+      const { sendEmail } = require('../services/communication.service');
+      const url = `${req.protocol}://${req.get('host')}/admin/sign/${token}`;
+      await sendEmail(target.email, `Please sign: ${env.title}`,
+        `<p>Dear ${target.name || 'Sir/Madam'},</p>`
+        + `<p>Here is your signing link for <strong>${env.title}</strong> (${env.envelope_code}):</p>`
+        + `<p><a href="${url}">${url}</a></p><p>This link expires in 30 days.</p>`
+        + `<p>Thank you,<br/>Seventh Sky Property Care</p>`);
+      emailed = true;
+    }
+  } catch (e) { console.error('[wt-agreement-resend]', e.message); }
+
   res.json({
     ok: true,
     signer: { id: target.id, name: target.name, email: target.email, role: target.role },
     signing_path: `/admin/sign/${token}`,
-    note: 'A fresh signing link has been issued; the previous link for this party no longer works.',
+    emailed,
+    note: emailed
+      ? 'A fresh signing link has been emailed; the previous link for this party no longer works.'
+      : 'A fresh signing link has been issued; the previous link for this party no longer works.',
   });
 });
 
@@ -311,9 +330,12 @@ exports.void = asyncHandler(async (req, res) => {
   if (eq(env.status, 'completed')) {
     return res.status(409).json({ error: 'This agreement is fully executed and cannot be voided.' });
   }
-  await env.update({ status: 'voided', void_reason: req.body?.reason || null });
-  await EnvelopeSigner.update({ status: 'voided' }, {
-    where: { envelope_id: env.id, status: { [Op.ne]: 'signed' } },
+  // The column is `voided_reason` (void_reason was silently discarded), and there
+  // is no 'voided' signer status in the enum — so invalidate the outstanding links
+  // instead: a voided envelope can no longer be signed through a live token.
+  await env.update({ status: 'voided', voided_reason: req.body?.reason || null });
+  await EnvelopeSigner.update({ access_token: null }, {
+    where: { envelope_id: env.id, status: { [Op.notIn]: ['signed', 'declined'] } },
   }).catch(() => {});
   res.json({ ok: true, envelope_code: env.envelope_code, voided_by: actorOf(req) });
 });

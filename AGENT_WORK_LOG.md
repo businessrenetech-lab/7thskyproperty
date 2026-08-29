@@ -3566,3 +3566,38 @@ used "the last line starting with `import`", which landed inside a multi-line
   fallback (no breakage). For real PDFs on the server, install Chromium and set
   PUPPETEER_EXECUTABLE_PATH. Saved PDFs live under backend/uploads (gitignored).
 - Handoff: redeploy + restart on Hostinger (npm install pulls puppeteer-core only).
+
+### 2026-08-29 16:40 | Claude Code (Opus 4.8) | COMPLETED | Security + correctness audit fixes (signing/agreements) — batch 1
+- Source: external audit (ChatGPT) of the signing/agreement subsystem. Verified each
+  finding against code and fixed the security-critical + high-impact correctness ones.
+- F1 CRITICAL token leak: signing.controller envelopeIncludes serialized signer
+    access_token + otp_code. Now excluded. Verified: envelope detail shows neither.
+- F2 CRITICAL decline-after-complete: declineByToken had no guards. Added token-
+    expiry, already-signed/declined, and envelope completed/voided/declined checks.
+    SignPage now shows "already signed/declined" instead of re-offering Sign/Decline.
+- F3 CRITICAL stored XSS: the `or()` helper in wtCustomerAgreement + wtProviderAgreement
+    interpolated user values (names/positions/NID) into HTML rendered with
+    dangerouslySetInnerHTML. `or` now HTML-escapes. Verified: <script>/<img onerror>
+    payloads come out escaped, no executable HTML survives.
+- F4 HIGH weak completion hash: hash excluded signature values. Now includes every
+    SignatureField value, so tampering a signature changes the hash.
+- F5 HIGH optional countersign: customer agreement made the Seventh Sky countersigner
+    REQUIRED (400 if no countersigner email) so it can't be "fully executed" on the
+    client's signature alone.
+- F6 HIGH work-order data loss: createFromSignedAgreement read legacy terms.property/
+    terms.project and only took lines from a back-linked quote → zero-line WOs. Now
+    reads the agreement's real terms (schedule_b + agreed_lines): lines from
+    agreed_lines (fallback quote), site_address/scope/dates/project from schedule_b.
+- F7 HIGH "Send" sent no email: customer createCustomer now emails the first signer
+    their link (envelope was marked "sent" with no email). Hub "Resend" now actually
+    emails the rotated link (was rotating the token silently).
+- F12 MEDIUM void bugs: wrote void_reason (col is voided_reason) and set an invalid
+    'voided' signer status. Now writes voided_reason and nulls outstanding tokens
+    (no 'voided' signer status exists), so a voided envelope can't be signed.
+- Verified: all backend modules load; admin build passed; F1 + F3 confirmed live.
+- Handoff/DEFERRED (larger, separate efforts): F8 atomic completion + reconciliation;
+    F9 OTP generate/validate (fields exist, unused) or remove; F10 signed-doc links
+    ignore token_expires_at (permanent read of one's own completed doc); F11 mobile
+    responsive sidebar (23 routes overflow at 390px); a11y contrast/labels; migrations
+    0090-0092 pending (run on deploy); no automated test suite; JS bundle size.
+- Redeploy + restart on Hostinger.

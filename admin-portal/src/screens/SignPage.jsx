@@ -41,6 +41,17 @@ export default function SignPage() {
   if (done) return <div className="center-screen"><div className="card card-pad" style={{ maxWidth: 460, textAlign: 'center' }}><CheckCircle2 size={48} color="var(--success)" /><h2 style={{ marginTop: 12 }}>{done}</h2><p className="cell-sub">You may close this window.</p></div></div>;
 
   const { envelope, signer, fields = [] } = state;
+  // Once this party has signed (or declined), there is nothing left to do here —
+  // don't keep offering Sign / Decline on a signature that is already recorded.
+  if (signer.status === 'signed' || signer.status === 'declined') {
+    return (
+      <div className="center-screen"><div className="card card-pad" style={{ maxWidth: 460, textAlign: 'center' }}>
+        <CheckCircle2 size={48} color="var(--success)" />
+        <h2 style={{ marginTop: 12 }}>You have already {signer.status} this document.</h2>
+        <p className="cell-sub">No further action is needed. You may close this window.</p>
+      </div></div>
+    );
+  }
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '24px 16px' }}>
       <div style={{ maxWidth: 820, margin: '0 auto' }}>
