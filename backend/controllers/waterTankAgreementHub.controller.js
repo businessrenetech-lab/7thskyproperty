@@ -15,20 +15,33 @@
  */
 const { Op } = require('sequelize');
 const crypto = require('crypto');
-const { asyncHandler, branchScope } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveServiceLine } = require('../utils/controllerHelpers');
+const { getServiceLine } = require('../config/serviceLines');
 const SigningEnvelope = require('../models/SigningEnvelope');
 const EnvelopeSigner = require('../models/EnvelopeSigner');
 const SignatureField = require('../models/SignatureField');
 const signedDoc = require('../services/wtSignedDocument.service');
 
-const FAMILIES = {
-  client: { related_type: 'water_tank_customer_agreement', label: 'Client Agreement', doc: 'Customer Service Agreement' },
-  provider: { related_type: 'water_tank_provider_agreement', label: 'Provider Agreement', doc: 'Master Service Delivery Provider Agreement' },
-  work_order: { related_type: 'water_tank_work_order', label: 'Work Order Agreement', doc: 'Project Work Order' },
+// The three agreement families are the same everywhere; only their related_type
+// carries the service-line prefix. Labels are static per family; the related_type
+// set is resolved from the active service line so the AC console's hub shows AC
+// agreements and the Water Tank console's shows Water Tank's.
+const FAMILY_META = {
+  client: { label: 'Client Agreement', doc: 'Customer Service Agreement' },
+  provider: { label: 'Provider Agreement', doc: 'Master Service Delivery Provider Agreement' },
+  work_order: { label: 'Work Order Agreement', doc: 'Project Work Order' },
 };
-const RELATED_TYPES = Object.values(FAMILIES).map((f) => f.related_type);
-const familyOf = (relatedType) => Object.entries(FAMILIES)
-  .find(([, f]) => f.related_type === relatedType)?.[0] || 'other';
+const relatedTypesFor = (req) => {
+  const rt = getServiceLine(resolveServiceLine(req)).related_type;
+  return { client: rt.customer, provider: rt.provider, work_order: `${resolveServiceLine(req)}_work_order` };
+};
+const familyOf = (relatedType) => {
+  const t = String(relatedType || '');
+  if (t.endsWith('_customer_agreement')) return 'client';
+  if (t.endsWith('_provider_agreement')) return 'provider';
+  if (t.endsWith('_work_order')) return 'work_order';
+  return 'other';
+};
 
 const eq = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 const daysTo = (d) => (d ? Math.ceil((new Date(d) - Date.now()) / 864e5) : null);
@@ -64,8 +77,8 @@ function shapeEnvelope(env) {
     id: env.id,
     envelope_code: env.envelope_code,
     family: familyOf(env.related_type),
-    family_label: FAMILIES[familyOf(env.related_type)]?.label || 'Agreement',
-    document: FAMILIES[familyOf(env.related_type)]?.doc || env.title,
+    family_label: FAMILY_META[familyOf(env.related_type)]?.label || 'Agreement',
+    document: FAMILY_META[familyOf(env.related_type)]?.doc || env.title,
     title: env.title,
     status: env.status,
     related_id: env.related_id,
@@ -101,7 +114,7 @@ const loadEnvelope = async (req, res) => {
   const env = await SigningEnvelope.findOne({
     where: {
       ...branchScope(req),
-      related_type: { [Op.in]: RELATED_TYPES },
+      related_type: { [Op.in]: Object.values(relatedTypesFor(req)) },
       [Op.or]: [{ id: Number.isNaN(Number(key)) ? -1 : Number(key) }, { envelope_code: String(key) }],
     },
     include: [{ model: EnvelopeSigner, as: 'signers' }],
@@ -113,10 +126,11 @@ const loadEnvelope = async (req, res) => {
 /* ── the register ── */
 exports.list = asyncHandler(async (req, res) => {
   const { family, status, q, awaiting } = req.query;
+  const rtypes = relatedTypesFor(req);
   const where = { ...branchScope(req) };
-  where.related_type = family && FAMILIES[family]
-    ? FAMILIES[family].related_type
-    : { [Op.in]: RELATED_TYPES };
+  where.related_type = family && rtypes[family]
+    ? rtypes[family]
+    : { [Op.in]: Object.values(rtypes) };
   if (status) where.status = status;
   if (q && String(q).trim()) {
     const like = { [Op.like]: `%${String(q).trim()}%` };
@@ -137,17 +151,17 @@ exports.list = asyncHandler(async (req, res) => {
 
 exports.overview = asyncHandler(async (req, res) => {
   const rows = await SigningEnvelope.findAll({
-    where: { ...branchScope(req), related_type: { [Op.in]: RELATED_TYPES } },
+    where: { ...branchScope(req), related_type: { [Op.in]: Object.values(relatedTypesFor(req)) } },
     include: [{ model: EnvelopeSigner, as: 'signers' }],
   });
   const all = rows.map((r) => shapeEnvelope(r.get({ plain: true })));
   const live = all.filter((a) => !eq(a.status, 'voided'));
 
-  const byFamily = Object.keys(FAMILIES).map((key) => {
+  const byFamily = Object.keys(FAMILY_META).map((key) => {
     const set = all.filter((a) => a.family === key);
     return {
       family: key,
-      label: FAMILIES[key].label,
+      label: FAMILY_META[key].label,
       total: set.length,
       fully_signed: set.filter((a) => a.fully_signed).length,
       awaiting: set.filter((a) => !a.fully_signed && a.pending_count > 0 && !eq(a.status, 'voided')).length,

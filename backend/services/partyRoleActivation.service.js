@@ -373,9 +373,10 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
       }
     }
 
-    // Water Tank customer agreement signed → raise the work order (SOP-01 Sec. 7
-    // Step 6 into Sec. 8 Step 7). Idempotent inside the service.
-    if (envelope.related_type === 'water_tank_customer_agreement') {
+    // Customer agreement signed → raise the work order (SOP-01 Sec. 7 Step 6 into
+    // Sec. 8 Step 7). Suffix-matched so every service line's customer agreement
+    // (water_tank_*, air_conditioning_*, …) triggers it. Idempotent inside the service.
+    if (String(envelope.related_type || '').endsWith('_customer_agreement')) {
       const { createFromSignedAgreement } = require('./wtWorkOrder.service');
       try {
         await createFromSignedAgreement(envelope, { transaction: tx });
@@ -438,11 +439,11 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
       }
     }
 
-    // Water Tank provider master agreement: both ordered signers have completed.
-    // Activate the versioned commercial terms and effective-dated rate card; do
-    // not auto-approve the provider because compliance, payment and territory
-    // gates remain independently reviewable.
-    if (envelope.related_type === 'water_tank_provider_agreement') {
+    // Provider master agreement: both ordered signers have completed. Activate the
+    // versioned commercial terms and effective-dated rate card; do not auto-approve
+    // the provider because compliance, payment and territory gates remain
+    // independently reviewable. Suffix-matched across service lines.
+    if (String(envelope.related_type || '').endsWith('_provider_agreement')) {
       const M = require('../models/waterTankOps');
       const P = require('../models/waterTankProviders');
       const agreementId = terms.provider_agreement_id;

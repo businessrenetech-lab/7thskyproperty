@@ -5,8 +5,19 @@
  */
 const crypto = require('crypto');
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, pick, catalogueVertical } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, pick, catalogueVertical, resolveServiceLine } = require('../utils/controllerHelpers');
+const { getServiceLine } = require('../config/serviceLines');
 const customerSvc = require('../services/wtCustomerAgreement.service');
+
+// The agreement's related_type is what ties an envelope to its service line
+// (water_tank_* / air_conditioning_*), so listing, signing completion and the
+// downstream work-order/invoice creation all stay in the right service.
+const relatedTypeFor = (req, kind) => getServiceLine(resolveServiceLine(req)).related_type[kind];
+const envPrefixFor = (req, kind) => {
+  const sl = resolveServiceLine(req);
+  const tag = kind === 'customer' ? 'CSA' : 'PSA';
+  return sl === 'air_conditioning' ? `ENV-ACS${tag}` : `ENV-WT${tag}`;
+};
 const providerSvc = require('../services/wtProviderAgreement.service');
 const SigningEnvelope = require('../models/SigningEnvelope');
 const EnvelopeSigner = require('../models/EnvelopeSigner');
@@ -69,12 +80,13 @@ const customer = {
       order: [['id', 'DESC']], limit: 100, raw: true,
     }).catch(() => []);
 
+    const content = customerSvc.contentFor(catalogueVertical(req));
     res.json({
-      service_groups: customerSvc.SERVICE_GROUPS,
+      service_groups: content.service_groups,
       // The catalogue-code → Schedule A map, so a builder can show which Schedule A
       // services a priced line already covers (Clause 3) without re-deriving it.
-      code_to_schedule_a: customerSvc.CODE_TO_SCHEDULE_A,
-      checklist_groups: customerSvc.CHECKLIST_GROUPS,
+      code_to_schedule_a: content.code_to_schedule_a,
+      checklist_groups: content.checklist_groups,
       role: 'Client',
       // Schedule A AMC tiers
       amc_packages: amcSvc.PACKAGES.map((p) => ({
@@ -92,24 +104,26 @@ const customer = {
   }),
   preview: asyncHandler(async (req, res) => {
     const branchId = branchScope(req).branch_id;
-    const pricing = await customerSvc.computePricing(req.body?.pricing_input || {}, branchId);
-    res.json({ ...customerSvc.buildAgreement({ ...(req.body || {}), pricing }), pricing });
+    const vertical = catalogueVertical(req);
+    const pricing = await customerSvc.computePricing(req.body?.pricing_input || {}, branchId, { vertical });
+    res.json({ ...customerSvc.buildAgreement({ ...(req.body || {}), vertical, pricing }), pricing });
   }),
-  listAgreements: asyncHandler(async (req, res) => res.json(await listEnvelopes(req, 'water_tank_customer_agreement'))),
+  listAgreements: asyncHandler(async (req, res) => res.json(await listEnvelopes(req, relatedTypeFor(req, 'customer')))),
   createAgreement: asyncHandler(async (req, res) => {
     const branchId = resolveBranchId(req);
+    const vertical = catalogueVertical(req);
     const body = req.body || {};
     const party = body.client || {};
     if (!party.full_name) return res.status(400).json({ error: 'Client name is required.' });
     if (!party.email) return res.status(400).json({ error: 'Client email is required to send for signature.' });
-    const pricing = await customerSvc.computePricing(body.pricing_input || {}, branchId);
-    const built = customerSvc.buildAgreement({ ...body, pricing });
+    const pricing = await customerSvc.computePricing(body.pricing_input || {}, branchId, { vertical });
+    const built = customerSvc.buildAgreement({ ...body, vertical, pricing });
     const expires = new Date(Date.now() + 30 * 864e5);
     const out = await sequelize.transaction(async (transaction) => {
       const envelope = await SigningEnvelope.create({
-        branch_id: branchId, envelope_code: `ENV-WTCSA-${Date.now().toString().slice(-6)}`,
+        branch_id: branchId, envelope_code: `${envPrefixFor(req, 'customer')}-${Date.now().toString().slice(-6)}`,
         title: `${built.title} — ${party.full_name}`, document_html: built.html,
-        related_type: 'water_tank_customer_agreement', related_id: body.related_id || null,
+        related_type: relatedTypeFor(req, 'customer'), related_id: body.related_id || null,
         status: 'sent', sent_at: new Date(), expires_at: expires,
         // Ordered: client, then Seventh Sky countersigns, then the witnesses
         // attest — a witness cannot meaningfully attest a signature not yet made.

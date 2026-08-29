@@ -3818,3 +3818,22 @@ used "the last line starting with `import`", which landed inside a multi-line
 - VERIFIED: AC Price Schedule = 45 items (30/10/5); WT unchanged at 41. Reads isolated by vertical.
 - NEXT (phase 2): AC agreement templates (customer/provider/work-order) via the shared agreement
   engine with AC clauses, keyed off the service manifest.
+
+### 2026-08-30 02:55 | Claude Code (Opus 4.8) | COMPLETED | AC milestone 3 (phase 2a) — AC Customer Service Agreement
+- Refactored wtCustomerAgreement.service into a shared render engine + per-service content
+  packs (WT_PACK default, AC_PACK). A pack supplies the title/doc_no/header, Schedule A
+  taxonomy, code→Schedule-A map, Schedule D warranty groups, the service-specific Schedule B
+  rows and the fallback payment split. buildAgreement/computePricing/getCatalog are shared and
+  pick the pack by vertical, so an engine fix reaches every service at once.
+- AC pack authored faithfully from SSPC-ACS-CSA-01 v0.2 (24 clauses, 9 Schedule-A groups,
+  ACS→Schedule-A map, AC warranty checklist, equipment Schedule-B rows, 30/40/30 split).
+- Wired wtAgreements.controller: preview/create/list/meta now resolve vertical + related_type
+  from the service manifest (air_conditioning_customer_agreement, ENV-ACSCSA- prefix).
+- Made the shared signing/completion glue service-line agnostic (suffix match on
+  _customer_agreement / _provider_agreement): wtAgreementCompletion, partyRoleActivation
+  (raises the work order on customer sign; activates provider terms on provider sign),
+  signing.controller (void/partial/decline provider hooks), the Agreement Hub (families +
+  related_types resolved per service line) and client-detail agreement listing.
+- VERIFIED live: customer/meta returns AC service groups for AC and WT groups for WT; AC
+  preview renders SSPC-ACS-CSA-01 with ACS-004 priced ৳7,500; WT preview unchanged.
+- NEXT: phase 2b provider master agreement, phase 2c project work order.

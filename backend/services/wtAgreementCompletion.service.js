@@ -15,10 +15,14 @@ const { htmlToPdf, pdfAvailable } = require('./htmlToPdf.service');
 let WtProviderDocument = null;
 try { ({ WtProviderDocument } = require('../models/waterTankProviders')); } catch { /* providers model optional */ }
 
-// related_type → which signer role is the party we notify and file for.
-const WT_TYPES = {
-  water_tank_customer_agreement: 'client',
-  water_tank_provider_agreement: 'provider',
+// related_type → which signer role is the party we notify and file for. Keyed by
+// suffix so every service line's agreements (water_tank_*, air_conditioning_*, …)
+// resolve without a per-service entry.
+const principalRoleFor = (relatedType) => {
+  const t = String(relatedType || '');
+  if (t.endsWith('_customer_agreement')) return 'client';
+  if (t.endsWith('_provider_agreement')) return 'provider';
+  return null;
 };
 
 const AGREEMENTS_DIR = path.join(__dirname, '..', 'uploads', 'documents');
@@ -37,8 +41,8 @@ function saveSignedPdf(envelopeCode, pdfBuffer) {
 }
 
 async function onCompleted(env, baseUrl) {
-  const principalRole = WT_TYPES[env.related_type];
-  if (!principalRole) return; // not a Water Tank agreement — nothing to do
+  const principalRole = principalRoleFor(env.related_type);
+  if (!principalRole) return; // not a customer/provider agreement — nothing to do
 
   const plainEnv = typeof env.get === 'function' ? env.get({ plain: true }) : env;
   const signers = await EnvelopeSigner.findAll({ where: { envelope_id: env.id }, raw: true });

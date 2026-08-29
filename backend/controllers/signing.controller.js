@@ -197,7 +197,7 @@ exports.voidEnvelope = asyncHandler(async (req, res) => {
       await PropertyOwnerProfile.update({ agreement_status: 'draft' }, { where: { property_id: role.property_id } });
     }
   }
-  if (env.related_type === 'water_tank_provider_agreement') {
+  if (String(env.related_type || '').endsWith('_provider_agreement')) {
     const M = require('../models/waterTankOps');
     const P = require('../models/waterTankProviders');
     await P.WtProviderAgreement.update({ status: 'Voided' }, { where: { envelope_id: env.id, branch_id: env.branch_id } });
@@ -344,7 +344,7 @@ exports.signByToken = asyncHandler(async (req, res) => {
     if (next.status === 'pending') await next.update({ status: 'sent' });
   }
   await env.update({ status: 'partially_signed' });
-  if (env.related_type === 'water_tank_provider_agreement') {
+  if (String(env.related_type || '').endsWith('_provider_agreement')) {
     const P = require('../models/waterTankProviders');
     await P.WtProviderAgreement.update({ status: 'Provider Signed' }, { where: { envelope_id: env.id, branch_id: env.branch_id } });
   }
@@ -374,7 +374,7 @@ exports.declineByToken = asyncHandler(async (req, res) => {
   if (env.related_type === 'party_role') {
     await PartyRoleProfile.update({ status: 'declined', next_action: 'Agreement declined' }, { where: { id: env.related_id } });
   }
-  if (env.related_type === 'water_tank_provider_agreement') {
+  if (String(env.related_type || '').endsWith('_provider_agreement')) {
     const M = require('../models/waterTankOps');
     const P = require('../models/waterTankProviders');
     await P.WtProviderAgreement.update({ status: 'Declined' }, { where: { envelope_id: env.id, branch_id: env.branch_id } });

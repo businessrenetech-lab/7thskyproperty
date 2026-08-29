@@ -285,10 +285,13 @@ exports.detail = asyncHandler(async (req, res) => {
     });
     const envIds = [...new Set(signerRows.map((s) => s.envelope_id))];
     if (envIds.length) {
-      const envs = await SigningEnvelope.findAll({
-        where: { id: envIds, related_type: 'water_tank_customer_agreement' },
-        order: [['id', 'DESC']], raw: true,
+      const envRows = await SigningEnvelope.findAll({
+        where: { id: envIds }, order: [['id', 'DESC']], raw: true,
       });
+      // A client belongs to one service line, so match the customer agreement by
+      // suffix rather than a hard-coded service prefix — an AC client shows its AC
+      // agreement, a Water Tank client shows its Water Tank one.
+      const envs = envRows.filter((e) => String(e.related_type || '').endsWith('_customer_agreement'));
       agreements = envs.map((e) => ({
         code: e.envelope_code, title: e.title, status: e.status, completed_at: e.completed_at,
         signed_pdf_url: eq(e.status, 'completed')
