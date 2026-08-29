@@ -3679,3 +3679,17 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Verified: backend loads + healthy; admin build passed; 13 bad docs reset.
 - Handoff: redeploy + restart on Hostinger. (Public onboarding preview of one's own upload
   is not added — /uploads is JWT-gated and onboarding is token-only; the admin reviews.)
+
+### 2026-08-29 20:00 | Claude Code (Opus 4.8) | COMPLETED | Design doc — duplicating a service line (Water Tank → AC → …)
+- Request: an MD to duplicate the Water Tank service for Air Conditioning (and future
+  services), such that fixes to core workflows (onboarding/quotation/assessment/invoice/
+  agreement) auto-propagate to every service.
+- Wrote SERVICE_MODULE_DUPLICATION.md: recommends a config-driven SHARED CORE (one codebase,
+  a `service_line` column on the shared wt_* tables, a per-service "service manifest" holding
+  the only per-service truth — labels/colour/code-prefixes/catalogue vertical/required docs/
+  agreement templates/related_type/nav). Includes the WT inventory classified core vs
+  service-specific, the generic-engine extraction to do first, the additive service_line
+  migration pattern, route/console factories, the preferred "add a service = config" path,
+  a physical-duplication fallback checklist (with the server.js↔manifest.js drift warning),
+  and a Debt register to keep duplicated code in lockstep until unified.
+- Docs only; no code change.
