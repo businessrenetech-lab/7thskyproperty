@@ -64,8 +64,8 @@ const CLAUSES = [
   ['EXECUTION', `<p>The Parties acknowledge that they have read and understood this Agreement, have had the opportunity to obtain independent legal advice, enter into this Agreement voluntarily, and agree to be legally bound by its terms. This Agreement may be executed in counterparts and by electronic signature. Each signed copy will be deemed an original and together constitute one Agreement.</p>`],
 ];
 
-async function getCatalog(branchId) {
-  const where = { vertical: 'water_tank_csa', is_active: true };
+async function getCatalog(branchId, { vertical = 'water_tank_csa' } = {}) {
+  const where = { vertical, is_active: true };
   if (branchId) where.branch_id = branchId;
   const rows = await ServiceItem.findAll({ where, order: [['sort_order', 'ASC']] });
   return rows.map((r) => {

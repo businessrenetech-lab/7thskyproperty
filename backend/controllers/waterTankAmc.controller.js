@@ -3,7 +3,7 @@
  * Logic lives in services/wtAmc.service.js; this layer is transport and scoping.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, pick, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, pick, serviceScope, resolveServiceLine, catalogueVertical } = require('../utils/controllerHelpers');
 // Branch + service scope for wt_*; reference() ServiceItem query keeps plain branchScope.
 const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
@@ -34,7 +34,7 @@ exports.reference = asyncHandler(async (req, res) => {
   const branchId = resolveBranchId(req);
   const [providers, catalogRows, agreements, projects] = await Promise.all([
     M.WtProvider.findAll({ where: scope, order: [['business_name', 'ASC']], raw: true }),
-    ServiceItem.findAll({ where: { ...scope, vertical: 'water_tank_csa', is_active: true }, order: [['sort_order', 'ASC']], raw: true }).catch(() => []),
+    ServiceItem.findAll({ where: { ...scope, vertical: catalogueVertical(req), is_active: true }, order: [['sort_order', 'ASC']], raw: true }).catch(() => []),
     M.WtClient.findAll({ where: { ...scope, agreement_status: 'Signed' }, attributes: ['code', 'name', 'agreement_code'], raw: true }).catch(() => []),
     M.WtProject.findAll({ where: scope, attributes: ['code', 'name', 'client_name'], order: [['id', 'DESC']], limit: 50, raw: true }).catch(() => []),
   ]);

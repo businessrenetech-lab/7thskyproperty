@@ -11,7 +11,7 @@
  * posts to. It deliberately exposes no pricing.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine, catalogueVertical } = require('../utils/controllerHelpers');
 // Branch + service-line scope for wt_* reads (never spread onto ServiceItem, which
 // is separated by `vertical`, not service_line).
 const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
@@ -41,7 +41,7 @@ async function nextCode(model, prefix, pad, start, branchId) {
  */
 exports.publicServices = asyncHandler(async (req, res) => {
   const rows = await ServiceItem.findAll({
-    where: { vertical: 'water_tank_csa', is_active: true },
+    where: { vertical: catalogueVertical(req), is_active: true },
     order: [['sort_order', 'ASC']],
     raw: true,
   });
@@ -146,7 +146,7 @@ exports.publicEnquiry = asyncHandler(async (req, res) => {
 exports.requestReference = asyncHandler(async (req, res) => {
   const scope = branchScope(req);
   const [catalogRows, providers] = await Promise.all([
-    ServiceItem.findAll({ where: { ...scope, vertical: 'water_tank_csa', is_active: true }, order: [['sort_order', 'ASC']], raw: true }),
+    ServiceItem.findAll({ where: { ...scope, vertical: catalogueVertical(req), is_active: true }, order: [['sort_order', 'ASC']], raw: true }),
     M.WtProvider.findAll({ where: scope, order: [['rank', 'ASC'], ['business_name', 'ASC']], raw: true }),
   ]);
 

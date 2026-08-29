@@ -10,7 +10,7 @@
  */
 const { Op } = require('sequelize');
 const sequelize = require('../config/db.config');
-const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine, catalogueVertical } = require('../utils/controllerHelpers');
 // Branch + service-line scope (this controller queries only wt_* tables).
 const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
@@ -323,7 +323,7 @@ exports.builder = asyncHandler(async (req, res) => {
     M.WtClient.findOne({ where: { ...scope, name: a.client_name }, raw: true }),
     // Schedule C of the Customer Service Agreement — the standard price schedule
     ServiceItem.findAll({
-      where: { ...scope, vertical: 'water_tank_csa' },
+      where: { ...scope, vertical: catalogueVertical(req) },
       order: [['sort_order', 'ASC'], ['code', 'ASC']],
       raw: true,
     }),

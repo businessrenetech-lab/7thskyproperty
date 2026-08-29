@@ -7,7 +7,7 @@
  * figures must not move underneath them.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, pick, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, pick, serviceScope, resolveServiceLine, catalogueVertical } = require('../utils/controllerHelpers');
 // Branch + service-line scope for wt_* reads; the reference() ServiceItem query keeps plain branchScope.
 const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
@@ -71,7 +71,7 @@ exports.reference = asyncHandler(async (req, res) => {
   const scope = branchScope(req);
   const ServiceItem = require('../models/ServiceItem');
   const [catalogRows, amcs] = await Promise.all([
-    ServiceItem.findAll({ where: { ...scope, vertical: 'water_tank_csa', is_active: true }, order: [['sort_order', 'ASC']], raw: true }).catch(() => []),
+    ServiceItem.findAll({ where: { ...scope, vertical: catalogueVertical(req), is_active: true }, order: [['sort_order', 'ASC']], raw: true }).catch(() => []),
     M.WtAmcContract.findAll({ where: scope, attributes: ['code', 'client_name', 'package'], order: [['id', 'DESC']], limit: 50, raw: true }).catch(() => []),
   ]);
   res.json({

@@ -3771,3 +3771,18 @@ used "the last line starting with `import`", which landed inside a multi-line
   those services still default water_tank); parametrize the catalogue vertical
   (air_conditioning_csa) + seed it; then the svcBase() intra-screen nav pass over the shared
   screens so AC deep-links stay in the AC console.
+
+### 2026-08-30 00:55 | Claude Code (Opus 4.8) | COMPLETED | AC milestone 2d — catalogue vertical per service line + AC catalogue seeded
+- The ServiceItem catalogue is separated by `vertical` (not service_line). Added
+  controllerHelpers.catalogueVertical(req) → the service line's catalogue_vertical
+  (water_tank_csa / air_conditioning_csa). Swapped the hard-coded 'water_tank_csa' for it in
+  the invoice/intake/amc/quotation/project controllers; parametrized the customer/provider
+  agreement getCatalog with a `vertical` option and pass catalogueVertical(req) from the
+  agreements controller.
+- Seeded the AC catalogue: scripts/seedAirConCatalog.js cloned the 41 water_tank_csa items
+  into air_conditioning_csa (a working starting point; operator refines via Price Schedule).
+- VERIFIED: customer-agreement catalog + invoice reference each return 41 for WT and 41 for
+  AC, from their own vertical.
+- Remaining tail: wtCatalogue.service (Price Schedule screen) still uses a module-level
+  VERTICAL='water_tank_csa' — the Price Schedule shows WT items regardless of console; small
+  follow-up. Then the svcBase() intra-screen nav pass + rebuild dist.

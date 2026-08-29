@@ -120,8 +120,8 @@ const CLAUSES = [
  * looks the item up including archived rows; the item picker still shows only
  * what is currently on offer.
  */
-async function getCatalog(branchId, { includeArchived = false } = {}) {
-  const where = { vertical: 'water_tank_csa' };
+async function getCatalog(branchId, { includeArchived = false, vertical = 'water_tank_csa' } = {}) {
+  const where = { vertical };
   if (!includeArchived) where.is_active = true;
   if (branchId) where.branch_id = branchId;
   const rows = await ServiceItem.findAll({ where, order: [['sort_order', 'ASC']] });

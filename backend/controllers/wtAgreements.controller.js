@@ -5,7 +5,7 @@
  */
 const crypto = require('crypto');
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, pick } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, pick, catalogueVertical } = require('../utils/controllerHelpers');
 const customerSvc = require('../services/wtCustomerAgreement.service');
 const providerSvc = require('../services/wtProviderAgreement.service');
 const SigningEnvelope = require('../models/SigningEnvelope');
@@ -53,7 +53,7 @@ async function listEnvelopes(req, relatedType) {
 
 /* Customer agreement behavior remains compatible with the quotation flow. */
 const customer = {
-  getCatalog: asyncHandler(async (req, res) => res.json(await customerSvc.getCatalog(branchScope(req).branch_id))),
+  getCatalog: asyncHandler(async (req, res) => res.json(await customerSvc.getCatalog(branchScope(req).branch_id, { vertical: catalogueVertical(req) }))),
   /*
    * Everything the agreement builder needs to populate its selects from real
    * data rather than hardcoded lists — the AMC package tiers and billing cycles
@@ -372,7 +372,7 @@ async function sendSavedAgreement(req, agreement, provider) {
 }
 
 const provider = {
-  getCatalog: asyncHandler(async (req, res) => res.json(await providerSvc.getCatalog(branchScope(req).branch_id))),
+  getCatalog: asyncHandler(async (req, res) => res.json(await providerSvc.getCatalog(branchScope(req).branch_id, { vertical: catalogueVertical(req) }))),
   getMeta: asyncHandler(async (req, res) => res.json({
     service_groups: providerSvc.SERVICE_GROUPS, checklist_groups: providerSvc.CHECKLIST_GROUPS,
     template_fields: await providerSvc.getTemplateFields(), role: 'Service Provider',

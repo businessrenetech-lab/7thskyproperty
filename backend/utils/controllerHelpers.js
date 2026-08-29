@@ -34,6 +34,12 @@ function resolveServiceLine(req) {
 function serviceScope(req) {
   return { service_line: resolveServiceLine(req) };
 }
+// The ServiceItem catalogue is separated by `vertical` (not service_line), so a
+// service line reads its own catalogue vertical (water_tank_csa, air_conditioning_csa…).
+const { getServiceLine } = require('../config/serviceLines');
+function catalogueVertical(req) {
+  return getServiceLine(resolveServiceLine(req)).catalogue_vertical;
+}
 
 /** Parse pagination params -> { limit, offset, page }. */
 function getPagination(req, defaultLimit = 25, maxLimit = 100) {
@@ -52,4 +58,4 @@ function pick(body, allowed) {
   return out;
 }
 
-module.exports = { asyncHandler, branchScope, resolveBranchId, getPagination, pick, resolveServiceLine, serviceScope };
+module.exports = { asyncHandler, branchScope, resolveBranchId, getPagination, pick, resolveServiceLine, serviceScope, catalogueVertical };
