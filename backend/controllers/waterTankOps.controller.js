@@ -5,7 +5,9 @@
  * quotations, work-orders, projects, providers, amc, invoices, complaints, comms).
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+// Branch + service-line scope so each service line sees only its own data.
+const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
 const P = require('../models/waterTankProviders');
 const identity = require('../services/wtIdentity.service');
@@ -94,7 +96,7 @@ async function nextCode(e, branchId) {
 
 exports.list = asyncHandler(async (req, res) => {
   const e = getEntity(req, res); if (!e) return;
-  const where = { ...branchScope(req) };
+  const where = { ...scoped(req) };
   if (req.query.status) where.status = req.query.status;
   if (req.query.q && e.search?.length) where[Op.or] = e.search.map((c) => ({ [c]: { [Op.like]: `%${req.query.q}%` } }));
   const rows = await e.model.findAll({ where, order: [['id', 'DESC']], limit: Math.min(Number(req.query.limit) || 300, 500) });
@@ -105,7 +107,7 @@ exports.detail = asyncHandler(async (req, res) => {
   const e = getEntity(req, res); if (!e) return;
   // allow lookup by numeric id or by code
   const key = req.params.id;
-  const where = { ...branchScope(req), [Op.or]: [{ id: Number.isNaN(Number(key)) ? -1 : Number(key) }, { code: key }] };
+  const where = { ...scoped(req), [Op.or]: [{ id: Number.isNaN(Number(key)) ? -1 : Number(key) }, { code: key }] };
   const row = await e.model.findOne({ where });
   if (!row) return res.status(404).json({ error: 'Not found' });
   res.json(row);
@@ -115,7 +117,7 @@ exports.create = asyncHandler(async (req, res) => {
   if (blockGenericWrite(req, res)) return;
   const e = getEntity(req, res); if (!e) return;
   const branchId = resolveBranchId(req);
-  let body = { ...req.body, branch_id: branchId };
+  let body = { ...req.body, branch_id: branchId, service_line: resolveServiceLine(req) };
   delete body.id; delete body.createdAt; delete body.updatedAt;
   if (e.prefix && !body.code) body.code = await nextCode(e, branchId);
   // Client ID / Project ID are never left blank — the client and project are
@@ -128,7 +130,7 @@ exports.create = asyncHandler(async (req, res) => {
 exports.update = asyncHandler(async (req, res) => {
   if (blockGenericWrite(req, res)) return;
   const e = getEntity(req, res); if (!e) return;
-  const row = await e.model.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  const row = await e.model.findOne({ where: { id: req.params.id, ...scoped(req) } });
   if (!row) return res.status(404).json({ error: 'Not found' });
   const body = { ...req.body };
   delete body.id; delete body.branch_id; delete body.code; delete body.createdAt; delete body.updatedAt;
@@ -164,7 +166,7 @@ exports.update = asyncHandler(async (req, res) => {
  */
 async function onWorkOrderCompleted(req, wo) {
   const branchId = resolveBranchId(req);
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const P = require('../models/waterTankProviders');
   const addMonths = (n) => { const x = new Date(); x.setMonth(x.getMonth() + n); return x.toISOString().slice(0, 10); };
 
@@ -217,7 +219,7 @@ exports.onWorkOrderCompletedPublic = (req, wo) => onWorkOrderCompleted(req, wo);
 exports.remove = asyncHandler(async (req, res) => {
   if (blockGenericWrite(req, res)) return;
   const e = getEntity(req, res); if (!e) return;
-  const row = await e.model.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  const row = await e.model.findOne({ where: { id: req.params.id, ...scoped(req) } });
   if (!row) return res.status(404).json({ error: 'Not found' });
   await row.destroy();
   res.json({ ok: true });
@@ -414,7 +416,7 @@ exports.listComments = asyncHandler(async (req, res) => {
   const { entityType, id } = req.params;
   if (!COMMENTABLE[entityType]) return res.status(404).json({ error: `"${entityType}" does not take comments.` });
   const rows = await M.WtRecordComment.findAll({
-    where: { ...branchScope(req), entity_type: entityType, entity_id: id },
+    where: { ...scoped(req), entity_type: entityType, entity_id: id },
     order: [['pinned', 'DESC'], ['id', 'DESC']],
   });
   res.json(rows);
@@ -426,7 +428,7 @@ exports.addComment = asyncHandler(async (req, res) => {
   if (!model) return res.status(404).json({ error: `"${entityType}" does not take comments.` });
   if (!req.body.body || !String(req.body.body).trim()) return res.status(400).json({ error: 'Write something first.' });
 
-  const record = await model.findOne({ where: { id, ...branchScope(req) } });
+  const record = await model.findOne({ where: { id, ...scoped(req) } });
   if (!record) return res.status(404).json({ error: 'Record not found' });
 
   const row = await M.WtRecordComment.create({
@@ -444,7 +446,7 @@ exports.addComment = asyncHandler(async (req, res) => {
 });
 
 exports.updateComment = asyncHandler(async (req, res) => {
-  const row = await M.WtRecordComment.findOne({ where: { id: req.params.commentId, ...branchScope(req) } });
+  const row = await M.WtRecordComment.findOne({ where: { id: req.params.commentId, ...scoped(req) } });
   if (!row) return res.status(404).json({ error: 'Comment not found' });
   const body = { ...req.body };
   delete body.id; delete body.branch_id; delete body.entity_type; delete body.entity_id;
@@ -453,7 +455,7 @@ exports.updateComment = asyncHandler(async (req, res) => {
 });
 
 exports.deleteComment = asyncHandler(async (req, res) => {
-  const row = await M.WtRecordComment.findOne({ where: { id: req.params.commentId, ...branchScope(req) } });
+  const row = await M.WtRecordComment.findOne({ where: { id: req.params.commentId, ...scoped(req) } });
   if (!row) return res.status(404).json({ error: 'Comment not found' });
   await row.destroy();
   res.json({ ok: true });
@@ -494,7 +496,7 @@ exports.advance = asyncHandler(async (req, res) => {
   if (!step) return res.status(400).json({ error: `"${req.params.entity}" has no next stage.` });
 
   const branchId = resolveBranchId(req);
-  const src = await e.model.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  const src = await e.model.findOne({ where: { id: req.params.id, ...scoped(req) } });
   if (!src) return res.status(404).json({ error: 'Not found' });
 
   const target = ENTITIES[step.to];
@@ -538,7 +540,7 @@ exports.advance = asyncHandler(async (req, res) => {
    Seventh Sky's margin is what's left.
    ───────────────────────────────────────────────────────────── */
 exports.payments = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const [invoices, workOrders, agreements] = await Promise.all([
     M.WtInvoice.findAll({ where: scope, order: [['id', 'DESC']], raw: true }),
     M.WtWorkOrder.findAll({ where: scope, order: [['id', 'DESC']], raw: true }),
@@ -645,7 +647,7 @@ exports.capabilities = asyncHandler(async (req, res) => {
  */
 exports.workQueue = asyncHandler(async (req, res) => {
   const wq = require('../services/wtWorkQueue.service');
-  res.json(await wq.summary(branchScope(req)));
+  res.json(await wq.summary(scoped(req)));
 });
 
 /**
@@ -656,7 +658,7 @@ exports.workQueue = asyncHandler(async (req, res) => {
 exports.calendar = asyncHandler(async (req, res) => {
   const cal = require('../services/wtCalendar.service');
   res.json(await cal.calendar({
-    scope: branchScope(req),
+    scope: scoped(req),
     from: req.query.from || null,
     to: req.query.to || null,
   }));
@@ -688,7 +690,7 @@ exports.moneyJournal = asyncHandler(async (req, res) => {
 exports.search = asyncHandler(async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (q.length < 2) return res.json([]);
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const LABEL = { clients: 'name', providers: 'business_name', projects: 'name', comms: 'summary' };
 
   const hits = await Promise.all(Object.entries(ENTITIES).map(async ([slug, e]) => {
@@ -711,7 +713,7 @@ exports.search = asyncHandler(async (req, res) => {
 
 // Aggregate for the Operations Dashboard.
 exports.dashboard = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const [sr, amc, inv, providers, projects, quotes, wos, complaints, assessments] = await Promise.all([
     M.WtServiceRequest.findAll({ where: scope, raw: true }),
     M.WtAmcContract.findAll({ where: scope, raw: true }),
@@ -928,7 +930,7 @@ exports.revokePortalLink = asyncHandler(async (req, res) => {
 exports.portalStatus = asyncHandler(async (req, res) => {
   const model = req.params.partyType === 'provider' ? M.WtProvider : M.WtClient;
   const row = await model.findOne({
-    where: { id: req.params.id, ...branchScope(req) },
+    where: { id: req.params.id, ...scoped(req) },
     attributes: ['id', 'code', 'portal_token_expires_at', 'portal_last_seen_at', 'portal_revoked_at', 'portal_token_hash'],
   });
   if (!row) return res.status(404).json({ error: 'Not found.' });

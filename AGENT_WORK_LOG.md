@@ -3729,3 +3729,16 @@ used "the last line starting with `import`", which landed inside a multi-line
   quotation, work-order, project, invoice, amc, disbursement, ops, reports, registers,
   agreementHub) + set service_line on their creates; parametrize the catalogue vertical by
   service line; then the svcBase() intra-screen nav pass.
+
+### 2026-08-29 22:40 | Claude Code (Opus 4.8) | COMPLETED | AC milestone 2b (batch 1) — ops/registers/disbursement scoped
+- Applied scoped(req)=branch+service to waterTankOps (16), waterTankRegisters (2),
+  waterTankDisbursement (7) — all query only wt_* tables (safe). Tagged their creates with
+  service_line (ops generic create; register common block → warranty/complaint/incident;
+  disbursement creates).
+- VERIFIED: WT dashboard still 22 active projects / 2 new leads (no header); AC dashboard 0/0.
+  Isolation holds, WT unaffected.
+- Remaining 2b (surgical — these controllers also touch non-wt tables Contact/SigningEnvelope/
+  Property/ServiceItem, which lack service_line, so a blind swap would break them): intake,
+  clients, quotation, work-order, project, invoice, amc, wtAgreements. Each needs scoped(req)
+  ONLY on wt_* queries + service_line on creates. Plus thread service_line into
+  wtIdentity.ensureClient/ensureProject, and parametrize the catalogue vertical. Then svcBase().

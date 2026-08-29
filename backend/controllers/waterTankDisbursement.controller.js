@@ -23,7 +23,9 @@
  * about its own cash.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+// Branch + service-line scope so each service line sees only its own data.
+const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
 const P = require('../models/waterTankProviders');
 const ledger = require('../services/wtLedger.service');
@@ -54,7 +56,7 @@ async function nextSeq(prefix, branchId, field = 'code') {
 
 /** GET /wt-disbursements/reference — every list the dialogs need. */
 exports.reference = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const [projects, providers] = await Promise.all([
     M.WtProject.findAll({ where: scope, attributes: ['code', 'name', 'client_name'], order: [['id', 'DESC']], limit: 60, raw: true }).catch(() => []),
     M.WtProvider.findAll({ where: scope, attributes: ['id', 'business_name'], order: [['business_name', 'ASC']], raw: true }).catch(() => []),
@@ -80,7 +82,7 @@ exports.reference = asyncHandler(async (req, res) => {
  * places to look and two chances to double-pay.
  */
 exports.list = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const where = { ...scope };
   if (req.query.status) where.status = req.query.status;
   if (req.query.project) where.project_code = req.query.project;
@@ -132,7 +134,7 @@ exports.create = asyncHandler(async (req, res) => {
   const payNow = b.pay_now !== false;
 
   const row = await M.WtProjectDisbursement.create({
-    branch_id: branchId,
+    branch_id: branchId, service_line: resolveServiceLine(req),
     code: await nextSeq('DSB-', branchId),
     disbursement_type: 'direct',
     project_code: b.project_code || null,
@@ -198,7 +200,7 @@ async function issueVoucher(row, branchId, actor) {
 exports.pay = asyncHandler(async (req, res) => {
   const branchId = resolveBranchId(req);
   const row = await M.WtProjectDisbursement.findOne({
-    where: { ...branchScope(req), [Op.or]: [{ code: String(req.params.code) }, { voucher_no: String(req.params.code) }] },
+    where: { ...scoped(req), [Op.or]: [{ code: String(req.params.code) }, { voucher_no: String(req.params.code) }] },
   });
   if (!row) return res.status(404).json({ error: 'Disbursement not found.' });
 
@@ -232,7 +234,7 @@ exports.pay = asyncHandler(async (req, res) => {
  * contractor's fee or a hardware bill — it cares who is owed money today.
  */
 exports.due = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const [workOrders, agreements, invoices, direct] = await Promise.all([
     M.WtWorkOrder.findAll({ where: scope, order: [['id', 'DESC']], raw: true }),
     P.WtProviderAgreement.findAll({ where: scope, raw: true }).catch(() => []),
@@ -331,7 +333,7 @@ exports.run = asyncHandler(async (req, res) => {
       } else {
         const wo = await M.WtWorkOrder.findOne({ where: { branch_id: branchId, id: p.id }, raw: true });
         const row = await M.WtProjectDisbursement.create({
-          branch_id: branchId,
+          branch_id: branchId, service_line: resolveServiceLine(req),
           code: await nextSeq('DSB-', branchId),
           disbursement_type: 'provider',
           project_code: wo?.project_id || null,
@@ -372,7 +374,7 @@ exports.run = asyncHandler(async (req, res) => {
 /** GET /wt-disbursements/:code/voucher — the branded PDF for one payment. */
 exports.voucher = asyncHandler(async (req, res) => {
   const row = await M.WtProjectDisbursement.findOne({
-    where: { ...branchScope(req), [Op.or]: [{ code: String(req.params.code) }, { voucher_no: String(req.params.code) }] },
+    where: { ...scoped(req), [Op.or]: [{ code: String(req.params.code) }, { voucher_no: String(req.params.code) }] },
     raw: true,
   });
   if (!row) return res.status(404).json({ error: 'Voucher not found.' });
@@ -388,7 +390,7 @@ exports.voucher = asyncHandler(async (req, res) => {
 /** GET /wt-disbursements/run/:batch/voucher — the whole run as one document. */
 exports.runVoucher = asyncHandler(async (req, res) => {
   const rows = await M.WtProjectDisbursement.findAll({
-    where: { ...branchScope(req), batch_ref: String(req.params.batch) },
+    where: { ...scoped(req), batch_ref: String(req.params.batch) },
     order: [['id', 'ASC']], raw: true,
   });
   if (!rows.length) return res.status(404).json({ error: 'That payment run was not found.' });
@@ -410,7 +412,7 @@ exports.runVoucher = asyncHandler(async (req, res) => {
 /** POST /wt-disbursements/:code/reverse — this payment was recorded in error. */
 exports.reverse = asyncHandler(async (req, res) => {
   const row = await M.WtProjectDisbursement.findOne({
-    where: { ...branchScope(req), [Op.or]: [{ code: String(req.params.code) }, { voucher_no: String(req.params.code) }] },
+    where: { ...scoped(req), [Op.or]: [{ code: String(req.params.code) }, { voucher_no: String(req.params.code) }] },
   });
   if (!row) return res.status(404).json({ error: 'Disbursement not found.' });
   if (!row.money_event_id) return res.status(409).json({ error: 'Nothing to reverse — this was never paid.' });

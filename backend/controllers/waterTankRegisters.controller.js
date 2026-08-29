@@ -17,7 +17,9 @@
  * communication log and never appeared on this screen at all.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+// Branch + service-line scope so each service line sees only its own data.
+const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
 const jobs = require('../services/wtJobContext.service');
 const identity = require('../services/wtIdentity.service');
@@ -76,7 +78,7 @@ const REGISTERS = {
 
 /** GET /wt-ops/registers/reference — every list the three dialogs need. */
 exports.reference = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const [providers, warranties, complaints, incidents] = await Promise.all([
     M.WtProvider.findAll({ where: scope, attributes: ['id', 'code', 'business_name', 'status'], order: [['business_name', 'ASC']], raw: true }).catch(() => []),
     M.WtWarranty.findAll({ where: scope, attributes: ['status'], raw: true }).catch(() => []),
@@ -107,7 +109,7 @@ exports.reference = asyncHandler(async (req, res) => {
 /** GET /wt-ops/registers/jobs?q= — the shared job lookup. */
 exports.jobs = asyncHandler(async (req, res) => {
   res.json(await jobs.search({
-    scope: branchScope(req),
+    scope: scoped(req),
     q: String(req.query.q || '').trim(),
     provider_id: req.query.provider_id || null,
   }));
@@ -142,6 +144,7 @@ exports.create = asyncHandler(async (req, res) => {
 
   const common = {
     branch_id: branchId,
+    service_line: resolveServiceLine(req),
     code: await identity.nextCode(spec.slug, branchId),
     ...context,
     // Who raised it, and how. 'client' means it came in through their portal.
@@ -208,7 +211,7 @@ exports.create = asyncHandler(async (req, res) => {
 
   if (workOrder) {
     await M.WtCommLog.create({
-      branch_id: branchId,
+      branch_id: branchId, service_line: resolveServiceLine(req),
       client_name: row.client_name || context.client_name,
       channel: 'note', direction: 'internal',
       summary: `${spec.label} ${row.code} raised against ${workOrder.code}`,
