@@ -31,8 +31,12 @@ export default function QuotationAgreement() {
   // AMC packages, billing cycles and live contracts come from the backend so the
   // agreement offers what actually exists rather than a hardcoded list.
   const [meta, setMeta] = useState({});
+  const [catalog, setCatalog] = useState([]);
   useEffect(() => {
     api.get('/wt-agreements/customer/meta').then((r) => setMeta(r.data || {})).catch(() => {});
+    // The full price schedule, so services can be ticked on/off here instead of
+    // only on the quotation — pre-selected from the quote, no re-adding.
+    api.get('/wt-agreements/customer/catalog').then((r) => setCatalog(Array.isArray(r.data) ? r.data : [])).catch(() => {});
   }, []);
 
   const load = useCallback(() => {
@@ -223,6 +227,23 @@ export default function QuotationAgreement() {
 
   const selected = draft.pricing_input.selected || [];
   const summary = preview?.pricing;
+
+  // Editable Schedule C — the whole price schedule, grouped, with the quote's
+  // services already ticked. Toggling/editing here redrafts the agreement live.
+  const selCodes = new Set(selected.map((s) => s.code));
+  const CAT_LABEL = { service: 'Standard Services', material: 'Materials & Consumables', labour: 'Labour' };
+  const grouped = catalog.reduce((g, c) => { (g[c.group || 'service'] ||= []).push(c); return g; }, {});
+  const toggleLine = (code) => setDraft((s) => {
+    const arr = [...(s.pricing_input.selected || [])];
+    const i = arr.findIndex((x) => x.code === code);
+    if (i >= 0) arr.splice(i, 1);
+    else { const c = catalog.find((x) => x.code === code); arr.push({ code, qty: 1, agreed_price: c ? c.standard_price : '' }); }
+    return { ...s, pricing_input: { ...s.pricing_input, selected: arr } };
+  });
+  const setLineField = (code, field, v) => setDraft((s) => ({
+    ...s,
+    pricing_input: { ...s.pricing_input, selected: (s.pricing_input.selected || []).map((x) => (x.code === code ? { ...x, [field]: v } : x)) },
+  }));
   const sb = draft.schedule_b || {};
   const isBusinessClient = ['commercial', 'industrial', 'institutional']
     .includes(String(draft.client_type || '').toLowerCase());
@@ -495,14 +516,51 @@ export default function QuotationAgreement() {
 
           <div className="wt-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="wt-panel-head">
-              <div className="wt-sec-title">Pricing carried from the quotation</div>
-              <button className="wt-link" onClick={() => nav(quotePath)}>Edit quotation</button>
+              <div className="wt-sec-title">Services on the agreement</div>
+              <button className="wt-link" onClick={() => nav(quotePath)}>Open quotation</button>
             </div>
             <div className="muted" style={{ fontSize: 12.5 }}>
-              {selected.length} service line{selected.length === 1 ? '' : 's'} at the agreed prices.
-              Change these on the quotation and come back — the agreement redrafts from it.
+              Pre-filled from quotation {quoteCode} — {selected.length} service line{selected.length === 1 ? '' : 's'}.
+              Tick to add or remove, and adjust quantity or agreed price. The agreement and its total redraft below.
             </div>
-            <div className="wt-grid3">
+
+            {catalog.length > 0 ? ['service', 'material', 'labour'].filter((g) => (grouped[g] || []).length).map((grp) => (
+              <div key={grp}>
+                <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--wt-accent-ink)', margin: '6px 0' }}>{CAT_LABEL[grp]}</div>
+                <table className="wt-tbl">
+                  <thead><tr>
+                    <th style={{ width: 34 }} /><th style={{ width: 92 }}>Code</th><th>Item</th>
+                    <th style={{ width: 88, textAlign: 'right' }}>Standard</th>
+                    <th style={{ width: 64, textAlign: 'center' }}>Qty</th>
+                    <th style={{ width: 110, textAlign: 'right' }}>Agreed (৳)</th>
+                  </tr></thead>
+                  <tbody>
+                    {(grouped[grp] || []).map((l) => {
+                      const on = selCodes.has(l.code);
+                      const row = selected.find((s) => s.code === l.code);
+                      return (
+                        <tr key={l.code} style={{ opacity: on ? 1 : 0.55 }}>
+                          <td><input type="checkbox" checked={on} onChange={() => toggleLine(l.code)} /></td>
+                          <td className="id">{l.code}</td>
+                          <td>{l.name}{l.unit ? <span className="muted"> · {l.unit}</span> : null}</td>
+                          <td className="muted" style={{ textAlign: 'right' }}>{bdt(l.standard_price)}</td>
+                          <td style={{ textAlign: 'center' }}>{on
+                            ? <input className="wt-input sm" type="number" min="1" style={{ width: 52, textAlign: 'center' }} value={row?.qty ?? 1} onChange={(e) => setLineField(l.code, 'qty', Number(e.target.value) || 1)} />
+                            : '—'}</td>
+                          <td style={{ textAlign: 'right' }}>{on
+                            ? <input className="wt-input sm" type="number" min="0" style={{ width: 96, textAlign: 'right' }} placeholder={String(l.standard_price)} value={row?.agreed_price ?? ''} onChange={(e) => setLineField(l.code, 'agreed_price', e.target.value)} />
+                            : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )) : (
+              <div className="muted" style={{ fontSize: 12.5 }}>{selected.length} service line{selected.length === 1 ? '' : 's'} carried from the quotation.</div>
+            )}
+
+            <div className="wt-grid3" style={{ borderTop: '1px solid var(--wt-line)', paddingTop: 12 }}>
               <div className="wt-field"><label>Transport / other (৳)</label>
                 <input className="wt-input" type="number" value={draft.pricing_input.transport}
                   onChange={(e) => setPath('pricing_input.transport', Number(e.target.value) || 0)} /></div>

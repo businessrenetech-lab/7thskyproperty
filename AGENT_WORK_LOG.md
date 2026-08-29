@@ -3307,3 +3307,22 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Handoff: redeploy + restart on Hostinger. The enquiry pipeline is now fully
   retired end to end (one intake: the Service Request). Next: the SA→Quotation→
   Agreement page prefill (/water-tank/site-assessments/:sa/quotation/:q/agreement).
+
+### 2026-08-19 18:20 | Claude Code (Opus 4.8) | COMPLETED | WT customer agreement — editable Schedule C (services) prefilled from the quotation
+- Request: on /water-tank/site-assessments/:sa/quotation/:q/agreement the services
+  should be editable here (show the full list, pre-filled from the quotation),
+  reflect on the agreement, with editable payment terms and no double adding.
+- Finding: the screen already prefills from /wt-quotes/:id/agreement-draft (client,
+  property, schedule_b, pricing_input.selected from the quote lines) and the
+  advance/discount/VAT/transport were already editable. The one gap was the service
+  lines — read-only ("edit on the quotation").
+- Change (frontend only, QuotationAgreement.jsx): fetch /wt-agreements/customer/
+  catalog and render an editable Schedule C — the full price schedule grouped
+  (Services / Materials / Labour) with the quote's services pre-ticked; tick to
+  add/remove, edit qty and agreed price. Edits flow into pricing_input.selected,
+  which the existing live preview redraws, so the agreement + total redraft in
+  place. No re-adding: the quote's lines arrive selected.
+- Verification: /wt-agreements/customer/catalog → 41 items across the three groups;
+  a quote's agreement-draft returns pricing_input.selected prefilled (e.g. WTC-005
+  x1 @6500). npm run build:admin passed; rebuilt dist committed.
+- Handoff: redeploy + restart on Hostinger. Backend unchanged.
