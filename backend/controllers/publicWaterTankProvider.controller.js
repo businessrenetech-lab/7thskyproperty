@@ -76,6 +76,7 @@ exports.upload = asyncHandler(async (req, res) => {
   const values = {
     ...where, doc_number: req.body.doc_number || null, issuer: req.body.issuer || null,
     issue_date: req.body.issue_date || null, expiry_date: req.body.expiry_date || null,
+    sum_insured: req.body.sum_insured ? Number(req.body.sum_insured) || 0 : 0,
     file_url: fileUrl, verified: false, status: 'Pending', notes: null,
   };
   const document = current ? await current.update(values) : await P.WtProviderDocument.create(values);

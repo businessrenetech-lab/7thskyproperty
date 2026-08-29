@@ -90,9 +90,40 @@ function DocumentList({ token, documents, reference, onChange }) {
 }
 function DocumentRow({ token, spec, document, onChange }) {
   const input = useRef(); const [busy, setBusy] = useState(false);
-  const upload = async (file) => { if (!file) return; setBusy(true); const body = new FormData(); body.append('file', file); body.append('category', spec.category); body.append('doc_type', spec.name); try { await api.post(`/public/water-tank-provider/${token}/upload`, body, { headers: { 'Content-Type': 'multipart/form-data' } }); await onChange(); } finally { setBusy(false); } };
+  const isInsurance = spec.category === 'insurance';
+  // Metadata the agreement / insurance verification needs — captured at upload so
+  // Seventh Sky isn't chasing policy numbers, expiries and cover amounts afterwards.
+  const [meta, setMeta] = useState({
+    doc_number: document?.doc_number || '', expiry_date: document?.expiry_date ? String(document.expiry_date).slice(0, 10) : '',
+    sum_insured: document?.sum_insured || '',
+  });
+  const setM = (k, v) => setMeta((s) => ({ ...s, [k]: v }));
+  const upload = async (file) => {
+    if (!file) return; setBusy(true);
+    const body = new FormData();
+    body.append('file', file); body.append('category', spec.category); body.append('doc_type', spec.name);
+    if (meta.doc_number) body.append('doc_number', meta.doc_number);
+    if (meta.expiry_date) body.append('expiry_date', meta.expiry_date);
+    if (isInsurance && meta.sum_insured) body.append('sum_insured', meta.sum_insured);
+    try { await api.post(`/public/water-tank-provider/${token}/upload`, body, { headers: { 'Content-Type': 'multipart/form-data' } }); await onChange(); } finally { setBusy(false); }
+  };
   const remove = async () => { if (!document || document.verified) return; setBusy(true); try { await api.delete(`/public/water-tank-provider/${token}/documents/${document.id}`); await onChange(); } finally { setBusy(false); } };
-  return <div><span className={document?.verified ? 'ok' : document ? 'pending' : ''}>{document?.verified ? <Check size={13} /> : <Upload size={13} />}</span><div><strong>{spec.name}</strong><small>{spec.category} · {document?.status || 'not uploaded'}</small></div><input ref={input} hidden type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={(e) => upload(e.target.files?.[0])} /><button disabled={busy || document?.verified} onClick={() => input.current?.click()}>{busy ? 'Working…' : document ? 'Replace' : 'Upload'}</button>{document && !document.verified && <button className="icon" onClick={remove}><Trash2 size={13} /></button>}</div>;
+  return (
+    <div>
+      <span className={document?.verified ? 'ok' : document ? 'pending' : ''}>{document?.verified ? <Check size={13} /> : <Upload size={13} />}</span>
+      <div style={{ flex: 1 }}>
+        <strong>{spec.name}</strong><small>{spec.category} · {document?.status || 'not uploaded'}</small>
+        <div className="wt-public-docmeta" style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+          <input style={{ flex: '1 1 120px', minWidth: 100 }} placeholder={isInsurance ? 'Policy number' : 'Document / licence no.'} value={meta.doc_number} onChange={(e) => setM('doc_number', e.target.value)} />
+          <input type="date" title="Expiry date" style={{ flex: '0 0 140px' }} value={meta.expiry_date} onChange={(e) => setM('expiry_date', e.target.value)} />
+          {isInsurance && <input type="number" placeholder="Sum insured (৳)" style={{ flex: '1 1 120px', minWidth: 100 }} value={meta.sum_insured} onChange={(e) => setM('sum_insured', e.target.value)} />}
+        </div>
+      </div>
+      <input ref={input} hidden type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={(e) => upload(e.target.files?.[0])} />
+      <button disabled={busy || document?.verified} onClick={() => input.current?.click()}>{busy ? 'Working…' : document ? 'Replace' : 'Upload'}</button>
+      {document && !document.verified && <button className="icon" onClick={remove}><Trash2 size={13} /></button>}
+    </div>
+  );
 }
 function PublicShell({ children }) { return <div className="wt-public"><div className="wt-public-brand"><span>7S</span><div><strong>Seventh Sky Property Care</strong><small>Secure provider onboarding</small></div></div>{children}</div>; }
 function Section({ title, text, children }) { return <section><header><h2>{title}</h2><p>{text}</p></header>{children}</section>; }

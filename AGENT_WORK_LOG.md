@@ -3658,3 +3658,24 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Verified: SP-0022 detail returns contact + 4 documents; proposed_rates/bank_details are
   JSON strings (now parsed). build passed.
 - Handoff: redeploy + restart on Hostinger.
+
+### 2026-08-29 19:15 | Claude Code (Opus 4.8) | COMPLETED | Provider onboarding/docs — review preview, doc metadata, fix false "Verified"
+- Reports: provider invitation should ask all info needed for the agreement incl. insurance;
+  compliance/insurance "showing verified" incorrectly; no preview of submitted documents on
+  the dashboard for review.
+- Root cause of "showing verified": verifyDocument had no guard, so document rows with NO
+  uploaded file were marked Verified. Found 13 compliance/insurance docs across providers
+  verified with no file (e.g. SP-0022 Trade Licence). RESET them to Pending, and added a
+  guard: a document cannot be verified unless a file has been uploaded (file_url present).
+- Document preview (the review gap): ProviderDetail's compliance/insurance table now has a
+  token-authed "View" link per document (opens the uploaded file); the JWT /uploads route
+  accepts ?token=. Uploaded docs (incl. the provider's own submissions) can now be reviewed.
+- Onboarding now captures document metadata the agreement needs: each compliance/insurance
+  row collects a document/policy number + expiry, and insurance rows also a sum insured;
+  sent with the upload (publicWaterTankProvider.upload now stores sum_insured too).
+- Note: documents are already provider-scoped (unique per provider) — the shared list is
+  just the required-checklist (Trade Licence, TIN, … / Public Liability, …). The problem
+  was the false-verified state, now fixed.
+- Verified: backend loads + healthy; admin build passed; 13 bad docs reset.
+- Handoff: redeploy + restart on Hostinger. (Public onboarding preview of one's own upload
+  is not added — /uploads is JWT-gated and onboarding is token-only; the admin reviews.)

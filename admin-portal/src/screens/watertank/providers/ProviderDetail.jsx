@@ -21,6 +21,7 @@ import {
   Pencil,
   Link2,
   BadgeDollarSign,
+  Eye,
 } from 'lucide-react';
 import api from '../../../services/api';
 import PortalLinkCard from '../PortalLinkCard';
@@ -87,6 +88,16 @@ function DocTable({ specs, docs, onEdit, onVerify, onDelete, category }) {
                     : <Pill value={d.status} sm />}
               </td>
               <td style={{ textAlign: 'right' }}>
+                {d?.file_url && (() => {
+                  let tok = ''; try { tok = localStorage.getItem('token') || ''; } catch { tok = ''; }
+                  return (
+                    <a className="wt-btn sm" style={{ marginRight: 5, textDecoration: 'none' }}
+                      href={`${d.file_url}${tok ? `?token=${encodeURIComponent(tok)}` : ''}`} target="_blank" rel="noopener"
+                      title="Open the uploaded document to review it">
+                      <Eye size={12} /> View
+                    </a>
+                  );
+                })()}
                 <button className="wt-btn sm" onClick={() => onEdit(spec, d)}>{d ? 'Edit' : 'Add'}</button>
                 {d && !d.verified && <button className="wt-btn sm primary" style={{ marginLeft: 5 }} onClick={() => onVerify(d, true)}>Verify</button>}
                 {d && d.verified && <button className="wt-btn sm" style={{ marginLeft: 5 }} onClick={() => onVerify(d, false)}>Unverify</button>}

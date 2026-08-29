@@ -643,6 +643,11 @@ exports.verifyDocument = asyncHandler(async (req, res) => {
   const row = await P.WtProviderDocument.findOne({ where: { id: req.params.id, ...branchScope(req) } });
   if (!row) return res.status(404).json({ error: 'Document not found' });
   const verified = req.body.verified !== false;
+  // A document can only be verified once its evidence has actually been uploaded —
+  // otherwise a compliance/insurance item could read "Verified" with no file behind it.
+  if (verified && !row.file_url) {
+    return res.status(400).json({ error: `Cannot verify "${row.doc_type}" — no document file has been uploaded yet.` });
+  }
   await row.update({
     verified,
     status: verified ? 'Verified' : (req.body.status || 'Rejected'),
