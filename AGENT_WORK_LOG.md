@@ -3333,3 +3333,25 @@ used "the last line starting with `import`", which landed inside a multi-line
   41-item price schedule by code or name before grouping; a "nothing matches" note when
   empty (already-selected services stay on the agreement regardless of the filter).
 - Verification: npm run build:admin passed; rebuilt dist committed. Backend unchanged.
+
+### 2026-08-19 19:05 | Claude Code (Opus 4.8) | COMPLETED | WT agreement — add editable Schedule A (services covered)
+- Request: the customer agreement screen had no Schedule A service-selection option
+  (services the agreement covers), and it wasn't on the quotation either — make it
+  dynamic and smooth.
+- Finding: the agreement engine already merges Schedule A from priced codes +
+  explicit data.services (scheduleAFromCodes), but nothing surfaced it and
+  draft.services was never initialised.
+- Change:
+  * Backend (wtAgreements.controller.js): the customer meta now also returns
+    code_to_schedule_a (the catalogue-code → Schedule A map) so a builder can show
+    which Schedule A entries a priced line already covers.
+  * Frontend (QuotationAgreement.jsx): initialise draft.services; added a
+    "Schedule A — services this agreement covers" card that renders meta
+    .service_groups as grouped checkboxes. Services implied by the priced Schedule C
+    lines are shown ticked + locked ("· from pricing") and recompute live as pricing
+    changes; the operator ticks any additional coverage (draft.services). Renamed the
+    pricing card to "Schedule C — priced services" for clarity.
+- Verification: meta returns service_groups (8) + code_to_schedule_a (28);
+  WTC-005 → Commercial Water Tank Cleaning. build:admin passed; dist committed;
+  backend restarted.
+- Handoff: redeploy + restart on Hostinger.

@@ -71,6 +71,9 @@ const customer = {
 
     res.json({
       service_groups: customerSvc.SERVICE_GROUPS,
+      // The catalogue-code → Schedule A map, so a builder can show which Schedule A
+      // services a priced line already covers (Clause 3) without re-deriving it.
+      code_to_schedule_a: customerSvc.CODE_TO_SCHEDULE_A,
       checklist_groups: customerSvc.CHECKLIST_GROUPS,
       role: 'Client',
       // Schedule A AMC tiers

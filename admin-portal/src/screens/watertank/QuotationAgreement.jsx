@@ -57,6 +57,9 @@ export default function QuotationAgreement() {
           // Residential unless the client record says otherwise — it drives which
           // party details the agreement asks for and prints.
           client_type: d0.client_type || d0.client?.client_type || 'Residential',
+          // Schedule A — services the agreement covers (Clause 3). Priced services
+          // are added automatically by the engine; this holds any extra ticks.
+          services: Array.isArray(d0.services) ? d0.services : [],
           pricing_input: { advance_percent: '', advance_amount: '', ...(d0.pricing_input || {}) },
           schedule_b: {
             project_no: '', work_order_no: '', quotation_no: '',
@@ -248,6 +251,20 @@ export default function QuotationAgreement() {
     ...s,
     pricing_input: { ...s.pricing_input, selected: (s.pricing_input.selected || []).map((x) => (x.code === code ? { ...x, [field]: v } : x)) },
   }));
+
+  // Schedule A — the services the agreement covers. Priced (Schedule C) lines
+  // imply their Schedule A entries automatically; the operator can tick extras.
+  const serviceGroups = meta.service_groups || {};
+  const codeToA = meta.code_to_schedule_a || {};
+  const impliedA = new Set();
+  selected.forEach((s) => (codeToA[String(s.code).toUpperCase()] || []).forEach((n) => impliedA.add(n)));
+  const svcList = draft.services || [];
+  const toggleService = (item) => setDraft((s) => {
+    const arr = [...(s.services || [])];
+    const i = arr.indexOf(item);
+    if (i >= 0) arr.splice(i, 1); else arr.push(item);
+    return { ...s, services: arr };
+  });
   const sb = draft.schedule_b || {};
   const isBusinessClient = ['commercial', 'industrial', 'institutional']
     .includes(String(draft.client_type || '').toLowerCase());
@@ -519,8 +536,38 @@ export default function QuotationAgreement() {
           </div>
 
           <div className="wt-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="wt-sec-title">Schedule A — services this agreement covers</div>
+            <div className="muted" style={{ fontSize: 12.5 }}>
+              Clause 3 limits the agreement to what is ticked here. The services you price below are
+              covered automatically{impliedA.size ? ` (${impliedA.size} from pricing)` : ''}; tick anything
+              additional the agreement should also cover.
+            </div>
+            {Object.keys(serviceGroups).length === 0 ? (
+              <div className="muted" style={{ fontSize: 12.5 }}>Loading the service list…</div>
+            ) : Object.entries(serviceGroups).map(([g, items]) => (
+              <div key={g}>
+                <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--wt-accent-ink)', margin: '6px 0' }}>{g}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px' }}>
+                  {items.map((it) => {
+                    const auto = impliedA.has(it);
+                    const on = auto || svcList.includes(it);
+                    return (
+                      <label key={it}
+                        title={auto ? 'Covered automatically — it is priced in Schedule C' : ''}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, cursor: auto ? 'default' : 'pointer', opacity: auto ? 0.85 : 1 }}>
+                        <input type="checkbox" checked={on} disabled={auto} onChange={() => toggleService(it)} />
+                        {it}{auto && <span className="muted" style={{ fontSize: 10.5 }}> · from pricing</span>}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="wt-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="wt-panel-head">
-              <div className="wt-sec-title">Services on the agreement</div>
+              <div className="wt-sec-title">Schedule C — priced services</div>
               <button className="wt-link" onClick={() => nav(quotePath)}>Open quotation</button>
             </div>
             <div className="muted" style={{ fontSize: 12.5 }}>
