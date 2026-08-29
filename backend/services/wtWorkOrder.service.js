@@ -6,6 +6,7 @@
  * carries the delivery stages that drive the progress bar everywhere it appears.
  */
 const M = require('../models/waterTankOps');
+const { serviceLineForRelatedType } = require('../config/serviceLines');
 
 const num = (v) => Number(v || 0);
 const today = () => new Date().toISOString().slice(0, 10);
@@ -137,6 +138,7 @@ async function createFromSignedAgreement(envelope, options = {}) {
 
   const wo = await M.WtWorkOrder.create({
     branch_id: branchId,
+    service_line: (quote && quote.service_line) || (envelope && serviceLineForRelatedType(envelope.related_type)) || 'water_tank',
     code: await nextCode(branchId, transaction),
     client_name: clientName || 'Unknown client',
     client_code: client?.code || null,
@@ -236,6 +238,7 @@ async function createFromQuotation(quote, { branchId, actor = 'System', transact
 
   const wo = await M.WtWorkOrder.create({
     branch_id: bid,
+    service_line: quote.service_line || 'water_tank',
     code: await nextCode(bid, transaction),
     client_name: quote.client_name || 'Unknown client',
     client_code: quote.client_code || client?.code || null,

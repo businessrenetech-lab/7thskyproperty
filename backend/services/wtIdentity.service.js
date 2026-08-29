@@ -55,20 +55,24 @@ async function nextCode(entity, branchId, transaction) {
  * Returns null only when there is genuinely no client name to work with.
  */
 async function ensureClient(branchId, { client_code, client_name, ...extra } = {}, transaction, dryRun = false) {
+  // The owning service line comes in via extra.service_line (default water_tank),
+  // so a client found/created here belongs to the caller's service, not shared.
+  const sl = extra.service_line || 'water_tank';
   if (client_code) {
-    const byCode = await M.WtClient.findOne({ where: { branch_id: branchId, code: client_code }, transaction });
+    const byCode = await M.WtClient.findOne({ where: { branch_id: branchId, service_line: sl, code: client_code }, transaction });
     if (byCode) return byCode;
   }
   const name = String(client_name || '').trim();
   if (!isRealName(name)) return null;
 
-  const byName = await M.WtClient.findOne({ where: { branch_id: branchId, name }, transaction });
+  const byName = await M.WtClient.findOne({ where: { branch_id: branchId, service_line: sl, name }, transaction });
   if (byName) return byName;
   // a read-only caller wants to know what WOULD be minted, without writing
   if (dryRun) return { code: '(new client)', name, __virtual: true };
 
   return M.WtClient.create({
     branch_id: branchId,
+    service_line: sl,
     code: await nextCode('clients', branchId, transaction),
     name,
     client_type: extra.client_type || 'Residential',
@@ -92,10 +96,12 @@ async function ensureClient(branchId, { client_code, client_name, ...extra } = {
  */
 async function ensureProject(branchId, client, hint = {}, transaction, dryRun = false) {
   if (!client) return null;
+  // Owning service line (default water_tank) — a project stays within its service.
+  const sl = hint.service_line || client.service_line || 'water_tank';
 
   // An explicit project link always wins — the record already belongs to a project.
   if (hint.project_id) {
-    const byCode = await M.WtProject.findOne({ where: { branch_id: branchId, code: hint.project_id }, transaction });
+    const byCode = await M.WtProject.findOne({ where: { branch_id: branchId, service_line: sl, code: hint.project_id }, transaction });
     if (byCode) return byCode;
   }
 
@@ -104,7 +110,7 @@ async function ensureProject(branchId, client, hint = {}, transaction, dryRun = 
   // its work orders do not pile up under an earlier engagement's project.
   if (!hint.forceNew) {
     const open = await M.WtProject.findOne({
-      where: { branch_id: branchId, client_name: client.name, status: 'Open' },
+      where: { branch_id: branchId, service_line: sl, client_name: client.name, status: 'Open' },
       order: [['id', 'DESC']],
       transaction,
     });
@@ -114,6 +120,7 @@ async function ensureProject(branchId, client, hint = {}, transaction, dryRun = 
 
   return M.WtProject.create({
     branch_id: branchId,
+    service_line: sl,
     code: await nextCode('projects', branchId, transaction),
     name: `${client.name} — ${hint.title || 'Water Tank Service'}`,
     client_name: client.name,
@@ -151,9 +158,13 @@ async function attachIdentifiers(entity, body, branchId, transaction, dryRun = f
   const name = body[link.name];
   if (!isRealName(name)) return body;
 
+  // The record's service_line (set by the controller from the request) flows into
+  // the client/project it spawns, so they stay within the same service.
+  const sl = body.service_line || 'water_tank';
   const client = await ensureClient(branchId, {
     client_code: body.client_code,
     client_name: name,
+    service_line: sl,
     phone: body.phone || body.client_phone,
     email: body.email,
     address: body.address || body.site_address || body.service_address,
@@ -173,6 +184,7 @@ async function attachIdentifiers(entity, body, branchId, transaction, dryRun = f
   if (link.project && !out[link.project] && !defersProject) {
     const project = await ensureProject(branchId, client, {
       project_id: body.project_id,
+      service_line: sl,
       title: body.category || body.specific_service || body.warranty_type || undefined,
       provider_name: body.provider_name || body.provider,
       stage: entity === 'work-orders' ? 'Agreement' : 'Lead',

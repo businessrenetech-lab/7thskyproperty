@@ -3757,3 +3757,17 @@ used "the last line starting with `import`", which landed inside a multi-line
   link path), wtInvoice.service and wtAmc.service creates, and the signed-agreement WO
   create in wtWorkOrder.service; parametrize the catalogue vertical by service line
   (air_conditioning_csa) + seed it; then the svcBase() intra-screen nav pass over screens.
+
+### 2026-08-30 00:10 | Claude Code (Opus 4.8) | COMPLETED | AC milestone 2c — service-layer creates carry service_line (full flow proven)
+- Threaded service_line through the shared create paths: wtIdentity.ensureClient/ensureProject
+  (scope lookups + set service_line, from hint/extra.service_line, default water_tank);
+  attachIdentifiers passes body.service_line; setDecision (quotation approval) passes the
+  quote's service_line; wtWorkOrder.service createFromSignedAgreement + createFromQuotation
+  tag the WO service_line (from quote / envelope related_type).
+- VERIFIED full AC flow: AC direct request → SR-1109 + Q-1067 (project null, deferred);
+  approving Q-1067 opened project WTCM-P0026 — and every record (request, quote, project,
+  client) is service_line=air_conditioning; WT untouched. Test rows cleaned up.
+- Remaining tail: wtInvoice.service / wtAmc.service record creates (invoices/AMC raised via
+  those services still default water_tank); parametrize the catalogue vertical
+  (air_conditioning_csa) + seed it; then the svcBase() intra-screen nav pass over the shared
+  screens so AC deep-links stay in the AC console.
