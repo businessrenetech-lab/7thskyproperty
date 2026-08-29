@@ -80,6 +80,15 @@ export default function QuotationDirect() {
     || [c.code, c.name].some((v) => String(v || '').toLowerCase().includes(catQ.toLowerCase())));
   const chosen = new Set(f.lines.map((l) => l.code));
 
+  // Group the whole price schedule so an operator can browse and tick services
+  // straight from the list instead of searching for them one at a time.
+  const CAT_LABEL = { service: 'Services', material: 'Materials', labour: 'Labour' };
+  const grouped = catalog.reduce((m, c) => { const k = c.group || 'service'; (m[k] ||= []).push(c); return m; }, {});
+  const groupOrder = ['service', 'material', 'labour',
+    ...Object.keys(grouped).filter((k) => !['service', 'material', 'labour'].includes(k))];
+  const totalCatalog = (ref?.catalog || []).length;
+  const selectedCount = f.lines.filter((l) => l.kind !== 'fee').length;
+
   const addLine = (c) => setF((s) => ({
     ...s,
     lines: [...s.lines, { kind: 'service', code: c.code, name: c.name, unit: c.unit, qty: 1, price: c.standard_price, standard_price: c.standard_price }],
@@ -87,6 +96,7 @@ export default function QuotationDirect() {
   const addFee = () => setF((s) => ({ ...s, lines: [...s.lines, { kind: 'fee', code: '', name: '', qty: 1, price: '' }] }));
   const setLine = (i, k, v) => setF((s) => ({ ...s, lines: s.lines.map((l, j) => (j === i ? { ...l, [k]: v } : l)) }));
   const delLine = (i) => setF((s) => ({ ...s, lines: s.lines.filter((_, j) => j !== i) }));
+  const removeByCode = (code) => setF((s) => ({ ...s, lines: s.lines.filter((l) => !(l.kind !== 'fee' && l.code === code)) }));
 
   const totals = useMemo(() => {
     const lt = (l) => Number(l.price || 0) * (Number(l.qty) || 1);
@@ -239,7 +249,11 @@ export default function QuotationDirect() {
 
           {/* ── services ── */}
           <div className="wt-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div className="wt-sec-title">Services</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+              <div className="wt-sec-title" style={{ margin: 0 }}>Services</div>
+              <span style={{ fontSize: 11.5, color: 'var(--wt-muted)' }}>{selectedCount} of {totalCatalog} selected</span>
+            </div>
+
             {f.lines.length > 0 && (
               <table className="wt-tbl">
                 <thead><tr><th style={{ width: 90 }}>Code</th><th>Item</th><th style={{ width: 70 }}>Qty</th><th style={{ width: 110 }}>Price</th><th style={{ width: 110, textAlign: 'right' }}>Total</th><th style={{ width: 40 }} /></tr></thead>
@@ -261,23 +275,55 @@ export default function QuotationDirect() {
                 </tbody>
               </table>
             )}
+
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <label className="wt-search" style={{ width: 260 }}>
-                <Search /><input value={catQ} onChange={(e) => setCatQ(e.target.value)} placeholder="Add from the price schedule…" />
+              <label className="wt-search" style={{ flex: '1 1 240px' }}>
+                <Search /><input value={catQ} onChange={(e) => setCatQ(e.target.value)} placeholder="Filter the price schedule…" />
               </label>
               <button className="wt-btn sm" onClick={addFee}><Plus size={13} /> Additional fee</button>
             </div>
-            {catQ && (
-              <div className="wt-lookup" style={{ maxHeight: 200 }}>
-                {catalog.slice(0, 10).map((c) => (
-                  <button key={c.code} className="wt-lookup-item" disabled={chosen.has(c.code)}
-                    onClick={() => { addLine(c); setCatQ(''); }}>
-                    <span style={{ flex: '1 0 0' }}><span className="nm">{c.name}</span><span className="mt">{c.code}{c.unit ? ` · ${c.unit}` : ''}</span></span>
-                    <span style={{ fontWeight: 700, fontSize: 12 }}>{bdt(c.standard_price)}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+
+            {/* The whole price schedule, grouped and tickable — click to add, click again to remove. */}
+            <div className="wt-lookup" style={{ maxHeight: 380 }}>
+              {groupOrder.map((key) => {
+                const rows = grouped[key] || [];
+                if (!rows.length) return null;
+                return (
+                  <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--wt-muted)', fontWeight: 800, padding: '4px 2px 0' }}>
+                      {CAT_LABEL[key] || key} · {rows.length}
+                    </div>
+                    {rows.map((c) => {
+                      const on = chosen.has(c.code);
+                      return (
+                        <button
+                          key={c.code}
+                          className="wt-lookup-item"
+                          onClick={() => (on ? removeByCode(c.code) : addLine(c))}
+                          style={on ? { borderColor: 'var(--wt-accent)', background: 'var(--wt-accent-tint)' } : undefined}
+                        >
+                          <span style={{ display: 'grid', placeItems: 'center', width: 20, flex: 'none', color: on ? 'var(--wt-accent-ink)' : 'var(--wt-muted)' }}>
+                            {on ? <Check size={15} /> : <Plus size={14} />}
+                          </span>
+                          <span style={{ flex: '1 0 0', minWidth: 0 }}>
+                            <span className="nm">{c.name}</span>
+                            <span className="mt">{c.code}{c.unit ? ` · ${c.unit}` : ''}</span>
+                          </span>
+                          <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--wt-ink)' }}>
+                            {c.standard_price > 0 ? bdt(c.standard_price) : 'On quote'}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+              {!catalog.length && (
+                <EmptyState eyebrow="No match"
+                  title={catQ ? `Nothing matches “${catQ.trim()}”` : 'The price schedule is empty'}
+                  hint={catQ ? 'Clear the filter to see the full list.' : 'Add items on the Price Schedule screen first.'} />
+              )}
+            </div>
           </div>
 
           {/* ── terms ── */}

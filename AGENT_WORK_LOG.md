@@ -3183,3 +3183,21 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Handoff: Needs redeploy + Node app restart on Hostinger to take effect (git
   pull → restart; no build/migration required). server.js and manifest.js should
   eventually be unified to one source so they can't drift again.
+
+### 2026-08-19 14:10 | Claude Code (Opus 4.8) | COMPLETED | WT new quotation — browse full price schedule instead of one-by-one search
+- Request: /water-tank/quotations/new should show the full services list so the
+  user can select services, rather than finding them one at a time.
+- Root cause (UX): the whole catalog was already loaded client-side
+  (`/wt-invoices/reference` → `ref.catalog`), but the Services picker only
+  revealed a max-10 dropdown WHILE the operator typed, adding one line per search.
+- Scope/Changes: `admin-portal/src/screens/watertank/QuotationDirect.jsx` only.
+  Replaced the search-gated dropdown with an always-visible, grouped
+  (Services / Materials / Labour, by catalog `group`), tickable list: click a row
+  to add it, click again to remove; selected rows are highlighted with a check and
+  a live "N of M selected" count. The search box now filters the full list instead
+  of gating it. Added `removeByCode` + grouping helpers; reused existing `addLine`
+  and the `.wt-lookup-item` styling.
+- Verification: `npm run build:admin` succeeded (1997 modules, 0 errors, 14s);
+  committed the rebuilt admin-portal/dist alongside the source (matches the
+  10b84eb2 pattern). Not yet browser-verified on the live URL — needs redeploy.
+- Handoff: Backend unchanged. Redeploy + restart on Hostinger to see it live.
