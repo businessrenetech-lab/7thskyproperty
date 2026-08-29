@@ -64,6 +64,7 @@ export default function Invoices() {
     const overdue = rows.filter((r) => is(r, 'overdue'));
     const paidThisMonth = rows.filter((r) => is(r, 'paid') && new Date(r.updatedAt || r.createdAt) >= monthStart);
     const payoutPending = rows.filter((r) => (r.provider_payout || '').toLowerCase() === 'pending');
+    const drafts = rows.filter((r) => is(r, 'draft'));
     return {
       outstanding: pending.reduce((s, r) => s + (num(r.outstanding) || num(r.amount)), 0),
       outstandingCount: pending.length,
@@ -73,6 +74,10 @@ export default function Invoices() {
       overdueAmount: overdue.reduce((s, r) => s + (num(r.outstanding) || num(r.amount)), 0),
       payoutPending: payoutPending.reduce((s, r) => s + num(r.amount), 0),
       payoutPendingCount: payoutPending.length,
+      // Drafts are billed value not yet raised — surfaced so they can be raised
+      // or discarded instead of quietly accumulating in the register.
+      draftCount: drafts.length,
+      draftValue: drafts.reduce((s, r) => s + num(r.amount), 0),
     };
   }, [rows]);
 
@@ -91,6 +96,7 @@ export default function Invoices() {
 
       <StatCards items={[
         { label: 'Total Outstanding', value: bdt(stats.outstanding), sub: `${stats.outstandingCount} unsettled invoice${stats.outstandingCount === 1 ? '' : 's'}` },
+        { label: 'Drafts to Raise', value: `${stats.draftCount}`, sub: stats.draftCount ? `${bdt(stats.draftValue)} not yet billed — raise or discard` : 'None waiting', color: stats.draftCount ? 'var(--wt-amber)' : undefined },
         { label: 'Paid This Month', value: bdt(stats.paidThisMonth), sub: `${stats.paidThisMonthCount} invoice${stats.paidThisMonthCount === 1 ? '' : 's'} settled` },
         { label: 'Overdue', value: `${stats.overdueCount} account${stats.overdueCount === 1 ? '' : 's'}`, sub: stats.overdueAmount ? `${bdt(stats.overdueAmount)} past due` : 'Nothing past due', color: stats.overdueCount ? 'var(--wt-red)' : undefined },
         { label: 'Pending Payouts', value: bdt(stats.payoutPending), sub: `${stats.payoutPendingCount} provider disbursement${stats.payoutPendingCount === 1 ? '' : 's'} due` },

@@ -3259,3 +3259,31 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Handoff: redeploy + restart on Hostinger. The dead EnquiriesRegister function
   remains in ServiceRequests.jsx (unreachable) — safe to delete in a later cleanup.
   Enquiry backend routes left in place (data-preserving, just unsurfaced).
+
+### 2026-08-19 17:10 | Claude Code (Opus 4.8) | COMPLETED | Water Tank — dead-code cleanup + M3 draft hygiene + L2 nav consolidation
+- Request: do the cleanup and tackle M3 and L2.
+- Cleanup (frontend): removed the now-dead EnquiriesRegister from ServiceRequests.jsx
+  (the register, ENQUIRY_STATUSES, ENQUIRY_FIELDS, SOURCE_ICON and their exclusive
+  imports — api, useEffect, useCallback, several icons). Build clean.
+- Cleanup (backend) — NOT removed, on purpose. The enquiry routes/model are fed by
+  the PUBLIC website form (POST /public/water-tank/enquiry → WtEnquiry), and
+  createRequest is heavyweight (needs an assessment date or service lines and
+  creates a client + project), so a raw website lead cannot go straight into a
+  Service Request. Removing the enquiry backend would orphan real inbound leads.
+  Left intact (data + website safe); flagged the follow-up (reroute the website
+  form to create Service Requests) for a separate, deliberate change.
+- M3 (draft-invoice hygiene): there is only ONE WtInvoice.create site — no
+  auto-spawn from work orders (the WO screen only *suggests* "Raise the invoice").
+  The 71 drafts are created-and-abandoned. M2 already fixed the numbers; here I
+  added a "Drafts to Raise" stat card on the Invoices screen (count + ৳ value,
+  amber when >0) so abandoned drafts are visible and actionable rather than quietly
+  cluttering the register.
+- L2 (nav consolidation): WATER_TANK_NAV cut from 8 groups to 6 — merged
+  Delivery + Contracts → "Delivery & Contracts" (Projects, Work Orders, Agreements,
+  AMC) and Assurance + Administration → "Assurance & Admin". All destinations and
+  role/needs gates preserved; no routes changed.
+- Verification: npm run build:admin passed (0 errors); rebuilt dist committed.
+  Backend unchanged this round (no restart needed).
+- Handoff: redeploy + restart on Hostinger. Open follow-ups: reroute the public
+  website enquiry to a Service Request (then the enquiry backend can retire), and
+  the INV-0484 "Paid but 25,600 owed" data correction.

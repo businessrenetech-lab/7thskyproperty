@@ -51,18 +51,12 @@ export const WATER_TANK_NAV = [
   },
   {
     key: 'delivery',
-    label: 'Delivery',
+    label: 'Delivery & Contracts',
     items: [
       // A project is the delivery container; its work orders live inside it
       // (Project → Work Orders tab). Projects lead so the containment reads.
       { to: '/water-tank/projects', label: 'Projects', icon: Folder },
       { to: '/water-tank/work-orders', label: 'Work Orders', icon: Briefcase },
-    ],
-  },
-  {
-    key: 'contracts',
-    label: 'Contracts',
-    items: [
       { to: '/water-tank/agreements', label: 'Agreements', icon: FileSignature },
       { to: '/water-tank/amc', label: 'AMC', icon: Shield },
     ],
@@ -88,17 +82,11 @@ export const WATER_TANK_NAV = [
   },
   {
     key: 'assurance',
-    label: 'Assurance',
+    label: 'Assurance & Admin',
     items: [
       { to: '/water-tank/service-reports', label: 'Service Reports', icon: FileBarChart },
       { to: '/water-tank/registers', label: 'Warranty & Issues', icon: ShieldCheck },
       { to: '/water-tank/complaints', label: 'Complaints', icon: AlertCircle },
-    ],
-  },
-  {
-    key: 'admin',
-    label: 'Administration',
-    items: [
       { to: '/water-tank/communication', label: 'Communication Log', icon: MessageSquare },
       { to: '/water-tank/catalogue', label: 'Price Schedule', icon: Tags, needs: 'bind' },
       { to: '/water-tank/portal-accounts', label: 'Portal Accounts', icon: KeyRound, needs: 'bind' },
