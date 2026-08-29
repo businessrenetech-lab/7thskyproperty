@@ -11,7 +11,9 @@
  * so the API refuses to move a client to Provider Assignment without one.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+// Branch + service-line scope for wt_* reads (Contact queries keep plain branchScope).
+const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
 const P = require('../models/waterTankProviders');
 
@@ -137,7 +139,7 @@ function buildGates(client, ctx) {
  * GET /wt-clients/directory — the client book with Sec. 4 stage, value and risk.
  */
 exports.directory = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const [clients, workOrders, invoices, complaints, amc, quotations] = await Promise.all([
     M.WtClient.findAll({ where: scope, order: [['id', 'DESC']], raw: true }),
     M.WtWorkOrder.findAll({ where: scope, raw: true }),
@@ -214,7 +216,7 @@ exports.lookup = asyncHandler(async (req, res) => {
   const like = { [Op.like]: `%${q}%` };
 
   const water_tank = await M.WtClient.findAll({
-    where: { ...branchScope(req), [Op.or]: [{ name: like }, { mobile: like }, { email: like }, { code: like }, { service_address: like }] },
+    where: { ...scoped(req), [Op.or]: [{ name: like }, { mobile: like }, { email: like }, { code: like }, { service_address: like }] },
     limit: 8, order: [['id', 'DESC']], raw: true,
   });
 
@@ -243,7 +245,7 @@ exports.lookup = asyncHandler(async (req, res) => {
 /* ═══ ONE CLIENT: the client's own dashboard ══════════════════ */
 
 exports.detail = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const key = req.params.id;
   const found = await M.WtClient.findOne({
     where: { ...scope, [Op.or]: [{ id: Number.isNaN(Number(key)) ? -1 : Number(key) }, { code: key }] },
@@ -335,7 +337,7 @@ exports.detail = asyncHandler(async (req, res) => {
 /* ═══ LIFECYCLE ACTIONS ═══════════════════════════════════════ */
 
 async function loadClient(req, res) {
-  const c = await M.WtClient.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  const c = await M.WtClient.findOne({ where: { id: req.params.id, ...scoped(req) } });
   if (!c) { res.status(404).json({ error: 'Client not found' }); return null; }
   return c;
 }
@@ -498,7 +500,7 @@ exports.create = asyncHandler(async (req, res) => {
   const dupWhere = [{ name }];
   if (body.mobile) dupWhere.push({ mobile: String(body.mobile).trim() });
   if (body.email) dupWhere.push({ email: String(body.email).trim() });
-  const existing = await M.WtClient.findOne({ where: { ...branchScope(req), [Op.or]: dupWhere } });
+  const existing = await M.WtClient.findOne({ where: { ...scoped(req), [Op.or]: dupWhere } });
   if (existing) return res.status(200).json(existing);
 
   const rows = await M.WtClient.findAll({ where: { branch_id: branchId }, attributes: ['code'], raw: true });
@@ -509,7 +511,7 @@ exports.create = asyncHandler(async (req, res) => {
   CLIENT_FIELDS.forEach((k) => { if (body[k] !== undefined) payload[k] = body[k]; });
   const client = await M.WtClient.create({
     ...payload,
-    branch_id: branchId,
+    branch_id: branchId, service_line: resolveServiceLine(req),
     code: `WTCM-C${String(max + 1).padStart(4, '0')}`,
     name,
     tanks_count: Number(body.tanks_count) || 0,
@@ -528,14 +530,14 @@ exports.create = asyncHandler(async (req, res) => {
 exports.registerProject = asyncHandler(async (req, res) => {
   const c = await loadClient(req, res); if (!c) return;
   const branchId = resolveBranchId(req);
-  const existing = await M.WtProject.findOne({ where: { ...branchScope(req), client_name: c.name, status: 'Open' } });
+  const existing = await M.WtProject.findOne({ where: { ...scoped(req), client_name: c.name, status: 'Open' } });
   if (existing) return res.json({ project: existing, created: false });
 
   const rows = await M.WtProject.findAll({ where: { branch_id: branchId }, attributes: ['code'], raw: true });
   let max = 0;
   rows.forEach((r) => { const n = parseInt(String(r.code || '').replace('WTCM-P', ''), 10); if (!Number.isNaN(n) && n > max) max = n; });
   const project = await M.WtProject.create({
-    branch_id: branchId,
+    branch_id: branchId, service_line: resolveServiceLine(req),
     code: `WTCM-P${String(max + 1).padStart(4, '0')}`,
     name: `${c.name} — ${c.requested_service || 'Water Tank Service'}`,
     client_name: c.name,

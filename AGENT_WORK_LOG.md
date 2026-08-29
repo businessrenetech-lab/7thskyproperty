@@ -3742,3 +3742,18 @@ used "the last line starting with `import`", which landed inside a multi-line
   clients, quotation, work-order, project, invoice, amc, wtAgreements. Each needs scoped(req)
   ONLY on wt_* queries + service_line on creates. Plus thread service_line into
   wtIdentity.ensureClient/ensureProject, and parametrize the catalogue vertical. Then svcBase().
+
+### 2026-08-29 23:30 | Claude Code (Opus 4.8) | COMPLETED | AC milestone 2b (batch 2) — clients/quotation/work-order/project/invoice/amc scoped
+- Applied branch+service scoping to the remaining core controllers, protecting cross-module
+  queries that lack service_line (Contact, Property, ServiceItem, SigningEnvelope*):
+  * clients (Contact kept on branchScope), quotation (wt_* only), work-order (wt_* only;
+    SigningEnvelope uses findByPk/its own create), project (Contact + Property kept),
+    invoice (reference ServiceItem kept), amc (reference ServiceItem kept).
+  * Tagged the record creates they own (clients: WtClient/WtProject; quotation: WtQuotation).
+- VERIFIED WT intact + AC isolated: work-orders 51/0, projects 24/0, invoices 87/0, amc 5/0,
+  clients populated/0, service-requests 14/0, providers 6/0, dashboard 22 projects/0.
+- Remaining tail (service-layer creates default to water_tank via the model): thread
+  service_line into wtIdentity.ensureClient/ensureProject (quotation-approval + generic
+  link path), wtInvoice.service and wtAmc.service creates, and the signed-agreement WO
+  create in wtWorkOrder.service; parametrize the catalogue vertical by service line
+  (air_conditioning_csa) + seed it; then the svcBase() intra-screen nav pass over screens.

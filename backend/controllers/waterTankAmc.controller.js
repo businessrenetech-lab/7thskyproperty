@@ -3,7 +3,9 @@
  * Logic lives in services/wtAmc.service.js; this layer is transport and scoping.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, pick } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, pick, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+// Branch + service scope for wt_*; reference() ServiceItem query keeps plain branchScope.
+const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
 const Property = require('../models/Property');
 const ServiceItem = require('../models/ServiceItem');
@@ -18,7 +20,7 @@ const loadAmc = async (req, res) => {
   const key = req.params.code;
   const amc = await M.WtAmcContract.findOne({
     where: {
-      ...branchScope(req),
+      ...scoped(req),
       [Op.or]: [{ id: Number.isNaN(Number(key)) ? -1 : Number(key) }, { code: String(key) }],
     },
   });
@@ -79,7 +81,7 @@ exports.preview = asyncHandler(async (req, res) => {
 
 /* ── list + overview ── */
 exports.list = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const { q, status, tier, renewal } = req.query;
   const where = { ...scope };
   if (status) where.status = status;
@@ -118,7 +120,7 @@ exports.list = asyncHandler(async (req, res) => {
 });
 
 exports.overview = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const [rows, visits] = await Promise.all([
     M.WtAmcContract.findAll({ where: scope, raw: true }),
     M.WtAmcVisit.findAll({ where: scope, raw: true }),
@@ -164,7 +166,7 @@ exports.create = asyncHandler(async (req, res) => {
 });
 
 exports.detail = asyncHandler(async (req, res) => {
-  const dossier = await svc.amcDossier(req.params.code, branchScope(req));
+  const dossier = await svc.amcDossier(req.params.code, scoped(req));
   if (!dossier) return res.status(404).json({ error: 'AMC contract not found.' });
   res.json(dossier);
 });
@@ -203,7 +205,7 @@ exports.update = asyncHandler(async (req, res) => {
 
 exports.remove = asyncHandler(async (req, res) => {
   const amc = await loadAmc(req, res); if (!amc) return;
-  await M.WtAmcVisit.destroy({ where: { ...branchScope(req), amc_code: amc.code } });
+  await M.WtAmcVisit.destroy({ where: { ...scoped(req), amc_code: amc.code } });
   await amc.destroy();
   res.json({ ok: true });
 });
@@ -212,7 +214,7 @@ exports.remove = asyncHandler(async (req, res) => {
 exports.listVisits = asyncHandler(async (req, res) => {
   const amc = await loadAmc(req, res); if (!amc) return;
   const rows = await M.WtAmcVisit.findAll({
-    where: { ...branchScope(req), amc_code: amc.code }, order: [['visit_no', 'ASC']], raw: true,
+    where: { ...scoped(req), amc_code: amc.code }, order: [['visit_no', 'ASC']], raw: true,
   });
   res.json(rows);
 });
@@ -220,7 +222,7 @@ exports.listVisits = asyncHandler(async (req, res) => {
 exports.updateVisit = asyncHandler(async (req, res) => {
   const amc = await loadAmc(req, res); if (!amc) return;
   const visit = await M.WtAmcVisit.findOne({
-    where: { ...branchScope(req), id: req.params.visitId, amc_code: amc.code },
+    where: { ...scoped(req), id: req.params.visitId, amc_code: amc.code },
   });
   if (!visit) return res.status(404).json({ error: 'Visit not found.' });
 
@@ -235,7 +237,7 @@ exports.updateVisit = asyncHandler(async (req, res) => {
   await visit.update(body);
 
   // Roll the contract's counters and next-visit pointer forward.
-  const all = await M.WtAmcVisit.findAll({ where: { ...branchScope(req), amc_code: amc.code }, raw: true });
+  const all = await M.WtAmcVisit.findAll({ where: { ...scoped(req), amc_code: amc.code }, raw: true });
   const done = all.filter((v) => eq(v.status, 'completed'));
   const next = all.filter((v) => !eq(v.status, 'completed') && !eq(v.status, 'cancelled') && v.due_date)
     .sort((a, b) => (a.due_date < b.due_date ? -1 : 1))[0] || null;

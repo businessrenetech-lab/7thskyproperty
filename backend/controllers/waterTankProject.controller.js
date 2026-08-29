@@ -6,7 +6,9 @@
  * services/wtProject.service.js; this layer is transport, scoping and validation.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, pick } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, pick, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+// Branch + service scope for wt_*; Contact/Property lookups keep plain branchScope.
+const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
 const Property = require('../models/Property');
 const ServiceItem = require('../models/ServiceItem');
@@ -44,7 +46,7 @@ const loadProject = async (req, res) => {
   const key = req.params.code;
   const project = await M.WtProject.findOne({
     where: {
-      ...branchScope(req),
+      ...scoped(req),
       [Op.or]: [{ id: Number.isNaN(Number(key)) ? -1 : Number(key) }, { code: String(key) }],
     },
   });
@@ -56,7 +58,7 @@ const loadProject = async (req, res) => {
  * Reference — everything the wizard needs, in one call
  * ──────────────────────────────────────────────────────────────────────────── */
 exports.reference = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const branchId = resolveBranchId(req);
 
   const [catalogRows, providers, amcs, requests, assessments, quotations, enquiries] = await Promise.all([
@@ -135,7 +137,7 @@ exports.clientLookup = asyncHandler(async (req, res) => {
   const like = { [Op.like]: `%${q}%` };
 
   const water_tank = await M.WtClient.findAll({
-    where: { ...branchScope(req), [Op.or]: [{ name: like }, { mobile: like }, { email: like }, { code: like }, { service_address: like }] },
+    where: { ...scoped(req), [Op.or]: [{ name: like }, { mobile: like }, { email: like }, { code: like }, { service_address: like }] },
     limit: 8, order: [['id', 'DESC']], raw: true,
   });
 
@@ -181,7 +183,7 @@ exports.propertyLookup = asyncHandler(async (req, res) => {
  * List + overview
  * ──────────────────────────────────────────────────────────────────────────── */
 exports.list = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const { q, stage, status, provider, amc } = req.query;
 
   const where = { ...scope };
@@ -233,7 +235,7 @@ exports.list = asyncHandler(async (req, res) => {
 });
 
 exports.overview = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const [projects, invoices, workOrders, disbursements] = await Promise.all([
     M.WtProject.findAll({ where: scope, raw: true }),
     M.WtInvoice.findAll({ where: scope, raw: true }),
@@ -293,7 +295,7 @@ exports.create = asyncHandler(async (req, res) => {
 });
 
 exports.detail = asyncHandler(async (req, res) => {
-  const dossier = await svc.projectDossier(req.params.code, branchScope(req));
+  const dossier = await svc.projectDossier(req.params.code, scoped(req));
   if (!dossier) return res.status(404).json({ error: 'Project not found.' });
   res.json(dossier);
 });
@@ -317,7 +319,7 @@ exports.update = asyncHandler(async (req, res) => {
 
   // Keep the two representations of a provider in step, whichever one was sent.
   if (body.provider_code && !body.assigned_provider) {
-    const p = await M.WtProvider.findOne({ where: { ...branchScope(req), code: body.provider_code }, raw: true });
+    const p = await M.WtProvider.findOne({ where: { ...scoped(req), code: body.provider_code }, raw: true });
     if (p) { body.assigned_provider = p.business_name; body.provider_id = p.id; }
   }
   if (body.under_amc === false) {
@@ -335,9 +337,9 @@ exports.remove = asyncHandler(async (req, res) => {
   const project = await loadProject(req, res); if (!project) return;
   // Detach rather than orphan: the downstream records outlive the project label.
   await Promise.all([
-    M.WtServiceRequest.update({ project_id: null }, { where: { ...branchScope(req), project_id: project.code } }),
-    M.WtSiteAssessment.update({ project_id: null }, { where: { ...branchScope(req), project_id: project.code } }),
-    M.WtProjectDisbursement.destroy({ where: { ...branchScope(req), project_code: project.code } }),
+    M.WtServiceRequest.update({ project_id: null }, { where: { ...scoped(req), project_id: project.code } }),
+    M.WtSiteAssessment.update({ project_id: null }, { where: { ...scoped(req), project_id: project.code } }),
+    M.WtProjectDisbursement.destroy({ where: { ...scoped(req), project_code: project.code } }),
   ]);
   await project.destroy();
   res.json({ ok: true });
@@ -349,14 +351,14 @@ exports.remove = asyncHandler(async (req, res) => {
 
 /** Pre-built Customer Service Agreement payload for the agreement wizard. */
 exports.agreementDraft = asyncHandler(async (req, res) => {
-  const draft = await svc.agreementDraft(req.params.code, branchScope(req));
+  const draft = await svc.agreementDraft(req.params.code, scoped(req));
   if (!draft) return res.status(404).json({ error: 'Project not found.' });
   res.json(draft);
 });
 
 /** Pre-built quotation payload for the quotation builder. */
 exports.quotationDraft = asyncHandler(async (req, res) => {
-  const draft = await svc.quotationDraft(req.params.code, branchScope(req));
+  const draft = await svc.quotationDraft(req.params.code, scoped(req));
   if (!draft) return res.status(404).json({ error: 'Project not found.' });
   res.json(draft);
 });
@@ -387,7 +389,7 @@ exports.linkAgreement = asyncHandler(async (req, res) => {
 exports.setStage = asyncHandler(async (req, res) => {
   const project = await loadProject(req, res); if (!project) return;
   const stage = svc.normaliseStage(req.body?.stage);
-  const scope = branchScope(req);
+  const scope = scoped(req);
 
   const [assessments, quotations] = await Promise.all([
     M.WtSiteAssessment.findAll({ where: { ...scope, project_id: project.code }, raw: true }),
@@ -459,7 +461,7 @@ exports.closure = asyncHandler(async (req, res) => {
  * ──────────────────────────────────────────────────────────────────────────── */
 exports.listDisbursements = asyncHandler(async (req, res) => {
   const project = await loadProject(req, res); if (!project) return;
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const [rows, workOrders] = await Promise.all([
     M.WtProjectDisbursement.findAll({ where: { ...scope, project_code: project.code }, order: [['id', 'DESC']], raw: true }),
     M.WtWorkOrder.findAll({ where: { ...scope, project_id: project.code }, raw: true }),
@@ -509,7 +511,7 @@ exports.addDisbursement = asyncHandler(async (req, res) => {
 exports.updateDisbursement = asyncHandler(async (req, res) => {
   const project = await loadProject(req, res); if (!project) return;
   const row = await M.WtProjectDisbursement.findOne({
-    where: { ...branchScope(req), id: req.params.id, project_code: project.code },
+    where: { ...scoped(req), id: req.params.id, project_code: project.code },
   });
   if (!row) return res.status(404).json({ error: 'Disbursement not found.' });
 
@@ -531,7 +533,7 @@ exports.updateDisbursement = asyncHandler(async (req, res) => {
 exports.removeDisbursement = asyncHandler(async (req, res) => {
   const project = await loadProject(req, res); if (!project) return;
   const row = await M.WtProjectDisbursement.findOne({
-    where: { ...branchScope(req), id: req.params.id, project_code: project.code },
+    where: { ...scoped(req), id: req.params.id, project_code: project.code },
   });
   if (!row) return res.status(404).json({ error: 'Disbursement not found.' });
   await row.destroy();

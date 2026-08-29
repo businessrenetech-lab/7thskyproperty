@@ -7,7 +7,9 @@
  * figures must not move underneath them.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, pick } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, pick, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+// Branch + service-line scope for wt_* reads; the reference() ServiceItem query keeps plain branchScope.
+const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
 const svc = require('../services/wtInvoice.service');
 const ledger = require('../services/wtLedger.service');
@@ -39,7 +41,7 @@ const loadInvoice = async (req, res) => {
   const key = req.params.code;
   const inv = await M.WtInvoice.findOne({
     where: {
-      ...branchScope(req),
+      ...scoped(req),
       [Op.or]: [{ id: Number.isNaN(Number(key)) ? -1 : Number(key) }, { code: String(key) }],
     },
   });
@@ -101,7 +103,7 @@ exports.reference = asyncHandler(async (req, res) => {
 exports.clientLookup = asyncHandler(async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (q.length < 2) return res.json([]);
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const like = { [Op.like]: `%${q}%` };
 
   // A project reference resolves to whoever the project is for.
@@ -146,7 +148,7 @@ exports.clientLookup = asyncHandler(async (req, res) => {
 
 /* ── list + overview ── */
 exports.list = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const { q, status, source, client } = req.query;
   const where = { ...scope };
   if (status) where.status = status;
@@ -176,7 +178,7 @@ exports.list = asyncHandler(async (req, res) => {
 });
 
 exports.overview = asyncHandler(async (req, res) => {
-  const rows = await M.WtInvoice.findAll({ where: branchScope(req), raw: true });
+  const rows = await M.WtInvoice.findAll({ where: scoped(req), raw: true });
   const live = rows.filter((r) => !eq(r.status, 'void'));
   const totals = live.map((r) => svc.computeTotals(r));
   const drafts = live.filter((r) => eq(r.status, 'draft'));
@@ -208,7 +210,7 @@ exports.create = asyncHandler(async (req, res) => {
 exports.createFromAmc = asyncHandler(async (req, res) => {
   const branchId = resolveBranchId(req);
   const amc = await M.WtAmcContract.findOne({
-    where: { ...branchScope(req), code: req.params.amcCode },
+    where: { ...scoped(req), code: req.params.amcCode },
   });
   if (!amc) return res.status(404).json({ error: 'AMC contract not found.' });
   const created = await svc.createFromAmc(amc, {
@@ -222,7 +224,7 @@ exports.createFromAmc = asyncHandler(async (req, res) => {
 
 /** Preview the AMC instalment schedule without persisting it. */
 exports.previewAmc = asyncHandler(async (req, res) => {
-  const amc = await M.WtAmcContract.findOne({ where: { ...branchScope(req), code: req.params.amcCode } });
+  const amc = await M.WtAmcContract.findOne({ where: { ...scoped(req), code: req.params.amcCode } });
   if (!amc) return res.status(404).json({ error: 'AMC contract not found.' });
   res.json(svc.buildAmcSchedule(amc));
 });
@@ -429,7 +431,7 @@ exports.paymentHistory = asyncHandler(async (req, res) => {
  * debt appears nowhere.
  */
 exports.collections = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const q = String(req.query.q || '').trim().toLowerCase();
 
   const invoices = await M.WtInvoice.findAll({

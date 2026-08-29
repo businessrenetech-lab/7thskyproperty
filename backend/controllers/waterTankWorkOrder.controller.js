@@ -8,7 +8,9 @@
  * → invoice.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+// Branch + service-line scope (this controller queries only wt_* tables).
+const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
 const P = require('../models/waterTankProviders');
 const svc = require('../services/wtWorkOrder.service');
@@ -21,7 +23,7 @@ const actorOf = (req) => req.user?.name || req.user?.email || 'Operations';
 const byKey = (k) => ({ [Op.or]: [{ id: Number.isNaN(Number(k)) ? -1 : Number(k) }, { code: k }] });
 
 async function load(req, res) {
-  const wo = await M.WtWorkOrder.findOne({ where: { ...branchScope(req), ...byKey(req.params.id) } });
+  const wo = await M.WtWorkOrder.findOne({ where: { ...scoped(req), ...byKey(req.params.id) } });
   if (!wo) { res.status(404).json({ error: 'Work order not found' }); return null; }
   return wo;
 }
@@ -41,7 +43,7 @@ const logEvent = (req, wo, title, detail) => M.WtCommLog.create({
  * agreement, or no client work may be given to them.
  */
 exports.reference = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const [providers, docs, workOrders] = await Promise.all([
     M.WtProvider.findAll({ where: scope, order: [['rank', 'ASC'], ['business_name', 'ASC']], raw: true }),
     P.WtProviderDocument.findAll({ where: scope, raw: true }),
@@ -95,7 +97,7 @@ exports.reference = asyncHandler(async (req, res) => {
 exports.detail = asyncHandler(async (req, res) => {
   const wo = await load(req, res); if (!wo) return;
   const w = wo.toJSON();
-  const scope = branchScope(req);
+  const scope = scoped(req);
 
   const [client, provider, quotation, invoices, reports, project, comms] = await Promise.all([
     w.client_code
@@ -158,14 +160,14 @@ exports.detail = asyncHandler(async (req, res) => {
 exports.assign = asyncHandler(async (req, res) => {
   const wo = await load(req, res); if (!wo) return;
   const provider = await M.WtProvider.findOne({
-    where: { ...branchScope(req), ...byKey(String(req.body.provider_id || req.body.provider_code || '')) },
+    where: { ...scoped(req), ...byKey(String(req.body.provider_id || req.body.provider_code || '')) },
   });
   if (!provider) return res.status(404).json({ error: 'Provider not found' });
 
   // the SOP gate — refuse rather than warn
   const approved = String(provider.status || '').toLowerCase() === 'approved';
   const activeAgreement = await commercial.getActiveAgreement(provider);
-  const providerDocs = await P.WtProviderDocument.findAll({ where: { ...branchScope(req), provider_id: provider.id }, raw: true });
+  const providerDocs = await P.WtProviderDocument.findAll({ where: { ...scoped(req), provider_id: provider.id }, raw: true });
   const required = {
     compliance: ['Trade Licence', 'Company Registration', 'TIN', 'BIN', 'Safety Certification'],
     insurance: ['Public Liability Insurance', 'Workers Compensation', 'Contractor Insurance', 'Vehicle Insurance'],
@@ -216,7 +218,7 @@ exports.assign = asyncHandler(async (req, res) => {
   try {
     const key = wo.quotation_no || wo.source_quotation;
     const quotation = key
-      ? await M.WtQuotation.findOne({ where: { ...branchScope(req), ...byKey(String(key)) }, raw: true })
+      ? await M.WtQuotation.findOne({ where: { ...scoped(req), ...byKey(String(key)) }, raw: true })
       : null;
     const doc = require('../services/wtWorkOrderDoc.service');
     docSeed = doc.hydrateFromQuotation(wo.get({ plain: true }), quotation, null);
@@ -385,7 +387,7 @@ exports.update = asyncHandler(async (req, res) => {
 
 /** GET /wt-work-orders — the register, each row carrying its progress. */
 exports.list = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const rows = await M.WtWorkOrder.findAll({ where: scope, order: [['id', 'DESC']], limit: 300, raw: true });
 
   const shaped = rows.map((w) => {
@@ -440,8 +442,8 @@ const DOC_FIELDS = [
 
 const partiesFor = async (req, wo) => {
   const provider = wo.provider_id
-    ? await M.WtProvider.findOne({ where: { ...branchScope(req), id: wo.provider_id }, raw: true })
-    : (wo.provider_name ? await M.WtProvider.findOne({ where: { ...branchScope(req), business_name: wo.provider_name }, raw: true }) : null);
+    ? await M.WtProvider.findOne({ where: { ...scoped(req), id: wo.provider_id }, raw: true })
+    : (wo.provider_name ? await M.WtProvider.findOne({ where: { ...scoped(req), business_name: wo.provider_name }, raw: true }) : null);
   return {
     provider: provider || {},
     org: { represented_by: wo.project_manager || req.user?.name || '', position: 'Project Manager', email: req.user?.email || '' },
@@ -524,7 +526,7 @@ exports.syncQuotation = asyncHandler(async (req, res) => {
   if (wo.wo_signed_at) return res.status(409).json({ error: 'Executed work orders cannot be re-synced.' });
   const key = wo.quotation_no || wo.source_quotation;
   if (!key) return res.status(400).json({ error: 'This work order is not linked to a quotation.' });
-  const quotation = await M.WtQuotation.findOne({ where: { ...branchScope(req), ...byKey(String(key)) }, raw: true });
+  const quotation = await M.WtQuotation.findOne({ where: { ...scoped(req), ...byKey(String(key)) }, raw: true });
   if (!quotation) return res.status(404).json({ error: `Quotation ${key} was not found.` });
 
   const plain = wo.get({ plain: true });
@@ -561,7 +563,7 @@ exports.sendDocument = asyncHandler(async (req, res) => {
   }
   if (!wo.provider_id) return res.status(400).json({ error: 'Assign a service provider before issuing the work order for signature.' });
 
-  const provider = await M.WtProvider.findOne({ where: { ...branchScope(req), id: wo.provider_id } });
+  const provider = await M.WtProvider.findOne({ where: { ...scoped(req), id: wo.provider_id } });
   if (!provider) return res.status(404).json({ error: 'The assigned provider record could not be found.' });
 
   const blocking = [];

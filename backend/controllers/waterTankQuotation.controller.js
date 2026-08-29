@@ -10,7 +10,9 @@
  */
 const { Op } = require('sequelize');
 const sequelize = require('../config/db.config');
-const { asyncHandler, branchScope, resolveBranchId } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+// Branch + service-line scope (this controller queries only wt_* tables).
+const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
 const ServiceItem = require('../models/ServiceItem');
 const { getBranding } = require('../services/wtBranding.service');
@@ -105,7 +107,7 @@ async function agreementPosition(scope, clientName, clientCode) {
 
 /** GET /wt-quotes/agreement-position?client=CODE — used by the direct-quote flow. */
 exports.agreementPosition = asyncHandler(async (req, res) => {
-  res.json(await agreementPosition(branchScope(req), req.query.name, req.query.client));
+  res.json(await agreementPosition(scoped(req), req.query.name, req.query.client));
 });
 
 /**
@@ -117,7 +119,7 @@ exports.agreementPosition = asyncHandler(async (req, res) => {
  */
 exports.createDirect = asyncHandler(async (req, res) => {
   const branchId = resolveBranchId(req);
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const b = req.body || {};
 
   if (!b.client_name) return res.status(400).json({ error: 'A client is required.' });
@@ -139,6 +141,7 @@ exports.createDirect = asyncHandler(async (req, res) => {
 
     const quote = await M.WtQuotation.create({
       branch_id: branchId,
+      service_line: resolveServiceLine(req),
       code: `Q-${String(max + 1).padStart(4, '0')}`,
       client_name: b.client_name,
       client_code: b.client_code || position.client_code || null,
@@ -194,7 +197,7 @@ exports.createDirect = asyncHandler(async (req, res) => {
 const QUOTE_DECISIONS = ['Pending', 'Sent', 'Approved', 'Rejected'];
 
 exports.setDecision = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const key = req.params.id;
   const quote = await M.WtQuotation.findOne({
     where: { ...scope, [Op.or]: [{ id: Number.isNaN(Number(key)) ? -1 : Number(key) }, { code: key }] },
@@ -266,7 +269,7 @@ exports.setDecision = asyncHandler(async (req, res) => {
  * superseded rather than erased.
  */
 exports.removeQuotation = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const key = req.params.id;
   const quote = await M.WtQuotation.findOne({
     where: { ...scope, [Op.or]: [{ id: Number.isNaN(Number(key)) ? -1 : Number(key) }, { code: key }] },
@@ -290,7 +293,7 @@ exports.removeQuotation = asyncHandler(async (req, res) => {
 });
 
 exports.builder = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const key = req.params.assessmentId;
   const byKey = (k) => ({ [Op.or]: [{ id: Number.isNaN(Number(k)) ? -1 : Number(k) }, { code: k }] });
 
@@ -385,7 +388,7 @@ exports.builder = asyncHandler(async (req, res) => {
  * updates the same quotation rather than raising a second one.
  */
 exports.save = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const branchId = resolveBranchId(req);
   const key = req.params.assessmentId;
   const byKey = (k) => ({ [Op.or]: [{ id: Number.isNaN(Number(k)) ? -1 : Number(k) }, { code: k }] });
@@ -436,7 +439,7 @@ exports.save = asyncHandler(async (req, res) => {
     const rows = await M.WtQuotation.findAll({ where: { branch_id: branchId }, attributes: ['code'], raw: true });
     let max = 1048;
     rows.forEach((r) => { const n = parseInt(String(r.code || '').replace('Q-', ''), 10); if (!Number.isNaN(n) && n > max) max = n; });
-    quote = await M.WtQuotation.create({ ...payload, branch_id: branchId, code: `Q-${String(max + 1).padStart(4, '0')}` });
+    quote = await M.WtQuotation.create({ ...payload, branch_id: branchId, service_line: resolveServiceLine(req), code: `Q-${String(max + 1).padStart(4, '0')}` });
 
     // keep the assessment and its project in step
     if (assessment) await assessment.update({ status: assessment.status === 'Scheduled' ? 'Completed' : assessment.status });
@@ -466,7 +469,7 @@ exports.save = asyncHandler(async (req, res) => {
 /* ═══ DOCUMENT ════════════════════════════════════════════════ */
 
 async function quoteContext(req, id) {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const quote = await M.WtQuotation.findOne({
     where: { ...scope, [Op.or]: [{ id: Number.isNaN(Number(id)) ? -1 : Number(id) }, { code: id }] },
   });
@@ -750,7 +753,7 @@ exports.agreementDraft = asyncHandler(async (req, res) => {
   const { quote, client, lines } = ctx;
 
   const assessment = quote.source_assessment
-    ? await M.WtSiteAssessment.findOne({ where: { ...branchScope(req), code: quote.source_assessment }, raw: true })
+    ? await M.WtSiteAssessment.findOne({ where: { ...scoped(req), code: quote.source_assessment }, raw: true })
     : null;
 
   // quotation lines → the agreement's pricing_input.selected shape
@@ -833,7 +836,7 @@ exports.linkAgreement = asyncHandler(async (req, res) => {
     decision: 'Approved',
   });
 
-  const client = await M.WtClient.findOne({ where: { ...branchScope(req), name: ctx.quote.client_name } });
+  const client = await M.WtClient.findOne({ where: { ...scoped(req), name: ctx.quote.client_name } });
   if (client) {
     await client.update({
       agreement_status: 'Sent',
