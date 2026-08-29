@@ -3837,3 +3837,23 @@ used "the last line starting with `import`", which landed inside a multi-line
 - VERIFIED live: customer/meta returns AC service groups for AC and WT groups for WT; AC
   preview renders SSPC-ACS-CSA-01 with ACS-004 priced ৳7,500; WT preview unchanged.
 - NEXT: phase 2b provider master agreement, phase 2c project work order.
+
+### 2026-08-30 03:30 | Claude Code (Opus 4.8) | COMPLETED | AC milestone 3 (phase 2b) — AC Provider Master Agreement
+- The provider master agreement body lives in an AgreementTemplate row. Made
+  wtProviderAgreement.service select it per service line: getMasterTemplate(serviceLine)
+  now queries by (category 'provider_master', vertical = the service-line key), and
+  buildAgreement/computePricing/getTemplateFields thread the vertical + doc_no
+  (SSPC-WTCM-SDPMA-01 / SSPC-ACS-SDPMA-01). terms.agreement_type is now
+  `${serviceLine}_provider_master`.
+- Seeded the AC template: scripts/seedAcProviderAgreement.js — SSPC-ACS-SDPMA-01 v0.2,
+  25 clauses + Schedules A–D, verbatim from the client doc, reusing the SAME field keys
+  and {{placeholders}} as the WT template so the shared builder renders it unchanged
+  (service + insurance + technical-licence checkbox groups; provider KYC intake fields).
+- Wired wtAgreements.controller provider side: renderProvider passes the vertical;
+  envelope related_type + code prefix (ENV-ACSDP-) resolve from the manifest; provider
+  agreements are now service-scoped (create tagged with serviceScope, list filtered) so the
+  AC hub shows AC agreements only; getMeta returns the AC template fields for AC.
+- VERIFIED: buildAgreement renders SSPC-ACS-SDPMA-01 for AC (AC clauses, Schedule B priced
+  ACS-004, 4 signature anchors, agreement_type air_conditioning_provider_master); WT still
+  renders SSPC-WTCM-SDPMA-01.
+- NEXT: phase 2c project work order (two-party work-order agreement).

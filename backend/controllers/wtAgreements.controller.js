@@ -5,7 +5,7 @@
  */
 const crypto = require('crypto');
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, pick, catalogueVertical, resolveServiceLine } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, pick, catalogueVertical, resolveServiceLine, serviceScope } = require('../utils/controllerHelpers');
 const { getServiceLine } = require('../config/serviceLines');
 const customerSvc = require('../services/wtCustomerAgreement.service');
 
@@ -246,8 +246,10 @@ function providerParty(provider, body = {}) {
 
 async function renderProvider(req, body, provider) {
   const branchId = branchScope(req).branch_id || resolveBranchId(req);
+  const vertical = catalogueVertical(req);
   const input = {
     ...body,
+    vertical,
     provider_id: provider.id, related_id: provider.id,
     provider: providerParty(provider, body),
     bank_details: asObject(body.bank_details, asObject(provider.bank_details)),
@@ -257,7 +259,7 @@ async function renderProvider(req, body, provider) {
       email: req.user?.email || '', ...(body.org || {}),
     },
   };
-  const pricing = await providerSvc.computePricing(input.pricing_input || {}, branchId);
+  const pricing = await providerSvc.computePricing(input.pricing_input || {}, branchId, { vertical });
   const built = await providerSvc.buildAgreement({ ...input, pricing });
   return { input, pricing, built };
 }
@@ -295,7 +297,7 @@ async function saveDraft(req, body, provider) {
     if (!agreement) {
       const count = await P.WtProviderAgreement.count({ where: { ...branchScope(req), provider_id: provider.id }, transaction });
       agreement = await P.WtProviderAgreement.create({
-        branch_id: branchId, code: await generateCode(P.WtProviderAgreement, 'code', 'WTPA-', 6),
+        branch_id: branchId, ...serviceScope(req), code: await generateCode(P.WtProviderAgreement, 'code', 'WTPA-', 6),
         provider_id: provider.id, version_no: count + 1, supersedes_id: clean.supersedes_id || null,
         status: 'Draft', drafted_by: req.user?.id || null,
       }, { transaction });
@@ -326,10 +328,11 @@ async function sendSavedAgreement(req, agreement, provider) {
   const result = await sequelize.transaction(async (transaction) => {
     const envelope = await SigningEnvelope.create({
       branch_id: agreement.branch_id,
-      envelope_code: await generateCode(SigningEnvelope, 'envelope_code', 'ENV-WTSDP-', 6),
+      envelope_code: await generateCode(SigningEnvelope, 'envelope_code',
+        resolveServiceLine(req) === 'air_conditioning' ? 'ENV-ACSDP-' : 'ENV-WTSDP-', 6),
       agreement_template_id: built.template_id,
       title: `${built.title} — ${provider.business_name} — v${agreement.version_no}`,
-      document_html: built.html, related_type: 'water_tank_provider_agreement', related_id: provider.id,
+      document_html: built.html, related_type: relatedTypeFor(req, 'provider'), related_id: provider.id,
       status: 'sent', sent_at: new Date(), expires_at: expires, signing_order_enforced: true,
       kyc_role: 'provider', kyc_policy: 'none',
       terms: { ...built.terms, provider_agreement_id: agreement.id, provider_agreement_code: agreement.code },
@@ -389,18 +392,18 @@ const provider = {
   getCatalog: asyncHandler(async (req, res) => res.json(await providerSvc.getCatalog(branchScope(req).branch_id, { vertical: catalogueVertical(req) }))),
   getMeta: asyncHandler(async (req, res) => res.json({
     service_groups: providerSvc.SERVICE_GROUPS, checklist_groups: providerSvc.CHECKLIST_GROUPS,
-    template_fields: await providerSvc.getTemplateFields(), role: 'Service Provider',
+    template_fields: await providerSvc.getTemplateFields(resolveServiceLine(req)), role: 'Service Provider',
     payment_models: ['Project Based', 'AMC', 'Emergency / Call-Out'],
     payout_triggers: ['Completion Verified', 'Client Payment Received', 'Approved Milestone'],
   })),
   preview: asyncHandler(async (req, res) => {
     const providerRow = await loadProvider(req, req.body || {});
-    if (!providerRow) return res.status(404).json({ error: 'Select a Water Tank provider before previewing the agreement.' });
+    if (!providerRow) return res.status(404).json({ error: 'Select a provider before previewing the agreement.' });
     const rendered = await renderProvider(req, req.body || {}, providerRow);
     res.json({ ...rendered.built, pricing: rendered.pricing });
   }),
   listAgreements: asyncHandler(async (req, res) => {
-    const where = { ...branchScope(req) };
+    const where = { ...branchScope(req), ...serviceScope(req) };
     if (req.query.provider_id) where.provider_id = req.query.provider_id;
     const agreements = await P.WtProviderAgreement.findAll({ where, order: [['id', 'DESC']], raw: true });
     const providerIds = [...new Set(agreements.map((a) => a.provider_id))];

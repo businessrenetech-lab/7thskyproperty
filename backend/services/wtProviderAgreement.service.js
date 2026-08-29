@@ -76,8 +76,8 @@ async function getCatalog(branchId, { vertical = 'water_tank_csa' } = {}) {
 }
 
 /** Provider Schedule B pricing: selected lines with standard vs agreed (no client cost summary). */
-async function computePricing(input = {}, branchId) {
-  const catalog = await getCatalog(branchId);
+async function computePricing(input = {}, branchId, opts = {}) {
+  const catalog = await getCatalog(branchId, { vertical: opts.vertical });
   const byCode = Object.fromEntries(catalog.map((c) => [c.code, c]));
   const selected = (input.selected || []).map((s) => {
     const line = byCode[s.code]; if (!line) return null;
@@ -258,21 +258,31 @@ const checkboxHtml = (options = [], selected = []) => {
   }).join('')}</div>`;
 };
 
-async function getMasterTemplate() {
+// The provider master agreement body lives in an AgreementTemplate row, one per
+// service line (vertical = the service line key: water_tank / air_conditioning).
+// Selecting by vertical + category lets each console render its own template
+// through the same builder.
+const PROVIDER_DOC = {
+  water_tank: { doc_no: 'SSPC-WTCM-SDPMA-01', seed: 'node scripts/seedProviderAgreement.js' },
+  air_conditioning: { doc_no: 'SSPC-ACS-SDPMA-01', seed: 'node scripts/seedAcProviderAgreement.js' },
+};
+const serviceLineOf = (v) => (String(v || '').startsWith('air_conditioning') ? 'air_conditioning' : 'water_tank');
+
+async function getMasterTemplate(serviceLine = 'water_tank') {
   const template = await AgreementTemplate.findOne({
-    where: { name: 'Service Provider Master Agreement', vertical: 'water_tank', status: 'active' },
+    where: { category: 'provider_master', vertical: serviceLine, status: 'active' },
     order: [['id', 'DESC']],
   });
   if (!template) {
-    const err = new Error('The canonical 63-clause Service Provider Master Agreement is not seeded. Run node scripts/seedProviderAgreement.js from backend/.');
+    const err = new Error(`The Service Provider Master Agreement for "${serviceLine}" is not seeded. Run ${(PROVIDER_DOC[serviceLine] || PROVIDER_DOC.water_tank).seed} from backend/.`);
     err.status = 409;
     throw err;
   }
   return template;
 }
 
-async function getTemplateFields() {
-  const template = await getMasterTemplate();
+async function getTemplateFields(serviceLine = 'water_tank') {
+  const template = await getMasterTemplate(serviceLine);
   let fields = template.fields || [];
   if (typeof fields === 'string') { try { fields = JSON.parse(fields); } catch { fields = []; } }
   return fields;
@@ -280,8 +290,9 @@ async function getTemplateFields() {
 
 /** Build the canonical 63-clause Provider Master Agreement plus Schedule F rates. */
 async function buildAgreement(data = {}) {
-  const template = await getMasterTemplate();
-  const fields = await getTemplateFields();
+  const serviceLine = serviceLineOf(data.vertical);
+  const template = await getMasterTemplate(serviceLine);
+  const fields = await getTemplateFields(serviceLine);
   const org = data.org || {};
   const p = data.provider || {};
   const pricing = data.pricing || { lines: [], summary: {}, payment_schedule: [] };
@@ -397,7 +408,7 @@ async function buildAgreement(data = {}) {
     html = html.replace(/<p[^>]*>\s*<strong>END OF MASTER SERVICE DELIVERY PROVIDER AGREEMENT<\/strong>\s*<\/p>/i,
       `${rateScheduleHtml}$&`);
   }
-  const doc_no = 'SSPC-WTCM-SDPMA-01';
+  const doc_no = (PROVIDER_DOC[serviceLine] || PROVIDER_DOC.water_tank).doc_no;
   const title = 'Master Service Delivery Provider Agreement';
 
   /*
@@ -455,7 +466,7 @@ async function buildAgreement(data = {}) {
   });
 
   const terms = {
-    agreement_type: 'water_tank_provider_master', template_id: template.id,
+    agreement_type: `${serviceLine}_provider_master`, template_id: template.id,
     provider_id: data.provider_id || data.related_id || null,
     effective_date: data.effective_date || null,
     term_months: Number(data.term_months || 12), notice_days: Number(data.notice_days || 30),
