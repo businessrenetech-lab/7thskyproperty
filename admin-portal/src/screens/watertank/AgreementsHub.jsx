@@ -291,6 +291,16 @@ function AgreementDrawer({ row, onClose, onResend, onDownload, onVoid, busy }) {
       toast.ok(`Link for ${s.name} copied — treat it as their signature`);
     } catch (e) { toast.err(errText(e, 'Could not issue the signing link')); }
   };
+  // Seventh Sky's countersignature is the step that most often stalls an agreement.
+  // Rather than copy a link and paste it, open the signing page in one click.
+  const countersign = async (s) => {
+    try {
+      const { data } = await api.post(`/wt-agreement-hub/${row.id}/signing-link/${s.id}`);
+      const url = `${window.location.origin}${data.signing_path}`;
+      const w = window.open(url, '_blank', 'noopener');
+      if (!w) { await navigator.clipboard?.writeText(url).catch(() => {}); toast.ok('Pop-up blocked — signing link copied instead'); }
+    } catch (e) { toast.err(errText(e, 'Could not open the signing page')); }
+  };
   return (
     <div className="wt-modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="wt-modal" role="dialog" aria-modal="true">
@@ -330,6 +340,11 @@ function AgreementDrawer({ row, onClose, onResend, onDownload, onVoid, busy }) {
                     </span>
                     {!signed && !declined && (
                       <>
+                        {s.role === 'staff_countersign' && (
+                          <button className="wt-btn sm primary" onClick={() => countersign(s)}>
+                            <FileSignature size={12} /> Countersign as Seventh Sky
+                          </button>
+                        )}
                         <button className="wt-btn sm" onClick={() => copyLink(s)}><Copy size={12} /> Link</button>
                         <button className="wt-btn sm" disabled={!!busy} onClick={() => onResend(s.id)}>
                           <Send size={12} /> Resend

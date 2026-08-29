@@ -3379,3 +3379,19 @@ used "the last line starting with `import`", which landed inside a multi-line
   dashboard "active projects" now count won engagements (approved+), not leads.
   Agreements/work-orders/invoices already come after approval, so project_id is set
   by the time they need it.
+
+### 2026-08-19 20:20 | Claude Code (Opus 4.8) | COMPLETED | WT agreements — one-click "Countersign as Seventh Sky"
+- Request: a customer signed but the agreement wasn't completed; the Seventh Sky
+  signing option was not discoverable.
+- Finding: Seventh Sky IS a signer (role staff_countersign, order 2) on both
+  customer and provider agreements, but the only way to sign was to copy that
+  signer's link from the hub and paste it — hence "where is the option".
+- Change (frontend, AgreementsHub.jsx): in the agreement detail drawer's signer
+  list, a pending staff_countersign signer now shows a prominent "Countersign as
+  Seventh Sky" button that opens the signing page in one click (reuses the existing
+  signing-link + /sign/:token flow; falls back to copying the link if pop-ups are
+  blocked). Works for client and provider agreements alike.
+- Verification: build:admin passed; dist committed. Backend unchanged.
+- Handoff: the completion pipeline (signed PDF → email to customer/provider →
+  save under Documents) is planned separately — it hinges on a PDF-generation
+  decision (no server-side HTML→PDF engine today; only pdfkit).
