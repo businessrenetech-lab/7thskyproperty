@@ -3231,3 +3231,31 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Handoff: redeploy + restart on Hostinger for the live site. Larger workflow items
   (single front-door entry, provider-agreement gate, nest WOs under Projects) are
   in the report, pending sign-off.
+
+### 2026-08-19 16:20 | Claude Code (Opus 4.8) | COMPLETED | Water Tank workflow items — single front door, provider-gate consistency, WO-under-Project
+- Request: take on the three larger workflow items from the QA report.
+- H1 (single front door / finish intake standardisation):
+  * ServiceRequests.jsx — removed the "Enquiries | Requests" view switch and the
+    Enquiries register; the screen now shows Requests only (the single intake).
+  * Dashboard.jsx — added a prominent primary "New Service Request" CTA in the header.
+  * SiteAssessments/Quotations/Projects — demoted their direct "New" create buttons
+    from primary to secondary and added subtitle hints that jobs normally start from
+    a Service Request (the SOP direct paths stay available, just not the front door).
+    Also de-"enquiry"-ed the Projects subtitle.
+- H3 (provider-agreement gate) — discovered it was ALREADY enforced server-side:
+  the WO assign endpoint refuses (400) any provider without an active completed
+  Master Agreement (getActiveAgreement), and the WO picker only lists
+  assignable_providers. The one real defect was that the Providers directory
+  computed `assignable` from the provider's agreement_status FIELD (buildGates)
+  while enforcement uses the live agreement RECORD — so a provider could look
+  assignable but be refused. Fixed: directory `assignable` now also requires the
+  live record (`assignable && !!live`), matching enforcement. Verified: 0 providers
+  assignable (none have a live agreement), consistent with the assign endpoint.
+- M4 (WO under Project) — ProjectDetail already has a Work Orders tab listing the
+  project's WOs. Reordered the Delivery nav so Projects (the container) leads and
+  Work Orders follows.
+- Verification: backend restarted; providers directory + dashboard + WO reference +
+  intake all 200; npm run build:admin passed (0 errors); rebuilt dist committed.
+- Handoff: redeploy + restart on Hostinger. The dead EnquiriesRegister function
+  remains in ServiceRequests.jsx (unreachable) — safe to delete in a later cleanup.
+  Enquiry backend routes left in place (data-preserving, just unsurfaced).

@@ -91,7 +91,14 @@ export default function WaterTankDashboard() {
           <h1 className="wt-title">Operations Dashboard</h1>
           <p className="wt-subtitle">Seventh Sky Operations Management System</p>
         </div>
-        <button className="wt-btn" onClick={load}><RefreshCw size={14} /> Refresh</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {/* The one front door. Every water-tank job starts as a Service Request;
+              the direct assessment/quotation/project creates are in-flow shortcuts. */}
+          <button className="wt-btn primary" onClick={() => nav('/water-tank/service-requests/new')}>
+            <UserPlus size={14} /> New Service Request
+          </button>
+          <button className="wt-btn" onClick={load}><RefreshCw size={14} /> Refresh</button>
+        </div>
       </div>
 
       {/* Action Centre leads. What needs a person today is the reason to open

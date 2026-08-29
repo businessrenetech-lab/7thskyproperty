@@ -64,9 +64,9 @@ export default function Projects() {
     <>
       <WtHead
         title="Projects"
-        subtitle="Every water-tank engagement from lead enquiry to AMC handover — SOP-01 Sec. 4"
+        subtitle="Every water-tank engagement from service request to AMC handover — SOP-01 Sec. 4. A project usually forms once a quotation is approved."
       >
-        <button className="wt-btn primary" onClick={() => nav('/water-tank/projects/new')}><Plus size={15} /> New Project</button>
+        <button className="wt-btn" onClick={() => nav('/water-tank/projects/new')}><Plus size={15} /> New Project</button>
       </WtHead>
 
       {ov && (

@@ -70,7 +70,7 @@ export default function Quotations() {
         <button className="wt-btn" onClick={() => nav('/water-tank/site-assessments')}>
           <ClipboardList size={15} /> Build from an assessment
         </button>
-        <button className="wt-btn primary" onClick={() => nav('/water-tank/quotations/new')}>
+        <button className="wt-btn" onClick={() => nav('/water-tank/quotations/new')}>
           <Plus size={15} /> Create quotation
         </button>
       </WtHead>

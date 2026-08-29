@@ -326,7 +326,11 @@ exports.directory = asyncHandler(async (req, res) => {
       gates_total: gates.length,
       blocking_count: blocking.length,
       ready_to_approve,
-      assignable,
+      // Assignable must mean the SAME thing the work-order assign endpoint
+      // enforces: not just the provider's agreement_status flag, but an actual
+      // live/completed Master Agreement record. Otherwise a provider can look
+      // assignable here yet be refused at assignment.
+      assignable: assignable && !!live,
       docs_expiring: expiring.length,
       docs_expired: expired.length,
       open_audits: openAudits.length,

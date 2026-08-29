@@ -59,28 +59,22 @@ const ENQUIRY_FIELDS = [
 
 export default function ServiceRequests() {
   const nav = useNavigate();
-  const [view, setView] = useState('Enquiries');
 
+  // Intake is standardised on the Service Request — it is the single front door
+  // for water-tank work. The old separate "Enquiries" register has been retired
+  // (a lead by any channel is captured directly as a request).
   return (
     <>
       <WtHead
         title="Service Requests"
-        subtitle="Website and phone enquiries, triaged into jobs and routed to an assessment or a quotation"
+        subtitle="The single intake for water-tank work — every lead, by any channel, captured here and routed to an assessment or a quotation"
       >
         <button className="wt-btn primary" onClick={() => nav('/water-tank/service-requests/new')}>
           <Plus size={15} /> New Request
         </button>
       </WtHead>
 
-      <div className="wt-viewswitch">
-        {['Enquiries', 'Requests'].map((v) => (
-          <button key={v} className={`wt-viewbtn${view === v ? ' on' : ''}`} onClick={() => setView(v)}>
-            {v === 'Enquiries' ? <Globe size={14} /> : <ClipboardList size={14} />} {v}
-          </button>
-        ))}
-      </div>
-
-      {view === 'Enquiries' ? <EnquiriesRegister nav={nav} /> : <RequestsRegister nav={nav} />}
+      <RequestsRegister nav={nav} />
     </>
   );
 }

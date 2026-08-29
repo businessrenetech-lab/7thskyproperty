@@ -73,10 +73,10 @@ export default function SiteAssessments() {
     <>
       <WtHead
         title="Site Assessments"
-        subtitle="Sec. 8 Step 8 — inspect site, confirm scope, identify risks and variations"
+        subtitle="Sec. 8 Step 8 — inspect site, confirm scope, identify risks and variations. Assessments normally start from a Service Request."
         search={q} onSearch={setQ}
       >
-        <button className="wt-btn primary" onClick={() => nav('/water-tank/site-assessments/new')}><Plus size={15} /> New Assessment</button>
+        <button className="wt-btn" onClick={() => nav('/water-tank/site-assessments/new')}><Plus size={15} /> New Assessment</button>
       </WtHead>
 
       <StatCards items={[

@@ -53,8 +53,10 @@ export const WATER_TANK_NAV = [
     key: 'delivery',
     label: 'Delivery',
     items: [
-      { to: '/water-tank/work-orders', label: 'Work Orders', icon: Briefcase },
+      // A project is the delivery container; its work orders live inside it
+      // (Project → Work Orders tab). Projects lead so the containment reads.
       { to: '/water-tank/projects', label: 'Projects', icon: Folder },
+      { to: '/water-tank/work-orders', label: 'Work Orders', icon: Briefcase },
     ],
   },
   {
