@@ -14,7 +14,10 @@
  */
 const crypto = require('crypto');
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, pick } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, pick, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+// Branch + service-line scope: every read is confined to the caller's branch AND
+// the active service line, so Air Conditioning never sees Water Tank providers.
+const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
 const P = require('../models/waterTankProviders');
 const jobContext = require('../services/wtJobContext.service');
@@ -95,7 +98,7 @@ exports.lookup = asyncHandler(async (req, res) => {
   const like = `%${q}%`;
   const rows = await M.WtProvider.findAll({
     where: {
-      ...branchScope(req),
+      ...scoped(req),
       [Op.or]: [
         { code: { [Op.like]: like } }, { business_name: { [Op.like]: like } },
         { legal_name: { [Op.like]: like } }, { registration_no: { [Op.like]: like } },
@@ -117,11 +120,12 @@ exports.create = asyncHandler(async (req, res) => {
   const duplicateWhere = [{ business_name: name }];
   if (body.registration_no) duplicateWhere.push({ registration_no: body.registration_no });
   if (body.contact_email) duplicateWhere.push({ contact_email: body.contact_email });
-  const duplicate = await M.WtProvider.findOne({ where: { branch_id: branchId, [Op.or]: duplicateWhere } });
+  const duplicate = await M.WtProvider.findOne({ where: { branch_id: branchId, ...serviceScope(req), [Op.or]: duplicateWhere } });
   if (duplicate) return res.status(409).json({ error: 'A matching provider already exists.', provider: { id: duplicate.id, code: duplicate.code, business_name: duplicate.business_name } });
 
   const provider = await M.WtProvider.create({
-    ...body, branch_id: branchId, code: await identity.nextCode('providers', branchId),
+    ...body, branch_id: branchId, service_line: resolveServiceLine(req),
+    code: await identity.nextCode('providers', branchId),
     application_date: req.body.application_date || today(), status: 'Pending',
     onboarding_stage: 'Application', stage_updated_at: new Date(),
     onboarding_submission_status: body.onboarding_submission_status || 'Staff Draft',
@@ -271,7 +275,7 @@ function buildKpis(provider, workOrders, complaints, warranties, reports, protec
  * GET /wt-providers — directory with per-provider readiness + compliance alerts.
  */
 exports.directory = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const [providers, docs, audits, workOrders, agreements, rates] = await Promise.all([
     M.WtProvider.findAll({ where: scope, order: [['id', 'DESC']], raw: true }),
     P.WtProviderDocument.findAll({ where: scope, raw: true }),
@@ -379,7 +383,7 @@ exports.directory = asyncHandler(async (req, res) => {
 /* ═══ ONE PROVIDER: the provider's own dashboard ═══════════════ */
 
 exports.detail = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const key = req.params.id;
   const provider = await M.WtProvider.findOne({
     where: { ...scope, [Op.or]: [{ id: Number.isNaN(Number(key)) ? -1 : Number(key) }, { code: key }] },
@@ -427,7 +431,7 @@ exports.detail = asyncHandler(async (req, res) => {
 async function loadProvider(req, res) {
   const key = req.params.id;
   const provider = await M.WtProvider.findOne({
-    where: { ...branchScope(req), [Op.or]: [{ id: Number.isNaN(Number(key)) ? -1 : Number(key) }, { code: key }] },
+    where: { ...scoped(req), [Op.or]: [{ id: Number.isNaN(Number(key)) ? -1 : Number(key) }, { code: key }] },
   });
   if (!provider) { res.status(404).json({ error: 'Provider not found' }); return null; }
   return provider;
@@ -441,7 +445,7 @@ exports.setStage = asyncHandler(async (req, res) => {
 
   // Sec. 6 Step 4 — approval requires every preceding gate
   if (stage === 'Approved') {
-    const docs = await P.WtProviderDocument.findAll({ where: { ...branchScope(req), provider_id: provider.id }, raw: true });
+    const docs = await P.WtProviderDocument.findAll({ where: { ...scoped(req), provider_id: provider.id }, raw: true });
     const { ready_to_approve, blocking } = buildGates(provider.toJSON(), docs);
     if (!ready_to_approve) {
       return res.status(400).json({
@@ -545,11 +549,11 @@ exports.sanction = asyncHandler(async (req, res) => {
 
   // Sec. 12 — termination starts the 24-month protection clock on their clients
   if (action === 'terminate') {
-    const workOrders = await M.WtWorkOrder.findAll({ where: { ...branchScope(req), provider_name: provider.business_name }, raw: true });
+    const workOrders = await M.WtWorkOrder.findAll({ where: { ...scoped(req), provider_name: provider.business_name }, raw: true });
     const clients = [...new Set(workOrders.map((w) => w.client_name).filter(Boolean))];
     const branchId = resolveBranchId(req);
     for (const client of clients) {
-      const exists = await P.WtProtectedClient.findOne({ where: { ...branchScope(req), client_name: client, provider_id: provider.id, status: 'Protected' } });
+      const exists = await P.WtProtectedClient.findOne({ where: { ...scoped(req), client_name: client, provider_id: provider.id, status: 'Protected' } });
       if (exists) continue;
       await P.WtProtectedClient.create({
         branch_id: branchId,
@@ -607,7 +611,7 @@ exports.logBreach = asyncHandler(async (req, res) => {
 
   // mark the protected-client record if the breach names one
   if (kind === 'circumvention' && req.body.client_name) {
-    const pc = await P.WtProtectedClient.findOne({ where: { ...branchScope(req), provider_id: provider.id, client_name: req.body.client_name } });
+    const pc = await P.WtProtectedClient.findOne({ where: { ...scoped(req), provider_id: provider.id, client_name: req.body.client_name } });
     if (pc) await pc.update({ status: 'Breached', breach_notes: req.body.detail, breach_reported_date: today() });
   }
 
@@ -617,7 +621,7 @@ exports.logBreach = asyncHandler(async (req, res) => {
 /* ═══ DOCUMENTS (Sec. 5 Steps 2 & 3) ══════════════════════════════ */
 
 exports.listDocuments = asyncHandler(async (req, res) => {
-  const where = { ...branchScope(req) };
+  const where = { ...scoped(req) };
   if (req.query.provider_id) where.provider_id = req.query.provider_id;
   if (req.query.category) where.category = req.query.category;
   const rows = await P.WtProviderDocument.findAll({ where, order: [['expiry_date', 'ASC']] });
@@ -640,7 +644,7 @@ exports.saveDocument = asyncHandler(async (req, res) => {
 });
 
 exports.verifyDocument = asyncHandler(async (req, res) => {
-  const row = await P.WtProviderDocument.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  const row = await P.WtProviderDocument.findOne({ where: { id: req.params.id, ...scoped(req) } });
   if (!row) return res.status(404).json({ error: 'Document not found' });
   const verified = req.body.verified !== false;
   // A document can only be verified once its evidence has actually been uploaded —
@@ -661,7 +665,7 @@ exports.verifyDocument = asyncHandler(async (req, res) => {
 });
 
 exports.deleteDocument = asyncHandler(async (req, res) => {
-  const row = await P.WtProviderDocument.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  const row = await P.WtProviderDocument.findOne({ where: { id: req.params.id, ...scoped(req) } });
   if (!row) return res.status(404).json({ error: 'Document not found' });
   await row.destroy();
   res.json({ ok: true });
@@ -670,7 +674,7 @@ exports.deleteDocument = asyncHandler(async (req, res) => {
 /* ═══ AUDITS (Sec. 14) ════════════════════════════════════════════ */
 
 exports.listAudits = asyncHandler(async (req, res) => {
-  const where = { ...branchScope(req) };
+  const where = { ...scoped(req) };
   if (req.query.provider_id) where.provider_id = req.query.provider_id;
   if (req.query.outcome) where.outcome = req.query.outcome;
   const rows = await P.WtProviderAudit.findAll({ where, order: [['id', 'DESC']] });
@@ -680,7 +684,7 @@ exports.listAudits = asyncHandler(async (req, res) => {
 exports.createAudit = asyncHandler(async (req, res) => {
   const branchId = resolveBranchId(req);
   if (!req.body.provider_id || !req.body.audit_type) return res.status(400).json({ error: 'provider_id and audit_type are required.' });
-  const provider = await M.WtProvider.findOne({ where: { id: req.body.provider_id, ...branchScope(req) } });
+  const provider = await M.WtProvider.findOne({ where: { id: req.body.provider_id, ...scoped(req) } });
   if (!provider) return res.status(404).json({ error: 'Provider not found' });
 
   const row = await P.WtProviderAudit.create({
@@ -695,7 +699,7 @@ exports.createAudit = asyncHandler(async (req, res) => {
 });
 
 exports.updateAudit = asyncHandler(async (req, res) => {
-  const row = await P.WtProviderAudit.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  const row = await P.WtProviderAudit.findOne({ where: { id: req.params.id, ...scoped(req) } });
   if (!row) return res.status(404).json({ error: 'Audit not found' });
   const body = { ...req.body };
   delete body.id; delete body.branch_id; delete body.code;
@@ -708,7 +712,7 @@ exports.updateAudit = asyncHandler(async (req, res) => {
   await row.update(body);
 
   if (completing) {
-    const provider = await M.WtProvider.findOne({ where: { id: row.provider_id, ...branchScope(req) } });
+    const provider = await M.WtProvider.findOne({ where: { id: row.provider_id, ...scoped(req) } });
     if (provider) {
       await provider.update({ last_audit_date: row.conducted_date, next_audit_date: row.next_due_date });
       if (row.outcome === 'Failed') await provider.update({ status: 'Conditional' });
@@ -719,7 +723,7 @@ exports.updateAudit = asyncHandler(async (req, res) => {
 });
 
 exports.deleteAudit = asyncHandler(async (req, res) => {
-  const row = await P.WtProviderAudit.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  const row = await P.WtProviderAudit.findOne({ where: { id: req.params.id, ...scoped(req) } });
   if (!row) return res.status(404).json({ error: 'Audit not found' });
   await row.destroy();
   res.json({ ok: true });
@@ -728,7 +732,7 @@ exports.deleteAudit = asyncHandler(async (req, res) => {
 /* ═══ SERVICE REPORTS (Sec. 8 Step 10) ════════════════════════════ */
 
 exports.listReports = asyncHandler(async (req, res) => {
-  const where = { ...branchScope(req) };
+  const where = { ...scoped(req) };
   if (req.query.provider_id) where.provider_id = req.query.provider_id;
   if (req.query.report_type) where.report_type = req.query.report_type;
   if (req.query.status) where.status = req.query.status;
@@ -834,7 +838,7 @@ exports.createReport = asyncHandler(async (req, res) => {
 });
 
 exports.updateReport = asyncHandler(async (req, res) => {
-  const row = await P.WtServiceReport.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  const row = await P.WtServiceReport.findOne({ where: { id: req.params.id, ...scoped(req) } });
   if (!row) return res.status(404).json({ error: 'Report not found' });
   const body = { ...req.body };
   delete body.id; delete body.branch_id; delete body.code;
@@ -847,7 +851,7 @@ exports.updateReport = asyncHandler(async (req, res) => {
 });
 
 exports.deleteReport = asyncHandler(async (req, res) => {
-  const row = await P.WtServiceReport.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  const row = await P.WtServiceReport.findOne({ where: { id: req.params.id, ...scoped(req) } });
   if (!row) return res.status(404).json({ error: 'Report not found' });
   await row.destroy();
   res.json({ ok: true });
@@ -856,7 +860,7 @@ exports.deleteReport = asyncHandler(async (req, res) => {
 /* ═══ PROTECTED CLIENTS (Sec. 12) ═════════════════════════════════ */
 
 exports.listProtected = asyncHandler(async (req, res) => {
-  const where = { ...branchScope(req) };
+  const where = { ...scoped(req) };
   if (req.query.provider_id) where.provider_id = req.query.provider_id;
   const rows = await P.WtProtectedClient.findAll({ where, order: [['id', 'DESC']], raw: true });
 
@@ -896,7 +900,7 @@ exports.createProtected = asyncHandler(async (req, res) => {
 });
 
 exports.updateProtected = asyncHandler(async (req, res) => {
-  const row = await P.WtProtectedClient.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  const row = await P.WtProtectedClient.findOne({ where: { id: req.params.id, ...scoped(req) } });
   if (!row) return res.status(404).json({ error: 'Record not found' });
   const body = { ...req.body };
   delete body.id; delete body.branch_id; delete body.code;
@@ -906,7 +910,7 @@ exports.updateProtected = asyncHandler(async (req, res) => {
 });
 
 exports.deleteProtected = asyncHandler(async (req, res) => {
-  const row = await P.WtProtectedClient.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  const row = await P.WtProtectedClient.findOne({ where: { id: req.params.id, ...scoped(req) } });
   if (!row) return res.status(404).json({ error: 'Record not found' });
   await row.destroy();
   res.json({ ok: true });
@@ -920,7 +924,7 @@ exports.checkProtected = asyncHandler(async (req, res) => {
   const client = String(req.query.client_name || '').trim();
   if (!client) return res.json({ protected: false, records: [] });
   const rows = await P.WtProtectedClient.findAll({
-    where: { ...branchScope(req), client_name: client, status: 'Protected' }, raw: true,
+    where: { ...scoped(req), client_name: client, status: 'Protected' }, raw: true,
   });
   res.json({
     protected: rows.length > 0,
@@ -936,7 +940,7 @@ exports.checkProtected = asyncHandler(async (req, res) => {
  * unreviewed reports and breaches.
  */
 exports.alerts = asyncHandler(async (req, res) => {
-  const scope = branchScope(req);
+  const scope = scoped(req);
   const [providers, docs, audits, reports, protectedClients] = await Promise.all([
     M.WtProvider.findAll({ where: scope, raw: true }),
     P.WtProviderDocument.findAll({ where: scope, raw: true }),
@@ -1022,7 +1026,7 @@ const REPORT_STATUSES = ['Draft', 'Submitted', 'Accepted', 'Rework'];
 /** GET /wt-providers/reports/reference — everything the report dialog needs to open. */
 exports.reportReference = asyncHandler(async (req, res) => {
   const M = require('../models/waterTankOps');
-  const scope = branchScope(req);
+  const scope = scoped(req);
 
   const [providers, reports] = await Promise.all([
     M.WtProvider.findAll({
@@ -1077,7 +1081,7 @@ exports.reportJobs = asyncHandler(async (req, res) => {
    * The two flat fields below are kept because the report dialog reads them.
    */
   const jobs = await jobContext.search({
-    scope: branchScope(req),
+    scope: scoped(req),
     q: String(req.query.q || '').trim(),
     provider_id: req.query.provider_id || null,
   });

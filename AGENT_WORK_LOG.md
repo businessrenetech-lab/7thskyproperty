@@ -3717,3 +3717,15 @@ used "the last line starting with `import`", which landed inside a multi-line
   service_line on create paths; parametrize the catalogue vertical by service line; then AC
   is fully isolated. Also intra-screen nav() links still point at /water-tank (svcBase pass).
 - Handoff: WIP on the AC branch. Not merged to main.
+
+### 2026-08-29 22:10 | Claude Code (Opus 4.8) | COMPLETED | AC milestone 2a — provider module scoped by service_line (proven isolated)
+- Applied branch+service scoping to waterTankProviders.controller: added serviceScope/
+  resolveServiceLine imports + a local scoped(req)=branch+service; swapped all 26
+  branchScope(req)→scoped(req); the provider create + dedupe now set/scope service_line.
+- VERIFIED end to end: WT provider directory stays 6 (no header); AC directory (X-Service-
+  Line: air_conditioning) is 0; creating a provider under AC returns service_line
+  air_conditioning and shows ONLY under AC (WT unchanged at 6). Isolation mechanism proven.
+- Next (2b+): repeat the scoped(req) pass on the other WT controllers (intake, clients,
+  quotation, work-order, project, invoice, amc, disbursement, ops, reports, registers,
+  agreementHub) + set service_line on their creates; parametrize the catalogue vertical by
+  service line; then the svcBase() intra-screen nav pass.
