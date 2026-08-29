@@ -218,6 +218,31 @@ exports.setDecision = asyncHandler(async (req, res) => {
 
   await quote.update({ decision: match });
 
+  // Approval is where a project opens — the engagement is now won. Before this the
+  // request, assessment and quotation existed without a project; here we open (or
+  // reuse the client's existing open) project and attach the whole chain to it.
+  if (match.toLowerCase() === 'approved') {
+    const identity = require('../services/wtIdentity.service');
+    const client = await M.WtClient.findOne({
+      where: { ...scope, [Op.or]: [{ code: quote.client_code || ' ' }, { name: quote.client_name }] },
+    }) || { code: quote.client_code, name: quote.client_name };
+    const project = await identity.ensureProject(quote.branch_id, client, {
+      project_id: quote.project_id || undefined,
+      title: 'Water Tank Service',
+      stage: 'Agreement',
+    });
+    if (project && project.code) {
+      await quote.update({ project_id: project.code });
+      if (quote.source_assessment) {
+        await M.WtSiteAssessment.update({ project_id: project.code }, { where: { ...scope, code: quote.source_assessment } }).catch(() => {});
+      }
+      await M.WtServiceRequest.update({ project_id: project.code }, { where: { ...scope, quotation_code: quote.code } }).catch(() => {});
+      const timeline = (() => { try { return JSON.parse(project.timeline) || []; } catch { return Array.isArray(project.timeline) ? project.timeline : []; } })();
+      timeline.push({ title: 'Quotation approved — project opened', detail: `${quote.code} approved`, at: new Date().toISOString(), by: req.user?.name || req.user?.email || 'Client Service' });
+      await M.WtProject.update({ timeline, stage: 'Agreement' }, { where: { ...scope, code: project.code } }).catch(() => {});
+    }
+  }
+
   // The decision is worth a trace even without dedicated audit columns.
   await M.WtCommLog.create({
     branch_id: quote.branch_id,

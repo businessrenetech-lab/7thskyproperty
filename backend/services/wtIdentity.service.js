@@ -160,14 +160,16 @@ async function attachIdentifiers(entity, body, branchId, transaction, dryRun = f
   const out = { ...body };
   if (link.client && !out[link.client]) out[link.client] = client.code;
 
-  if (link.project && !out[link.project]) {
+  // A project opens only when a quotation is approved, so a quotation or a site
+  // assessment must not pull one into existence — it links to a project once one
+  // exists. Everything else still opens/attaches its project as before.
+  const defersProject = entity === 'quotations' || entity === 'site-assessments';
+  if (link.project && !out[link.project] && !defersProject) {
     const project = await ensureProject(branchId, client, {
       project_id: body.project_id,
       title: body.category || body.specific_service || body.warranty_type || undefined,
       provider_name: body.provider_name || body.provider,
-      stage: entity === 'quotations' ? 'Quotation'
-        : entity === 'site-assessments' ? 'Assessment'
-          : entity === 'work-orders' ? 'Agreement' : 'Lead',
+      stage: entity === 'work-orders' ? 'Agreement' : 'Lead',
     }, transaction, dryRun);
     if (project) out[link.project] = project.code;
   }

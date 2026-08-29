@@ -3355,3 +3355,27 @@ used "the last line starting with `import`", which landed inside a multi-line
   WTC-005 → Commercial Water Tank Cleaning. build:admin passed; dist committed;
   backend restarted.
 - Handoff: redeploy + restart on Hostinger.
+
+### 2026-08-19 19:45 | Claude Code (Opus 4.8) | COMPLETED | WT projects open on quotation approval (not at intake)
+- Request: only open the project when a quotation is approved.
+- Was: a project opened up front — at Service Request time (createRequest) and via
+  the generic identity linker whenever a quotation/assessment/work-order was created.
+- Now:
+  * waterTankIntake.controller createRequest — no longer creates a project; it
+    attaches to the client's existing open project if one exists, else leaves the
+    request/assessment/quotation with project_id null (all project.* refs guarded).
+  * wtIdentity.service attachIdentifiers — defers project creation for `quotations`
+    and `site-assessments` (they link to a project once one exists); other entities
+    (e.g. work-orders) still open/attach as before.
+  * waterTankQuotation.controller setDecision — on decision "Approved" it opens (or
+    reuses the client's open) project via identity.ensureProject, sets the quote's
+    project_id, and back-fills the source assessment + originating service request.
+- Verified end to end: direct request → SR + quote created with project_id null,
+  project count unchanged (23); approve the quote → project WTCM-P0025 opens (24),
+  quote.project_id set, SR back-filled to the same project. Repeat-client safe
+  (findOrCreate open project, no duplicates). Test records cleaned up (a stray
+  approved quote can't be deleted by design — harmless).
+- Handoff: redeploy + restart on Hostinger. Effect: the Projects register / the
+  dashboard "active projects" now count won engagements (approved+), not leads.
+  Agreements/work-orders/invoices already come after approval, so project_id is set
+  by the time they need it.

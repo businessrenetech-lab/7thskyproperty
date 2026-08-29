@@ -240,20 +240,11 @@ exports.createRequest = asyncHandler(async (req, res) => {
   }
 
   // ── project file ──
-  let project = await M.WtProject.findOne({ where: { ...scope, client_name: client.name, status: 'Open' } });
-  if (!project) {
-    project = await M.WtProject.create({
-      branch_id: branchId,
-      code: await nextCode(M.WtProject, 'WTCM-P', 4, 1, branchId),
-      name: `${client.name} — ${b.specific_service || b.category || 'Water Tank Service'}`,
-      client_name: client.name,
-      assigned_provider: b.provider_name || null,
-      start_date: today(),
-      stage: needsAssessment ? 'Site Assessment' : 'Quotation',
-      status: 'Open',
-      timeline: [], linked: {}, milestones: [],
-    });
-  }
+  // A project opens only when a quotation is approved. If this client already has
+  // an open project (a repeat engagement) we attach to it, but we never create one
+  // at intake — the request, assessment and quotation live without a project until
+  // the quotation is approved (see setDecision in waterTankQuotation.controller).
+  const project = await M.WtProject.findOne({ where: { ...scope, client_name: client.name, status: 'Open' } });
 
   // ── the request itself ──
   const request = await M.WtServiceRequest.create({
@@ -279,7 +270,7 @@ exports.createRequest = asyncHandler(async (req, res) => {
     description: b.description || null,
     needs_assessment: needsAssessment,
     assessment_date: needsAssessment ? b.assessment_date : null,
-    project_id: project.code,
+    project_id: project ? project.code : null,
     source: b.source || 'Direct',
     enquiry_code: b.enquiry_code || null,
     status: needsAssessment ? 'Assessment Scheduled' : 'In Progress',
@@ -293,7 +284,7 @@ exports.createRequest = asyncHandler(async (req, res) => {
       branch_id: branchId,
       code: await nextCode(M.WtSiteAssessment, 'SA-', 4, 402, branchId),
       client_name: client.name,
-      project_id: project.code,
+      project_id: project ? project.code : null,
       provider: b.provider_name || null,
       assessed_date: b.assessment_date,
       status: 'Scheduled',
@@ -320,7 +311,7 @@ exports.createRequest = asyncHandler(async (req, res) => {
       branch_id: branchId,
       code: await nextCode(M.WtQuotation, 'Q-', 4, 1049, branchId),
       client_name: client.name,
-      project_id: project.code,
+      project_id: project ? project.code : null,
       lines,
       service_charges, other_fees, provider_allocation_fee: alloc, discount,
       vat_exempt: !!b.vat_exempt, vat,
@@ -335,16 +326,18 @@ exports.createRequest = asyncHandler(async (req, res) => {
     out.quotation = quotation;
   }
 
-  // ── project timeline ──
-  const timeline = (() => { try { return JSON.parse(project.timeline) || []; } catch { return Array.isArray(project.timeline) ? project.timeline : []; } })();
-  timeline.push({
-    title: needsAssessment ? 'Site assessment scheduled' : 'Quotation raised',
-    detail: needsAssessment
-      ? `${request.code} → ${out.assessment.code} on ${b.assessment_date}`
-      : `${request.code} → ${out.quotation.code}`,
-    at: new Date().toISOString(), by: actorOf(req),
-  });
-  await project.update({ timeline, stage: needsAssessment ? 'Site Assessment' : 'Quotation' });
+  // ── project timeline (only if the client already had an open project) ──
+  if (project) {
+    const timeline = (() => { try { return JSON.parse(project.timeline) || []; } catch { return Array.isArray(project.timeline) ? project.timeline : []; } })();
+    timeline.push({
+      title: needsAssessment ? 'Site assessment scheduled' : 'Quotation raised',
+      detail: needsAssessment
+        ? `${request.code} → ${out.assessment.code} on ${b.assessment_date}`
+        : `${request.code} → ${out.quotation.code}`,
+      at: new Date().toISOString(), by: actorOf(req),
+    });
+    await project.update({ timeline, stage: needsAssessment ? 'Site Assessment' : 'Quotation' });
+  }
 
   // ── close off the enquiry it came from ──
   if (b.enquiry_code) {
