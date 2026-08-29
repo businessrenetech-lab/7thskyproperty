@@ -3506,3 +3506,27 @@ used "the last line starting with `import`", which landed inside a multi-line
   itself is unchanged (shared component), so only this screen is affected.
 - Verified: build:admin passed; dist committed.
 - Handoff: redeploy + restart on Hostinger.
+
+### 2026-08-29 14:30 | Claude Code (Opus 4.8) | COMPLETED | WT signing — email BOTH parties on completion; verify signature placement
+- Reports (agreement signing): (a) no witness / Seventh Sky rep inputs; (b) signature
+  not placed on the placeholder; (c) on full completion, email each party (customer +
+  Seventh Sky) the signed doc; (d) witnesses only sign, no doc.
+- Findings:
+  * (a) The "Signing parties" card in QuotationAgreement.jsx DOES render the Seventh
+    Sky representative/position/countersigner-email inputs and Witness 1 & 2
+    (name/NID/email) — near the bottom of the form. No code gap found.
+  * (b) applySignatures places signatures correctly — unit-tested: 3/3 anchors filled,
+    both names present. The SIGN PAGE shows the raw form (typed-name fields), so the
+    placed signatures only appear in the SIGNED-DOCUMENT view (hub "Download signed"
+    and the completion email link, which run buildSignedDocument). Not an engine bug.
+- Change (backend, wtAgreementCompletion.service): on completion, email the signed
+  copy to BOTH principals — customer/provider AND the Seventh Sky countersigner —
+  each via their own token link to the fully-signed document (signatures placed;
+  printable/savable to PDF). Witnesses excluded (they only attest). Provider filing
+  unchanged.
+- PDF constraint (unchanged): the server has no HTML→PDF engine (only pdfkit), so the
+  email delivers a link to the signed HTML (print/save to PDF), not a PDF attachment.
+  A true PDF attachment needs a headless renderer — flagged for a decision.
+- Verified: service loads; backend restarted. Backend-only, no dist change.
+- Handoff: redeploy + restart on Hostinger. Open: (1) real PDF attachment needs a
+  renderer; (2) optionally show placed signatures on the sign page itself after signing.

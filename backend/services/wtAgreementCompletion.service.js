@@ -27,22 +27,31 @@ async function onCompleted(env, baseUrl) {
   const signers = await EnvelopeSigner.findAll({ where: { envelope_id: env.id }, raw: true });
   const principal = signers.find((s) => s.role === principalRole)
     || signers.find((s) => Number(s.signer_order) === 1);
-  if (!principal || !principal.email || !principal.access_token) return;
 
   const title = env.title || env.envelope_code;
-  const link = signedLink(baseUrl, principal.access_token);
-  const html = `
-    <p>Dear ${principal.name || 'Sir/Madam'},</p>
-    <p>Your agreement <strong>${title}</strong> (${env.envelope_code}) has been signed by all parties and is now
-       fully executed.</p>
-    <p>You can view and download your signed copy here:</p>
-    <p><a href="${link}">${link}</a></p>
-    <p>Thank you,<br/>Seventh Sky Property Care</p>`;
-  await sendEmail(principal.email, `Your signed agreement — ${title}`, html).catch(() => {});
+
+  // Email the signed copy to BOTH principals — the customer/provider AND Seventh
+  // Sky's countersigner. Witnesses only attest; they do not receive the final copy.
+  // Each party gets a link carrying their OWN token to the fully-signed document
+  // (signatures placed on the page — printable to PDF).
+  const recipients = signers.filter((s) => (s.role === principalRole || s.role === 'staff_countersign')
+    && s.email && s.access_token);
+  for (const r of recipients) {
+    const link = signedLink(baseUrl, r.access_token);
+    const html = `
+      <p>Dear ${r.name || 'Sir/Madam'},</p>
+      <p>The agreement <strong>${title}</strong> (${env.envelope_code}) has been signed by all parties and is now
+         fully executed.</p>
+      <p>You can view, print or save the signed copy here:</p>
+      <p><a href="${link}">${link}</a></p>
+      <p>Thank you,<br/>Seventh Sky Property Care</p>`;
+    await sendEmail(r.email, `Signed agreement — ${title}`, html).catch(() => {});
+  }
 
   // File it under the provider's Documents (clients surface it from the agreements
   // register — there is no separate client-document store to write into).
-  if (principalRole === 'provider' && WtProviderDocument && env.related_id) {
+  const link = principal?.access_token ? signedLink(baseUrl, principal.access_token) : null;
+  if (principalRole === 'provider' && WtProviderDocument && env.related_id && link) {
     try {
       const [doc, created] = await WtProviderDocument.findOrCreate({
         where: { provider_id: env.related_id, category: 'agreement', doc_number: env.envelope_code },
