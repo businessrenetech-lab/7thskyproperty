@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   FileSignature, Send, Loader2, Eye, RefreshCw, Check, ExternalLink, Copy, Search,
@@ -94,9 +94,16 @@ export default function QuotationAgreement() {
   }, [quoteCode]);
   useEffect(load, [load]);
 
+  // The preview is an iframe; keep its scroll position across re-renders so an edit
+  // doesn't jump the agreement back to the top while the operator is reading it.
+  const previewRef = useRef(null);
+  const previewScroll = useRef(0);
+
   // live preview from the real agreement engine
   const refresh = useCallback(async (body) => {
     if (!body) return;
+    // Remember where the reader was before the iframe reloads with new HTML.
+    try { previewScroll.current = previewRef.current?.contentWindow?.scrollY || previewScroll.current; } catch { /* cross-origin guard */ }
     setPreviewing(true);
     try {
       const { data } = await api.post('/wt-agreements/customer/preview', body);
@@ -104,7 +111,13 @@ export default function QuotationAgreement() {
     } catch (e) { toast.err(errText(e, 'Could not render the preview')); }
     finally { setPreviewing(false); }
   }, []);
-  useEffect(() => { if (draft) refresh(draft); }, [draft, refresh]);
+  // Debounced: refresh once the operator pauses, not on every keystroke/tick, so
+  // ticking several options doesn't reload the preview repeatedly.
+  useEffect(() => {
+    if (!draft) return undefined;
+    const t = setTimeout(() => refresh(draft), 500);
+    return () => clearTimeout(t);
+  }, [draft, refresh]);
 
   /* Witnesses are a fixed pair of slots, so edit them positionally. */
   const setWitness = (i, key, value) => setDraft((s) => {
@@ -771,7 +784,9 @@ export default function QuotationAgreement() {
             {previewing && <Loader2 size={14} className="wt-spin" style={{ color: 'var(--wt-muted)' }} />}
           </div>
           {preview?.html
-            ? <iframe title="Agreement preview" srcDoc={preview.html} sandbox=""
+            ? <iframe ref={previewRef} title="Agreement preview" srcDoc={preview.html}
+                sandbox="allow-same-origin"
+                onLoad={() => { try { previewRef.current?.contentWindow?.scrollTo(0, previewScroll.current); } catch { /* cross-origin guard */ } }}
                 style={{ width: '100%', height: 620, border: 0, background: '#fff' }} />
             : <div style={{ padding: 40, textAlign: 'center' }}><Loader2 size={20} className="wt-spin" style={{ color: 'var(--wt-muted)' }} /></div>}
         </div>

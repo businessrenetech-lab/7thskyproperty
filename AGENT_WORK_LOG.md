@@ -3482,3 +3482,16 @@ used "the last line starting with `import`", which landed inside a multi-line
   bound to draft.checklist. Ticks flow into the live preview and the sent document.
 - Verified: meta returns the two checklist groups; build:admin passed; dist committed.
 - Handoff: redeploy + restart on Hostinger.
+
+### 2026-08-29 13:25 | Claude Code (Opus 4.8) | COMPLETED | WT agreement — stop the preview jumping to top on every edit
+- Report: on the agreement screen, changing any input/checkbox scrolls the right-side
+  agreement preview back to the top.
+- Cause: the preview is an <iframe srcDoc>; the effect refreshed it on EVERY draft
+  change (each keystroke/tick), and each srcDoc reload reset the iframe scroll to 0.
+- Change (frontend, QuotationAgreement.jsx): debounced the auto-refresh (500ms after
+  the operator pauses) so quick edits don't thrash it; and preserve the iframe scroll
+  across reloads — saved before setPreview and restored in onLoad. The iframe sandbox
+  moved from "" to "allow-same-origin" (no allow-scripts, so the agreement HTML still
+  can't run JS) so the parent can read/restore scrollY.
+- Verified: build:admin passed; dist committed.
+- Handoff: redeploy + restart on Hostinger.
