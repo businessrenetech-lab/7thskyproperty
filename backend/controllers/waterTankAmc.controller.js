@@ -13,7 +13,7 @@ const svc = require('../services/wtAmc.service');
 
 const { num, eq, asArray, today } = svc;
 const actorOf = (req) => req.user?.name || req.user?.email || 'Operations';
-const ctxOf = (req) => ({ branchId: resolveBranchId(req), actor: actorOf(req), userId: req.user?.id || null });
+const ctxOf = (req) => ({ branchId: resolveBranchId(req), actor: actorOf(req), userId: req.user?.id || null, serviceLine: resolveServiceLine(req) });
 const daysTo = (d) => (d ? Math.ceil((new Date(d) - Date.now()) / 864e5) : null);
 
 const loadAmc = async (req, res) => {

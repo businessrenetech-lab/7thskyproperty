@@ -304,6 +304,7 @@ async function persistDraft(spec, { branchId, actor }, transaction) {
   const code = await nextInvoiceCode(branchId, transaction);
   return M.WtInvoice.create({
     branch_id: branchId,
+    service_line: spec.service_line || 'water_tank',
     code,
     client_name: spec.client_name || 'Client',
     client_code: spec.client_code || null,
@@ -361,11 +362,15 @@ async function createFromSignedAgreement(envelope, { transaction } = {}) {
   const specs = buildFromAgreement(envelope, terms, {});
   if (!specs.length) return [];
 
+  // The invoice belongs to the same service line as the agreement it bills.
+  const { serviceLineForRelatedType } = require('../config/serviceLines');
+  const sl = serviceLineForRelatedType(envelope.related_type) || 'water_tank';
+
   const out = [];
   for (const spec of specs) {
     // Later stages are drafted too — the operator needs to see the whole billing
     // plan — but they carry no due date until their trigger fires.
-    out.push(await persistDraft(spec, { branchId: envelope.branch_id, actor: 'System (agreement signed)' }, transaction));
+    out.push(await persistDraft({ ...spec, service_line: sl }, { branchId: envelope.branch_id, actor: 'System (agreement signed)' }, transaction));
   }
   return out;
 }
@@ -379,9 +384,10 @@ async function createFromAmc(amc, { branchId, actor, transaction, onlyFirst = fa
 
   const { schedule } = buildAmcSchedule(amc);
   const specs = onlyFirst ? schedule.slice(0, 1) : schedule;
+  const sl = amc.service_line || 'water_tank';
   const out = [];
   for (const spec of specs) {
-    out.push(await persistDraft(spec, { branchId, actor }, transaction));
+    out.push(await persistDraft({ ...spec, service_line: sl }, { branchId, actor }, transaction));
   }
   return out;
 }
