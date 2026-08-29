@@ -43,6 +43,26 @@ const SERVICE_LINES = {
       customer: 'Water Tank Cleaning & Maintenance Customer Service Agreement',
       provider: 'Master Service Delivery Provider Agreement',
     },
+    // The words the shared operations screens show — so an AC console never says
+    // "Tank". Reference endpoints return this; the frontend renders from it.
+    ui: {
+      full_label: 'Water Tank Cleaning & Maintenance',
+      project_types: ['Cleaning & Maintenance', 'Tank Sanitisation', 'Repair & Waterproofing', 'Water Quality & Testing', 'AMC Visit', 'Inspection Only', 'Mixed Scope'],
+      categories: ['Cleaning', 'Disinfection', 'Repairs', 'Water Quality', 'Maintenance', 'AMC', 'Inspection'],
+      property_types: ['Apartment', 'House', 'Duplex', 'Commercial Building', 'Hotel', 'Restaurant', 'School', 'Hospital', 'Factory', 'Warehouse', 'Mosque', 'Other'],
+      // The project's tank_type/tanks_count/tank_capacity/water_source columns are
+      // reused per service; only the labels and option lists differ.
+      equipment: {
+        section_label: 'Tank Details',
+        type_label: 'Tank Type',
+        type_options: ['Rooftop', 'Underground', 'Overhead', 'Ground Level', 'Apartment Common', 'Industrial'],
+        count_label: 'Number of Tanks',
+        capacity_label: 'Tank Capacity',
+        capacity_placeholder: 'e.g. 2 × 1,500 L',
+        source_label: 'Water Source',
+        source_options: ['Municipal (WASA)', 'Deep Tube Well', 'Both', 'Other'],
+      },
+    },
   },
 
   air_conditioning: {
@@ -75,6 +95,24 @@ const SERVICE_LINES = {
     agreement_template: {
       customer: 'Air Conditioning Cleaning Customer Service Agreement',
       provider: 'Master Service Delivery Provider Agreement',
+    },
+    ui: {
+      full_label: 'Air Conditioning Solutions',
+      project_types: ['Consultation', 'Installation', 'Relocation', 'Maintenance & Repairs', 'Cleaning', 'Refrigerant Service', 'AMC Visit', 'Smart Climate Control', 'Emergency Service', 'Mixed Scope'],
+      categories: ['Consultation', 'Installation', 'Relocation', 'Maintenance', 'Repairs', 'Cleaning', 'Refrigerant', 'AMC', 'Smart Climate', 'Emergency'],
+      property_types: ['House', 'Apartment', 'Office', 'Retail Shop', 'Restaurant', 'Café', 'School', 'Hospital', 'Warehouse', 'Factory', 'Commercial Building', 'Other'],
+      // Reuses the project's tank_* / water_source columns as generic equipment
+      // fields — no migration needed; only the labels and options change.
+      equipment: {
+        section_label: 'Equipment Details',
+        type_label: 'System Type',
+        type_options: ['Split System', 'Inverter', 'Cassette', 'Ducted', 'Window', 'Portable', 'Multi-Zone', 'Commercial'],
+        count_label: 'Number of Units',
+        capacity_label: 'Capacity (Ton / BTU)',
+        capacity_placeholder: 'e.g. 2 × 1.5 Ton',
+        source_label: 'Refrigerant Type',
+        source_options: ['R32', 'R410A', 'R22', 'R290', 'Other'],
+      },
     },
   },
 };

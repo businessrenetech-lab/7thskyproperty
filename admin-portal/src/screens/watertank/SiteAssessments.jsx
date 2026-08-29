@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Eye, ChevronRight, AlertTriangle, FileText } from 'lucide-react';
 import { useSvcNav,
   WtHead, WtTabs, StatCards, dateFmt, useCollection, StatusCell, RowActions,
-  Loading, EmptyState, useFocusedRecord, parseJson, toast, errText,
+  Loading, EmptyState, useFocusedRecord, parseJson, toast, errText, svcEquip,
 } from './common';
 
 /*
@@ -33,6 +33,7 @@ const hasHighRisk = (r) => (parseJson(r.risks, []) || [])
 
 export default function SiteAssessments() {
   const nav = useSvcNav();
+  const eq = svcEquip();
   const { rows, loading, error, reload, patch, remove } = useCollection('site-assessments');
   const [tab, setTab] = useState('All');
   const [q, setQ] = useState('');
@@ -96,7 +97,7 @@ export default function SiteAssessments() {
           <>
             <table className="wt-tbl">
               <thead><tr>
-                <th style={{ width: 106 }}>Assessment</th><th>Client</th><th style={{ width: 150 }}>Tank</th>
+                <th style={{ width: 106 }}>Assessment</th><th>Client</th><th style={{ width: 150 }}>{eq.section_label.replace(' Details', '')}</th>
                 <th style={{ width: 140 }}>Provider</th><th style={{ width: 108 }}>Date</th>
                 <th style={{ width: 96 }}>Safety</th><th style={{ width: 78 }}>Risks</th><th style={{ width: 80 }}>Photos</th>
                 <th style={{ width: 134 }}>Status</th><th style={{ width: 44 }} /><th style={{ width: 28 }} />

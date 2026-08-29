@@ -11,7 +11,7 @@
  * posts to. It deliberately exposes no pricing.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine, catalogueVertical } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine, catalogueVertical, serviceUi } = require('../utils/controllerHelpers');
 // Branch + service-line scope for wt_* reads (never spread onto ServiceItem, which
 // is separated by `vertical`, not service_line).
 const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
@@ -69,10 +69,13 @@ exports.publicServices = asyncHandler(async (req, res) => {
     const g = familyOf(r.name || '');
     (groups[g] = groups[g] || []).push({ code: r.code, name: r.name, unit: r.unit || null });
   });
+  const ui0 = serviceUi(req);
   res.json({
     groups: Object.entries(groups).map(([label, services]) => ({ label, services })),
-    property_types: ['Apartment', 'House', 'Duplex', 'Commercial Building', 'Hotel', 'Restaurant', 'School', 'Hospital', 'Factory', 'Warehouse', 'Mosque', 'Other'],
-    tank_types: ['Overhead', 'Underground', 'Rooftop', 'Ground Level', 'Sectional', 'Not sure'],
+    property_types: ui0.property_types || ['Apartment', 'House', 'Duplex', 'Commercial Building', 'Hotel', 'Restaurant', 'School', 'Hospital', 'Factory', 'Warehouse', 'Mosque', 'Other'],
+    tank_types: ui0.equipment?.type_options || ['Overhead', 'Underground', 'Rooftop', 'Ground Level', 'Sectional', 'Not sure'],
+    equipment: ui0.equipment || null,
+    service_label: ui0.full_label || null,
     districts: ['Dhaka', 'Cumilla', 'Chattogram', 'Sylhet', 'Rajshahi', 'Khulna', 'Barishal', 'Rangpur', 'Mymensingh', 'Gazipur', 'Narayanganj'],
   });
 });
@@ -183,16 +186,19 @@ exports.requestReference = asyncHandler(async (req, res) => {
     };
   });
 
+  const ui = serviceUi(req);
   res.json({
     catalog,
     groups: [...new Set(catalog.map((c) => c.group))],
     providers: eligible,
     assignable_providers: eligible.filter((p) => p.assignable),
-    categories: ['Cleaning', 'Disinfection', 'Repairs', 'Water Quality', 'Maintenance', 'AMC', 'Inspection'],
+    categories: ui.categories || ['Cleaning', 'Disinfection', 'Repairs', 'Water Quality', 'Maintenance', 'AMC', 'Inspection'],
     priorities: ['High', 'Medium', 'Low'],
     districts: ['Dhaka', 'Cumilla', 'Chattogram', 'Sylhet', 'Rajshahi', 'Khulna', 'Barishal', 'Rangpur', 'Mymensingh', 'Gazipur', 'Narayanganj'],
-    property_types: ['Apartment', 'House', 'Duplex', 'Commercial Building', 'Hotel', 'Restaurant', 'School', 'Hospital', 'Factory', 'Warehouse', 'Mosque', 'Other'],
-    tank_types: ['Overhead', 'Underground', 'Rooftop', 'Ground Level', 'Sectional', 'Pressure Vessel'],
+    property_types: ui.property_types || ['Apartment', 'House', 'Duplex', 'Commercial Building', 'Hotel', 'Restaurant', 'School', 'Hospital', 'Factory', 'Warehouse', 'Mosque', 'Other'],
+    tank_types: ui.equipment?.type_options || ['Overhead', 'Underground', 'Rooftop', 'Ground Level', 'Sectional', 'Pressure Vessel'],
+    equipment: ui.equipment || null,
+    service_label: ui.full_label || null,
   });
 });
 

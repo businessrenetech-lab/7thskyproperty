@@ -15,6 +15,22 @@
 const crypto = require('crypto');
 const { Op } = require('sequelize');
 const { asyncHandler, branchScope, resolveBranchId, pick, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+const { getServiceLine } = require('../config/serviceLines');
+
+// The provider onboarding vocabulary (service categories, compliance/insurance
+// docs) is per service line — read it from the manifest so the AC console never
+// offers "Tank Cleaning Contractor". Falls back to the Water Tank constants.
+const providerRef = (req) => {
+  const sl = getServiceLine(resolveServiceLine(req));
+  const toDoc = (arr, fallback) => (Array.isArray(arr) && arr.length
+    ? arr.map((type) => ({ type, required: true }))
+    : fallback);
+  return {
+    service_categories: sl.service_categories || SERVICE_CATEGORIES,
+    compliance_docs: toDoc(sl.required_docs?.compliance, COMPLIANCE_DOCS),
+    insurance_docs: toDoc(sl.required_docs?.insurance, INSURANCE_DOCS),
+  };
+};
 // Branch + service-line scope: every read is confined to the caller's branch AND
 // the active service line, so Air Conditioning never sees Water Tank providers.
 const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
@@ -73,9 +89,7 @@ const PROTECTION_MONTHS = 24; // Sec. 12
 
 exports.reference = (req, res) => res.json({
   stages: STAGES,
-  service_categories: SERVICE_CATEGORIES,
-  compliance_docs: COMPLIANCE_DOCS,
-  insurance_docs: INSURANCE_DOCS,
+  ...providerRef(req),
   audit_types: AUDIT_TYPES,
   report_types: REPORT_TYPES,
   incident_types: INCIDENT_TYPES,
@@ -422,7 +436,7 @@ exports.detail = asyncHandler(async (req, res) => {
     agreements,
     rates,
     stages: STAGES,
-    reference: { compliance_docs: COMPLIANCE_DOCS, insurance_docs: INSURANCE_DOCS, audit_types: AUDIT_TYPES, service_categories: SERVICE_CATEGORIES },
+    reference: { ...providerRef(req), audit_types: AUDIT_TYPES },
   });
 });
 

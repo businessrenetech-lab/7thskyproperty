@@ -7,7 +7,7 @@ import {
 import api from '../../services/api';
 import { useSvcNav,
   WtHead, Pill, Loading, EmptyState, dateFmt, bdt,
-  toast, errText, parseJson,
+  toast, errText, parseJson, svcEquip,
 } from './common';
 import RecordComments from './RecordComments';
 import { fileSrc } from '../../ui/FileUpload';
@@ -38,6 +38,7 @@ const Section = ({ icon: Icon, title, sop, right, children }) => (
 export default function AssessmentDetail() {
   const { code } = useParams();
   const nav = useSvcNav();
+  const eq = svcEquip();
   const [rec, setRec] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -156,10 +157,10 @@ export default function AssessmentDetail() {
           </div>
 
           <div className="wt-card wt-detailcard">
-            <div className="eyebrow">Tank Profile</div>
+            <div className="eyebrow">{eq.section_label}</div>
             <div className="wt-profile">
-              {[['Type', rec.tank_type], ['Material', rec.tank_material], ['Capacity', rec.tank_capacity],
-                ['Location', rec.tank_location], ['Water source', rec.water_source], ['Last cleaned', rec.last_cleaned]]
+              {[['Type', rec.tank_type], ['Material / Make', rec.tank_material], [eq.capacity_label, rec.tank_capacity],
+                ['Location', rec.tank_location], [eq.source_label, rec.water_source], ['Last serviced', rec.last_cleaned]]
                 .map(([k, v]) => <div className="f" key={k}><div className="k">{k}</div><div className="v">{v || '—'}</div></div>)}
             </div>
           </div>

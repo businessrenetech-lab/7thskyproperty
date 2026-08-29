@@ -40,6 +40,12 @@ const { getServiceLine } = require('../config/serviceLines');
 function catalogueVertical(req) {
   return getServiceLine(resolveServiceLine(req)).catalogue_vertical;
 }
+// The active service line's UI vocabulary (labels, project types, categories,
+// property types, equipment field labels) — so shared screens never show another
+// service's wording. Always returns an object.
+function serviceUi(req) {
+  return getServiceLine(resolveServiceLine(req)).ui || {};
+}
 
 /** Parse pagination params -> { limit, offset, page }. */
 function getPagination(req, defaultLimit = 25, maxLimit = 100) {
@@ -58,4 +64,4 @@ function pick(body, allowed) {
   return out;
 }
 
-module.exports = { asyncHandler, branchScope, resolveBranchId, getPagination, pick, resolveServiceLine, serviceScope, catalogueVertical };
+module.exports = { asyncHandler, branchScope, resolveBranchId, getPagination, pick, resolveServiceLine, serviceScope, catalogueVertical, serviceUi };

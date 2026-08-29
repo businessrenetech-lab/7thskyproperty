@@ -3874,3 +3874,26 @@ used "the last line starting with `import`", which landed inside a multi-line
   AC work-order PDF (10.9 KB) and execution certificate (3.4 KB) build with %PDF- header.
 - Phase 2 (agreements) COMPLETE: customer, provider and work-order agreements all render per
   service line off the shared engines. AC duplication is now feature-complete end-to-end.
+
+### 2026-08-30 05:20 | Claude Code (Opus 4.8) | COMPLETED | AC milestone 4 — shared screens show the active service's wording (no more "Water Tank" in the AC console)
+- The shared operations screens are reused for AC, but their field labels, dropdown options
+  and copy were hard-coded to Water Tank (Tank Type/Capacity/Number of Tanks/Water Source,
+  "Water Tank" titles, WT project/category/provider enums). Fixed on both sides:
+- BACKEND: added a `ui` vocabulary block to each service line in config/serviceLines.js
+  (full_label, project_types, categories, property_types, equipment field labels+options) +
+  serviceUi(req) helper. Reference endpoints now emit the active service line's vocab:
+  wt-projects/reference, wt-intake/request-reference (+ the request-reference variant),
+  wt-providers/reference (service_categories + compliance/insurance docs from the manifest's
+  required_docs). Provider onboarding no longer offers "Tank Cleaning Contractor" under AC.
+- FRONTEND: added SERVICE_UI profile + svcProfile()/svcLabel()/svcEquip() to common.jsx.
+  Threaded the equipment labels through every shared form/detail screen: ProjectForm,
+  AmcForm, AmcDetail, AssessmentForm, AssessmentDetail, ClientCreate, ClientDashboard,
+  Clients, ProjectDetail, QuotationAgreement, QuotationDetail, ServiceRequestNew,
+  SiteAssessments. Replaced visible "Water Tank" copy (AgreementsHub subtitle, ProjectForm
+  name/placeholder, Catalogue placeholder).
+- AC now shows Equipment Details / System Type / Capacity (Ton/BTU) / Refrigerant Type, AC
+  system-type options (Split/Inverter/Cassette/Ducted…), AC project types and AC provider
+  categories; Water Tank unchanged.
+- VERIFIED: reference endpoints return the right vocab per X-Service-Line; admin build passes.
+- Note: the client/provider self-service Portal screens (Portal.jsx/PortalClient.jsx) still
+  say "Water Tank Services" — separate public surface, not in the console; left for a follow-up.

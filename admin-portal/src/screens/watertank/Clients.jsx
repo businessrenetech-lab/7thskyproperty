@@ -2,12 +2,14 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Filter, Eye, Trash2, FileText } from 'lucide-react';
 import api from '../../services/api';
-import { useSvcNav, WtHead, useCollection, RecordDrawer, StatusCell, RowActions, Loading, EmptyState, toast, errText } from './common';
+import { useSvcNav, WtHead, useCollection, RecordDrawer, StatusCell, RowActions, Loading, EmptyState, toast, errText, svcEquip } from './common';
 
 const PER = 10;
 const STATUSES = ['New Lead', 'Assessment Scheduled', 'Active (AMC)', 'Completed', 'Dormant'];
 
-const FIELDS = [
+// Field defs are built per service line so the equipment rows carry the right
+// wording (Tank Type / Tank Capacity vs System Type / Capacity …).
+const buildFields = (eq) => [
   { key: 'name', label: 'Client name', required: true },
   { key: 'client_type', label: 'Type', type: 'select', options: ['Residential', 'Commercial', 'Industrial'] },
   { key: 'mobile', label: 'Mobile' },
@@ -18,16 +20,17 @@ const FIELDS = [
   { key: 'lead_source', label: 'Lead source' },
   { key: 'current_status', label: 'Status', type: 'select', options: STATUSES, pill: true },
   { key: 'assigned_officer', label: 'Assigned officer' },
-  { key: 'tanks_count', label: 'Number of tanks', type: 'number' },
-  { key: 'tank_type', label: 'Tank type' },
-  { key: 'tank_capacity', label: 'Tank capacity' },
-  { key: 'last_cleaning', label: 'Last cleaning' },
+  { key: 'tanks_count', label: eq.count_label, type: 'number' },
+  { key: 'tank_type', label: eq.type_label, type: 'select', options: eq.type_options },
+  { key: 'tank_capacity', label: eq.capacity_label },
+  { key: 'last_cleaning', label: 'Last service' },
   { key: 'key_issues', label: 'Key issues', type: 'textarea' },
   { key: 'notes', label: 'Notes', type: 'textarea' },
 ];
 
 export default function Clients() {
   const nav = useSvcNav();
+  const FIELDS = buildFields(svcEquip());
   const { rows, loading, error, reload, patch, remove } = useCollection('clients');
   const [open, setOpen] = useState(null);
   const [q, setQ] = useState('');

@@ -5,7 +5,7 @@ import {
   CalendarClock, FileText, Plus, RotateCcw, Loader2, Sparkles, Truck, Ban, AlertTriangle,
 } from 'lucide-react';
 import api from '../../services/api';
-import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText } from './common';
+import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, svcEquip } from './common';
 
 /*
  * New Service Request — the front door of the water-tank operation.
@@ -19,6 +19,7 @@ const lineTotal = (l) => Number(l.price || 0) * (Number(l.qty) || 1);
 
 export default function ServiceRequestNew() {
   const nav = useSvcNav();
+  const eq = svcEquip();
   const [params] = useSearchParams();
   const fromClient = params.get('client');
   const routeParam = params.get('route'); // 'assessment' | 'quotation'
@@ -333,13 +334,13 @@ export default function ServiceRequestNew() {
                   <select className="wt-select" value={f.property_type} onChange={(e) => set('property_type', e.target.value)}>
                     <option value="">Select…</option>{(ref?.property_types || []).map((t) => <option key={t}>{t}</option>)}
                   </select></div>
-                <div className="wt-field"><label>Tank type</label>
+                <div className="wt-field"><label>{eq.type_label}</label>
                   <select className="wt-select" value={f.tank_type} onChange={(e) => set('tank_type', e.target.value)}>
-                    <option value="">Select…</option>{(ref?.tank_types || []).map((t) => <option key={t}>{t}</option>)}
+                    <option value="">Select…</option>{(ref?.tank_types || eq.type_options).map((t) => <option key={t}>{t}</option>)}
                   </select></div>
               </div>
               <div className="wt-grid3">
-                <div className="wt-field"><label>Number of tanks</label>
+                <div className="wt-field"><label>{eq.count_label}</label>
                   <input className="wt-input" type="number" value={f.tanks_count} onChange={(e) => set('tanks_count', e.target.value)} /></div>
                 <div className="wt-field"><label>Category</label>
                   <select className="wt-select" value={f.category} onChange={(e) => set('category', e.target.value)}>

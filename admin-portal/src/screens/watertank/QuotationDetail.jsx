@@ -7,7 +7,7 @@ import {
 import api from '../../services/api';
 import { useSvcNav,
   WtHead, Pill, Loading, EmptyState, dateFmt, dateTimeFmt, bdt,
-  toast, errText, parseJson,
+  toast, errText, parseJson, svcEquip,
 } from './common';
 import RecordComments from './RecordComments';
 import QuotationSendDrawer from './QuotationSend';
@@ -34,6 +34,7 @@ const Section = ({ icon: Icon, title, right, children }) => (
 export default function QuotationDetail() {
   const { code } = useParams();
   const nav = useSvcNav();
+  const eq = svcEquip();
   const [q, setQ] = useState(null);
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -210,7 +211,7 @@ export default function QuotationDetail() {
               <div className="wt-profile">
                 {[['Name', client.name], ['Mobile', client.mobile], ['Email', client.email],
                   ['Address', client.service_address], ['Property', client.property_type],
-                  ['Tank', [client.tank_type, client.tank_capacity].filter(Boolean).join(' · ')]]
+                  [eq.section_label.replace(' Details', ''), [client.tank_type, client.tank_capacity].filter(Boolean).join(' · ')]]
                   .map(([k, v]) => <div className="f" key={k}><div className="k">{k}</div><div className="v">{v || '—'}</div></div>)}
               </div>
               <button className="wt-btn" style={{ justifyContent: 'center' }} onClick={() => nav(`/water-tank/clients/${client.code}`)}>

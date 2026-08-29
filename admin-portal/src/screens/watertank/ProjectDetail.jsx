@@ -8,7 +8,7 @@ import {
 import api from '../../services/api';
 import { useSvcNav,
   WtHead, Pill, dateFmt, dateTimeFmt, bdt, Loading, EmptyState,
-  DatePicker, parseJson, titleCase, toast, errText,
+  DatePicker, parseJson, titleCase, toast, errText, svcEquip,
 } from './common';
 
 /*
@@ -28,6 +28,7 @@ const TABS = ['Overview', 'Lifecycle', 'Timeline', 'Work Orders', 'Billing', 'Do
 export default function ProjectDetail() {
   const { code } = useParams();
   const nav = useSvcNav();
+  const eq = svcEquip();
   const [d, setD] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('Overview');
@@ -308,8 +309,8 @@ function Overview({ d, nav }) {
         <div className="wt-sec-title" style={{ marginBottom: 12 }}>Scope</div>
         <div className="wt-grid3" style={{ marginBottom: 14 }}>
           {[['Project type', p.project_type], ['Category', p.service_category], ['Priority', p.priority],
-            ['Tank type', p.tank_type], ['Number of tanks', p.tanks_count || '—'], ['Capacity', p.tank_capacity],
-            ['Water source', p.water_source], ['Origin', p.origin], ['Health', p.health_index]].map(([k, v]) => (
+            [eq.type_label, p.tank_type], [eq.count_label, p.tanks_count || '—'], [eq.capacity_label, p.tank_capacity],
+            [eq.source_label, p.water_source], ['Origin', p.origin], ['Health', p.health_index]].map(([k, v]) => (
               <div className="wt-field" key={k}><label>{k}</label><div style={{ fontSize: 13, fontWeight: 600 }}>{v || '—'}</div></div>
           ))}
         </div>

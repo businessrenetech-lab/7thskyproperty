@@ -25,7 +25,7 @@ import PortalLinkCard from '../PortalLinkCard';
 import ReportView from '../ReportView';
 import { useSvcNav,
   WtHead, WtTabs, Pill, Loading, EmptyState, DatePicker, WtDrawer, RowActions,
-  dateFmt, dateTimeFmt, bdt, titleCase, toast, errText, parseJson,
+  dateFmt, dateTimeFmt, bdt, titleCase, toast, errText, parseJson, svcEquip,
 } from '../common';
 
 /*
@@ -93,6 +93,7 @@ function ActionDrawer({ title, subtitle, note, fields, submitLabel, onClose, onS
 export default function ClientDashboard() {
   const { code } = useParams();
   const nav = useSvcNav();
+  const eq = svcEquip();
   const [d, setD] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -136,12 +137,12 @@ export default function ClientDashboard() {
   /* ── lifecycle actions ── */
   const openConsultation = () => setAction({
     title: 'Initial Consultation', subtitle: 'Sec. 5 Step 2', submitLabel: 'Save consultation',
-    note: 'Capture tank type, capacity, how many, existing issues, water-quality concerns and AMC interest.',
+    note: 'Capture equipment type, capacity, how many, existing issues, service concerns and AMC interest.',
     fields: [
-      { key: 'tank_type', label: 'Tank type', type: 'select', options: d.reference.service_catalogue ? ['Overhead', 'Underground', 'Rooftop', 'Ground Level', 'Sectional', 'Pressure Vessel'] : [], value: c.tank_type || '' },
-      { key: 'tank_capacity', label: 'Tank capacity', value: c.tank_capacity || '' },
-      { key: 'tanks_count', label: 'Number of tanks', type: 'number', value: c.tanks_count || '' },
-      { key: 'last_cleaning', label: 'Last cleaned', value: c.last_cleaning || '' },
+      { key: 'tank_type', label: eq.type_label, type: 'select', options: eq.type_options, value: c.tank_type || '' },
+      { key: 'tank_capacity', label: eq.capacity_label, value: c.tank_capacity || '' },
+      { key: 'tanks_count', label: eq.count_label, type: 'number', value: c.tanks_count || '' },
+      { key: 'last_cleaning', label: 'Last serviced', value: c.last_cleaning || '' },
       { key: 'key_issues', label: 'Existing issues', type: 'textarea', value: c.key_issues || '' },
       { key: 'water_quality_concerns', label: 'Water quality concerns', type: 'textarea', value: c.water_quality_concerns || '' },
       { key: 'amc_required', label: 'AMC required', type: 'boolean', value: !!c.amc_required },
@@ -322,9 +323,9 @@ export default function ClientDashboard() {
               </div>
               <div className="wt-profile">
                 {[['Requested service', c.requested_service], ['Service category', c.service_category],
-                  ['Tank type', c.tank_type], ['Capacity', c.tank_capacity], ['Number of tanks', c.tanks_count || null],
-                  ['Last cleaned', c.last_cleaning], ['Existing issues', c.key_issues],
-                  ['Water quality concerns', c.water_quality_concerns],
+                  [eq.type_label, c.tank_type], [eq.capacity_label, c.tank_capacity], [eq.count_label, c.tanks_count || null],
+                  ['Last serviced', c.last_cleaning], ['Existing issues', c.key_issues],
+                  ['Service concerns', c.water_quality_concerns],
                   ['AMC required', c.amc_required ? 'Yes' : 'No'],
                   ['Consultation', c.consultation_date ? `${dateFmt(c.consultation_date)} · ${c.consultation_by || '—'}` : null]]
                   .map(([k, v]) => <div className="f" key={k}><div className="k">{k}</div><div className="v">{v || '—'}</div></div>)}

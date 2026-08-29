@@ -6,7 +6,7 @@ import {
   AlertTriangle, Droplets,
 } from 'lucide-react';
 import api from '../../services/api';
-import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, dateFmt } from './common';
+import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, dateFmt, svcEquip } from './common';
 
 /*
  * New AMC — SSPC-WTCM-SOP-01 Sec. 10 (Phase 6, AMC Management).
@@ -23,6 +23,7 @@ const initials = (n) => String(n || '?').split(' ').map((w) => w[0]).slice(0, 2)
 
 export default function AmcForm() {
   const nav = useSvcNav();
+  const eq = svcEquip();
   const [params] = useSearchParams();
 
   const [ref, setRef] = useState(null);
@@ -370,17 +371,17 @@ export default function AmcForm() {
                 <div className="wt-grid2">
                   <div className="wt-field" style={{ gridColumn: '1 / -1' }}><label>Service address</label>
                     <input className="wt-input" value={f.property.address} onChange={(e) => setProp('address', e.target.value)} placeholder={f.client.address} /></div>
-                  <div className="wt-field"><label>Tank type</label>
+                  <div className="wt-field"><label>{eq.type_label}</label>
                     <select className="wt-select" value={f.tank_type} onChange={(e) => set('tank_type', e.target.value)}>
                       <option value="">Select…</option>
-                      {(ref?.tank_types || []).map((t) => <option key={t}>{t}</option>)}
+                      {(ref?.tank_types || eq.type_options).map((t) => <option key={t}>{t}</option>)}
                     </select></div>
-                  <div className="wt-field"><label>Number of tanks</label>
+                  <div className="wt-field"><label>{eq.count_label}</label>
                     <input className="wt-input" type="number" min="0" value={f.tanks_count} onChange={(e) => set('tanks_count', e.target.value)} /></div>
-                  <div className="wt-field"><label>Total capacity</label>
-                    <input className="wt-input" value={f.tank_capacity} onChange={(e) => set('tank_capacity', e.target.value)} placeholder="e.g. 3 × 2,000 L" /></div>
-                  <div className="wt-field"><label>Water source</label>
-                    <input className="wt-input" value={f.water_source} onChange={(e) => set('water_source', e.target.value)} placeholder="WASA mains, deep tube well…" /></div>
+                  <div className="wt-field"><label>{eq.capacity_label}</label>
+                    <input className="wt-input" value={f.tank_capacity} onChange={(e) => set('tank_capacity', e.target.value)} placeholder={eq.capacity_placeholder} /></div>
+                  <div className="wt-field"><label>{eq.source_label}</label>
+                    <input className="wt-input" value={f.water_source} onChange={(e) => set('water_source', e.target.value)} /></div>
                   <div className="wt-field"><label>Site contact name</label>
                     <input className="wt-input" value={f.site_contact_name} onChange={(e) => set('site_contact_name', e.target.value)} /></div>
                   <div className="wt-field"><label>Site contact phone</label>
@@ -605,8 +606,8 @@ export default function AmcForm() {
                 <Card title="Site" rows={[
                   ['Property', f.property.mode === 'existing' ? `${f.property.property_code}` : f.property.mode === 'new' ? `New — ${f.property.title}` : 'Address only'],
                   ['Address', f.property.address || f.client.address || '—'],
-                  ['Tanks', f.tanks_count ? `${f.tanks_count} × ${f.tank_type || 'tank'}` : (f.tank_type || '—')],
-                  ['Capacity', f.tank_capacity], ['Water source', f.water_source],
+                  [eq.count_label, f.tanks_count ? `${f.tanks_count} × ${f.tank_type || eq.unit_word}` : (f.tank_type || '—')],
+                  [eq.capacity_label, f.tank_capacity], [eq.source_label, f.water_source],
                 ]} />
                 <Card title="Visit plan" rows={[
                   ['Visits planned', plan.length],

@@ -6,7 +6,7 @@ import {
   ShieldCheck, Trash2, Repeat,
 } from 'lucide-react';
 import api from '../../services/api';
-import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, Pill, svcBase } from './common';
+import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, Pill, svcBase, svcEquip, svcProfile } from './common';
 
 /*
  * New Project — SSPC-WTCM-SOP-01 Sec. 4.
@@ -27,6 +27,7 @@ export default function ProjectForm() {
   const [params] = useSearchParams();
   const { code: editCode } = useParams();
   const isEdit = !!editCode;
+  const eq = svcEquip(); // equipment field labels for the active service line
 
   const [ref, setRef] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -201,7 +202,7 @@ export default function ProjectForm() {
       tank_type: c.tank_type || s.tank_type,
       tanks_count: c.tanks_count || s.tanks_count,
       tank_capacity: c.tank_capacity || s.tank_capacity,
-      name: s.name || `${c.name} — Water Tank Service`,
+      name: s.name || `${c.name} — ${svcProfile().label} Service`,
       // an existing client with a live AMC almost always means an AMC visit
       under_amc: s.under_amc || (String(c.amc_status || '').toLowerCase() === 'active'),
       amc_package: c.amc_package || s.amc_package,
@@ -592,7 +593,7 @@ export default function ProjectForm() {
               <div className="wt-grid2">
                 <div className="wt-field" style={{ gridColumn: '1 / -1' }}><label>Project name *</label>
                   <input className="wt-input" value={f.name} onChange={(e) => set('name', e.target.value)}
-                    placeholder={`${f.client.name || 'Client'} — Water Tank Cleaning`} /></div>
+                    placeholder={`${f.client.name || 'Client'} — ${svcProfile().label}`} /></div>
                 <div className="wt-field"><label>Project type</label>
                   <select className="wt-select" value={f.project_type} onChange={(e) => set('project_type', e.target.value)}>
                     {(ref?.project_types || []).map((t) => <option key={t}>{t}</option>)}
@@ -606,18 +607,18 @@ export default function ProjectForm() {
                   <select className="wt-select" value={f.priority} onChange={(e) => set('priority', e.target.value)}>
                     {(ref?.priorities || []).map((p) => <option key={p}>{p}</option>)}
                   </select></div>
-                <div className="wt-field"><label>Tank type</label>
+                <div className="wt-field"><label>{eq.type_label}</label>
                   <select className="wt-select" value={f.tank_type} onChange={(e) => set('tank_type', e.target.value)}>
                     <option value="">Select…</option>
-                    {(ref?.tank_types || []).map((t) => <option key={t}>{t}</option>)}
+                    {(ref?.tank_types || eq.type_options).map((t) => <option key={t}>{t}</option>)}
                   </select></div>
-                <div className="wt-field"><label>Number of tanks</label>
+                <div className="wt-field"><label>{eq.count_label}</label>
                   <input className="wt-input" type="number" min="0" value={f.tanks_count} onChange={(e) => set('tanks_count', e.target.value)} /></div>
-                <div className="wt-field"><label>Tank capacity</label>
-                  <input className="wt-input" value={f.tank_capacity} onChange={(e) => set('tank_capacity', e.target.value)} placeholder="e.g. 2 × 1,500 L" /></div>
+                <div className="wt-field"><label>{eq.capacity_label}</label>
+                  <input className="wt-input" value={f.tank_capacity} onChange={(e) => set('tank_capacity', e.target.value)} placeholder={eq.capacity_placeholder} /></div>
                 <div className="wt-field" style={{ gridColumn: '1 / -1' }}><label>Scope summary</label>
                   <textarea className="wt-input" rows={3} value={f.scope_summary} onChange={(e) => set('scope_summary', e.target.value)}
-                    placeholder="What the client asked for, existing issues, water quality concerns…" /></div>
+                    placeholder="What the client asked for, existing issues, service concerns…" /></div>
               </div>
 
               <div>
@@ -858,8 +859,8 @@ export default function ProjectForm() {
                   ['Site contact', f.site_contact_name || '—'],
                 ]} />
                 <ReviewCard title="Scope" rows={[
-                  ['Tanks', f.tanks_count ? `${f.tanks_count} × ${f.tank_type || 'tank'}` : (f.tank_type || '—')],
-                  ['Capacity', f.tank_capacity || '—'],
+                  [eq.count_label, f.tanks_count ? `${f.tanks_count} × ${f.tank_type || eq.unit_word}` : (f.tank_type || '—')],
+                  [eq.capacity_label, f.tank_capacity || '—'],
                   ['Services', f.services.length ? `${f.services.length} line(s)` : 'None selected'],
                   ['Contract value', bdt(contractValue)],
                 ]} />

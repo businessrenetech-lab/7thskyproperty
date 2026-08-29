@@ -5,7 +5,7 @@ import {
   Droplets, Wrench, Camera, PenLine, Save, Loader2, AlertTriangle,
 } from 'lucide-react';
 import api from '../../services/api';
-import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, parseJson } from './common';
+import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, parseJson, svcEquip } from './common';
 import WtPhotoGrid from './PhotoUpload';
 
 /*
@@ -31,6 +31,7 @@ const slug = (s) => `custom_${String(s).toLowerCase().replace(/[^a-z0-9]+/g, '_'
 export default function AssessmentForm() {
   const { code } = useParams();
   const nav = useSvcNav();
+  const eq = svcEquip();
   const isNew = !code;
 
   const [ref, setRef] = useState(null);
@@ -277,23 +278,23 @@ export default function AssessmentForm() {
               <div className="wt-wizpane-h"><h2>Tank profile</h2>
                 <p>What is actually on site. This drives the checklist template and the services you can recommend.</p></div>
               <div className="wt-grid3">
-                <div className="wt-field"><label>Tank type</label>
+                <div className="wt-field"><label>{eq.type_label}</label>
                   <select className="wt-select" value={f.tank_type} onChange={(e) => set('tank_type', e.target.value)}>
-                    <option value="">Select…</option>{(ref?.tank_types || []).map((t) => <option key={t}>{t}</option>)}
+                    <option value="">Select…</option>{(ref?.tank_types || eq.type_options).map((t) => <option key={t}>{t}</option>)}
                   </select></div>
-                <div className="wt-field"><label>Material</label>
+                <div className="wt-field"><label>Material / Make</label>
                   <select className="wt-select" value={f.tank_material} onChange={(e) => set('tank_material', e.target.value)}>
                     <option value="">Select…</option>{(ref?.materials || []).map((t) => <option key={t}>{t}</option>)}
                   </select></div>
-                <div className="wt-field"><label>Capacity</label>
-                  <input className="wt-input" value={f.tank_capacity} onChange={(e) => set('tank_capacity', e.target.value)} placeholder="e.g. 2,000 L" /></div>
+                <div className="wt-field"><label>{eq.capacity_label}</label>
+                  <input className="wt-input" value={f.tank_capacity} onChange={(e) => set('tank_capacity', e.target.value)} placeholder={eq.capacity_placeholder} /></div>
               </div>
               <div className="wt-grid3">
                 <div className="wt-field"><label>Location on site</label>
                   <input className="wt-input" value={f.tank_location} onChange={(e) => set('tank_location', e.target.value)} placeholder="Rooftop, north wing…" /></div>
-                <div className="wt-field"><label>Water source</label>
+                <div className="wt-field"><label>{eq.source_label}</label>
                   <select className="wt-select" value={f.water_source} onChange={(e) => set('water_source', e.target.value)}>
-                    <option value="">Select…</option>{(ref?.water_sources || []).map((t) => <option key={t}>{t}</option>)}
+                    <option value="">Select…</option>{(ref?.water_sources || eq.source_options).map((t) => <option key={t}>{t}</option>)}
                   </select></div>
                 <div className="wt-field"><label>Last cleaned</label>
                   <input className="wt-input" value={f.last_cleaned} onChange={(e) => set('last_cleaned', e.target.value)} placeholder="e.g. 14 months ago" /></div>

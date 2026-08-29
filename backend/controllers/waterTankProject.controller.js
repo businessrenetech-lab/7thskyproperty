@@ -6,7 +6,7 @@
  * services/wtProject.service.js; this layer is transport, scoping and validation.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, pick, serviceScope, resolveServiceLine, catalogueVertical } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, pick, serviceScope, resolveServiceLine, catalogueVertical, serviceUi } = require('../utils/controllerHelpers');
 // Branch + service scope for wt_*; Contact/Property lookups keep plain branchScope.
 const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
@@ -99,15 +99,20 @@ exports.reference = asyncHandler(async (req, res) => {
     };
   });
 
+  const ui = serviceUi(req);
   res.json({
     next_code: await svc.nextProjectCode(branchId),
     stages: svc.STAGES,
-    project_types: svc.PROJECT_TYPES,
+    // Vocabulary from the active service line (never Water Tank in the AC console).
+    project_types: ui.project_types || svc.PROJECT_TYPES,
     disbursement_categories: svc.DISBURSEMENT_CATEGORIES,
     closure_checklist: svc.CLOSURE_CHECKLIST,
-    categories: ['Cleaning', 'Disinfection', 'Repairs', 'Water Quality', 'Maintenance', 'AMC', 'Inspection'],
+    categories: ui.categories || ['Cleaning', 'Disinfection', 'Repairs', 'Water Quality', 'Maintenance', 'AMC', 'Inspection'],
     priorities: ['Low', 'Medium', 'High', 'Urgent'],
-    tank_types: ['Rooftop', 'Underground', 'Overhead', 'Ground Level', 'Apartment Common', 'Industrial'],
+    tank_types: ui.equipment?.type_options || ['Rooftop', 'Underground', 'Overhead', 'Ground Level', 'Apartment Common', 'Industrial'],
+    equipment: ui.equipment || null,
+    property_types: ui.property_types || null,
+    service_label: ui.full_label || null,
     catalog,
     groups: [...new Set(catalog.map((c) => c.group))],
     providers: eligible,

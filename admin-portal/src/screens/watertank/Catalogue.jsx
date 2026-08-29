@@ -111,7 +111,7 @@ function ItemDrawer({ item, usage, onClose, onSaved }) {
 
       <div className="wt-field">
         <label>Name</label>
-        <input className="wt-input" value={f.name} onChange={set('name')} placeholder="e.g. Overhead Water Tank Cleaning" />
+        <input className="wt-input" value={f.name} onChange={set('name')} placeholder="e.g. a service, material or labour line" />
       </div>
 
       <div className="wt-field">

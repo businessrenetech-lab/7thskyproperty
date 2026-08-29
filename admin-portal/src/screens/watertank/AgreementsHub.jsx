@@ -5,7 +5,7 @@ import {
   Check, Clock, AlertTriangle, Copy, RefreshCw, Loader2, X, ShieldCheck, CalendarClock,
 } from 'lucide-react';
 import api from '../../services/api';
-import { useSvcNav, WtHead, WtTabs, Pill, Loading, EmptyState, dateFmt, dateTimeFmt, toast, errText } from './common';
+import { useSvcNav, WtHead, WtTabs, Pill, Loading, EmptyState, dateFmt, dateTimeFmt, toast, errText, svcProfile } from './common';
 
 /*
  * Agreements register — every Water Tank document that goes out for signature,
@@ -110,7 +110,7 @@ export default function AgreementsHub() {
     <>
       <WtHead
         title="Agreements"
-        subtitle="Every Water Tank document out for signature — client, provider and work order"
+        subtitle={`Every ${svcProfile().label} document out for signature — client, provider and work order`}
       >
         <button className="wt-btn" onClick={load}><RefreshCw size={14} /> Refresh</button>
         <button className="wt-btn" onClick={() => nav('/water-tank/agreements/customer')}>

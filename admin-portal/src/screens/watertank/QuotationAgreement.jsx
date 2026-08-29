@@ -4,7 +4,7 @@ import {
   FileSignature, Send, Loader2, Eye, RefreshCw, Check, ExternalLink, Copy, Search,
 } from 'lucide-react';
 import api from '../../services/api';
-import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText } from './common';
+import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, svcEquip } from './common';
 
 /*
  * Customer Service Agreement, drafted from the quotation (Sec. 7 Step 6).
@@ -19,6 +19,7 @@ export default function QuotationAgreement() {
   const quoteCode = params.quoteCode || params.code;
   const assessmentCode = params.quoteCode ? params.code : null;
   const nav = useSvcNav();
+  const eq = svcEquip();
 
   const [draft, setDraft] = useState(null);
   const [quote, setQuote] = useState(null);
@@ -471,15 +472,15 @@ export default function QuotationAgreement() {
             <div className="wt-grid3">
               <div className="wt-field"><label>Property type</label>
                 <input className="wt-input" value={sb.property_type || ''} onChange={(e) => setPath('schedule_b.property_type', e.target.value)} /></div>
-              <div className="wt-field"><label>Tank type</label>
+              <div className="wt-field"><label>{eq.type_label}</label>
                 <input className="wt-input" value={sb.tank_type || ''} onChange={(e) => setPath('schedule_b.tank_type', e.target.value)} /></div>
-              <div className="wt-field"><label>Tank capacity</label>
+              <div className="wt-field"><label>{eq.capacity_label}</label>
                 <input className="wt-input" value={sb.tank_capacity || ''} onChange={(e) => setPath('schedule_b.tank_capacity', e.target.value)} /></div>
             </div>
             <div className="wt-grid3">
-              <div className="wt-field"><label>Number of tanks</label>
+              <div className="wt-field"><label>{eq.count_label}</label>
                 <input className="wt-input" type="number" min="0" value={sb.tanks_count || ''} onChange={(e) => setPath('schedule_b.tanks_count', e.target.value)} /></div>
-              <div className="wt-field"><label>Water source</label>
+              <div className="wt-field"><label>{eq.source_label}</label>
                 <input className="wt-input" value={sb.water_source || ''} onChange={(e) => setPath('schedule_b.water_source', e.target.value)} /></div>
               <div className="wt-field"><label>Service provider</label>
                 <input className="wt-input" value={sb.provider_name || ''} onChange={(e) => setPath('schedule_b.provider_name', e.target.value)} /></div>

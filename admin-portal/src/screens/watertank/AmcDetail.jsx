@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { useSvcNav,
-  WtHead, WtTabs, Pill, bdt, dateFmt, Loading, EmptyState, toast, errText, titleCase, WtDrawer, svcBase,
+  WtHead, WtTabs, Pill, bdt, dateFmt, Loading, EmptyState, toast, errText, titleCase, WtDrawer, svcBase, svcEquip,
 } from './common';
 
 /*
@@ -224,6 +224,7 @@ const Field = ({ label, children }) => (
 export default function AmcDetail() {
   const { code } = useParams();
   const nav = useSvcNav();
+  const eq = svcEquip();
   const [d, setD] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -424,9 +425,9 @@ export default function AmcDetail() {
               <h3 className="wt-section-title" style={{ fontSize: 13, display: 'flex', gap: 7, alignItems: 'center' }}><MapPin size={14} /> Site</h3>
               <Field label="Address">{amc.site_address}</Field>
               <Field label="Area">{amc.area}</Field>
-              <Field label="Tanks">{amc.tanks_count}</Field>
-              <Field label="Tank type">{amc.tank_type}</Field>
-              <Field label="Capacity">{amc.tank_capacity}</Field>
+              <Field label={eq.count_label}>{amc.tanks_count}</Field>
+              <Field label={eq.type_label}>{amc.tank_type}</Field>
+              <Field label={eq.capacity_label}>{amc.tank_capacity}</Field>
             </div>
             <div>
               <h3 className="wt-section-title" style={{ fontSize: 13, display: 'flex', gap: 7, alignItems: 'center' }}><Shield size={14} /> Cover</h3>

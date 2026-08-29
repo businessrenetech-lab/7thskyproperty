@@ -17,6 +17,52 @@ export const svcBase = () => {
   catch { return '/water-tank'; }
 };
 
+// Per-service UI vocabulary for the shared operations screens, so the Air
+// Conditioning console never shows Water Tank wording (labels, equipment fields).
+// Mirrors backend config/serviceLines.js `ui`. Forms that fetch a /reference
+// endpoint may prefer its `equipment`/`service_label`; this is the static
+// fallback and the source for screens that don't fetch reference.
+export const SERVICE_UI = {
+  '/water-tank': {
+    label: 'Water Tank',
+    full_label: 'Water Tank Cleaning & Maintenance',
+    short: 'Water Tank',
+    equipment: {
+      section_label: 'Tank Details',
+      type_label: 'Tank Type',
+      type_options: ['Rooftop', 'Underground', 'Overhead', 'Ground Level', 'Apartment Common', 'Industrial'],
+      count_label: 'Number of Tanks',
+      capacity_label: 'Tank Capacity',
+      capacity_placeholder: 'e.g. 2 × 1,500 L',
+      source_label: 'Water Source',
+      source_options: ['Municipal (WASA)', 'Deep Tube Well', 'Both', 'Other'],
+      unit_word: 'tank',
+    },
+  },
+  '/air-conditioning': {
+    label: 'Air Conditioning',
+    full_label: 'Air Conditioning Solutions',
+    short: 'Air Conditioning',
+    equipment: {
+      section_label: 'Equipment Details',
+      type_label: 'System Type',
+      type_options: ['Split System', 'Inverter', 'Cassette', 'Ducted', 'Window', 'Portable', 'Multi-Zone', 'Commercial'],
+      count_label: 'Number of Units',
+      capacity_label: 'Capacity (Ton / BTU)',
+      capacity_placeholder: 'e.g. 2 × 1.5 Ton',
+      source_label: 'Refrigerant Type',
+      source_options: ['R32', 'R410A', 'R22', 'R290', 'Other'],
+      unit_word: 'unit',
+    },
+  },
+};
+/** The active console's UI profile (label, full_label, equipment field labels). */
+export const svcProfile = () => SERVICE_UI[svcBase()] || SERVICE_UI['/water-tank'];
+/** The active console's service label, e.g. "Air Conditioning". */
+export const svcLabel = () => svcProfile().label;
+/** The active console's equipment field vocabulary (Tank vs Equipment details). */
+export const svcEquip = () => svcProfile().equipment;
+
 // Service-aware navigate. These screens are shared across every service console
 // and were written with hard-coded `/water-tank/...` targets. Rather than touch
 // hundreds of call sites, this wraps useNavigate and rebases any `/water-tank`

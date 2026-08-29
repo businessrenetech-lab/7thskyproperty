@@ -5,7 +5,7 @@ import {
   ClipboardList, Sparkles, Users, X, Loader2,
 } from 'lucide-react';
 import api from '../../../services/api';
-import { useSvcNav, WtHead, DatePicker, EmptyState, toast, errText, Pill } from '../common';
+import { useSvcNav, WtHead, DatePicker, EmptyState, toast, errText, Pill, svcEquip } from '../common';
 
 /*
  * New Client — SSPC-WTCM-SOP-01 Sec. 5 Phase 1 (Client Enquiry).
@@ -28,6 +28,7 @@ const initials = (n) => String(n || '?').split(' ').map((w) => w[0]).slice(0, 2)
 
 export default function ClientCreate() {
   const nav = useSvcNav();
+  const eq = svcEquip();
   const [step, setStep] = useState(0);
   const [ref, setRef] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -309,19 +310,19 @@ export default function ClientCreate() {
             <>
               <div className="wt-wizpane-h">
                 <h2>Initial consultation</h2>
-                <p>Sec. 5 Step 2 — tank type, capacity, how many, existing issues, water quality concerns and whether they want an AMC. Anything unknown can be filled in after the site assessment.</p>
+                <p>Sec. 5 Step 2 — equipment type, capacity, how many, existing issues, service concerns and whether they want an AMC. Anything unknown can be filled in after the site assessment.</p>
               </div>
               <div className="wt-grid3">
-                <div className="wt-field"><label>Tank type</label>
+                <div className="wt-field"><label>{eq.type_label}</label>
                   <select className="wt-select" value={f.tank_type} onChange={(e) => set('tank_type', e.target.value)}>
-                    <option value="">Select…</option>{(ref?.tank_types || []).map((t) => <option key={t}>{t}</option>)}
+                    <option value="">Select…</option>{(ref?.tank_types || eq.type_options).map((t) => <option key={t}>{t}</option>)}
                   </select></div>
-                <div className="wt-field"><label>Tank capacity</label>
-                  <input className="wt-input" value={f.tank_capacity} onChange={(e) => set('tank_capacity', e.target.value)} placeholder="e.g. 2,000 L" /></div>
-                <div className="wt-field"><label>Number of tanks</label>
+                <div className="wt-field"><label>{eq.capacity_label}</label>
+                  <input className="wt-input" value={f.tank_capacity} onChange={(e) => set('tank_capacity', e.target.value)} placeholder={eq.capacity_placeholder} /></div>
+                <div className="wt-field"><label>{eq.count_label}</label>
                   <input className="wt-input" type="number" value={f.tanks_count} onChange={(e) => set('tanks_count', e.target.value)} /></div>
               </div>
-              <div className="wt-field"><label>Last cleaned</label>
+              <div className="wt-field"><label>Last serviced</label>
                 <input className="wt-input" value={f.last_cleaning} onChange={(e) => set('last_cleaning', e.target.value)} placeholder="e.g. about 14 months ago, or never" /></div>
               <div className="wt-field"><label>Existing issues</label>
                 <textarea className="wt-input" rows={3} style={{ resize: 'vertical' }} value={f.key_issues}
