@@ -3287,3 +3287,23 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Handoff: redeploy + restart on Hostinger. Open follow-ups: reroute the public
   website enquiry to a Service Request (then the enquiry backend can retire), and
   the INV-0484 "Paid but 25,600 owed" data correction.
+
+### 2026-08-19 17:45 | Claude Code (Opus 4.8) | COMPLETED | Reroute public website enquiry → Service Request; retire enquiry console
+- Request: reroute the website-enquiry form so the enquiry backend can retire.
+- Change (backend only): rewrote publicEnquiry (POST /public/water-tank/enquiry —
+  same URL the website posts to) to create a lightweight WtServiceRequest in status
+  "New" (source Website, needs_assessment true, no project/assessment yet) instead
+  of a WtEnquiry. A coordinator triages it into an assessment/quotation, which is
+  when the client file + project are created (createRequest, unchanged).
+- Retired the internal enquiry console: removed the 4 /wt-intake/enquiries routes
+  and their handlers (listEnquiries/createEnquiry/updateEnquiry/deleteEnquiry) plus
+  ENQUIRY_STATUSES. The WtEnquiry model is KEPT so any historical enquiry rows stay
+  readable; the createRequest "close off enquiry" block is now dormant but harmless.
+- Verification: backend restarted; unauthenticated POST to the public route →
+  201 { reference: SR-1108 }; the record shows in /wt-ops/service-requests as
+  status New / source Website; deleted the SR-1108 test row afterwards. Controller
+  + routes load; no frontend calls /wt-intake/enquiries anymore. Backend-only — no
+  dist rebuild.
+- Handoff: redeploy + restart on Hostinger. The enquiry pipeline is now fully
+  retired end to end (one intake: the Service Request). Next: the SA→Quotation→
+  Agreement page prefill (/water-tank/site-assessments/:sa/quotation/:q/agreement).

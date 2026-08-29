@@ -1,20 +1,17 @@
 /**
- * waterTankIntake.routes.js — enquiries and the service-request wizard.
- * Mounted at /api/wt-intake (authenticated console).
+ * waterTankIntake.routes.js — the service-request wizard (the single intake).
+ * Mounted at /api/wt-intake (authenticated console). The separate enquiry
+ * console has been retired; website leads arrive as Service Requests via the
+ * public POST /public/water-tank/enquiry route.
  */
 const express = require('express');
 const router = express.Router();
 const { authMiddleware } = require('../middleware/auth.middleware');
-const { canRead, canOperate, canTransact, canBind, canAdminister } = require('../middleware/wtRoles');
+const { canRead, canOperate } = require('../middleware/wtRoles');
 const ctrl = require('../controllers/waterTankIntake.controller');
 
 router.use(authMiddleware);
 
-// enquiries triage
-router.get('/enquiries', canRead, ctrl.listEnquiries);
-router.post('/enquiries', canOperate, ctrl.createEnquiry);
-router.patch('/enquiries/:id', canOperate, ctrl.updateEnquiry);
-router.delete('/enquiries/:id', canAdminister, ctrl.deleteEnquiry);
 // new service request wizard
 router.get('/request-reference', canRead, ctrl.requestReference);
 router.post('/requests', canOperate, ctrl.createRequest);

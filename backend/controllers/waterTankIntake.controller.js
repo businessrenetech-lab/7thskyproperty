@@ -20,8 +20,6 @@ const today = () => new Date().toISOString().slice(0, 10);
 const addDays = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
 const actorOf = (req) => req.user?.name || req.user?.email || 'Client Service';
 
-const ENQUIRY_STATUSES = ['New', 'Contacted', 'Qualified', 'Converted', 'Unqualified'];
-
 async function nextCode(model, prefix, pad, start, branchId) {
   const rows = await model.findAll({ where: { branch_id: branchId }, attributes: ['code'], raw: true });
   let max = start - 1;
@@ -77,8 +75,11 @@ exports.publicServices = asyncHandler(async (req, res) => {
 });
 
 /**
- * POST /public/water-tank/enquiry — the website enquiry form.
- * Unauthenticated. Validates the minimum a coordinator needs to call back.
+ * POST /public/water-tank/enquiry — the website lead form.
+ * Unauthenticated. A website lead is captured directly as a Service Request
+ * (status New, untriaged) — the single intake for water-tank work. A coordinator
+ * later triages it into an assessment or a quotation, which is when a client file
+ * and project are created. Validates the minimum needed to call back.
  */
 exports.publicEnquiry = asyncHandler(async (req, res) => {
   const b = req.body || {};
@@ -88,100 +89,46 @@ exports.publicEnquiry = asyncHandler(async (req, res) => {
   if (!phone) return res.status(400).json({ error: 'Please give us a phone number so we can call you back.' });
 
   const branchId = num(b.branch_id) || 1;
-  const row = await M.WtEnquiry.create({
+  const services = Array.isArray(b.services_requested) ? b.services_requested : [];
+  const row = await M.WtServiceRequest.create({
     branch_id: branchId,
-    code: await nextCode(M.WtEnquiry, 'ENQ-', 4, 1, branchId),
+    code: await nextCode(M.WtServiceRequest, 'SR-', 4, 1095, branchId),
+    request_date: today(),
     client_name: name,
     phone,
     email: String(b.email || '').trim() || null,
-    site_address: b.site_address || null,
+    address: b.site_address || b.address || null,
     district: b.district || null,
     property_type: b.property_type || null,
-    services_requested: Array.isArray(b.services_requested) ? b.services_requested : [],
-    tank_type: b.tank_type || null,
-    tanks_count: num(b.tanks_count),
+    services_requested: services,
+    specific_service: services[0] || null,
     preferred_date: b.preferred_date || null,
-    message: b.message || null,
+    description: b.message || null,
     source: b.source || 'Website',
-    page_url: b.page_url || null,
+    needs_assessment: true,
+    visit_required: true,
     status: 'New',
   });
 
   await M.WtCommLog.create({
     branch_id: branchId, client_name: name, channel: 'note', direction: 'inbound',
-    summary: `Water tank enquiry ${row.code} received from ${row.source}`,
-    ref_type: 'enquiries', ref_code: row.code, logged_at: new Date(),
+    summary: `Website service request ${row.code} received from ${row.source}`,
+    ref_type: 'service-requests', ref_code: row.code, logged_at: new Date(),
   }).catch(() => {});
 
   // never echo internal fields back to the public site
   res.status(201).json({
     ok: true,
     reference: row.code,
-    message: 'Thank you — we have received your enquiry and will call you shortly.',
+    message: 'Thank you — we have received your request and will call you shortly.',
   });
 });
 
-/* ═══ ENQUIRIES (console) ═════════════════════════════════════ */
-
-exports.listEnquiries = asyncHandler(async (req, res) => {
-  const where = { ...branchScope(req) };
-  if (req.query.status) where.status = req.query.status;
-  if (req.query.q) {
-    const like = { [Op.like]: `%${req.query.q}%` };
-    where[Op.or] = [{ client_name: like }, { phone: like }, { email: like }, { code: like }, { site_address: like }];
-  }
-  const rows = await M.WtEnquiry.findAll({ where, order: [['id', 'DESC']], limit: 300 });
-
-  const all = await M.WtEnquiry.findAll({ where: branchScope(req), attributes: ['status', 'createdAt', 'converted_at'], raw: true });
-  const is = (r, s) => String(r.status || '').toLowerCase() === s;
-  const converted = all.filter((r) => is(r, 'converted'));
-  const closed = all.filter((r) => is(r, 'converted') || is(r, 'unqualified'));
-
-  res.json({
-    rows,
-    statuses: ENQUIRY_STATUSES,
-    summary: {
-      total: all.length,
-      new: all.filter((r) => is(r, 'new')).length,
-      contacted: all.filter((r) => is(r, 'contacted')).length,
-      qualified: all.filter((r) => is(r, 'qualified')).length,
-      converted: converted.length,
-      unqualified: all.filter((r) => is(r, 'unqualified')).length,
-      conversion_rate: closed.length ? Math.round((converted.length / closed.length) * 1000) / 10 : null,
-    },
-  });
-});
-
-exports.updateEnquiry = asyncHandler(async (req, res) => {
-  const row = await M.WtEnquiry.findOne({ where: { id: req.params.id, ...branchScope(req) } });
-  if (!row) return res.status(404).json({ error: 'Enquiry not found' });
-  const body = { ...req.body };
-  delete body.id; delete body.branch_id; delete body.code;
-  if (body.status === 'Contacted' && !row.contacted_at) body.contacted_at = new Date();
-  await row.update(body);
-  res.json(row);
-});
-
-exports.createEnquiry = asyncHandler(async (req, res) => {
-  const branchId = resolveBranchId(req);
-  if (!req.body.client_name) return res.status(400).json({ error: 'Client name is required.' });
-  if (!req.body.phone) return res.status(400).json({ error: 'Phone number is required.' });
-  const row = await M.WtEnquiry.create({
-    ...req.body,
-    branch_id: branchId,
-    code: await nextCode(M.WtEnquiry, 'ENQ-', 4, 1, branchId),
-    source: req.body.source || 'Phone',
-    status: req.body.status || 'New',
-  });
-  res.status(201).json(row);
-});
-
-exports.deleteEnquiry = asyncHandler(async (req, res) => {
-  const row = await M.WtEnquiry.findOne({ where: { id: req.params.id, ...branchScope(req) } });
-  if (!row) return res.status(404).json({ error: 'Enquiry not found' });
-  await row.destroy();
-  res.json({ ok: true });
-});
+/* ═══ ENQUIRIES (retired) ═════════════════════════════════════
+ * The separate enquiry console has been retired — intake is standardised on the
+ * Service Request. Website leads now arrive as Service Requests (publicEnquiry,
+ * above); phone/walk-in leads are logged with the "New Service Request" wizard.
+ * The WtEnquiry model is kept only so historical enquiry records remain readable. */
 
 /* ═══ REQUEST WIZARD SUPPORT ══════════════════════════════════ */
 
