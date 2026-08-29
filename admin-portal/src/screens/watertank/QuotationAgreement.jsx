@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  FileSignature, Send, Loader2, Eye, RefreshCw, Check, ExternalLink, Copy,
+  FileSignature, Send, Loader2, Eye, RefreshCw, Check, ExternalLink, Copy, Search,
 } from 'lucide-react';
 import api from '../../services/api';
 import { WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText } from './common';
@@ -32,6 +32,7 @@ export default function QuotationAgreement() {
   // agreement offers what actually exists rather than a hardcoded list.
   const [meta, setMeta] = useState({});
   const [catalog, setCatalog] = useState([]);
+  const [catQ, setCatQ] = useState('');
   useEffect(() => {
     api.get('/wt-agreements/customer/meta').then((r) => setMeta(r.data || {})).catch(() => {});
     // The full price schedule, so services can be ticked on/off here instead of
@@ -232,7 +233,10 @@ export default function QuotationAgreement() {
   // services already ticked. Toggling/editing here redrafts the agreement live.
   const selCodes = new Set(selected.map((s) => s.code));
   const CAT_LABEL = { service: 'Standard Services', material: 'Materials & Consumables', labour: 'Labour' };
-  const grouped = catalog.reduce((g, c) => { (g[c.group || 'service'] ||= []).push(c); return g; }, {});
+  const catQterm = catQ.trim().toLowerCase();
+  const grouped = catalog
+    .filter((c) => !catQterm || [c.code, c.name].some((v) => String(v || '').toLowerCase().includes(catQterm)))
+    .reduce((g, c) => { (g[c.group || 'service'] ||= []).push(c); return g; }, {});
   const toggleLine = (code) => setDraft((s) => {
     const arr = [...(s.pricing_input.selected || [])];
     const i = arr.findIndex((x) => x.code === code);
@@ -524,7 +528,13 @@ export default function QuotationAgreement() {
               Tick to add or remove, and adjust quantity or agreed price. The agreement and its total redraft below.
             </div>
 
-            {catalog.length > 0 ? ['service', 'material', 'labour'].filter((g) => (grouped[g] || []).length).map((grp) => (
+            {catalog.length > 0 ? (
+              <>
+                <label className="wt-search" style={{ maxWidth: 320 }}>
+                  <Search size={14} />
+                  <input value={catQ} onChange={(e) => setCatQ(e.target.value)} placeholder="Filter services by name or code…" />
+                </label>
+                {['service', 'material', 'labour'].filter((g) => (grouped[g] || []).length).map((grp) => (
               <div key={grp}>
                 <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--wt-accent-ink)', margin: '6px 0' }}>{CAT_LABEL[grp]}</div>
                 <table className="wt-tbl">
@@ -556,7 +566,12 @@ export default function QuotationAgreement() {
                   </tbody>
                 </table>
               </div>
-            )) : (
+                ))}
+                {catQterm && !['service', 'material', 'labour'].some((g) => (grouped[g] || []).length) && (
+                  <div className="muted" style={{ fontSize: 12.5 }}>Nothing matches “{catQ.trim()}”. Any already-selected services still stay on the agreement.</div>
+                )}
+              </>
+            ) : (
               <div className="muted" style={{ fontSize: 12.5 }}>{selected.length} service line{selected.length === 1 ? '' : 's'} carried from the quotation.</div>
             )}
 

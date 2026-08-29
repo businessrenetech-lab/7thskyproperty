@@ -3326,3 +3326,10 @@ used "the last line starting with `import`", which landed inside a multi-line
   a quote's agreement-draft returns pricing_input.selected prefilled (e.g. WTC-005
   x1 @6500). npm run build:admin passed; rebuilt dist committed.
 - Handoff: redeploy + restart on Hostinger. Backend unchanged.
+
+### 2026-08-19 18:40 | Claude Code (Opus 4.8) | COMPLETED | WT agreement Schedule C — add a search filter
+- Request: add a search filter to the editable Schedule C on the customer agreement screen.
+- Change (frontend only, QuotationAgreement.jsx): added a search box that filters the
+  41-item price schedule by code or name before grouping; a "nothing matches" note when
+  empty (already-selected services stay on the agreement regardless of the filter).
+- Verification: npm run build:admin passed; rebuilt dist committed. Backend unchanged.
