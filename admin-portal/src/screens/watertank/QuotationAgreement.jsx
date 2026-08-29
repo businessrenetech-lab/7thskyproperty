@@ -296,15 +296,19 @@ export default function QuotationAgreement() {
 
   return (
     <>
-      <WtHead crumb={crumb} title="Customer Service Agreement" subtitle={`Drafted from quotation ${quoteCode} · ${bdt(quote?.total)}`}>
-        <button className="wt-btn" onClick={() => refresh(draft)} disabled={previewing}>
-          {previewing ? <Loader2 size={14} className="wt-spin" /> : <RefreshCw size={14} />} Refresh preview
-        </button>
-        <button className="wt-btn" onClick={openPreview} disabled={!preview?.html}><Eye size={14} /> Full preview</button>
-        <button className="wt-btn primary" disabled={sending} onClick={send}>
-          {sending ? <><Loader2 size={14} className="wt-spin" /> Sending…</> : <><Send size={14} /> Send for signature</>}
-        </button>
-      </WtHead>
+      {/* The header (with Refresh / Full preview / Send for signature) stays pinned
+          to the top so the actions are always in reach while scrolling the form. */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 30, background: 'var(--wt-page)', paddingTop: 10, marginTop: -10, borderBottom: '1px solid var(--wt-line)' }}>
+        <WtHead crumb={crumb} title="Customer Service Agreement" subtitle={`Drafted from quotation ${quoteCode} · ${bdt(quote?.total)}`}>
+          <button className="wt-btn" onClick={() => refresh(draft)} disabled={previewing}>
+            {previewing ? <Loader2 size={14} className="wt-spin" /> : <RefreshCw size={14} />} Refresh preview
+          </button>
+          <button className="wt-btn" onClick={openPreview} disabled={!preview?.html}><Eye size={14} /> Full preview</button>
+          <button className="wt-btn primary" disabled={sending} onClick={send}>
+            {sending ? <><Loader2 size={14} className="wt-spin" /> Sending…</> : <><Send size={14} /> Send for signature</>}
+          </button>
+        </WtHead>
+      </div>
 
       {error && <div className="wt-formerr">{error}</div>}
 
@@ -778,7 +782,7 @@ export default function QuotationAgreement() {
         </div>
 
         {/* ── live agreement preview ── */}
-        <div className="wt-card" style={{ padding: 0, overflow: 'hidden', alignSelf: 'start', position: 'sticky', top: 20 }}>
+        <div className="wt-card" style={{ padding: 0, overflow: 'hidden', alignSelf: 'start', position: 'sticky', top: 104 }}>
           <div className="wt-panel-head" style={{ padding: '14px 18px', borderBottom: '1px solid var(--wt-line)' }}>
             <div className="wt-sec-title">{preview?.title || 'Customer Service Agreement'}</div>
             {previewing && <Loader2 size={14} className="wt-spin" style={{ color: 'var(--wt-muted)' }} />}

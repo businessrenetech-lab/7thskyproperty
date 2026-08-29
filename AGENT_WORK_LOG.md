@@ -3495,3 +3495,14 @@ used "the last line starting with `import`", which landed inside a multi-line
   can't run JS) so the parent can read/restore scrollY.
 - Verified: build:admin passed; dist committed.
 - Handoff: redeploy + restart on Hostinger.
+
+### 2026-08-29 13:45 | Claude Code (Opus 4.8) | COMPLETED | WT agreement — pin the action header (Refresh/Full preview/Send) to the top
+- Request: Refresh preview / Full preview / Send for signature should stay fixed at
+  the top while scrolling the agreement form.
+- Change (frontend, QuotationAgreement.jsx): wrapped this screen's WtHead in a
+  sticky bar (position: sticky, top: 0, z-index 30, page background, bottom border)
+  so the three actions stay in reach. Bumped the preview card's sticky top from 20
+  to 104 so it sits below the pinned header instead of sliding under it. WtHead
+  itself is unchanged (shared component), so only this screen is affected.
+- Verified: build:admin passed; dist committed.
+- Handoff: redeploy + restart on Hostinger.
