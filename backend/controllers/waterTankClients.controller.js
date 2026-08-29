@@ -452,6 +452,52 @@ exports.note = asyncHandler(async (req, res) => {
 });
 
 /**
+ * POST /wt-clients — register a Water Tank client (Sec. 5 Step 1).
+ * The specialist create: generic writes to "clients" are blocked because they
+ * bypass code generation, de-duplication and the workflow defaults below.
+ */
+const CLIENT_FIELDS = [
+  'name', 'client_type', 'mobile', 'email', 'district', 'property_type',
+  'service_address', 'lead_source', 'assigned_officer', 'tanks_count', 'tank_type',
+  'tank_capacity', 'key_issues', 'last_cleaning', 'notes', 'workflow_stage',
+  'enquiry_date', 'enquiry_channel', 'requested_service', 'service_category',
+  'alt_contact_name', 'alt_contact_phone', 'water_quality_concerns', 'amc_required',
+  'consultation_notes', 'current_status',
+];
+exports.create = asyncHandler(async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const body = req.body || {};
+  const name = String(body.name || '').trim();
+  if (!name) return res.status(400).json({ error: 'Client name is required.' });
+
+  // Reuse an existing client rather than raise a duplicate (matches intake).
+  const dupWhere = [{ name }];
+  if (body.mobile) dupWhere.push({ mobile: String(body.mobile).trim() });
+  if (body.email) dupWhere.push({ email: String(body.email).trim() });
+  const existing = await M.WtClient.findOne({ where: { ...branchScope(req), [Op.or]: dupWhere } });
+  if (existing) return res.status(200).json(existing);
+
+  const rows = await M.WtClient.findAll({ where: { branch_id: branchId }, attributes: ['code'], raw: true });
+  let max = 0;
+  rows.forEach((r) => { const n = parseInt(String(r.code || '').replace('WTCM-C', ''), 10); if (!Number.isNaN(n) && n > max) max = n; });
+
+  const payload = {};
+  CLIENT_FIELDS.forEach((k) => { if (body[k] !== undefined) payload[k] = body[k]; });
+  const client = await M.WtClient.create({
+    ...payload,
+    branch_id: branchId,
+    code: `WTCM-C${String(max + 1).padStart(4, '0')}`,
+    name,
+    tanks_count: Number(body.tanks_count) || 0,
+    current_status: body.current_status || 'New Lead',
+    workflow_stage: body.workflow_stage || 'Lead Enquiry',
+    stage_updated_at: new Date(),
+  });
+  await logEvent(branchId, client.id, 'client', `Client ${client.code} registered (Sec. 5 Step 1)`, client.name, actorOf(req));
+  res.status(201).json(client);
+});
+
+/**
  * POST /wt-clients/:id/register — Sec. 5 Step 1 completion.
  * Creates the client's Project ID + CRM profile in one move, as the SOP asks.
  */

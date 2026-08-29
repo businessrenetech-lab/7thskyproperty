@@ -3448,3 +3448,23 @@ used "the last line starting with `import`", which landed inside a multi-line
   quotes can't be deleted by design — a few harmless local dev rows remain).
 - Handoff: redeploy + restart on Hostinger. Note: this overrides the earlier
   "reuse the client's open project" behaviour by explicit request.
+
+### 2026-08-29 12:40 | Claude Code (Opus 4.8) | COMPLETED | Fix "cannot create clients" (generic write blocked) + specialist create
+- Report: creating a Water Tank client failed with "Generic writes are disabled for
+  'clients' because they bypass its business rules."
+- Cause: ClientCreate.jsx POSTed to the generic /wt-ops/clients route, which is
+  intentionally blocked (READ_ONLY_ENTITIES in waterTankOps.controller). The
+  specialist /wt-clients router had every sub-action but NO create endpoint, so the
+  frontend had nowhere valid to create a client.
+- Changes:
+  * waterTankClients.controller — new exports.create: whitelists fields, generates
+    the WTCM-C#### code, de-dupes by name/mobile/email (returns the existing client
+    rather than a duplicate), sets New Lead / Lead Enquiry defaults, logs the event.
+  * waterTankClients.routes — POST '/' → ctrl.create (before the /:id family).
+  * ClientCreate.jsx — POSTs to /wt-clients now; removed the auto
+    /wt-clients/:id/register call so client creation no longer opens a project
+    (projects open on quotation approval per the current rule); fixed the toast.
+- Verified: /wt-ops/clients still 405 (rules intact); POST /wt-clients → 201
+  (WTCM-C0034, all fields); duplicate name returns the existing client. build passed.
+- Handoff: redeploy + restart on Hostinger. The registerProject endpoint still
+  exists for any explicit "open project from client" action.

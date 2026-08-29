@@ -87,14 +87,14 @@ export default function ClientCreate() {
   const submit = async () => {
     setBusy(true); setErr('');
     try {
-      const { data: client } = await api.post('/wt-ops/clients', {
+      // The specialist create — generic writes to "clients" are blocked because
+      // they bypass code generation, de-duplication and the workflow defaults.
+      const { data: client } = await api.post('/wt-clients', {
         ...f,
         tanks_count: Number(f.tanks_count) || 0,
-        stage_updated_at: new Date().toISOString(),
       });
-      // Sec. 5 Step 1 asks for Client ID + Project ID + CRM profile together
-      let project = null;
-      try { ({ data: { project } } = await api.post(`/wt-clients/${client.id}/register`)); } catch { /* project optional */ }
+      // A project is NOT opened at registration — it opens when a quotation is
+      // approved (each engagement gets its own), so a fresh lead has no project yet.
       // Sec. 5 Step 2 — record the consultation if anything was captured
       if (f.tank_type || f.tanks_count || f.key_issues || f.amc_required) {
         try {
@@ -106,7 +106,7 @@ export default function ClientCreate() {
           });
         } catch { /* non-fatal */ }
       }
-      toast.ok(`${client.name} registered as ${client.code}${project ? ` · project ${project.code}` : ''}`);
+      toast.ok(`${client.name} registered as ${client.code}`);
       nav(`/water-tank/clients/${client.code}`);
     } catch (e) { setErr(errText(e, 'Could not register the client')); setBusy(false); }
   };

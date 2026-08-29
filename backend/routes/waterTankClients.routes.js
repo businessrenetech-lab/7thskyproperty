@@ -13,6 +13,7 @@ router.use(authMiddleware);
 router.get('/reference', canRead, ctrl.reference);
 router.get('/directory', canRead, ctrl.directory);
 router.get('/lookup', canRead, ctrl.lookup);
+router.post('/', canOperate, ctrl.create);
 router.get('/:id', canRead, ctrl.detail);
 router.post('/:id/stage', canOperate, ctrl.setStage);
 router.post('/:id/consultation', canOperate, ctrl.consultation);
