@@ -18,6 +18,7 @@ import {
   Phone,
   Mail,
   MapPin,
+  Download,
 } from 'lucide-react';
 import api from '../../../services/api';
 import PortalLinkCard from '../PortalLinkCard';
@@ -594,6 +595,34 @@ export default function ClientDashboard() {
                   <div key={doc} className="wt-gate"><span className="ic"><X size={13} /></span><div className="tx"><span className="l">{doc}</span></div></div>
                 ))}
               </div>
+            )}
+          </div>
+          <div className="wt-card wt-tblcard">
+            <div style={{ padding: '14px 18px 0' }}><div className="wt-sec-title">Signed Agreements ({(d.agreements || []).length})</div></div>
+            {(d.agreements || []).length ? (
+              <table className="wt-tbl">
+                <thead><tr><th style={{ width: 120 }}>Reference</th><th>Title</th>
+                  <th style={{ width: 120 }}>Status</th><th style={{ width: 150, textAlign: 'right' }}>Signed copy</th></tr></thead>
+                <tbody>
+                  {(d.agreements || []).map((a) => {
+                    let tok = ''; try { tok = localStorage.getItem('token') || ''; } catch { tok = ''; }
+                    return (
+                      <tr key={a.code}>
+                        <td className="id">{a.code}</td>
+                        <td><strong>{a.title || 'Customer Service Agreement'}</strong></td>
+                        <td><Pill value={a.status} sm /></td>
+                        <td style={{ textAlign: 'right' }}>
+                          {a.signed_pdf_url
+                            ? <a className="wt-btn sm" href={`${a.signed_pdf_url}${tok ? `?token=${encodeURIComponent(tok)}` : ''}`} target="_blank" rel="noopener" style={{ textDecoration: 'none' }}><Download size={12} /> Signed PDF</a>
+                            : <span className="muted">Awaiting signatures</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ padding: '10px 18px 16px', color: 'var(--wt-muted)', fontSize: 12.5 }}>No agreements yet.</div>
             )}
           </div>
           <div className="wt-card wt-tblcard">

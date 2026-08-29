@@ -3507,6 +3507,16 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Verified: build:admin passed; dist committed.
 - Handoff: redeploy + restart on Hostinger.
 
+### 2026-08-29 11:59 | OpenCode (GPT-5.6) | COMPLETED | Read-only Water Tank end-to-end QA and agreement security audit
+- Request: Independently audit every Water Tank sidebar destination plus customer/provider agreement creation, editing, signing, completion, frontend, backend, UX, accessibility and mobile behavior; make no application-code changes.
+- Scope/changes: Read-only application review. Changed only this append-only work log. Temporary Playwright/Axe scripts and results were written under `C:\Users\ADMIN\AppData\Local\Temp\opencode\wt-playwright-audit`. Preserved concurrent commits through `6bfafe3` and the pre-existing untracked `Seventh Sky - Short Term Stay.html`.
+- Browser verification: authenticated and audited all 23 sidebar destinations at 1440x900 and 390x844 (46 page/viewport runs), then five agreement routes and one quotation-agreement route. No navigation errors, application exceptions, failed requests or HTTP error responses. Every mobile route overflowed horizontally because the shared 240px console sidebar has no mobile mode. All 46 core runs had Axe A/AA violations, chiefly contrast; unnamed controls appeared on Calendar, Clients, Projects, AMC and Settings. The quotation agreement alone had 76 unlabelled controls plus a nested interactive DatePicker control.
+- Critical security/integrity findings: authenticated provider and generic envelope detail APIs serialize signer `access_token` and `otp_code`; `canRead` includes technicians while generic signing includes sales executives, so read-level roles can obtain bearer signing authority. `POST /api/sign/:token/decline` checks neither expiry nor signer/envelope state and can downgrade an already completed agreement; the public UI still offers Decline after signing. OTP fields are stored but never generated or enforced. The completion hash excludes captured field/signature values despite being presented as tamper evidence.
+- Agreement findings: customer preview preserved raw executable HTML from client, Seventh Sky representative and witness names, then preview/signing screens inject it with `dangerouslySetInnerHTML`. Customer creation sets `sent` but sends no email although the UI says it was sent. Customer countersigning is optional while the document says both parties must sign; live recheck found 5 completed customer agreements and 4 generated signed copies with blank signature anchors. Hub `can_void` advertises completed envelopes as voidable; the hub writes `void_reason` instead of model field `voided_reason` and attempts invalid signer status `voided`. Hub Resend rotates the token but does not email it. Signed-copy links reuse non-expiring signing bearer tokens.
+- Downstream verification: all 5 completed customer agreements produced work orders and invoices, but every generated work order had zero service lines; 3/5 lacked a project link and 3/5 lacked a site address. The agreement terms omit client identity and `wtWorkOrder.service` reads legacy `terms.property`/`terms.project` instead of the emitted `schedule_b`/`agreed_lines`. Completion persistence and operational activation are not one atomic transaction; customer automation errors are swallowed with no retry/reconciliation path.
+- Build/schema verification: frontend production build passed to a temporary outDir (1997 modules); audited backend modules all passed `node --check`. Build warned about the 2.27MB main JS chunk and 985kB html2pdf chunk. `npm run db:migrate:status` succeeded but showed `0090-money-batch-and-refunds.js`, `0091-disbursements-and-vouchers.js` and `0092-sts-owner-disbursements.js` pending. No automated backend or frontend test command exists (backend test is the placeholder failure).
+- Handoff: P0 rotate exposed signer tokens, stop serializing token/OTP fields, repair decline state validation, sanitize all agreement HTML inputs and hash the canonical executed artifact including signature values. P1 require the Seventh Sky countersigner, repair customer email/resend delivery and downstream terms mapping, add transactional/idempotent completion with reconciliation, implement or remove OTP, and add a responsive console shell. Then remediate WCAG labels/contrast, apply pending migrations and add agreement state-transition/integration tests.
+
 ### 2026-08-29 14:30 | Claude Code (Opus 4.8) | COMPLETED | WT signing — email BOTH parties on completion; verify signature placement
 - Reports (agreement signing): (a) no witness / Seventh Sky rep inputs; (b) signature
   not placed on the placeholder; (c) on full completion, email each party (customer +
@@ -3530,3 +3540,29 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Verified: service loads; backend restarted. Backend-only, no dist change.
 - Handoff: redeploy + restart on Hostinger. Open: (1) real PDF attachment needs a
   renderer; (2) optionally show placed signatures on the sign page itself after signing.
+
+### 2026-08-29 15:20 | Claude Code (Opus 4.8) | COMPLETED | WT signing — real signed-PDF: email attachment to both parties + save under Documents
+- Request: on full completion, email a real PDF of the signed agreement to each party
+  (customer + Seventh Sky), and save the signed PDF under the client/provider Documents tab.
+- Changes:
+  * backend/services/htmlToPdf.service.js (new) — HTML→PDF via puppeteer-core using an
+    EXISTING Chrome/Chromium (env PUPPETEER_EXECUTABLE_PATH/CHROME_PATH or common paths);
+    no bundled Chromium download, so npm install/deploy can't break on it. pdfAvailable()
+    guards; htmlToPdf() throws when unavailable so callers fall back to a link.
+  * backend/package.json — added puppeteer-core (^25.9.0).
+  * wtAgreementCompletion.service — on completion: build the fully-signed HTML, render it
+    to a real PDF once, save it to uploads/documents/<code>-signed.pdf, and email BOTH
+    principals (customer/provider + Seventh Sky) with the PDF ATTACHED. Falls back to the
+    secure link if no Chrome is present. Provider filing (WtProviderDocument) now points at
+    the saved PDF. Witnesses excluded.
+  * waterTankClients.controller detail — added an `agreements` array (completed customer
+    agreements linked via the 'client' signer name) exposing signed_pdf_url.
+  * ClientDashboard Documents tab — new "Signed Agreements" card with a token-authed
+    "Signed PDF" download link (/uploads is JWT-gated; ?token= supported).
+- Verified END TO END: ran onCompleted against a real completed customer agreement
+  (ENV-WTCSA-620119) — generated a 216KB PDF, saved it, and SMTP actually delivered the
+  email with the PDF attached. htmlToPdf unit test produced a valid %PDF- buffer.
+- Deploy note: Hostinger shared hosting has no Chrome → pdfAvailable() false → link
+  fallback (no breakage). For real PDFs on the server, install Chromium and set
+  PUPPETEER_EXECUTABLE_PATH. Saved PDFs live under backend/uploads (gitignored).
+- Handoff: redeploy + restart on Hostinger (npm install pulls puppeteer-core only).

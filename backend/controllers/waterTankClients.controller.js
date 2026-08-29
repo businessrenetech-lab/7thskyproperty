@@ -271,6 +271,30 @@ exports.detail = asyncHandler(async (req, res) => {
   const gateInfo = buildGates(c, ctx);
   const eq = (v, s) => String(v || '').toLowerCase() === s;
 
+  // Signed customer agreements for this client, for the Documents tab. Linked via
+  // the 'client' signer name on the envelope. A completed one exposes its signed
+  // PDF (saved on completion) so it can be downloaded straight from the tab.
+  let agreements = [];
+  try {
+    const SigningEnvelope = require('../models/SigningEnvelope');
+    const EnvelopeSigner = require('../models/EnvelopeSigner');
+    const signerRows = await EnvelopeSigner.findAll({
+      where: { role: 'client', name: c.name }, attributes: ['envelope_id'], raw: true,
+    });
+    const envIds = [...new Set(signerRows.map((s) => s.envelope_id))];
+    if (envIds.length) {
+      const envs = await SigningEnvelope.findAll({
+        where: { id: envIds, related_type: 'water_tank_customer_agreement' },
+        order: [['id', 'DESC']], raw: true,
+      });
+      agreements = envs.map((e) => ({
+        code: e.envelope_code, title: e.title, status: e.status, completed_at: e.completed_at,
+        signed_pdf_url: eq(e.status, 'completed')
+          ? `/uploads/documents/${String(e.envelope_code).replace(/[^A-Za-z0-9_-]/g, '')}-signed.pdf` : null,
+      }));
+    }
+  } catch { /* non-fatal: the tab still shows quotations & reports */ }
+
   const activeAmc = amc.find((a) => eq(a.status, 'active'));
   const finished = workOrders.filter((w) => ['completed', 'cancelled'].includes(String(w.status || '').toLowerCase()));
   const resolvedComplaints = complaints.filter((x) => num(x.resolution_hours) > 0);
@@ -304,7 +328,7 @@ exports.detail = asyncHandler(async (req, res) => {
       satisfaction_score: num(c.satisfaction_score) || null,
     },
     requests, assessments, quotations, work_orders: workOrders, invoices,
-    complaints, amc, warranties, projects, comms, events, reports,
+    complaints, amc, warranties, projects, comms, events, reports, agreements,
   });
 });
 
