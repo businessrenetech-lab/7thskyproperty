@@ -88,7 +88,9 @@ function shapeEnvelope(env) {
     awaiting: pending[0] ? { name: pending[0].name, email: pending[0].email, role: pending[0].role, order: pending[0].order } : null,
     progress_pct: signers.length ? Math.round((signed.length / signers.length) * 100) : 0,
     can_resend: !complete && !eq(env.status, 'voided') && !eq(env.status, 'declined') && pending.length > 0,
-    can_void: !eq(env.status, 'voided'),
+    // A fully-executed or already-voided/declined envelope cannot be voided — the
+    // endpoint rejects it, so it must not be advertised as voidable either.
+    can_void: !complete && !eq(env.status, 'voided') && !eq(env.status, 'declined'),
     // only a fully executed document is worth calling "the signed agreement"
     can_download_signed: complete,
   };
