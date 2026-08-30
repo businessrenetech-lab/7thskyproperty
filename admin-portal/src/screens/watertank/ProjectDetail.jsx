@@ -28,7 +28,6 @@ const TABS = ['Overview', 'Lifecycle', 'Timeline', 'Work Orders', 'Billing', 'Do
 export default function ProjectDetail() {
   const { code } = useParams();
   const nav = useSvcNav();
-  const eq = svcEquip();
   const [d, setD] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('Overview');
@@ -276,6 +275,7 @@ function Lifecycle({ stage, stages, busy, onSet, project }) {
 
 function Overview({ d, nav }) {
   const { project: p, client, property, provider, related } = d;
+  const eq = svcEquip(); // equipment field labels for the active service line (Tank vs Equipment)
   const services = parseJson(p.services, []) || [];
   const milestones = parseJson(p.milestones, []) || [];
   const risks = parseJson(p.risk_flags, []) || [];
