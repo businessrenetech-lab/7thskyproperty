@@ -442,6 +442,9 @@ exports.save = asyncHandler(async (req, res) => {
   let quote = standalone || await M.WtQuotation.findOne({ where: { ...scope, source_assessment: assessment.code } });
   if (quote) {
     await quote.update(payload);
+    // Keep any draft work order raised from this quote in step with the edit.
+    const { refreshDraftFromQuotation } = require('../services/wtWorkOrder.service');
+    await refreshDraftFromQuotation(quote, { branchId }).catch((e) => console.warn('[waterTank] sync draft WO from quote:', e.message));
   } else {
     const quoteCode = await nextCode('quotations', branchId, undefined, resolveServiceLine(req));
     quote = await M.WtQuotation.create({ ...payload, branch_id: branchId, service_line: resolveServiceLine(req), code: quoteCode });

@@ -310,9 +310,42 @@ async function createFromQuotation(quote, { branchId, actor = 'System', transact
   return wo;
 }
 
+/**
+ * Push a quotation's edits (lines, pricing, totals, scope) onto the DRAFT work
+ * order raised from it — so editing an approved-but-not-yet-dispatched quote keeps
+ * its work order in step. Only touches a work order still in Draft: once it is
+ * issued/assigned/in progress its figures are committed and must not shift under
+ * the provider. No-op when the quote has no draft work order.
+ */
+async function refreshDraftFromQuotation(quote, { branchId, transaction } = {}) {
+  const bid = branchId || quote.branch_id || 1;
+  const wo = await M.WtWorkOrder.findOne({
+    where: { branch_id: bid, source_quotation_code: quote.code }, transaction,
+  });
+  if (!wo || String(wo.status || '').toLowerCase() !== 'draft') return null;
+
+  const lines = asArray(quote.lines);
+  const total = num(quote.total);
+  const ssFee = num(quote.provider_allocation_fee);
+  const providerFee = Math.max(0, num(quote.service_charges) || (total - ssFee));
+  await wo.update({
+    lines,
+    total_contract: total,
+    ss_fee: ssFee,
+    provider_fee: providerFee,
+    provider_net_payable: providerFee,
+    category: lines[0]?.name || wo.category,
+    site_address: quote.site_address || wo.site_address,
+    scope: quote.notes ?? wo.scope,
+    special_conditions: quote.payment_terms ?? wo.special_conditions,
+  }, { transaction });
+  return wo;
+}
+
 module.exports = {
   STAGES,
   createFromQuotation,
+  refreshDraftFromQuotation,
   blankStages,
   computeProgress,
   deriveStages,
