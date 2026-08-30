@@ -4165,3 +4165,11 @@ used "the last line starting with `import`", which landed inside a multi-line
   Rewrote portalBits building blocks; added a compat layer so the panels' existing wt-* elements
   pick up the polished look without rewriting 1400 lines.
 - Cleaned all AC test data. Build passes.
+
+### 2026-08-30 14:40 | Claude Code (Opus 4.8) | COMPLETED | reusable per-service-line E2E harness
+- Added backend/scripts/e2eServiceLine.js — parameterized by service line, self-cleaning. Runs:
+  23 sidebar-endpoint isolation checks + create workflow (own codes) + money lifecycle (invoice ->
+  collect -> disbursement -> journal) + after-sale (complaint create/resolve). Usage:
+  node scripts/e2eServiceLine.js air_conditioning [--keep]. Refuses to wipe water_tank on cleanup.
+- VERIFIED: air_conditioning -> 32 PASS / 0 FAIL, test data removed. This is the reusable check to
+  run when duplicating the next service line.
