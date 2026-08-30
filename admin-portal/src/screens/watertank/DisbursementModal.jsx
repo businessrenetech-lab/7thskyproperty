@@ -307,7 +307,7 @@ export default function DisbursementModal({ mode: seedMode = 'direct', line: see
                       <option key={p.code} value={p.code}>{p.code} — {p.name || p.client_name}</option>
                     ))}
                   </select>
-                  <span className="hint">A drum of chemicals covers six jobs; leave it blank rather than guessing.</span>
+                  <span className="hint">One purchase may cover several jobs; leave it blank rather than guessing.</span>
                 </div>
               </div>
 

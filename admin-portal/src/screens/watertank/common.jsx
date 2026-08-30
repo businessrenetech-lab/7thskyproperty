@@ -45,6 +45,15 @@ export const SERVICE_UI = {
     },
     report_types: ['Site Assessment', 'Cleaning', 'Inspection', 'Testing', 'Repair', 'AMC'],
     report_placeholder: 'e.g. Drained and scrubbed both rooftop tanks, disinfected, flushed lines and tested residual.',
+    registers: {
+      incident_types: ['Injury', 'Contamination', 'Property Damage', 'Environmental', 'Equipment Failure', 'Other'],
+      warranty_hint: 'e.g. Cleaning & Disinfection, Waterproofing, Crack Repair.',
+      location_placeholder: 'Rooftop tank, plant room…',
+      incident_blurb: 'Injury, contamination, damage or equipment failure on site',
+      warranty_scope: 'completed cleaning, disinfection and repair work',
+      incident_log: 'injuries, contamination events, property damage and equipment failures',
+      direct_cost_examples: 'Chemicals, transport, government fees and day labour',
+    },
   },
   '/air-conditioning': {
     label: 'Air Conditioning',
@@ -67,6 +76,15 @@ export const SERVICE_UI = {
     },
     report_types: ['Site Assessment', 'Installation', 'Servicing', 'Cleaning', 'Repair', 'AMC'],
     report_placeholder: 'e.g. Serviced 2 split units, chemical-washed coils and filters, checked refrigerant pressure and tested cooling.',
+    registers: {
+      incident_types: ['Injury', 'Property Damage', 'Fire', 'Refrigerant Leak', 'Electrical Incident', 'Regulatory Investigation', 'Other'],
+      warranty_hint: 'e.g. Installation, Repairs, Compressor, Parts.',
+      location_placeholder: 'Indoor unit, outdoor unit, plant room…',
+      incident_blurb: 'Injury, refrigerant leak, electrical incident or property damage on site',
+      warranty_scope: 'completed installation, servicing and repair work',
+      incident_log: 'injuries, refrigerant leaks, electrical incidents and property damage',
+      direct_cost_examples: 'Spare parts, refrigerant, transport, government fees and day labour',
+    },
   },
 };
 /** The active console's UI profile (label, full_label, equipment field labels). */
@@ -86,6 +104,8 @@ export const svcEquip = () => svcProfile().equipment;
 export const svcVertical = () => (svcBase() === '/air-conditioning' ? 'air_conditioning_csa' : 'water_tank_csa');
 /** The active console's site-assessment step wording. */
 export const svcAssess = () => svcProfile().assess || SERVICE_UI['/water-tank'].assess;
+/** The active console's warranty/complaint/incident register wording. */
+export const svcRegisters = () => svcProfile().registers || SERVICE_UI['/water-tank'].registers;
 /** The active console's service-report types + work-summary placeholder. */
 export const svcReports = () => ({
   types: svcProfile().report_types || SERVICE_UI['/water-tank'].report_types,

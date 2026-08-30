@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, Loader2, AlertTriangle, ShieldCheck, MessageSquareWarning, AlertOctagon } from 'lucide-react';
 import api from '../../services/api';
-import { toast, errText } from './common';
+import { toast, errText, svcRegisters } from './common';
 import JobPicker, { JobContextCard } from './JobPicker';
 
 /*
@@ -188,7 +188,7 @@ export default function RegisterModal({ kind, job: presetJob, onClose, onCreated
           <div>
             <h3><Icon size={16} style={{ verticalAlign: -3, marginRight: 6 }} />{spec.title}</h3>
             <div className="sub">
-              {spec.sub}
+              {kind === 'incidents' ? svcRegisters().incident_blurb : spec.sub}
               {job && step === 1 ? ` · ${job.code}` : ''}
             </div>
           </div>
@@ -366,7 +366,7 @@ export default function RegisterModal({ kind, job: presetJob, onClose, onCreated
                     <div className="wt-field">
                       <label>Where</label>
                       <input className="wt-input" value={f.location} onChange={(e) => set('location', e.target.value)}
-                        placeholder="Rooftop tank, plant room…" />
+                        placeholder={svcRegisters().location_placeholder} />
                       <span className="hint">Defaults to the job's site address.</span>
                     </div>
                   </div>

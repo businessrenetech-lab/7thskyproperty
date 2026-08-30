@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Banknote, RefreshCw, Wallet, ArrowDownLeft, ArrowUpRight, Layers, FileText } from 'lucide-react';
 import api from '../../services/api';
 import { useSvcNav,
-  WtHead, WtTabs, Pill, dateFmt, bdt, WtDrawer, Loading, EmptyState, toast, errText,
+  WtHead, WtTabs, Pill, dateFmt, bdt, WtDrawer, Loading, EmptyState, toast, errText, svcRegisters,
 } from './common';
 import BulkPaymentModal from './BulkPaymentModal';
 import DisbursementModal from './DisbursementModal';
@@ -290,7 +290,7 @@ export default function Payments() {
               </table>
             ) : (
               <EmptyState eyebrow="Direct costs" title="Nothing recorded yet"
-                hint="Not every payment goes to a service provider. Chemicals, transport, government fees and day labour are paid by Seventh Sky directly — record them here so the margin is the truth."
+                hint={`Not every payment goes to a service provider. ${svcRegisters().direct_cost_examples} are paid by Seventh Sky directly — record them here so the margin is the truth.`}
                 action={<button className="wt-btn primary" onClick={() => setDisbursing(true)}><Banknote size={14} /> Make a disbursement</button>} />
             )}
           </div>

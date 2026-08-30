@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ShieldCheck, MessageSquareWarning, AlertOctagon, Plus, Eye, Trash2, ExternalLink } from 'lucide-react';
 import { useSvcNav,
   WtHead, WtTabs, Pill, StatCards, dateFmt, useCollection, RecordDrawer,
-  StatusCell, RowActions, Loading, EmptyState, useFocusedRecord, useRoutedRecord, toast, errText,
+  StatusCell, RowActions, Loading, EmptyState, useFocusedRecord, useRoutedRecord, toast, errText, svcRegisters,
 } from './common';
 import RegisterModal from './RegisterModal';
 
@@ -17,7 +17,6 @@ import RegisterModal from './RegisterModal';
 
 const WARRANTY_STATUSES = ['Active', 'Expiring', 'Expired', 'Claimed', 'Void'];
 const INCIDENT_STATUSES = ['Open', 'Investigating', 'Closed'];
-const INCIDENT_TYPES = ['Injury', 'Contamination', 'Property Damage', 'Environmental', 'Equipment Failure', 'Other'];
 const SEVERITIES = ['Low', 'Medium', 'High', 'Critical'];
 
 /*
@@ -26,13 +25,13 @@ const SEVERITIES = ['Low', 'Medium', 'High', 'Critical'];
  * job and lets the server resolve the client, project, property and provider —
  * so those four are shown here but are no longer typed.
  */
-const WARRANTY_FIELDS = [
+const warrantyFields = (rg) => [
   { key: 'client_name', label: 'Client name', required: true },
   { key: 'work_order_code', label: 'Work order', hint: 'The completed job this cover applies to.' },
   { key: 'project_id', label: 'Project ID' },
   { key: 'site_address', label: 'Property' },
   { key: 'provider_name', label: 'Provider' },
-  { key: 'warranty_type', label: 'Warranty type', hint: 'e.g. Cleaning & Disinfection, Waterproofing, Crack Repair.' },
+  { key: 'warranty_type', label: 'Warranty type', hint: rg.warranty_hint },
   { key: 'start_date', label: 'Start date', type: 'date' },
   { key: 'expiry_date', label: 'Expiry date', type: 'date' },
   { key: 'status', label: 'Status', type: 'select', options: WARRANTY_STATUSES, pill: true },
@@ -41,8 +40,8 @@ const WARRANTY_FIELDS = [
   { key: 'claim_notes', label: 'Claim notes', type: 'textarea' },
 ];
 
-const INCIDENT_FIELDS = [
-  { key: 'incident_type', label: 'Incident type', type: 'select', options: INCIDENT_TYPES },
+const incidentFields = (rg) => [
+  { key: 'incident_type', label: 'Incident type', type: 'select', options: rg.incident_types },
   { key: 'severity', label: 'Severity', type: 'select', options: SEVERITIES, pill: true },
   { key: 'incident_date', label: 'Date', type: 'date' },
   { key: 'client_name', label: 'Client' },
@@ -64,6 +63,7 @@ const RAISED_BY = { client: 'Client', provider: 'Provider', staff: 'Our team' };
 
 /* ── Warranties ───────────────────────────────────────────── */
 function Warranties() {
+  const rg = svcRegisters();
   const { rows, loading, error, reload, patch, remove } = useCollection('warranties');
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(null);
@@ -131,7 +131,7 @@ function Warranties() {
             </tbody>
           </table>
         ) : <EmptyState eyebrow="Warranties" title={q ? `Nothing matches “${q}”.` : 'No warranties recorded'}
-          hint={q ? undefined : 'Register the cover you give clients on completed cleaning, disinfection and repair work.'} />}
+          hint={q ? undefined : `Register the cover you give clients on ${rg.warranty_scope}.`} />}
       </div>
 
       {creating && (
@@ -139,7 +139,7 @@ function Warranties() {
           onClose={() => setCreating(false)} onCreated={() => { setCreating(false); reload(); }} />
       )}
       {current && (
-        <RecordDrawer record={current} singular="warranty" fields={WARRANTY_FIELDS} subtitle={current.client_name}
+        <RecordDrawer record={current} singular="warranty" fields={warrantyFields(rg)} subtitle={current.client_name}
           onClose={routed.close}
           onSave={(body) => patch(current.id, body)}
           onDelete={() => remove(current.id, `${current.code} deleted`)} />
@@ -227,6 +227,7 @@ function ComplaintsRegister() {
 
 /* ── Incidents ────────────────────────────────────────────── */
 function Incidents() {
+  const rg = svcRegisters();
   const { rows, loading, error, reload, patch, remove } = useCollection('incidents');
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState(null);
@@ -287,7 +288,7 @@ function Incidents() {
             </tbody>
           </table>
         ) : <EmptyState eyebrow="Incidents" title={q ? `Nothing matches “${q}”.` : 'No incidents recorded'}
-          hint={q ? undefined : 'Log injuries, contamination events, property damage and equipment failures here.'} />}
+          hint={q ? undefined : `Log ${rg.incident_log} here.`} />}
       </div>
 
       {creating && (
@@ -295,7 +296,7 @@ function Incidents() {
           onClose={() => setCreating(false)} onCreated={() => { setCreating(false); reload(); }} />
       )}
       {current && (
-        <RecordDrawer record={current} singular="incident" fields={INCIDENT_FIELDS}
+        <RecordDrawer record={current} singular="incident" fields={incidentFields(rg)}
           subtitle={[current.client_name, current.location].filter(Boolean).join(' · ')}
           onClose={routed.close}
           onSave={(body) => patch(current.id, body)}

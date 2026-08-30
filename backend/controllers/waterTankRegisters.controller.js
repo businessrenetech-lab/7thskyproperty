@@ -17,7 +17,7 @@
  * communication log and never appeared on this screen at all.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine, serviceUi } = require('../utils/controllerHelpers');
 // Branch + service-line scope so each service line sees only its own data.
 const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
@@ -88,10 +88,13 @@ exports.reference = asyncHandler(async (req, res) => {
 
   const is = (rows, key, v) => rows.filter((r) => String(r[key] || '').toLowerCase() === v).length;
 
+  // Register vocabulary follows the active service line (AC has refrigerant-leak /
+  // electrical incidents, AC warranty types, etc.), read from the manifest.
+  const ui = serviceUi(req);
   res.json({
-    warranty: { types: WARRANTY_TYPES, statuses: WARRANTY_STATUSES, default_months: WARRANTY_MONTHS },
-    complaint: { types: COMPLAINT_TYPES, statuses: COMPLAINT_STATUSES, severities: SEVERITIES, sla_hours: SLA_HOURS },
-    incident: { types: INCIDENT_TYPES, statuses: INCIDENT_STATUSES, severities: SEVERITIES },
+    warranty: { types: ui.warranty_types || WARRANTY_TYPES, statuses: WARRANTY_STATUSES, default_months: ui.warranty_months || WARRANTY_MONTHS },
+    complaint: { types: ui.complaint_types || COMPLAINT_TYPES, statuses: COMPLAINT_STATUSES, severities: SEVERITIES, sla_hours: SLA_HOURS },
+    incident: { types: ui.incident_types || INCIDENT_TYPES, statuses: INCIDENT_STATUSES, severities: SEVERITIES },
     providers: providers.map((p) => ({ id: p.id, code: p.code, name: p.business_name, status: p.status })),
     summary: {
       warranties: { total: warranties.length, active: is(warranties, 'status', 'active'), claimed: is(warranties, 'status', 'claimed') },
@@ -154,7 +157,10 @@ exports.create = asyncHandler(async (req, res) => {
 
   let row;
   if (req.params.register === 'warranties') {
-    const type = body.warranty_type || WARRANTY_TYPES[0];
+    const ui = serviceUi(req);
+    const wTypes = ui.warranty_types || WARRANTY_TYPES;
+    const wMonths = ui.warranty_months || WARRANTY_MONTHS;
+    const type = body.warranty_type || wTypes[0];
     /*
      * Cover runs from the day the work was FINISHED, not the day somebody got
      * round to registering it — otherwise a warranty entered a fortnight late
@@ -170,7 +176,7 @@ exports.create = asyncHandler(async (req, res) => {
       terms: body.terms || null,
       start_date: start,
       // Defaulted from the type rather than left to be typed, then adjustable.
-      expiry_date: isoDate(body.expiry_date) || addMonths(start, WARRANTY_MONTHS[type] || 12),
+      expiry_date: isoDate(body.expiry_date) || addMonths(start, wMonths[type] || 12),
       status: body.status || 'Active',
       provider_name: body.provider_name || context.provider_name || null,
     });

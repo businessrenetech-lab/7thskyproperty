@@ -4039,3 +4039,19 @@ used "the last line starting with `import`", which landed inside a multi-line
   generic, no tank wording.
 - VERIFIED: /service-catalog/items?vertical=air_conditioning_csa → 45 ACS items;
   water_tank_csa → 41 WTC items; build passes.
+
+### 2026-08-30 10:15 | Claude Code (Opus 4.8) | COMPLETED | AC check — Payments + Registers screens
+- Payments: the direct-costs empty-state hint ("Chemicals, transport…") now follows the service
+  line via svcRegisters().direct_cost_examples (AC: Spare parts, refrigerant…). DisbursementModal's
+  "A drum of chemicals covers six jobs" hint made generic.
+- Registers (Warranty / Complaint / Incident): were hard-coded to WT vocabulary. Added
+  warranty_types (+months), complaint_types and incident_types to the manifest ui and a matching
+  registers block in the frontend SERVICE_UI + svcRegisters() helper. The registers reference
+  endpoint (used by RegisterModal's selects) now serves the active service line's types, and the
+  warranty-create default/expiry read the manifest. Registers.jsx builds its field defs
+  (warrantyFields/incidentFields) + tab/incident options + copy from svcRegisters(); RegisterModal's
+  incident subtitle and location placeholder follow it too.
+  AC: warranty Installation/Labour/Repairs/Compressor/Parts/Manufacturer; incidents
+  Injury/Property Damage/Fire/Refrigerant Leak/Electrical Incident/Regulatory Investigation;
+  complaints incl. Cooling / Performance Issue.
+- VERIFIED: registers/reference → AC warranty + incident + complaint types; WT unchanged; build passes.

@@ -76,6 +76,11 @@ const SERVICE_LINES = {
       assess_sources: ['WASA Supply', 'Deep Tube Well', 'Shallow Tube Well', 'Surface Water', 'Rainwater Harvesting', 'Tanker Delivery'],
       recommended_services: ['Tank Cleaning', 'Disinfection', 'Sterilisation', 'Bacteria & Algae Treatment', 'Leak Detection', 'Crack Repair', 'Waterproofing', 'Valve Replacement', 'Pipe Connection Repair', 'Pump Maintenance', 'Water Quality Testing', 'AMC Enrolment'],
       report_types: ['Site Assessment', 'Cleaning', 'Inspection', 'Testing', 'Repair', 'AMC'],
+      // Warranty / complaint / incident registers vocabulary.
+      warranty_types: ['Cleaning & Disinfection', 'Waterproofing', 'Crack Repair', 'Structural Reinforcement', 'Valve & Fittings', 'Pump Service', 'Filtration System', 'General Workmanship'],
+      warranty_months: { 'Cleaning & Disinfection': 6, Waterproofing: 24, 'Crack Repair': 12, 'Structural Reinforcement': 24, 'Valve & Fittings': 12, 'Pump Service': 12, 'Filtration System': 12, 'General Workmanship': 12 },
+      complaint_types: ['Service Quality', 'Water Discolouration', 'Incomplete Work', 'Damage During Service', 'Staff Conduct', 'Late Attendance', 'Billing Dispute', 'Repeat Fault', 'Other'],
+      incident_types: ['Injury', 'Contamination', 'Property Damage', 'Environmental', 'Equipment Failure', 'Other'],
     },
   },
 
@@ -143,6 +148,10 @@ const SERVICE_LINES = {
       assess_sources: ['R32', 'R410A', 'R22', 'R290', 'Other'],
       recommended_services: ['Servicing', 'Standard Cleaning', 'Deep Chemical Cleaning', 'Gas Refill', 'Leak Detection', 'Fault Diagnosis', 'Compressor Replacement', 'PCB Replacement', 'Smart Thermostat Installation', 'AMC Enrolment'],
       report_types: ['Site Assessment', 'Installation', 'Servicing', 'Cleaning', 'Repair', 'AMC'],
+      warranty_types: ['Installation', 'Labour', 'Repairs', 'Compressor', 'Parts', 'Manufacturer', 'General Workmanship'],
+      warranty_months: { Installation: 12, Labour: 3, Repairs: 6, Compressor: 12, Parts: 6, Manufacturer: 12, 'General Workmanship': 3 },
+      complaint_types: ['Service Quality', 'Cooling / Performance Issue', 'Incomplete Work', 'Damage During Service', 'Staff Conduct', 'Late Attendance', 'Billing Dispute', 'Repeat Fault', 'Other'],
+      incident_types: ['Injury', 'Property Damage', 'Fire', 'Refrigerant Leak', 'Electrical Incident', 'Regulatory Investigation', 'Other'],
     },
   },
 };
