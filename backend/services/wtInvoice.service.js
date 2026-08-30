@@ -106,16 +106,20 @@ function deriveStatus(inv, totals) {
 /* ────────────────────────────────────────────────────────────────────────────
  * Codes
  * ──────────────────────────────────────────────────────────────────────────── */
-async function nextInvoiceCode(branchId, transaction) {
+async function nextInvoiceCode(branchId, transaction, serviceLine = 'water_tank') {
+  const { codePrefix } = require('../config/serviceLines');
+  const prefix = codePrefix(serviceLine, 'invoice');
+  const start = serviceLine === 'water_tank' ? 482 : 1; // WT register already starts at INV-0482
   const rows = await M.WtInvoice.findAll({
     where: { branch_id: branchId }, attributes: ['code'], raw: true, transaction,
   });
-  let max = 481; // the register already starts at INV-0482
+  let max = start - 1;
+  const re = new RegExp('^' + prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
   rows.forEach((r) => {
-    const n = parseInt(String(r.code || '').replace(/^INV-/i, ''), 10);
+    const n = parseInt(String(r.code || '').replace(re, ''), 10);
     if (!Number.isNaN(n) && n > max) max = n;
   });
-  return `INV-${String(max + 1).padStart(4, '0')}`;
+  return `${prefix}${String(max + 1).padStart(4, '0')}`;
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -301,7 +305,7 @@ function buildAmcSchedule(amc, ctx = {}) {
 /** Create one invoice row from a draft spec produced by either builder. */
 async function persistDraft(spec, { branchId, actor }, transaction) {
   const totals = computeTotals(spec);
-  const code = await nextInvoiceCode(branchId, transaction);
+  const code = await nextInvoiceCode(branchId, transaction, spec.service_line || 'water_tank');
   return M.WtInvoice.create({
     branch_id: branchId,
     service_line: spec.service_line || 'water_tank',

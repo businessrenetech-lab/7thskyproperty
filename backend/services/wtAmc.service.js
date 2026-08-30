@@ -265,11 +265,13 @@ async function createAmc(payload, ctx) {
     }
     if (!client) {
       if (!cIn.name) { const e = new Error('A client is required for an AMC.'); e.status = 400; throw e; }
+      const { codePrefix } = require('../config/serviceLines');
+      const cPrefix = codePrefix(sl, 'client');
       const rows = await M.WtClient.findAll({ where: { branch_id: branchId }, attributes: ['code'], raw: true, transaction });
       let max = 0;
-      rows.forEach((r) => { const n = parseInt(String(r.code || '').replace('WTCM-C', ''), 10); if (!Number.isNaN(n) && n > max) max = n; });
+      rows.forEach((r) => { const n = parseInt(String(r.code || '').replace(cPrefix, ''), 10); if (!Number.isNaN(n) && n > max) max = n; });
       client = await M.WtClient.create({
-        branch_id: branchId, service_line: sl, code: `WTCM-C${String(max + 1).padStart(4, '0')}`,
+        branch_id: branchId, service_line: sl, code: `${cPrefix}${String(max + 1).padStart(4, '0')}`,
         name: cIn.name, client_type: cIn.client_type || 'Residential',
         mobile: cIn.phone || null, email: cIn.email || null,
         service_address: cIn.address || null, district: cIn.district || null,

@@ -805,7 +805,7 @@ exports.dashboard = asyncHandler(async (req, res) => {
   res.json({
     kpis: {
       active_projects: projects.filter((p) => eq(p.status, 'open')).length || wos.filter((w) => ['in progress', 'issued', 'accepted'].includes(String(w.status || '').toLowerCase())).length,
-      active_projects_sub: `${sr.filter((r) => /disinfect/i.test(r.category || r.specific_service || '')).length} in disinfection phase`,
+      active_projects_sub: `${sr.filter((r) => !eq(r.status, 'converted') && !eq(r.status, 'closed')).length} open service request${sr.filter((r) => !eq(r.status, 'converted') && !eq(r.status, 'closed')).length === 1 ? '' : 's'}`,
       new_leads: sr.filter((r) => eq(r.status, 'new')).length,
       amc_active: amcActive.length,
       amc_annual_value: amcStats.active_annual_value,

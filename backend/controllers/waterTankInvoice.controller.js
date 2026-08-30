@@ -75,7 +75,7 @@ exports.reference = asyncHandler(async (req, res) => {
     M.WtAmcContract.findAll({ where: scope, attributes: ['code', 'client_name', 'package'], order: [['id', 'DESC']], limit: 50, raw: true }).catch(() => []),
   ]);
   res.json({
-    next_code: await svc.nextInvoiceCode(resolveBranchId(req)),
+    next_code: await svc.nextInvoiceCode(resolveBranchId(req), undefined, resolveServiceLine(req)),
     statuses: svc.INVOICE_STATUSES,
     types: svc.INVOICE_TYPES,
     editable_statuses: svc.EDITABLE_STATUSES,

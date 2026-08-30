@@ -15,6 +15,15 @@
  */
 const { Op } = require('sequelize');
 const M = require('../models/waterTankOps');
+const { getServiceLine } = require('../config/serviceLines');
+
+// SigningEnvelope has no service_line column (it is cross-module), so agreements
+// are attributed to a service line by their related_type prefix instead.
+const relatedTypesForScope = (scope) => {
+  const sl = scope.service_line || 'water_tank';
+  const rt = getServiceLine(sl).related_type || {};
+  return [rt.customer, rt.provider, `${sl}_work_order`].filter(Boolean);
+};
 
 const num = (v) => Number(v || 0);
 const today = () => new Date().toISOString().slice(0, 10);
@@ -48,7 +57,11 @@ async function buildQueues(scope) {
        * would have hidden 12 of the 30 live envelopes on this database.
        */
       return SigningEnvelope.findAll({
-        where: { status: { [Op.in]: ['sent', 'viewed', 'partially_signed'] } },
+        where: {
+          branch_id: scope.branch_id,
+          related_type: { [Op.in]: relatedTypesForScope(scope) },
+          status: { [Op.in]: ['sent', 'viewed', 'partially_signed'] },
+        },
         raw: true, limit: 200,
       });
     })().catch(() => []),

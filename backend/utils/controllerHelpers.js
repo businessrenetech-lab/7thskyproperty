@@ -36,9 +36,15 @@ function serviceScope(req) {
 }
 // The ServiceItem catalogue is separated by `vertical` (not service_line), so a
 // service line reads its own catalogue vertical (water_tank_csa, air_conditioning_csa…).
-const { getServiceLine } = require('../config/serviceLines');
+const { getServiceLine, codePrefix: codePrefixFor } = require('../config/serviceLines');
 function catalogueVertical(req) {
   return getServiceLine(resolveServiceLine(req)).catalogue_vertical;
+}
+// Record-code prefix for the active service line + entity kind (client, project,
+// request, assessment, quotation, work_order, invoice, provider) — so AC records
+// are coded ACCM-C… / ACR-… rather than WTCM-C… / SR….
+function codePrefix(req, kind) {
+  return codePrefixFor(resolveServiceLine(req), kind);
 }
 // The active service line's UI vocabulary (labels, project types, categories,
 // property types, equipment field labels) — so shared screens never show another
@@ -64,4 +70,4 @@ function pick(body, allowed) {
   return out;
 }
 
-module.exports = { asyncHandler, branchScope, resolveBranchId, getPagination, pick, resolveServiceLine, serviceScope, catalogueVertical, serviceUi };
+module.exports = { asyncHandler, branchScope, resolveBranchId, getPagination, pick, resolveServiceLine, serviceScope, catalogueVertical, serviceUi, codePrefix };

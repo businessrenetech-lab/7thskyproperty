@@ -74,14 +74,17 @@ async function refreshProgress(wo, patch = {}, options = {}) {
   return wo;
 }
 
-async function nextCode(branchId, transaction) {
+async function nextCode(branchId, transaction, serviceLine = 'water_tank') {
+  const { codePrefix } = require('../config/serviceLines');
+  const prefix = codePrefix(serviceLine, 'work_order');
+  const start = serviceLine === 'water_tank' ? 482 : 1;
   const rows = await M.WtWorkOrder.findAll({ where: { branch_id: branchId }, attributes: ['code'], raw: true, transaction });
-  let max = 481;
+  let max = start - 1;
   rows.forEach((r) => {
-    const n = parseInt(String(r.code || '').replace('WO-', ''), 10);
+    const n = parseInt(String(r.code || '').replace(prefix, ''), 10);
     if (!Number.isNaN(n) && n > max) max = n;
   });
-  return `WO-${String(max + 1).padStart(4, '0')}`;
+  return `${prefix}${String(max + 1).padStart(4, '0')}`;
 }
 
 /**
@@ -136,10 +139,11 @@ async function createFromSignedAgreement(envelope, options = {}) {
 
   const stages = { ...blankStages(), raised: true };
 
+  const woSl = (quote && quote.service_line) || (envelope && serviceLineForRelatedType(envelope.related_type)) || 'water_tank';
   const wo = await M.WtWorkOrder.create({
     branch_id: branchId,
-    service_line: (quote && quote.service_line) || (envelope && serviceLineForRelatedType(envelope.related_type)) || 'water_tank',
-    code: await nextCode(branchId, transaction),
+    service_line: woSl,
+    code: await nextCode(branchId, transaction, woSl),
     client_name: clientName || 'Unknown client',
     client_code: client?.code || null,
     client_phone: client?.mobile || terms?.client?.phone || sb.site_contact_phone || null,
@@ -239,7 +243,7 @@ async function createFromQuotation(quote, { branchId, actor = 'System', transact
   const wo = await M.WtWorkOrder.create({
     branch_id: bid,
     service_line: quote.service_line || 'water_tank',
-    code: await nextCode(bid, transaction),
+    code: await nextCode(bid, transaction, quote.service_line || 'water_tank'),
     client_name: quote.client_name || 'Unknown client',
     client_code: quote.client_code || client?.code || null,
     client_phone: client?.mobile || null,

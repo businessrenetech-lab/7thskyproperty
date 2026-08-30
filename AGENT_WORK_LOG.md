@@ -4125,3 +4125,26 @@ used "the last line starting with `import`", which landed inside a multi-line
   Consultation").
 - VERIFIED: request-reference returns AC vocab; build passes; only a code comment still says
   "water-tank".
+
+### 2026-08-30 13:30 | Claude Code (Opus 4.8) | COMPLETED | AC end-to-end test + real bug fixes
+- Ran a full E2E (37 sidebar-endpoint checks + 11-step workflow: client->SR->quote->project +
+  provider directory + portal accounts). Found and fixed:
+  1) CODE PREFIXES (real bug): new AC clients/projects/SRs/quotes/WOs/invoices were minted with
+     Water Tank prefixes (WTCM-C, SR-, Q-, WO-, INV-) despite the manifest declaring ACCM-C/ACR-/
+     ACQ-/ACW-/ACI-. Added codePrefix(serviceLine, kind) to the manifest + controllerHelpers, and
+     threaded it through wtIdentity (client/project/SR/assessment/quote via ensureClient/Project +
+     the CODES map), waterTankIntake, waterTankClients, wtWorkOrder, wtInvoice, wtAmc. Non-WT
+     lines number from 1. AC now mints ACCM-C0001 / ACR-0001 / ACQ-0001 / ACW- / ACI-.
+  2) WORK QUEUE agreements leak (real bug): the SigningEnvelope query filtered only by status, so
+     ALL service lines' agreements showed in the AC work queue. Scoped by branch + the service
+     line's related_types (SigningEnvelope has no service_line column).
+  3) Project name "— Water Tank Service" fallback: quotation-approval passed a hard-coded title;
+     removed it so ensureProject derives the service label; ensureProject fallback now uses the
+     manifest full_label.
+  4) Dashboard "N in disinfection phase" (WT-only) -> service-neutral "N open service request(s)".
+- CLEANED stale AC test data (WTCM-C0036 client + SR-1109/1110 + Q-1067/1068 + 2 assessments +
+  comms) left from earlier verification sessions.
+- VERIFIED: sidebar scan 37/37 PASS (all lists isolated, no WT-data leak, all reference vocab AC);
+  workflow 11/11 PASS (AC records get ACCM/ACR/ACQ codes, no WT leak). Non-nav-path scan clean.
+- Note: the `.to` nav paths in dashboard/work-queue/calendar responses still read /water-tank/... —
+  NOT a bug (the frontend useSvcNav rebases them to /air-conditioning at click time).

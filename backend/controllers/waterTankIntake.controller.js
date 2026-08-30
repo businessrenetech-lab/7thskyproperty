@@ -11,7 +11,10 @@
  * posts to. It deliberately exposes no pricing.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine, catalogueVertical, serviceUi } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine, catalogueVertical, serviceUi, codePrefix } = require('../utils/controllerHelpers');
+// Non-default service lines number their codes from 1 (the WT `start` values are
+// continuation points for existing Water Tank data); AC starts each series fresh.
+const codeStart = (req, wtStart) => (resolveServiceLine(req) === 'water_tank' ? wtStart : 1);
 // Branch + service-line scope for wt_* reads (never spread onto ServiceItem, which
 // is separated by `vertical`, not service_line).
 const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
@@ -99,7 +102,7 @@ exports.publicEnquiry = asyncHandler(async (req, res) => {
   const row = await M.WtServiceRequest.create({
     branch_id: branchId,
     service_line: resolveServiceLine(req),
-    code: await nextCode(M.WtServiceRequest, 'SR-', 4, 1095, branchId),
+    code: await nextCode(M.WtServiceRequest, codePrefix(req, 'request'), 4, codeStart(req, 1095), branchId),
     request_date: today(),
     client_name: name,
     phone,
@@ -234,7 +237,7 @@ exports.createRequest = asyncHandler(async (req, res) => {
     client = await M.WtClient.create({
       branch_id: branchId,
       service_line: resolveServiceLine(req),
-      code: await nextCode(M.WtClient, 'WTCM-C', 4, 1, branchId),
+      code: await nextCode(M.WtClient, codePrefix(req, 'client'), 4, 1, branchId),
       name: b.client_name,
       client_type: b.client_type || 'Residential',
       mobile: b.phone || null, email: b.email || null,
@@ -263,7 +266,7 @@ exports.createRequest = asyncHandler(async (req, res) => {
   const request = await M.WtServiceRequest.create({
     branch_id: branchId,
     service_line: resolveServiceLine(req),
-    code: await nextCode(M.WtServiceRequest, 'SR-', 4, 1095, branchId),
+    code: await nextCode(M.WtServiceRequest, codePrefix(req, 'request'), 4, codeStart(req, 1095), branchId),
     request_date: b.request_date || today(),
     client_name: client.name,
     client_code: client.code,
@@ -296,7 +299,7 @@ exports.createRequest = asyncHandler(async (req, res) => {
   if (needsAssessment) {
     const assessment = await M.WtSiteAssessment.create({
       branch_id: branchId, service_line: resolveServiceLine(req),
-      code: await nextCode(M.WtSiteAssessment, 'SA-', 4, 402, branchId),
+      code: await nextCode(M.WtSiteAssessment, codePrefix(req, 'assessment'), 4, codeStart(req, 402), branchId),
       client_name: client.name,
       project_id: project ? project.code : null,
       provider: b.provider_name || null,
@@ -323,7 +326,7 @@ exports.createRequest = asyncHandler(async (req, res) => {
 
     const quotation = await M.WtQuotation.create({
       branch_id: branchId, service_line: resolveServiceLine(req),
-      code: await nextCode(M.WtQuotation, 'Q-', 4, 1049, branchId),
+      code: await nextCode(M.WtQuotation, codePrefix(req, 'quotation'), 4, codeStart(req, 1049), branchId),
       client_name: client.name,
       project_id: project ? project.code : null,
       lines,

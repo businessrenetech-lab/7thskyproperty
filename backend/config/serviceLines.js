@@ -174,10 +174,22 @@ function serviceLineForRelatedType(relatedType) {
   }) || null;
 }
 
+/**
+ * The record-code prefix for a service line and entity kind (client, project,
+ * request, assessment, quotation, work_order, invoice, provider). So an Air
+ * Conditioning client is coded ACCM-C…, not WTCM-C…. Falls back to the Water
+ * Tank prefix if a service line does not declare one.
+ */
+function codePrefix(serviceLine, kind) {
+  const cp = getServiceLine(serviceLine).code_prefix || {};
+  return cp[kind] || getServiceLine(DEFAULT_SERVICE_LINE).code_prefix[kind];
+}
+
 module.exports = {
   SERVICE_LINES,
   SERVICE_LINE_KEYS,
   DEFAULT_SERVICE_LINE,
   getServiceLine,
   serviceLineForRelatedType,
+  codePrefix,
 };

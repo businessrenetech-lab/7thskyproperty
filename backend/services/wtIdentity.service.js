@@ -36,18 +36,35 @@ const CODES = {
   enquiries: { model: () => M.WtEnquiry, prefix: 'ENQ-', pad: 4, start: 1 },
 };
 
-/** Next free code for an entity, scoped to the branch. */
-async function nextCode(entity, branchId, transaction) {
+// Which CODES entity maps to which manifest code_prefix kind.
+const PREFIX_KIND = {
+  clients: 'client', projects: 'project', 'service-requests': 'request',
+  'site-assessments': 'assessment', quotations: 'quotation', 'work-orders': 'work_order',
+  providers: 'provider', invoices: 'invoice',
+};
+const { codePrefix, getServiceLine } = require('../config/serviceLines');
+const serviceLabel = (sl) => (getServiceLine(sl).ui || {}).full_label || getServiceLine(sl).label || 'Service';
+
+/**
+ * Next free code for an entity, scoped to the branch and service line. Air
+ * Conditioning gets its own prefix (ACCM-C…, ACR-…) and numbers from 1; Water
+ * Tank keeps its prefix and continuation start. The prefix scan naturally
+ * isolates each service line's series.
+ */
+async function nextCode(entity, branchId, transaction, serviceLine = 'water_tank') {
   const spec = CODES[entity];
   if (!spec) return null;
+  const kind = PREFIX_KIND[entity];
+  const prefix = kind ? codePrefix(serviceLine, kind) : spec.prefix;
+  const start = serviceLine === 'water_tank' ? spec.start : 1;
   const model = spec.model();
   const rows = await model.findAll({ where: { branch_id: branchId }, attributes: ['code'], raw: true, transaction });
-  let max = spec.start - 1;
+  let max = start - 1;
   for (const r of rows) {
-    const n = parseInt(String(r.code || '').replace(spec.prefix, ''), 10);
+    const n = parseInt(String(r.code || '').replace(prefix, ''), 10);
     if (!Number.isNaN(n) && n > max) max = n;
   }
-  return spec.prefix + String(max + 1).padStart(spec.pad, '0');
+  return prefix + String(max + 1).padStart(spec.pad, '0');
 }
 
 /**
@@ -73,7 +90,7 @@ async function ensureClient(branchId, { client_code, client_name, ...extra } = {
   return M.WtClient.create({
     branch_id: branchId,
     service_line: sl,
-    code: await nextCode('clients', branchId, transaction),
+    code: await nextCode('clients', branchId, transaction, sl),
     name,
     client_type: extra.client_type || 'Residential',
     mobile: extra.phone || extra.mobile || null,
@@ -121,8 +138,8 @@ async function ensureProject(branchId, client, hint = {}, transaction, dryRun = 
   return M.WtProject.create({
     branch_id: branchId,
     service_line: sl,
-    code: await nextCode('projects', branchId, transaction),
-    name: `${client.name} — ${hint.title || 'Water Tank Service'}`,
+    code: await nextCode('projects', branchId, transaction, sl),
+    name: `${client.name} — ${hint.title || `${serviceLabel(sl)} Service`}`,
     client_name: client.name,
     assigned_provider: hint.provider_name || null,
     start_date: today(),

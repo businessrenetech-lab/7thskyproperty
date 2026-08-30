@@ -233,7 +233,7 @@ exports.setDecision = asyncHandler(async (req, res) => {
       project_id: quote.project_id || undefined,
       service_line: quote.service_line || resolveServiceLine(req),
       forceNew: !quote.project_id,
-      title: 'Water Tank Service',
+      // Omit title so ensureProject derives the service-line label (AC vs Water Tank).
       stage: 'Agreement',
       detail: `Opened on approval of quotation ${quote.code}`,
     });

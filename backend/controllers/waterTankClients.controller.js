@@ -11,7 +11,7 @@
  * so the API refuses to move a client to Provider Assignment without one.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine, serviceUi } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine, serviceUi, codePrefix } = require('../utils/controllerHelpers');
 // Branch + service-line scope for wt_* reads (Contact queries keep plain branchScope).
 const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
@@ -513,16 +513,17 @@ exports.create = asyncHandler(async (req, res) => {
   const existing = await M.WtClient.findOne({ where: { ...scoped(req), [Op.or]: dupWhere } });
   if (existing) return res.status(200).json(existing);
 
+  const cPrefix = codePrefix(req, 'client');
   const rows = await M.WtClient.findAll({ where: { branch_id: branchId }, attributes: ['code'], raw: true });
   let max = 0;
-  rows.forEach((r) => { const n = parseInt(String(r.code || '').replace('WTCM-C', ''), 10); if (!Number.isNaN(n) && n > max) max = n; });
+  rows.forEach((r) => { const n = parseInt(String(r.code || '').replace(cPrefix, ''), 10); if (!Number.isNaN(n) && n > max) max = n; });
 
   const payload = {};
   CLIENT_FIELDS.forEach((k) => { if (body[k] !== undefined) payload[k] = body[k]; });
   const client = await M.WtClient.create({
     ...payload,
     branch_id: branchId, service_line: resolveServiceLine(req),
-    code: `WTCM-C${String(max + 1).padStart(4, '0')}`,
+    code: `${cPrefix}${String(max + 1).padStart(4, '0')}`,
     name,
     tanks_count: Number(body.tanks_count) || 0,
     current_status: body.current_status || 'New Lead',
@@ -543,13 +544,14 @@ exports.registerProject = asyncHandler(async (req, res) => {
   const existing = await M.WtProject.findOne({ where: { ...scoped(req), client_name: c.name, status: 'Open' } });
   if (existing) return res.json({ project: existing, created: false });
 
+  const pPrefix = codePrefix(req, 'project');
   const rows = await M.WtProject.findAll({ where: { branch_id: branchId }, attributes: ['code'], raw: true });
   let max = 0;
-  rows.forEach((r) => { const n = parseInt(String(r.code || '').replace('WTCM-P', ''), 10); if (!Number.isNaN(n) && n > max) max = n; });
+  rows.forEach((r) => { const n = parseInt(String(r.code || '').replace(pPrefix, ''), 10); if (!Number.isNaN(n) && n > max) max = n; });
   const project = await M.WtProject.create({
     branch_id: branchId, service_line: resolveServiceLine(req),
-    code: `WTCM-P${String(max + 1).padStart(4, '0')}`,
-    name: `${c.name} — ${c.requested_service || 'Water Tank Service'}`,
+    code: `${pPrefix}${String(max + 1).padStart(4, '0')}`,
+    name: `${c.name} — ${c.requested_service || `${serviceUi(req).full_label || 'Service'}`}`,
     client_name: c.name,
     start_date: today(),
     stage: 'Lead', status: 'Open',
