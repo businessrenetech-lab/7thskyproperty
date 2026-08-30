@@ -43,6 +43,8 @@ export const SERVICE_UI = {
       profile_label: 'Tank profile', profile_hint: 'Type, capacity, source',
       quality_label: 'Water quality', quality_hint: 'Contamination & readings',
     },
+    report_types: ['Site Assessment', 'Cleaning', 'Inspection', 'Testing', 'Repair', 'AMC'],
+    report_placeholder: 'e.g. Drained and scrubbed both rooftop tanks, disinfected, flushed lines and tested residual.',
   },
   '/air-conditioning': {
     label: 'Air Conditioning',
@@ -63,6 +65,8 @@ export const SERVICE_UI = {
       profile_label: 'Equipment profile', profile_hint: 'Type, capacity, refrigerant',
       quality_label: 'Condition & performance', quality_hint: 'Faults & readings',
     },
+    report_types: ['Site Assessment', 'Installation', 'Servicing', 'Cleaning', 'Repair', 'AMC'],
+    report_placeholder: 'e.g. Serviced 2 split units, chemical-washed coils and filters, checked refrigerant pressure and tested cooling.',
   },
 };
 /** The active console's UI profile (label, full_label, equipment field labels). */
@@ -80,6 +84,11 @@ export const svcLabel = () => svcProfile().label;
 export const svcEquip = () => svcProfile().equipment;
 /** The active console's site-assessment step wording. */
 export const svcAssess = () => svcProfile().assess || SERVICE_UI['/water-tank'].assess;
+/** The active console's service-report types + work-summary placeholder. */
+export const svcReports = () => ({
+  types: svcProfile().report_types || SERVICE_UI['/water-tank'].report_types,
+  placeholder: svcProfile().report_placeholder || SERVICE_UI['/water-tank'].report_placeholder,
+});
 
 // Service-aware navigate. These screens are shared across every service console
 // and were written with hard-coded `/water-tank/...` targets. Rather than touch

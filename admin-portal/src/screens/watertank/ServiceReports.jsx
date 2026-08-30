@@ -18,6 +18,7 @@ import { useSvcNav,
   parseJson,
   toast,
   errText,
+  svcReports,
 } from './common';
 
 /*
@@ -28,10 +29,12 @@ import { useSvcNav,
  * review action (Accept / Rework) is the point of this screen.
  */
 
-const REPORT_TYPES = ['Site Assessment', 'Cleaning', 'Inspection', 'Testing', 'Repair', 'AMC'];
+// Report types + work-summary placeholder come from the active service line
+// (svcReports()), read inside each component so console switches stay correct.
 const STATUSES = ['Draft', 'Submitted', 'Accepted', 'Rework'];
 
 function ReportDrawer({ record, providers, onClose, onSaved }) {
+  const REPORT_TYPES = svcReports().types;
   const [f, setF] = useState({
     report_type: record?.report_type || 'Cleaning',
     work_order_code: record?.work_order_code || '',
@@ -107,6 +110,7 @@ function ReportDrawer({ record, providers, onClose, onSaved }) {
 
 export default function ServiceReports() {
   const nav = useSvcNav();
+  const REPORT_TYPES = svcReports().types;
   const [rows, setRows] = useState([]);
   const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);

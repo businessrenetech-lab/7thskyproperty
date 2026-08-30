@@ -91,7 +91,7 @@ exports.reference = (req, res) => res.json({
   stages: STAGES,
   ...providerRef(req),
   audit_types: AUDIT_TYPES,
-  report_types: REPORT_TYPES,
+  report_types: getServiceLine(resolveServiceLine(req)).ui?.report_types || REPORT_TYPES,
   incident_types: INCIDENT_TYPES,
   protection_months: PROTECTION_MONTHS,
 });
@@ -1061,7 +1061,7 @@ exports.reportReference = asyncHandler(async (req, res) => {
   const count = (list, key, value) => list.filter((r) => String(r[key] || '').toLowerCase() === value).length;
 
   res.json({
-    report_types: REPORT_TYPES,
+    report_types: getServiceLine(resolveServiceLine(req)).ui?.report_types || REPORT_TYPES,
     statuses: REPORT_STATUSES,
     /*
      * Every provider is offered, not only approved ones: a report can legitimately

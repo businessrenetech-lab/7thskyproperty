@@ -4,7 +4,7 @@ import {
   MapPin, Truck, AlertTriangle, FileText,
 } from 'lucide-react';
 import api from '../../services/api';
-import { dateFmt, Pill, toast, errText } from './common';
+import { dateFmt, Pill, toast, errText, svcReports } from './common';
 import Photos from './Photos';
 import JobPicker from './JobPicker';
 
@@ -207,7 +207,7 @@ export default function ServiceReportModal({ job: presetJob, onClose, onCreated 
               <div className="wt-field">
                 <label>What was done</label>
                 <textarea className="wt-input" rows={3} value={f.summary} onChange={(e) => set('summary', e.target.value)}
-                  placeholder="e.g. Drained and scrubbed both rooftop tanks, disinfected with NaOCl, flushed lines and tested residual." />
+                  placeholder={svcReports().placeholder} />
               </div>
 
               <div className="wt-field">

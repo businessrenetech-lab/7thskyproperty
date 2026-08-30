@@ -4012,3 +4012,18 @@ used "the last line starting with `import`", which landed inside a multi-line
   controller load → 404 on assessment-reference); caught and corrected before committing.
 - VERIFIED: AC assessment-reference → Split/Inverter/Cassette, Gree/Midea/Daikin makes,
   Servicing/Cleaning/Gas Refill recommended; WT unchanged; build passes.
+
+### 2026-08-30 09:20 | Claude Code (Opus 4.8) | COMPLETED | AC check — Dashboard + Reports screens
+- Dashboard: service-neutral already (Operations Dashboard title, funnel/KPIs from backend data;
+  the only "water-tank" is a code comment). No change.
+- Reports:
+  - Service report types were hard-coded (Site Assessment/Cleaning/Inspection/Testing/Repair/AMC)
+    in both the frontend and backend. Added report_types + a work-summary placeholder to the
+    manifest ui and SERVICE_UI, plus svcReports() helper. AC report types:
+    Site Assessment/Installation/Servicing/Cleaning/Repair/AMC.
+  - Backend wt-providers/reference + reports/reference now serve report_types from the manifest.
+  - ServiceReports.jsx (tabs, counts, drawer select) and ServiceReportModal.jsx (select via the
+    service-aware reference; work-summary placeholder) now follow the service line — the WT
+    "Drained and scrubbed rooftop tanks, disinfected with NaOCl…" placeholder becomes an AC one.
+- VERIFIED: reports/reference → AC report types Site Assessment/Installation/Servicing/Cleaning/
+  Repair/AMC; WT unchanged; build passes.
