@@ -215,7 +215,7 @@ export default function ServiceReports() {
           </table>
         ) : (
           <EmptyState eyebrow="Service Reports" title={q ? `Nothing matches “${q}”.` : `No ${tab === 'All' ? '' : `${tab} `}reports yet`}
-            hint={q ? undefined : 'Sec. 8 Step 10 requires site assessment, cleaning, inspection, testing, repair and AMC reports with before & after photos.'}
+            hint={q ? undefined : `Sec. 8 Step 10 requires ${REPORT_TYPES.map((t) => t.toLowerCase()).join(', ')} reports with before & after photos.`}
             action={!q && <button className="wt-btn primary" onClick={() => setCreating(true)}><Plus size={14} /> Log the first report</button>} />
         )}
       </div>

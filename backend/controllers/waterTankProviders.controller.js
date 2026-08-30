@@ -828,7 +828,7 @@ exports.createReport = asyncHandler(async (req, res) => {
     submitted_date: body.submitted_date || today(),
     status: body.status || 'Submitted',
     // resolved from the job — never taken from the request
-    branch_id: branchId,
+    branch_id: branchId, ...serviceScope(req),
     code: await nextCode(P.WtServiceReport, 'RPT-', 4, 1, branchId),
     work_order_id: wo.id,
     work_order_code: wo.code,

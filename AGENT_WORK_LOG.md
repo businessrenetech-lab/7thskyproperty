@@ -4065,3 +4065,14 @@ used "the last line starting with `import`", which landed inside a multi-line
   ServiceReports (SOP-02), WorkOrderDocument (PWO-01), ClientCreate (SOP-01) → now render
   SSPC-ACS-… under the AC console.
 - VERIFIED: build passes; no hard-coded SSPC-WTCM remains in the screens (only the helper's doc comment).
+
+### 2026-08-30 11:05 | Claude Code (Opus 4.8) | COMPLETED | AC fix — service-reports screen (data isolation + copy)
+- BUG: createReport (POST /wt-providers/reports) set branch_id but NOT service_line, so a report
+  filed from the AC console defaulted to water_tank and then vanished from the AC list (listReports
+  filters by scoped(req) incl. service_line). Tagged the create with serviceScope(req).
+- listReports + reportJobs already scoped by service line; reports/reference already service-aware
+  (report types). The service-reports data is now fully isolated per service line.
+- Frontend: the empty-state hint enumerated the WT report types ("cleaning, inspection, testing,
+  repair…") — now built dynamically from svcReports().types (AC: Site Assessment/Installation/
+  Servicing/Cleaning/Repair/AMC).
+- VERIFIED: /wt-providers/reports → WT 2 reports, AC 0 (scoped); build passes.
