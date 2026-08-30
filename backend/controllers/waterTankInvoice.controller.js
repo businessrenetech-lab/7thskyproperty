@@ -202,7 +202,9 @@ exports.overview = asyncHandler(async (req, res) => {
 /* ── create ── */
 exports.create = asyncHandler(async (req, res) => {
   const branchId = resolveBranchId(req);
-  const inv = await svc.persistDraft(req.body || {}, { branchId, actor: actorOf(req) });
+  // Stamp the active service line so a manually-raised invoice belongs to the
+  // console it was created in (and gets that service line's INV/ACI- code).
+  const inv = await svc.persistDraft({ ...(req.body || {}), service_line: resolveServiceLine(req) }, { branchId, actor: actorOf(req) });
   res.status(201).json(inv);
 });
 
