@@ -67,7 +67,7 @@ export default function WaterTankProviderOnboard() {
 
   const ref = state.reference || {};
   return <PublicShell>
-    <div className="wt-public-title"><div><span>Water Tank Service Provider</span><h1>{form.business_name}</h1><p>Complete and submit your secure Seventh Sky onboarding profile.</p></div><strong>{form.code}</strong></div>
+    <div className="wt-public-title"><div><span>{state.service_label || 'Seventh Sky'} Service Provider</span><h1>{form.business_name}</h1><p>Complete and submit your secure Seventh Sky onboarding profile.</p></div><strong>{form.code}</strong></div>
     <div className="wt-public-layout">
       <aside className="wt-public-rail">{STEPS.map(([label, Icon], index) => <button key={label} className={step === index ? 'on' : index < step ? 'done' : ''} onClick={() => index <= step && setStep(index)}><span>{index < step ? <Check size={13} /> : <Icon size={14} />}</span><div><strong>{label}</strong><small>Step {index + 1}</small></div></button>)}</aside>
       <main className="wt-public-card">

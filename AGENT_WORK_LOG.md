@@ -3957,3 +3957,17 @@ used "the last line starting with `import`", which landed inside a multi-line
   the service line; the visit-mix inputs already render from ref.visit_types.
 - VERIFIED: AC amc/reference → Residential/Commercial AMC packages, Servicing/Gas Check visit
   types, Split/Inverter/Cassette equipment; WT unchanged; build passes.
+
+### 2026-08-30 07:50 | Claude Code (Opus 4.8) | COMPLETED | AC milestone 4e — public provider onboarding page follows the provider's service line
+- The public provider onboarding page (/…-provider-onboard/:token) runs outside the console URL
+  and hard-coded Water Tank: the "Water Tank Service Provider" title, WT service categories, WT
+  compliance/insurance docs, and the WT catalogue for proposed rates.
+- publicWaterTankProvider.view now reads the provider's service_line and drives the vocabulary
+  from the manifest: returns service_line + service_label, service_categories, compliance_docs and
+  insurance_docs from the service line, and getCatalog with the service line's catalogue vertical.
+  The onboard screen's title uses the returned service_label.
+- VERIFIED live with the client's token: the provider is service_line=air_conditioning →
+  endpoint returns label "Air Conditioning Solutions", categories "AC Installation/Maintenance/
+  Repair Contractor…", compliance docs incl. Electrical Certification / Refrigerant Handling /
+  Safety Training, and the AC catalogue. Even though the invite URL was the /water-tank-… path,
+  the content follows the provider's own service line. WT providers unchanged; build passes.

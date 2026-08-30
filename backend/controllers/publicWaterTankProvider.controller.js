@@ -5,6 +5,7 @@ const { asyncHandler, pick } = require('../utils/controllerHelpers');
 const M = require('../models/waterTankOps');
 const P = require('../models/waterTankProviders');
 const providerAgreement = require('../services/wtProviderAgreement.service');
+const { getServiceLine } = require('../config/serviceLines');
 
 const PROFILE_FIELDS = [
   'legal_name', 'business_type', 'registration_no', 'contact_person', 'contact_email',
@@ -34,19 +35,24 @@ exports.view = asyncHandler(async (req, res) => {
   const ctx = await load(req.params.token);
   if (!ctx.provider) return res.status(ctx.status).json({ error: ctx.error });
   const provider = ctx.provider.get({ plain: true });
+  // The provider belongs to a service line; drive the onboarding vocabulary from
+  // its manifest so an Air Conditioning provider never sees Water Tank categories.
+  const sl = getServiceLine(provider.service_line || 'water_tank');
   const [documents, catalog] = await Promise.all([
     P.WtProviderDocument.findAll({ where: { branch_id: provider.branch_id, provider_id: provider.id }, order: [['category', 'ASC'], ['doc_type', 'ASC']], raw: true }),
-    providerAgreement.getCatalog(provider.branch_id),
+    providerAgreement.getCatalog(provider.branch_id, { vertical: sl.catalogue_vertical }),
   ]);
   res.json({
+    service_line: provider.service_line || 'water_tank',
+    service_label: sl.ui?.full_label || sl.label,
     provider: pick(provider, ['code', 'business_name', ...PROFILE_FIELDS, 'onboarding_submission_status', 'onboarding_stage']),
     documents: documents.map((d) => ({ id: d.id, category: d.category, doc_type: d.doc_type, doc_number: d.doc_number, issuer: d.issuer, issue_date: d.issue_date, expiry_date: d.expiry_date, file_url: d.file_url, status: d.status, verified: d.verified, notes: d.notes })),
     catalog,
     reference: {
-      service_categories: ['Tank Cleaning Contractor', 'Tank Maintenance Contractor', 'Repair Contractor', 'Waterproofing Contractor', 'Plumbing Contractor', 'Water Testing Laboratory', 'Water Treatment Specialist', 'Pump Service Technician', 'AMC Provider'],
+      service_categories: sl.service_categories,
       districts: ['Dhaka', 'Cumilla', 'Chattogram', 'Sylhet', 'Rajshahi', 'Khulna', 'Barishal', 'Rangpur', 'Mymensingh', 'Gazipur', 'Narayanganj', "Cox's Bazar"],
-      compliance_docs: ['Trade Licence', 'Company Registration', 'TIN', 'BIN', 'Safety Certification'],
-      insurance_docs: ['Public Liability Insurance', 'Workers Compensation', 'Contractor Insurance', 'Vehicle Insurance'],
+      compliance_docs: sl.required_docs?.compliance || ['Trade Licence', 'Company Registration', 'TIN', 'BIN', 'Safety Certification'],
+      insurance_docs: sl.required_docs?.insurance || ['Public Liability Insurance', 'Workers Compensation', 'Contractor Insurance', 'Vehicle Insurance'],
     },
   });
 });
