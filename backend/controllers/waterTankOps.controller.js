@@ -6,6 +6,9 @@
  */
 const { Op } = require('sequelize');
 const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine, serviceUi } = require('../utils/controllerHelpers');
+// The (serviceLine, kind) form — takes a service-line string, not the request —
+// so code minting inside nextCode() can brand by the job's own line.
+const { codePrefix, getServiceLine } = require('../config/serviceLines');
 // Branch + service-line scope so each service line sees only its own data.
 const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
@@ -14,16 +17,21 @@ const identity = require('../services/wtIdentity.service');
 const invoiceSvc = require('../services/wtInvoice.service');
 const sequelize = require('../config/db.config');
 
+// `kind` links an entity to its manifest code_prefix so nextCode() can mint the
+// ACTIVE service line's code (Water Tank WTCM-C…/SR-…, Air Conditioning ACCM-C…/
+// ACR-…) instead of always the Water Tank literal. Entities with no `kind`
+// (complaints, warranties, incidents, AMC) share one prefix across lines by
+// design — the manifest deliberately brands only the money/legal-chain records.
 const ENTITIES = {
-  'clients': { model: M.WtClient, prefix: 'WTCM-C', pad: 4, start: 1, search: ['name', 'mobile', 'email', 'district', 'property_type'] },
-  'service-requests': { model: M.WtServiceRequest, prefix: 'SR-', pad: 4, start: 1095, search: ['client_name', 'category', 'specific_service'] },
-  'site-assessments': { model: M.WtSiteAssessment, prefix: 'SA-', pad: 4, start: 402, search: ['client_name', 'provider', 'contamination'] },
-  'quotations': { model: M.WtQuotation, prefix: 'Q-', pad: 4, start: 1049, search: ['client_name', 'project_id'] },
-  'work-orders': { model: M.WtWorkOrder, prefix: 'WO-', pad: 4, start: 482, search: ['client_name', 'provider_name', 'project_id', 'category'] },
-  'projects': { model: M.WtProject, prefix: 'WTCM-P', pad: 4, start: 1, search: ['name', 'client_name', 'assigned_provider'] },
-  'providers': { model: M.WtProvider, prefix: 'SP-', pad: 4, start: 12, search: ['business_name', 'contact_person', 'coverage'] },
+  'clients': { model: M.WtClient, kind: 'client', prefix: 'WTCM-C', pad: 4, start: 1, search: ['name', 'mobile', 'email', 'district', 'property_type'] },
+  'service-requests': { model: M.WtServiceRequest, kind: 'request', prefix: 'SR-', pad: 4, start: 1095, search: ['client_name', 'category', 'specific_service'] },
+  'site-assessments': { model: M.WtSiteAssessment, kind: 'assessment', prefix: 'SA-', pad: 4, start: 402, search: ['client_name', 'provider', 'contamination'] },
+  'quotations': { model: M.WtQuotation, kind: 'quotation', prefix: 'Q-', pad: 4, start: 1049, search: ['client_name', 'project_id'] },
+  'work-orders': { model: M.WtWorkOrder, kind: 'work_order', prefix: 'WO-', pad: 4, start: 482, search: ['client_name', 'provider_name', 'project_id', 'category'] },
+  'projects': { model: M.WtProject, kind: 'project', prefix: 'WTCM-P', pad: 4, start: 1, search: ['name', 'client_name', 'assigned_provider'] },
+  'providers': { model: M.WtProvider, kind: 'provider', prefix: 'SP-', pad: 4, start: 12, search: ['business_name', 'contact_person', 'coverage'] },
   'amc': { model: M.WtAmcContract, prefix: 'AMC-', pad: 4, start: 1, search: ['client_name', 'package'] },
-  'invoices': { model: M.WtInvoice, prefix: 'INV-', pad: 4, start: 482, search: ['client_name', 'project_id', 'inv_type'] },
+  'invoices': { model: M.WtInvoice, kind: 'invoice', prefix: 'INV-', pad: 4, start: 482, search: ['client_name', 'project_id', 'inv_type'] },
   'complaints': { model: M.WtComplaint, prefix: 'COMP-', pad: 3, start: 11, search: ['client_name', 'incident_type'] },
   'warranties': { model: M.WtWarranty, prefix: 'WTY-', pad: 4, start: 1, search: ['client_name', 'warranty_type', 'work_order_code', 'provider_name'] },
   'incidents': { model: M.WtIncident, prefix: 'INC-', pad: 4, start: 1, search: ['client_name', 'incident_type', 'location', 'provider_name'] },
@@ -83,15 +91,20 @@ function getEntity(req, res) {
   return e;
 }
 
-async function nextCode(e, branchId) {
-  if (!e.prefix) return null;
+async function nextCode(e, branchId, serviceLine = 'water_tank') {
+  // Money/legal-chain entities carry a `kind`, so their prefix follows the active
+  // service line (ACCM-C…, ACR-…); the rest keep their single shared literal.
+  const prefix = e.kind ? codePrefix(serviceLine, e.kind) : e.prefix;
+  if (!prefix) return null;
+  // A non-water_tank line starts its own series at 1; Water Tank keeps continuity.
+  const start = serviceLine === 'water_tank' ? e.start : 1;
   const rows = await e.model.findAll({ where: { branch_id: branchId }, attributes: ['code'], raw: true });
-  let max = e.start - 1;
+  let max = start - 1;
   for (const r of rows) {
-    const n = parseInt(String(r.code || '').replace(e.prefix, ''), 10);
+    const n = parseInt(String(r.code || '').replace(prefix, ''), 10);
     if (!Number.isNaN(n) && n > max) max = n;
   }
-  return e.prefix + String(max + 1).padStart(e.pad, '0');
+  return prefix + String(max + 1).padStart(e.pad, '0');
 }
 
 exports.list = asyncHandler(async (req, res) => {
@@ -119,7 +132,7 @@ exports.create = asyncHandler(async (req, res) => {
   const branchId = resolveBranchId(req);
   let body = { ...req.body, branch_id: branchId, service_line: resolveServiceLine(req) };
   delete body.id; delete body.createdAt; delete body.updatedAt;
-  if (e.prefix && !body.code) body.code = await nextCode(e, branchId);
+  if (e.prefix && !body.code) body.code = await nextCode(e, branchId, body.service_line);
   // Client ID / Project ID are never left blank — the client and project are
   // created here if this is the first record that names them.
   body = await identity.attachIdentifiers(req.params.entity, body, branchId);
@@ -200,7 +213,7 @@ async function onWorkOrderCompleted(req, wo) {
       const months = (ui.warranty_months || {})[wType] || 12;
       await M.WtWarranty.create({
         branch_id: branchId, service_line: sl,
-        code: await nextCode(ENTITIES.warranties, branchId),
+        code: await nextCode(ENTITIES.warranties, branchId, sl),
         client_name: wo.client_name,
         project_id: wo.project_id,
         work_order_code: wo.code,
@@ -494,16 +507,19 @@ exports.deleteComment = asyncHandler(async (req, res) => {
   res.json({ ok: true });
 });
 
-/* Resolve (or open) the project file a record belongs to. */
+/* Resolve (or open) the project file a record belongs to. Branded by the source
+ * record's own service line — its code (WTCM-P… / ACCM-P…) and the project name. */
 async function resolveProject(src, branchId, stage) {
+  const sl = src.service_line || 'water_tank';
   let project = null;
   if (src.project_id) project = await M.WtProject.findOne({ where: { branch_id: branchId, code: src.project_id } });
   if (!project) project = await M.WtProject.findOne({ where: { branch_id: branchId, client_name: src.client_name, status: 'Open' } });
   if (!project) {
-    const code = await nextCode(ENTITIES.projects, branchId);
+    const code = await nextCode(ENTITIES.projects, branchId, sl);
+    const label = (getServiceLine(sl).ui || {}).full_label || getServiceLine(sl).label || 'Service';
     project = await M.WtProject.create({
-      branch_id: branchId, code,
-      name: `${src.client_name} — Water Tank Service`,
+      branch_id: branchId, code, service_line: sl,
+      name: `${src.client_name} — ${label}`,
       client_name: src.client_name,
       assigned_provider: src.provider_name || src.provider || null,
       start_date: today(), stage, status: 'Open',
@@ -538,8 +554,9 @@ exports.advance = asyncHandler(async (req, res) => {
   const created = await target.model.create({
     ...step.build(src.toJSON(), req.body || {}),
     branch_id: branchId,
+    service_line: src.service_line || resolveServiceLine(req),
     project_id: project.code,
-    code: await nextCode(target, branchId),
+    code: await nextCode(target, branchId, src.service_line || resolveServiceLine(req)),
   });
 
   // keep the source record and its project file in step

@@ -17,6 +17,9 @@ const M = require('../models/waterTankOps');
 const ServiceItem = require('../models/ServiceItem');
 const { getBranding } = require('../services/wtBranding.service');
 const { sendEmail } = require('../services/communication.service');
+// Mint quote codes through the shared identity service so each service line gets
+// its own prefix + series (Water Tank Q-…, Air Conditioning ACQ-…), never WT's.
+const { nextCode } = require('../services/wtIdentity.service');
 
 const num = (v) => Number(v || 0);
 const today = () => new Date().toISOString().slice(0, 10);
@@ -130,9 +133,7 @@ exports.createDirect = asyncHandler(async (req, res) => {
   const position = await agreementPosition(scope, b.client_name, b.client_code);
 
   const out = await sequelize.transaction(async (transaction) => {
-    const rows = await M.WtQuotation.findAll({ where: { branch_id: branchId }, attributes: ['code'], raw: true, transaction });
-    let max = 1048;
-    rows.forEach((r) => { const n = parseInt(String(r.code || '').replace('Q-', ''), 10); if (!Number.isNaN(n) && n > max) max = n; });
+    const quoteCode = await nextCode('quotations', branchId, transaction, resolveServiceLine(req));
 
     const advTotal = Number(totals.total || 0);
     const basis = b.advance_basis === 'amount' ? 'amount' : 'percent';
@@ -142,7 +143,7 @@ exports.createDirect = asyncHandler(async (req, res) => {
     const quote = await M.WtQuotation.create({
       branch_id: branchId,
       service_line: resolveServiceLine(req),
-      code: `Q-${String(max + 1).padStart(4, '0')}`,
+      code: quoteCode,
       client_name: b.client_name,
       client_code: b.client_code || position.client_code || null,
       site_address: b.site_address || null,
@@ -439,10 +440,8 @@ exports.save = asyncHandler(async (req, res) => {
   if (quote) {
     await quote.update(payload);
   } else {
-    const rows = await M.WtQuotation.findAll({ where: { branch_id: branchId }, attributes: ['code'], raw: true });
-    let max = 1048;
-    rows.forEach((r) => { const n = parseInt(String(r.code || '').replace('Q-', ''), 10); if (!Number.isNaN(n) && n > max) max = n; });
-    quote = await M.WtQuotation.create({ ...payload, branch_id: branchId, service_line: resolveServiceLine(req), code: `Q-${String(max + 1).padStart(4, '0')}` });
+    const quoteCode = await nextCode('quotations', branchId, undefined, resolveServiceLine(req));
+    quote = await M.WtQuotation.create({ ...payload, branch_id: branchId, service_line: resolveServiceLine(req), code: quoteCode });
 
     // keep the assessment and its project in step
     if (assessment) await assessment.update({ status: assessment.status === 'Scheduled' ? 'Completed' : assessment.status });
