@@ -217,7 +217,10 @@ function buildFromAgreement(envelope, terms, ctx = {}) {
       agreement_code: envelope?.envelope_code || null,
       agreement_envelope_id: envelope?.id || null,
       client_name: t.client_name || ctx.clientName || null,
-      site_address: b.property_address || null,
+      client_code: t.client_code || ctx.clientCode || null,
+      bill_to_email: t.client_email || null,
+      bill_to_phone: t.client_phone || null,
+      site_address: t.site_address || b.property_address || null,
       project_id: t.project_code || b.project_no || null,
       quotation_code: b.quotation_no || null,
       work_order_code: b.work_order_no || null,
@@ -381,11 +384,28 @@ async function createFromSignedAgreement(envelope, { transaction } = {}) {
   const { serviceLineForRelatedType } = require('../config/serviceLines');
   const sl = serviceLineForRelatedType(envelope.related_type) || 'water_tank';
 
+  // When the agreement carries no explicit project reference, fall the invoices
+  // under the client's OPEN project (the same one the work order was just raised
+  // under), so the client file and project assemble consistently.
+  let fallbackProject = null;
+  if (specs.some((s) => !s.project_id) && (terms.client_code || terms.client_name)) {
+    try {
+      const client = terms.client_code
+        ? await M.WtClient.findOne({ where: { branch_id: envelope.branch_id, code: terms.client_code }, transaction })
+        : await M.WtClient.findOne({ where: { branch_id: envelope.branch_id, name: terms.client_name }, transaction });
+      if (client) {
+        const identity = require('./wtIdentity.service');
+        const proj = await identity.ensureProject(envelope.branch_id, client, { service_line: sl }, transaction);
+        fallbackProject = proj?.code || null;
+      }
+    } catch { /* best-effort project linkage */ }
+  }
+
   const out = [];
   for (const spec of specs) {
     // Later stages are drafted too — the operator needs to see the whole billing
     // plan — but they carry no due date until their trigger fires.
-    out.push(await persistDraft({ ...spec, service_line: sl }, { branchId: envelope.branch_id, actor: 'System (agreement signed)' }, transaction));
+    out.push(await persistDraft({ ...spec, service_line: sl, project_id: spec.project_id || fallbackProject }, { branchId: envelope.branch_id, actor: 'System (agreement signed)' }, transaction));
   }
   return out;
 }

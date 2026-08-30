@@ -620,6 +620,13 @@ function buildAgreement(data = {}) {
   const terms = {
     doc_no, selected_services: [...servicesSet], schedule_b: b,
     project_code: b.project_no || data.project_code || null,
+    // The client identity, persisted so the draft invoices raised on signing are
+    // attached to this client and project (not left as an unlinked "Client").
+    client_name: c.full_name || data.client_name || null,
+    client_code: c.client_code || data.client_code || null,
+    client_email: c.email || null,
+    client_phone: c.phone || null,
+    site_address: c.address || b.property_address || null,
     pricing_summary: pricing.summary, payment_schedule: pricing.payment_schedule,
     advance_amount: pricing.summary?.advance_amount ?? null,
     balance_due: pricing.summary?.balance_due ?? null,

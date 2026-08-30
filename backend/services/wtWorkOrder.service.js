@@ -113,13 +113,20 @@ async function createFromSignedAgreement(envelope, options = {}) {
     transaction,
   });
 
-  const clientName = (terms?.client?.full_name)
+  // Client identity comes from the agreement terms (persisted at signing), then the
+  // source quotation, then the envelope title as a last resort. Resolve the client
+  // record by code first (exact), then by name, so the work order is linked — not
+  // left as an "Unknown client".
+  const clientName = (terms?.client_name)
+    || (terms?.client?.full_name)
     || (quote && quote.client_name)
     || String(envelope.title || '').split('—').pop().trim();
+  const clientCode = terms?.client_code || (quote && quote.client_code) || null;
 
-  const client = clientName
-    ? await M.WtClient.findOne({ where: { branch_id: branchId, name: clientName }, transaction })
-    : null;
+  const client = (clientCode
+    ? await M.WtClient.findOne({ where: { branch_id: branchId, code: clientCode }, transaction })
+    : null)
+    || (clientName ? await M.WtClient.findOne({ where: { branch_id: branchId, name: clientName }, transaction }) : null);
 
   // Read the agreement's OWN data (schedule_b + agreed_lines), not a legacy
   // terms.property/terms.project shape that agreements never emit — and prefer the
@@ -140,15 +147,29 @@ async function createFromSignedAgreement(envelope, options = {}) {
   const stages = { ...blankStages(), raised: true };
 
   const woSl = (quote && quote.service_line) || (envelope && serviceLineForRelatedType(envelope.related_type)) || 'water_tank';
+
+  // Project linkage: an explicit reference from the quotation/agreement wins; when
+  // there is none (e.g. a direct agreement), fall under the client's existing OPEN
+  // project — opening one only if the client has none — so a repeat job for an
+  // existing client is never orphaned from that client's project file.
+  let projectId = quote?.project_id || (terms || {}).project_code || sb.project_no || null;
+  if (!projectId && client) {
+    try {
+      const identity = require('./wtIdentity.service');
+      const proj = await identity.ensureProject(branchId, client, { service_line: woSl, project_id: projectId }, transaction);
+      projectId = proj?.code || null;
+    } catch { /* linkage is best-effort — never block raising the work order */ }
+  }
+
   const wo = await M.WtWorkOrder.create({
     branch_id: branchId,
     service_line: woSl,
     code: await nextCode(branchId, transaction, woSl),
     client_name: clientName || 'Unknown client',
-    client_code: client?.code || null,
-    client_phone: client?.mobile || terms?.client?.phone || sb.site_contact_phone || null,
-    site_address: client?.service_address || sb.property_address || null,
-    project_id: quote?.project_id || (terms || {}).project_code || sb.project_no || null,
+    client_code: client?.code || clientCode || null,
+    client_phone: client?.mobile || terms?.client_phone || terms?.client?.phone || sb.site_contact_phone || null,
+    site_address: client?.service_address || terms?.site_address || sb.property_address || null,
+    project_id: projectId,
     category: lines[0]?.name || 'Water Tank Service',
     scope: sb.scope || quote?.notes || null,
     special_conditions: sb.special_conditions || quote?.payment_terms || null,
