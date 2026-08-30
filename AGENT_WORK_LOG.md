@@ -4102,3 +4102,15 @@ used "the last line starting with `import`", which landed inside a multi-line
 - VERIFIED: money-journal → WT 9 events, AC 0 (isolated); invoices WT 87 / AC 0; a direct
   recordDirectDisbursement with service_line:'air_conditioning' writes an event tagged
   air_conditioning (confirmed via append path). Build/load pass.
+
+### 2026-08-30 12:20 | Claude Code (Opus 4.8) | COMPLETED | AC fix — accounting reports (/wt-reports) scoped by service line
+- BUG: the Reports screen (client-payments, provider-payouts, seventh-sky, service-completion,
+  bank-statement) at /air-conditioning/reports showed Water Tank data. waterTankReports.controller
+  passed only branch_id; wtReports.service.run → build → eventsIn / direct findAlls queried by
+  branch only.
+- Threaded service_line: controller passes resolveServiceLine(req) to run/pdf/clientStatement/
+  providerStatement; run → build({service_line}); eventsIn filters WtMoneyEvent by service_line;
+  the direct queries (WtProjectDisbursement 'Paid', WtWorkOrder completed, bank-statement opening
+  balance) all filter by service_line.
+- VERIFIED: reports rows WT/AC → client-payments 3/0, provider-payouts 6/0, service-completion
+  1/0, bank-statement 9/0. Fully isolated. Build/load pass.

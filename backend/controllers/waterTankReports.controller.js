@@ -8,7 +8,7 @@
  * a client receives are built from the SAME call, not from two code paths that
  * agree today.
  */
-const { asyncHandler, resolveBranchId } = require('../utils/controllerHelpers');
+const { asyncHandler, resolveBranchId, resolveServiceLine } = require('../utils/controllerHelpers');
 const reports = require('../services/wtReports.service');
 const pdfSvc = require('../services/wtReportPdf.service');
 const { getBranding } = require('../services/wtBranding.service');
@@ -32,6 +32,7 @@ exports.run = asyncHandler(async (req, res) => {
   try {
     const out = await reports.run({
       branch_id: resolveBranchId(req),
+      service_line: resolveServiceLine(req),
       kind: req.params.kind,
       preset: req.query.preset,
       from: req.query.from,
@@ -50,6 +51,7 @@ exports.pdf = asyncHandler(async (req, res) => {
   try {
     const out = await reports.run({
       branch_id: resolveBranchId(req),
+      service_line: resolveServiceLine(req),
       kind: req.params.kind,
       preset: req.query.preset,
       from: req.query.from,
@@ -81,7 +83,7 @@ exports.pdf = asyncHandler(async (req, res) => {
  */
 exports.clientStatement = asyncHandler(async (req, res) => {
   const branch_id = resolveBranchId(req);
-  const common = { branch_id, preset: req.query.preset, from: req.query.from, to: req.query.to };
+  const common = { branch_id, service_line: resolveServiceLine(req), preset: req.query.preset, from: req.query.from, to: req.query.to };
   const filters = { client: req.params.code };
 
   const [payments, completion] = await Promise.all([
@@ -94,7 +96,7 @@ exports.clientStatement = asyncHandler(async (req, res) => {
 /** GET /wt-reports/statement/provider/:name — one provider's account. */
 exports.providerStatement = asyncHandler(async (req, res) => {
   const branch_id = resolveBranchId(req);
-  const common = { branch_id, preset: req.query.preset, from: req.query.from, to: req.query.to };
+  const common = { branch_id, service_line: resolveServiceLine(req), preset: req.query.preset, from: req.query.from, to: req.query.to };
   const filters = { provider: decodeURIComponent(req.params.name) };
 
   const [payouts, completion] = await Promise.all([

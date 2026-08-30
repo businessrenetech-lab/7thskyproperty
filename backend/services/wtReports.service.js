@@ -117,9 +117,10 @@ function resolveRange({ preset, from, to } = {}) {
  * reconciling against a bank statement needs it there. See `effectiveDate` for
  * why that is a COALESCE and not simply `received_on`.
  */
-async function eventsIn({ branch_id, range, subject_type, where = {} }) {
+async function eventsIn({ branch_id, service_line, range, subject_type, where = {} }) {
   const clause = {
     branch_id,
+    ...(service_line ? { service_line } : {}),
     ...(subject_type ? { subject_type } : {}),
     [Op.and]: [effectiveDateBetween(range.from, range.to)],
     ...where,
@@ -207,12 +208,12 @@ const REPORTS = {
       { key: 'in', label: 'Received', width: 68, align: 'right', money: true },
       { key: 'out', label: 'Refunded', width: 68, align: 'right', money: true },
     ],
-    async build({ branch_id, range, filters }) {
+    async build({ branch_id, service_line, range, filters }) {
       const where = {};
       if (filters.client) {
         where[Op.or] = [{ client_name: filters.client }, { subject_code: filters.client }];
       }
-      const rows = await eventsIn({ branch_id, range, subject_type: 'invoice', where });
+      const rows = await eventsIn({ branch_id, service_line, range, subject_type: 'invoice', where });
 
       const shaped = rows.map((e) => {
         const cash = ledger.cashOut(e);
@@ -264,10 +265,10 @@ const REPORTS = {
       { key: 'reference', label: 'Reference', width: 78 },
       { key: 'amount', label: 'Paid', width: 68, align: 'right', money: true },
     ],
-    async build({ branch_id, range, filters }) {
+    async build({ branch_id, service_line, range, filters }) {
       const where = {};
       if (filters.provider) where.provider_name = filters.provider;
-      const rows = await eventsIn({ branch_id, range, subject_type: 'work_order', where });
+      const rows = await eventsIn({ branch_id, service_line, range, subject_type: 'work_order', where });
 
       const shaped = rows.map((e) => ({
         date: e.received_on,
@@ -312,7 +313,7 @@ const REPORTS = {
       { key: 'recharge', label: 'Recharged', width: 62 },
       { key: 'amount', label: 'Amount', width: 68, align: 'right', money: true },
     ],
-    async build({ branch_id, range, filters }) {
+    async build({ branch_id, service_line, range, filters }) {
       /*
        * Read from the disbursement register rather than the ledger, because this
        * report's value is the CATEGORY and the payee details — what the money
@@ -321,6 +322,7 @@ const REPORTS = {
        */
       const where = {
         branch_id,
+        ...(service_line ? { service_line } : {}),
         status: 'Paid',
         paid_on: { [Op.between]: [range.from, range.to] },
       };
@@ -378,9 +380,10 @@ const REPORTS = {
       { key: 'verified', label: 'Verified', width: 54 },
       { key: 'total_contract', label: 'Value', width: 66, align: 'right', money: true },
     ],
-    async build({ branch_id, range, filters }) {
+    async build({ branch_id, service_line, range, filters }) {
       const where = {
         branch_id,
+        ...(service_line ? { service_line } : {}),
         completed_at: { [Op.between]: [range.fromAt, range.toAt] },
       };
       if (filters.provider) where.provider_name = filters.provider;
@@ -456,10 +459,10 @@ const REPORTS = {
       { key: 'out', label: 'Money out', width: 68, align: 'right', money: true },
       { key: 'balance', label: 'Balance', width: 74, align: 'right', money: true },
     ],
-    async build({ branch_id, range, filters }) {
+    async build({ branch_id, service_line, range, filters }) {
       const where = {};
       if (filters.method) where.method = filters.method;
-      const rows = await eventsIn({ branch_id, range, where });
+      const rows = await eventsIn({ branch_id, service_line, range, where });
 
       /*
        * The opening balance is everything that happened BEFORE the range. A
@@ -468,7 +471,7 @@ const REPORTS = {
        * reconciled against an actual bank account.
        */
       const prior = await M.WtMoneyEvent.findAll({
-        where: { branch_id, [Op.and]: [effectiveDateBefore(range.from)] },
+        where: { branch_id, ...(service_line ? { service_line } : {}), [Op.and]: [effectiveDateBefore(range.from)] },
         attributes: ['direction', 'amount', 'event_type'], raw: true,
       });
       const opening = round2(prior.reduce((s, e) => s
@@ -524,12 +527,12 @@ class ReportError extends Error {
 }
 
 /** Build one report. Returns everything both the table and the PDF need. */
-async function run({ branch_id, kind, preset, from, to, filters = {} }) {
+async function run({ branch_id, service_line, kind, preset, from, to, filters = {} }) {
   const def = REPORTS[kind];
   if (!def) throw new ReportError(404, `There is no "${kind}" report.`);
 
   const range = resolveRange({ preset, from, to });
-  const out = await def.build({ branch_id, range, filters });
+  const out = await def.build({ branch_id, service_line, range, filters });
 
   return {
     kind,
