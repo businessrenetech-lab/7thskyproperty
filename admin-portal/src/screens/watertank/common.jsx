@@ -82,6 +82,8 @@ export const profileForLine = (serviceLine) =>
 export const svcLabel = () => svcProfile().label;
 /** The active console's equipment field vocabulary (Tank vs Equipment details). */
 export const svcEquip = () => svcProfile().equipment;
+/** The active console's catalogue vertical (water_tank_csa / air_conditioning_csa). */
+export const svcVertical = () => (svcBase() === '/air-conditioning' ? 'air_conditioning_csa' : 'water_tank_csa');
 /** The active console's site-assessment step wording. */
 export const svcAssess = () => svcProfile().assess || SERVICE_UI['/water-tank'].assess;
 /** The active console's service-report types + work-summary placeholder. */

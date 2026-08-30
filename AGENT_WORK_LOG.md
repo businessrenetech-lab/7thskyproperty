@@ -4027,3 +4027,15 @@ used "the last line starting with `import`", which landed inside a multi-line
     "Drained and scrubbed rooftop tanks, disinfected with NaOCl…" placeholder becomes an AC one.
 - VERIFIED: reports/reference → AC report types Site Assessment/Installation/Servicing/Cleaning/
   Repair/AMC; WT unchanged; build passes.
+
+### 2026-08-30 09:45 | Claude Code (Opus 4.8) | COMPLETED | AC check — Compliance + Settings screens
+- Compliance: service-neutral UI (provider alerts/audits/protected-clients, audit types from
+  /wt-providers/reference which already serves the manifest's compliance/insurance docs). No
+  visible WT wording. No change.
+- Settings: the Standard Price Schedule loaded useCatalog() with the default water_tank_csa
+  vertical, so the AC console's Settings showed the Water Tank catalogue. Added svcVertical()
+  (svcBase → catalogue vertical) and pass it: useCatalog(svcVertical()); the empty-state hint
+  names the active vertical. SOP stage lists (CLIENT_SOP/PROVIDER_SOP) are the shared spine —
+  generic, no tank wording.
+- VERIFIED: /service-catalog/items?vertical=air_conditioning_csa → 45 ACS items;
+  water_tank_csa → 41 WTC items; build passes.

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { WtHead, bdt, useCatalog, Loading, EmptyState, titleCase, svcBase } from './common';
+import { WtHead, bdt, useCatalog, Loading, EmptyState, titleCase, svcBase, svcVertical } from './common';
 
 /* Settings — the WTC standard price schedule (live from the service catalog)
    plus the Water Tank SOP stages. Editing lives on the Price Schedule screen;
@@ -24,7 +24,7 @@ const Stages = ({ title, steps }) => (
 );
 
 export default function Settings() {
-  const { items, loading } = useCatalog();
+  const { items, loading } = useCatalog(svcVertical());
   const [q, setQ] = useState('');
   const [group, setGroup] = useState('');
 
@@ -105,7 +105,7 @@ export default function Settings() {
           <EmptyState
             eyebrow="Price schedule"
             title={q || group ? 'Nothing matches this filter' : 'No catalog items seeded'}
-            hint={q || group ? undefined : 'Seed the water_tank_csa vertical in the Service Catalog and the schedule appears here.'}
+            hint={q || group ? undefined : `Seed the ${svcVertical()} vertical in the Service Catalog and the schedule appears here.`}
           />
         )}
       </div>
