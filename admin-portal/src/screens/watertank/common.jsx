@@ -27,6 +27,7 @@ export const SERVICE_UI = {
     label: 'Water Tank',
     full_label: 'Water Tank Cleaning & Maintenance',
     short: 'Water Tank',
+    doc_code: 'WTCM', // SSPC-WTCM-… document numbers
     equipment: {
       section_label: 'Tank Details',
       type_label: 'Tank Type',
@@ -59,6 +60,7 @@ export const SERVICE_UI = {
     label: 'Air Conditioning',
     full_label: 'Air Conditioning Solutions',
     short: 'Air Conditioning',
+    doc_code: 'ACS', // SSPC-ACS-… document numbers
     equipment: {
       section_label: 'Equipment Details',
       type_label: 'System Type',
@@ -98,6 +100,8 @@ export const profileForLine = (serviceLine) =>
   (String(serviceLine || '').startsWith('air_conditioning') ? SERVICE_UI['/air-conditioning'] : SERVICE_UI['/water-tank']);
 /** The active console's service label, e.g. "Air Conditioning". */
 export const svcLabel = () => svcProfile().label;
+/** Build a service-line document number, e.g. svcDoc('SOP-02') → 'SSPC-ACS-SOP-02'. */
+export const svcDoc = (suffix) => `SSPC-${svcProfile().doc_code}-${suffix}`;
 /** The active console's equipment field vocabulary (Tank vs Equipment details). */
 export const svcEquip = () => svcProfile().equipment;
 /** The active console's catalogue vertical (water_tank_csa / air_conditioning_csa). */

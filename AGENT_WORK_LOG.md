@@ -4055,3 +4055,13 @@ used "the last line starting with `import`", which landed inside a multi-line
   Injury/Property Damage/Fire/Refrigerant Leak/Electrical Incident/Regulatory Investigation;
   complaints incl. Cooling / Performance Issue.
 - VERIFIED: registers/reference → AC warranty + incident + complaint types; WT unchanged; build passes.
+
+### 2026-08-30 10:45 | Claude Code (Opus 4.8) | COMPLETED | AC check — Provider Directory + hard-coded SOP doc numbers
+- Provider Directory: service-neutral except the subtitle's hard-coded WT SOP number. shortCat
+  and the service_categories are data-driven (provider records, service-scoped).
+- Swept ALL screens for hard-coded SSPC-WTCM-* document numbers and made them service-aware via a
+  doc_code on the profile (WT=WTCM, AC=ACS) + svcDoc(suffix) helper. Fixed 7 subtitles:
+  ProviderDirectory (SOP-02), ProviderOnboarding (SOP-02), Compliance ×2 (SOP-02),
+  ServiceReports (SOP-02), WorkOrderDocument (PWO-01), ClientCreate (SOP-01) → now render
+  SSPC-ACS-… under the AC console.
+- VERIFIED: build passes; no hard-coded SSPC-WTCM remains in the screens (only the helper's doc comment).

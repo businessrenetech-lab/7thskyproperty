@@ -5,7 +5,7 @@ import {
   FileSignature, Copy, Ban, Plus, Trash2, Search, AlertTriangle, Lock, ShieldCheck,
 } from 'lucide-react';
 import api from '../../services/api';
-import { useSvcNav, WtHead, Loading, EmptyState, Pill, DatePicker, bdt, dateFmt, toast, errText, parseJson, svcBase } from './common';
+import { useSvcNav, WtHead, Loading, EmptyState, Pill, DatePicker, bdt, dateFmt, toast, errText, parseJson, svcBase, svcDoc } from './common';
 
 /*
  * Project Work Order — SSPC-WTCM-PWO-01 v0.2.
@@ -248,7 +248,7 @@ export default function WorkOrderDocument() {
           <span className="lnk" onClick={() => nav(`/water-tank/work-orders/${code}`)}>{code}</span> › <span>Project Work Order</span>
         </div>}
         title={`Project Work Order — ${code}`}
-        subtitle={`SSPC-WTCM-PWO-01 · v0.2 · ${wo.client_name || 'client not set'}${wo.provider_name ? ` · ${wo.provider_name}` : ''}`}
+        subtitle={`${svcDoc('PWO-01')} · v0.2 · ${wo.client_name || 'client not set'}${wo.provider_name ? ` · ${wo.provider_name}` : ''}`}
       >
         <button className="wt-btn" onClick={() => nav(`/water-tank/work-orders/${code}`)}>Close</button>
         <button className="wt-btn" disabled={busy === 'pdf'} onClick={downloadPdf}>

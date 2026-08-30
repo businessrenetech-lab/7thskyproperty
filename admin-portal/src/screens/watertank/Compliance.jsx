@@ -14,6 +14,7 @@ import { useSvcNav,
   WtDrawer,
   toast,
   errText,
+  svcDoc,
 } from './common';
 
 /*
@@ -138,13 +139,13 @@ export default function Compliance() {
     'Protected Clients': protectedRows.summary?.protected || undefined,
   };
 
-  if (loading) return (<><WtHead title="Compliance" subtitle="SSPC-WTCM-SOP-02 · audits, territory and non-circumvention" /><Loading /></>);
+  if (loading) return (<><WtHead title="Compliance" subtitle={`${svcDoc('SOP-02')} · audits, territory and non-circumvention`} /><Loading /></>);
 
   return (
     <>
       <WtHead
         title="Compliance"
-        subtitle="SSPC-WTCM-SOP-02 · Sec. 14 audits · Sec. 11 territory · Sec. 12 non-circumvention"
+        subtitle={`${svcDoc('SOP-02')} · Sec. 14 audits · Sec. 11 territory · Sec. 12 non-circumvention`}
         search={q} onSearch={setQ}
       >
         <button className="wt-btn" onClick={load}><RefreshCw size={14} /> Refresh</button>

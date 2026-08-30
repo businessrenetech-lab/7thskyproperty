@@ -5,7 +5,7 @@ import {
   ChevronLeft, ChevronRight, Search, Loader2, ExternalLink, X,
 } from 'lucide-react';
 import api from '../../../services/api';
-import { useSvcNav, WtHead, EmptyState, Loading, Pill, toast, errText, bdt } from '../common';
+import { useSvcNav, WtHead, EmptyState, Loading, Pill, toast, errText, bdt, svcDoc } from '../common';
 
 const STEPS = [
   { label: 'Application', hint: 'Identity and representative', icon: Building2 },
@@ -146,7 +146,7 @@ export default function ProviderOnboarding() {
       <WtHead
         crumb={<div className="wt-crumb"><span className="lnk" onClick={() => nav('/water-tank/providers')}>Providers</span> › <span>{editing ? provider?.code : 'New provider'}</span></div>}
         title={title}
-        subtitle="SSPC-WTCM-SOP-02 · resumable application, commercial proposal and agreement handoff"
+        subtitle={`${svcDoc('SOP-02')} · resumable application, commercial proposal and agreement handoff`}
       >
         <button className="wt-btn" onClick={() => nav('/water-tank/providers')}><X size={14} /> Close</button>
         {provider && <button className="wt-btn" onClick={() => save(false)}>Save progress</button>}

@@ -19,6 +19,7 @@ import { useSvcNav,
   toast,
   errText,
   svcReports,
+  svcDoc,
 } from './common';
 
 /*
@@ -161,7 +162,7 @@ export default function ServiceReports() {
     <>
       <WtHead
         title="Service Reports"
-        subtitle="SSPC-WTCM-SOP-02 Sec. 8 Step 10 · verified at Sec. 9 Step 11 before completion sign-off"
+        subtitle={`${svcDoc('SOP-02')} Sec. 8 Step 10 · verified at Sec. 9 Step 11 before completion sign-off`}
         search={q} onSearch={setQ}
       >
         <button className="wt-btn" onClick={load}><RefreshCw size={14} /> Refresh</button>

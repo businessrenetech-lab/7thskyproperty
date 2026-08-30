@@ -6,7 +6,7 @@ import {
   Wallet, LayoutGrid, Rows3, ArrowUpDown, MapPin, Percent, Star,
 } from 'lucide-react';
 import api from '../../../services/api';
-import { useSvcNav, WtHead, Pill, Loading, EmptyState, errText, bdt } from '../common';
+import { useSvcNav, WtHead, Pill, Loading, EmptyState, errText, bdt, svcDoc } from '../common';
 
 /*
  * Service Providers — SSPC-WTCM-SOP-02 operations console.
@@ -185,7 +185,7 @@ export default function ProviderDirectory() {
   const head = (
     <WtHead
       title="Service Providers"
-      subtitle="SSPC-WTCM-SOP-02 · onboarding, commercial terms, compliance, performance and territory"
+      subtitle={`${svcDoc('SOP-02')} · onboarding, commercial terms, compliance, performance and territory`}
       search={q} onSearch={setQ}
     >
       <button className="wt-btn" onClick={load}><RefreshCw size={14} /> Refresh</button>

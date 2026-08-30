@@ -5,7 +5,7 @@ import {
   ClipboardList, Sparkles, Users, X, Loader2,
 } from 'lucide-react';
 import api from '../../../services/api';
-import { useSvcNav, WtHead, DatePicker, EmptyState, toast, errText, Pill, svcEquip, svcProfile } from '../common';
+import { useSvcNav, WtHead, DatePicker, EmptyState, toast, errText, Pill, svcEquip, svcProfile, svcDoc } from '../common';
 
 /*
  * New Client — SSPC-WTCM-SOP-01 Sec. 5 Phase 1 (Client Enquiry).
@@ -123,7 +123,7 @@ export default function ClientCreate() {
       <WtHead
         crumb={<div className="wt-crumb"><span className="lnk" onClick={() => nav('/water-tank/clients')}>Clients</span> › <span style={{ color: 'var(--wt-accent-ink)' }}>New client</span></div>}
         title="Register a Client"
-        subtitle="SSPC-WTCM-SOP-01 Sec. 5 Phase 1 — Client Enquiry"
+        subtitle={`${svcDoc('SOP-01')} Sec. 5 Phase 1 — Client Enquiry`}
       >
         <button className="wt-btn" onClick={() => nav('/water-tank/clients')}><X size={14} /> Cancel</button>
       </WtHead>
