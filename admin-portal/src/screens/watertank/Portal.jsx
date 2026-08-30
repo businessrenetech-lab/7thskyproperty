@@ -6,6 +6,7 @@ import { Loading, EmptyState, toast, errText, ToastHost, profileForLine } from '
 import PortalClient from './PortalClient';
 import PortalProvider from './PortalProvider';
 import '../../styles/wt-scope.css';
+import '../../styles/portal.css';
 
 /*
  * Portal — one shell, two audiences.
@@ -27,34 +28,25 @@ import '../../styles/wt-scope.css';
  * the two never drift into looking like two different companies.
  */
 
-function Shell({ title, subtitle, children, onRefresh, right }) {
+function Shell({ title, subtitle, children, onRefresh, right, profile }) {
+  const p = profile || {};
+  const accentStyle = p.accent ? { '--pp-accent': p.accent, '--pp-accent-ink': p.accent_ink, '--pp-accent-soft': p.accent_soft } : undefined;
   return (
-    <div className="wt-scope">
-      <div style={{ minHeight: '100vh', background: 'var(--wt-bg, #f8fafc)' }}>
-        <header style={{
-          background: 'var(--wt-sidebar)', color: '#fff', padding: '16px 22px',
-          display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
-        }}>
-          <span className="wt-brand-mark"><CloudLightning size={20} /></span>
-          <div style={{ flex: '1 0 200px', minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>Seventh Sky — {title}</div>
-            <div style={{ fontSize: 11.5, opacity: 0.78 }}>{subtitle}</div>
+    <div className="wt-scope ss-portal" style={accentStyle}>
+      <header className="pp-header">
+        <div className="pp-header-in">
+          <span className="pp-mark"><CloudLightning size={20} /></span>
+          <div className="pp-title">
+            <div className="brand">Seventh Sky Property Care</div>
+            <div className="who">{title}{subtitle ? <>  <small>· {subtitle}</small></> : null}</div>
           </div>
           {right}
           {onRefresh && (
-            <button className="wt-btn sm" onClick={onRefresh}
-              style={{ background: 'rgba(255,255,255,0.12)', color: '#fff', borderColor: 'transparent' }}>
-              <RefreshCw size={13} /> Refresh
-            </button>
+            <button className="pp-hbtn" onClick={onRefresh}><RefreshCw size={13} /> Refresh</button>
           )}
-        </header>
-        <main style={{
-          maxWidth: 1120, margin: '0 auto', padding: '20px 16px 64px',
-          display: 'flex', flexDirection: 'column', gap: 16,
-        }}>
-          {children}
-        </main>
-      </div>
+        </div>
+      </header>
+      <main className="pp-main">{children}</main>
       <ToastHost />
     </div>
   );
@@ -63,36 +55,26 @@ function Shell({ title, subtitle, children, onRefresh, right }) {
 /** Who they are, as the portal understands them — and how to reach Seventh Sky. */
 function Footer({ party, isProvider, token }) {
   return (
-    <div className="wt-card" style={{ padding: 16, marginTop: 8 }}>
-      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 12.5 }}>
-        <div style={{ flex: '1 0 220px' }}>
-          <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.04em', fontWeight: 700 }}>
-            {isProvider ? 'Your details' : 'Account'}
-          </div>
-          <div style={{ marginTop: 6, fontWeight: 700 }}>{isProvider ? party.business_name : party.name}</div>
-          <div className="muted">{party.code}</div>
-          {(party.contact_email || party.email) && (
-            <div className="muted" style={{ marginTop: 4 }}><Mail size={11} style={{ verticalAlign: -1 }} /> {party.contact_email || party.email}</div>
-          )}
-          {(party.contact_phone || party.mobile) && (
-            <div className="muted"><Phone size={11} style={{ verticalAlign: -1 }} /> {party.contact_phone || party.mobile}</div>
-          )}
-          {party.service_address && (
-            <div className="muted"><MapPin size={11} style={{ verticalAlign: -1 }} /> {party.service_address}</div>
-          )}
+    <div className="pp-foot">
+      <div className="cols">
+        <div className="col">
+          <div className="lbl">{isProvider ? 'Your details' : 'Account'}</div>
+          <div className="nm">{isProvider ? party.business_name : party.name}</div>
+          <div className="meta">{party.code}</div>
+          {(party.contact_email || party.email) && <div className="meta"><Mail size={12} /> {party.contact_email || party.email}</div>}
+          {(party.contact_phone || party.mobile) && <div className="meta"><Phone size={12} /> {party.contact_phone || party.mobile}</div>}
+          {party.service_address && <div className="meta"><MapPin size={12} /> {party.service_address}</div>}
         </div>
-        <div style={{ flex: '1 0 220px' }}>
-          <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.04em', fontWeight: 700 }}>
-            Something not right?
-          </div>
-          <p className="muted" style={{ marginTop: 6, marginBottom: 0 }}>
+        <div className="col">
+          <div className="lbl">Something not right?</div>
+          <p className="note">
             {isProvider
               ? 'If a job, a rate or a payment here does not match what you were told, use Messages — it goes on the record with your name against it.'
               : 'If anything here is wrong, raise it under Requests & complaints. A complaint is tracked until it is resolved; a message is not.'}
           </p>
         </div>
       </div>
-      <p className="muted" style={{ fontSize: 11, textAlign: 'center', marginTop: 14, marginBottom: 0 }}>
+      <p className="fine">
         {token
           ? 'This is a private link. Please do not forward it — anyone who has it can see this page.'
           : 'You are signed in. Sign out when you are finished on a shared device.'}
@@ -142,10 +124,12 @@ export default function Portal() {
 
   if (error || !data) {
     return (
-      <Shell title="Portal" subtitle="Seventh Sky Property Care">
-        <div className="wt-card">
-          <EmptyState eyebrow="Link" title="This portal could not be opened" hint={error}
-            action={<button className="wt-btn" onClick={load}><RefreshCw size={14} /> Try again</button>} />
+      <Shell title="Portal">
+        <div className="pp-empty">
+          <RefreshCw size={24} />
+          <div className="t">This portal could not be opened</div>
+          <p className="h">{error}</p>
+          <button className="pp-hbtn solid" style={{ marginTop: 16 }} onClick={load}><RefreshCw size={14} /> Try again</button>
         </div>
       </Shell>
     );
@@ -163,11 +147,9 @@ export default function Portal() {
       title={isProvider ? 'Provider Portal' : 'Customer Portal'}
       subtitle={[who, party.code].filter(Boolean).join(' · ')}
       onRefresh={load}
+      profile={profile}
       right={!token && (
-        <button className="wt-btn sm" onClick={signOut}
-          style={{ background: 'rgba(255,255,255,0.12)', color: '#fff', borderColor: 'transparent' }}>
-          <LogOut size={13} /> Sign out
-        </button>
+        <button className="pp-hbtn" onClick={signOut}><LogOut size={13} /> Sign out</button>
       )}
     >
       {isProvider

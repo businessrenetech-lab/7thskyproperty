@@ -28,6 +28,7 @@ export const SERVICE_UI = {
     full_label: 'Water Tank Cleaning & Maintenance',
     short: 'Water Tank',
     doc_code: 'WTCM', // SSPC-WTCM-… document numbers
+    accent: '#12b6f3', accent_ink: '#0b6f97', accent_soft: '#e6f6fd', // portal theming
     equipment: {
       section_label: 'Tank Details',
       type_label: 'Tank Type',
@@ -61,6 +62,7 @@ export const SERVICE_UI = {
     full_label: 'Air Conditioning Solutions',
     short: 'Air Conditioning',
     doc_code: 'ACS', // SSPC-ACS-… document numbers
+    accent: '#7c3aed', accent_ink: '#5b21b6', accent_soft: '#efe9fd', // portal theming
     equipment: {
       section_label: 'Equipment Details',
       type_label: 'System Type',

@@ -4148,3 +4148,20 @@ used "the last line starting with `import`", which landed inside a multi-line
   workflow 11/11 PASS (AC records get ACCM/ACR/ACQ codes, no WT leak). Non-nav-path scan clean.
 - Note: the `.to` nav paths in dashboard/work-queue/calendar responses still read /water-tank/... —
   NOT a bug (the frontend useSvcNav rebases them to /air-conditioning at click time).
+
+### 2026-08-30 14:20 | Claude Code (Opus 4.8) | COMPLETED | Deep transactional E2E + portal redesign
+- DEEP E2E (16/16): actually ran the AC money + after-sale lifecycle — invoice ACI-0003 -> send ->
+  collect ৳3000 payment (lands in AC money journal only, WT untouched) -> ৳1800 disbursement (AC
+  journal only) -> warranty gate (correct: needs a completed job) -> complaint COMP-017 create +
+  resolve (isolated AC 3/WT 4) -> AMC-0008 with Residential AMC tier + 6 visits -> client-payments
+  report shows the AC receipt (WT 3/AC 1). CONFIRMED after-sale service, complaint handling,
+  disbursement + payment collection all work and isolate for AC.
+- BUG FOUND + FIXED (6a1d8e4): manual invoice create didn't tag service_line -> defaulted to
+  water_tank + INV- code. Now stamps the active service line -> ACI- code.
+- PORTAL REDESIGN: gave the customer + provider portals (/portal/:token, Portal.jsx +
+  PortalClient/PortalProvider + portalBits) a dedicated, polished design system
+  (styles/portal.css, .pp-* + .ss-portal scope) — compact cards, pill tab bar, softer shell,
+  friendly empty states, service-aware accent (violet AC / cyan WT), dark-mode aware, mobile-first.
+  Rewrote portalBits building blocks; added a compat layer so the panels' existing wt-* elements
+  pick up the polished look without rewriting 1400 lines.
+- Cleaned all AC test data. Build passes.
