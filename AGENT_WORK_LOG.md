@@ -3940,3 +3940,20 @@ used "the last line starting with `import`", which landed inside a multi-line
   them explicit for clarity.
 - VERIFIED: AC builder for SA-0407 returns 45 catalog items (no error); wt-projects/reference
   catalog is 41 (WT) / 45 (AC).
+
+### 2026-08-30 07:25 | Claude Code (Opus 4.8) | COMPLETED | AC milestone 4d — AMC create wizard is service-aware (+ calendar checked)
+- Calendar: verified /wt-ops/calendar works for both lines (WT 16 events, AC 0 — correct, no AC
+  work scheduled yet); the agenda renders the "Nothing scheduled ahead" empty state. No bug.
+- AMC: the create-amc wizard offered Water Tank packages (Residential Basic/Standard/Premium,
+  Hotel & Restaurant…) and tank visit activities (Cleaning/Inspection/Water Testing/Pump). Made
+  wtAmc.service service-line aware: WT_PACKAGES/AC_PACKAGES + WT_VISIT_TYPES/AC_VISIT_TYPES with
+  packagesFor(sl)/visitTypesFor(sl); packageByKey searches the combined list; generateVisitPlan
+  iterates the visit mix's own keys (service-agnostic) so AC activities schedule correctly.
+  AC packages: Residential AMC / Residential Premium AMC / Commercial AMC. AC visit types:
+  Servicing / Cleaning / Gas Check / Inspection.
+- wt-amc/reference now returns the active service line's packages, visit_types, tank_types
+  (equipment options) + equipment; the customer-agreement getMeta AMC tiers are per service line.
+  AmcForm copy (step label, section title, equipment placeholders, visit-activities blurb) follows
+  the service line; the visit-mix inputs already render from ref.visit_types.
+- VERIFIED: AC amc/reference → Residential/Commercial AMC packages, Servicing/Gas Check visit
+  types, Split/Inverter/Cassette equipment; WT unchanged; build passes.

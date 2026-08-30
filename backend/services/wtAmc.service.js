@@ -45,7 +45,7 @@ const addDays = (dateStr, days) => new Date(new Date(`${dateStr}T00:00:00Z`).get
  * Package tiers — Customer Service Agreement, Schedule A
  * `visits` is the default annual visit mix; the operator can override any of it.
  * ──────────────────────────────────────────────────────────────────────────── */
-const PACKAGES = [
+const WT_PACKAGES = [
   {
     key: 'residential_basic', label: 'Residential Basic', client_type: 'Residential',
     blurb: 'Two cleans a year with a basic inspection. Suited to a single household tank.',
@@ -89,15 +89,51 @@ const PACKAGES = [
     response_hours: 12, water_testing_included: true, emergency_callouts_included: 4,
   },
 ];
-const packageByKey = (key) => PACKAGES.find((p) => p.key === key || eq(p.label, key)) || null;
 
-/* SOP §10 names exactly these four visit activities. */
-const VISIT_TYPES = [
+/* Air Conditioning AMC tiers (Customer Service Agreement Schedule A — Residential /
+ * Commercial AMC). Visit mix uses AC activities, not tank ones. */
+const AC_PACKAGES = [
+  {
+    key: 'residential_ac', label: 'Residential AMC', client_type: 'Residential',
+    blurb: 'Preventive servicing and cleaning for a home AC, with an annual gas check.',
+    visits: { Servicing: 2, Cleaning: 2, 'Gas Check': 1, Inspection: 1 },
+    response_hours: 48, water_testing_included: false, emergency_callouts_included: 1,
+  },
+  {
+    key: 'residential_premium_ac', label: 'Residential Premium AMC', client_type: 'Residential',
+    blurb: 'Quarterly servicing with chemical cleaning, gas checks and priority cover.',
+    visits: { Servicing: 4, Cleaning: 4, 'Gas Check': 2, Inspection: 2 },
+    response_hours: 12, water_testing_included: false, emergency_callouts_included: 3,
+  },
+  {
+    key: 'commercial_ac', label: 'Commercial AMC', client_type: 'Commercial',
+    blurb: 'Multi-unit commercial cooling on a quarterly service cycle with gas checks.',
+    visits: { Servicing: 4, Cleaning: 4, 'Gas Check': 2, Inspection: 4 },
+    response_hours: 8, water_testing_included: false, emergency_callouts_included: 4,
+  },
+];
+
+// Packages by service line; combined for key lookup (keys are unique across lines).
+const PACKAGES = WT_PACKAGES; // default (Water Tank) — kept for back-compat exports
+const ALL_PACKAGES = [...WT_PACKAGES, ...AC_PACKAGES];
+const packagesFor = (serviceLine) => (serviceLine === 'air_conditioning' ? AC_PACKAGES : WT_PACKAGES);
+const packageByKey = (key) => ALL_PACKAGES.find((p) => p.key === key || eq(p.label, key)) || null;
+
+/* Visit activities per service line. WT: SOP §10's four; AC: servicing/cleaning/gas/inspection. */
+const WT_VISIT_TYPES = [
   { key: 'Cleaning', label: 'Cleaning visit', sop: 'Sec. 10' },
   { key: 'Inspection', label: 'Inspection visit', sop: 'Sec. 10' },
   { key: 'Water Testing', label: 'Water testing', sop: 'Sec. 10' },
   { key: 'Pump Inspection', label: 'Pump inspection', sop: 'Sec. 10' },
 ];
+const AC_VISIT_TYPES = [
+  { key: 'Servicing', label: 'Servicing visit', sop: 'Sec. 14' },
+  { key: 'Cleaning', label: 'Cleaning visit', sop: 'Sec. 14' },
+  { key: 'Gas Check', label: 'Refrigerant / gas check', sop: 'Sec. 14' },
+  { key: 'Inspection', label: 'Inspection visit', sop: 'Sec. 14' },
+];
+const VISIT_TYPES = WT_VISIT_TYPES; // default (Water Tank) — kept for back-compat exports
+const visitTypesFor = (serviceLine) => (serviceLine === 'air_conditioning' ? AC_VISIT_TYPES : WT_VISIT_TYPES);
 
 /* Clause 9. `per_year` drives the instalment split. */
 const PAYMENT_FREQUENCIES = [
@@ -127,7 +163,9 @@ function generateVisitPlan(visitMix = {}, { startDate, durationMonths = 12 } = {
   const months = Math.max(1, Number(durationMonths) || 12);
   const plan = [];
 
-  for (const { key } of VISIT_TYPES) {
+  // Iterate the mix's own activities so any service line's visit types schedule
+  // (Water Tank's Cleaning/Inspection/… or Air Conditioning's Servicing/Gas Check/…).
+  for (const key of Object.keys(visitMix)) {
     const perYear = Math.max(0, Number(visitMix[key]) || 0);
     if (!perYear) continue;
     // scale the annual rate to the actual term
@@ -425,6 +463,7 @@ async function amcDossier(key, scope) {
 
 module.exports = {
   PACKAGES, VISIT_TYPES, PAYMENT_FREQUENCIES, AMC_STATUSES,
+  packagesFor, visitTypesFor,
   packageByKey, generateVisitPlan, computeBilling, nextAmcCode,
   createAmc, amcDossier,
   addMonths, addDays, today, num, eq, asArray,

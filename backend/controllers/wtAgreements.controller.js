@@ -88,8 +88,8 @@ const customer = {
       code_to_schedule_a: content.code_to_schedule_a,
       checklist_groups: content.checklist_groups,
       role: 'Client',
-      // Schedule A AMC tiers
-      amc_packages: amcSvc.PACKAGES.map((p) => ({
+      // Schedule A AMC tiers (per service line)
+      amc_packages: amcSvc.packagesFor(resolveServiceLine(req)).map((p) => ({
         key: p.key, label: p.label, client_type: p.client_type, blurb: p.blurb,
         visits_per_year: Object.values(p.visits).reduce((s, n) => s + n, 0),
       })),

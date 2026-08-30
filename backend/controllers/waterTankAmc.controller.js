@@ -3,7 +3,7 @@
  * Logic lives in services/wtAmc.service.js; this layer is transport and scoping.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, pick, serviceScope, resolveServiceLine, catalogueVertical } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, pick, serviceScope, resolveServiceLine, catalogueVertical, serviceUi } = require('../utils/controllerHelpers');
 // Branch + service scope for wt_*; reference() ServiceItem query keeps plain branchScope.
 const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
@@ -45,16 +45,22 @@ exports.reference = asyncHandler(async (req, res) => {
     return { code: i.code, name: i.name, unit: i.unit, standard_price: num(i.base_price), group: (tags || {}).group || 'service' };
   });
 
+  const sl = resolveServiceLine(req);
+  const ui = serviceUi(req);
   res.json({
     next_code: await svc.nextAmcCode(branchId),
-    packages: svc.PACKAGES,
-    visit_types: svc.VISIT_TYPES,
+    // AMC package tiers and visit activities for the active service line (AC uses
+    // Servicing / Gas Check, not tank Cleaning / Water Testing).
+    packages: svc.packagesFor(sl),
+    visit_types: svc.visitTypesFor(sl),
     payment_frequencies: svc.PAYMENT_FREQUENCIES,
     statuses: svc.AMC_STATUSES,
     frequencies: ['Monthly', 'Quarterly', 'Half Yearly', 'Annual'],
-    tank_types: ['Rooftop', 'Underground', 'Overhead', 'Ground Level', 'Apartment Common', 'Industrial'],
+    tank_types: ui.equipment?.type_options || ['Rooftop', 'Underground', 'Overhead', 'Ground Level', 'Apartment Common', 'Industrial'],
+    equipment: ui.equipment || null,
+    service_label: ui.full_label || null,
     // AMC-eligible catalogue lines, so the operator can price from the schedule
-    catalog: catalog.filter((c) => /amc|maintenance|clean|inspect|test|pump/i.test(c.name)),
+    catalog: catalog.filter((c) => /amc|maintenance|clean|inspect|test|pump|servic|refrigerant|gas/i.test(c.name)),
     providers: providers.map((p) => ({
       id: p.id, code: p.code, business_name: p.business_name, specialty: p.specialty,
       assignable: eq(p.status, 'approved') && eq(p.agreement_status, 'signed'),
@@ -150,7 +156,7 @@ exports.overview = asyncHandler(async (req, res) => {
     visits_overdue: overdue.length,
     visit_completion_pct: visits.length ? Math.round((done.length / visits.length) * 100) : 0,
     renewal_rate_pct: ended.length ? Math.round((renewed.length / ended.length) * 100) : null,
-    by_tier: svc.PACKAGES.map((p) => ({
+    by_tier: svc.packagesFor(resolveServiceLine(req)).map((p) => ({
       tier: p.key, label: p.label,
       count: rows.filter((r) => r.package_tier === p.key).length,
     })).filter((t) => t.count > 0),

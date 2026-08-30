@@ -157,7 +157,7 @@ export default function AmcForm() {
 
   const STEPS = [
     { key: 'client', label: 'Client', hint: 'Who the contract is with', icon: Users },
-    { key: 'site', label: 'Site & tanks', hint: 'What it covers', icon: MapPin },
+    { key: 'site', label: `Site & ${eq.section_label.replace(' Details', '').toLowerCase()}`, hint: 'What it covers', icon: MapPin },
     { key: 'package', label: 'Package', hint: 'Schedule A tier', icon: Repeat },
     { key: 'plan', label: 'Visit plan', hint: 'Term and schedule', icon: CalendarClock },
     { key: 'money', label: 'Commercials', hint: 'Value and billing', icon: Wallet },
@@ -314,7 +314,7 @@ export default function AmcForm() {
             <>
               <div className="wt-wizpane-h">
                 <h2>What does the contract cover?</h2>
-                <p>The site and the tank estate. Visit pricing follows the number and size of tanks, so record them accurately.</p>
+                <p>The site and the equipment on it. Visit pricing follows the number and size of units, so record them accurately.</p>
               </div>
               <div className="wt-choices">
                 {[
@@ -367,7 +367,7 @@ export default function AmcForm() {
               )}
 
               <div className="wt-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div className="wt-sec-title">Site &amp; tanks</div>
+                <div className="wt-sec-title">Site &amp; {eq.section_label.replace(' Details', '').toLowerCase()}</div>
                 <div className="wt-grid2">
                   <div className="wt-field" style={{ gridColumn: '1 / -1' }}><label>Service address</label>
                     <input className="wt-input" value={f.property.address} onChange={(e) => setProp('address', e.target.value)} placeholder={f.client.address} /></div>
@@ -427,7 +427,7 @@ export default function AmcForm() {
             <>
               <div className="wt-wizpane-h">
                 <h2>Term and visit schedule</h2>
-                <p>SOP Sec. 10 names four AMC activities: cleaning, inspection, water testing and pump inspection. Set how many of each per year and the plan spreads them evenly across the term.</p>
+                <p>The AMC visit activities{(ref?.visit_types || []).length ? `: ${(ref.visit_types).map((v) => String(v.label || v.key).toLowerCase()).join(', ')}` : ''}. Set how many of each per year and the plan spreads them evenly across the term.</p>
               </div>
 
               <div className="wt-grid3">
