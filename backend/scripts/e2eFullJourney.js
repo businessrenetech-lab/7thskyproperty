@@ -31,11 +31,13 @@
  * (Water Tank SP-/WTCM-C/SR-/SA-/Q-/WO-/INV-; Air Conditioning ACP-/ACCM-C/ACR-/
  * ACA-/ACQ-/ACW-/ACI-; an unknown future line is exercised with lenient checks).
  *
- *   node scripts/e2eFullJourney.js [service_line] [--clean]
+ *   node scripts/e2eFullJourney.js [service_line] [--clean] [--client=<code>]
  *     water_tank        exercise the LIVE Water Tank console (pass --clean to remove
  *                       the test records afterwards, leaving the console untouched)
  *     air_conditioning  the default; keeps its data for UI inspection
  *     <future_line>     the next duplicated service line, once it is in the manifest
+ *     --client=<code>   reuse an EXISTING client for a repeat engagement (proves the
+ *                       existing-client path) instead of creating a new one
  *
  * Requires the backend on PORT (default 50001) and admin creds in the env
  * (E2E_EMAIL / E2E_PASSWORD) or the defaults below. Keeps everything it creates
@@ -45,6 +47,9 @@ const http = require('http');
 
 const SL = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : 'air_conditioning';
 const CLEAN = process.argv.includes('--clean');
+// --client=<code> reuses an EXISTING client (a repeat engagement) instead of
+// creating a new one — so a second run proves the existing-client path.
+const REUSE_CLIENT = (process.argv.find((a) => a.startsWith('--client=')) || '').split('=')[1] || null;
 const PORT = Number(process.env.PORT) || 50001;
 const EMAIL = process.env.E2E_EMAIL || 'admin@seventhskyproperty.com';
 const PASSWORD = process.env.E2E_PASSWORD || 'Admin#2026';
@@ -124,15 +129,25 @@ async function signEnvelope(signers, tag) {
 (async () => {
   const S = Date.now().toString().slice(-6);
   created.stamp = S;
-  const NAME = `${TAG} Full ${S}`;
-  const CLIENT_EMAIL = `e2e.${SL}.${S}@example.com`;
+  let NAME = `${TAG} Full ${S}`;
+  let CLIENT_EMAIL = `e2e.${SL}.${S}@example.com`;
+  let reuseCode = null;               // existing client code, when --client=… is passed
   const PROV_NAME = `${TAG} Provider ${S}`;
   const PROV_EMAIL = `e2e.prov.${SL}.${S}@example.com`;
-  console.log(`\n===== FULL CLIENT + PROVIDER + PORTALS E2E — ${SL}${CLEAN ? ' (--clean)' : ''} =====\n`);
+  console.log(`\n===== FULL CLIENT + PROVIDER + PORTALS E2E — ${SL}${REUSE_CLIENT ? ' (EXISTING CLIENT)' : ''}${CLEAN ? ' (--clean)' : ''} =====\n`);
 
   TOKEN = (await req('POST', '/api/auth/login', { body: { email: EMAIL, password: PASSWORD }, noSl: true })).body.token;
   if (!TOKEN) return log('FAIL', 'admin login') || finish();
   log('PASS', 'admin login', EMAIL);
+
+  // Existing-client mode: reuse the named client for a repeat engagement.
+  if (REUSE_CLIENT) {
+    const found = arr((await req('GET', `/api/wt-invoices/client-lookup?q=${encodeURIComponent(REUSE_CLIENT)}`)).body)
+      .find((c) => c.code === REUSE_CLIENT) || null;
+    if (!found) return log('FAIL', 'reuse client', `no existing client ${REUSE_CLIENT}`) || finish();
+    reuseCode = found.code; NAME = found.name; CLIENT_EMAIL = found.email || CLIENT_EMAIL;
+    log('PASS', 'reusing EXISTING client', `${found.code} "${found.name}" — ${(found.projects || []).length} existing project(s), due ৳${found.due_balance}`);
+  }
 
   const ref = (await req('GET', '/api/wt-intake/request-reference')).body;
   const cat = ref.catalog || [];
@@ -246,7 +261,7 @@ async function signEnvelope(signers, tag) {
   console.log('\n-- B1. Service request (needs assessment) + status transitions --');
   const srRes = await req('POST', '/api/wt-intake/requests', {
     body: {
-      client_name: NAME, phone: '0179' + S, email: CLIENT_EMAIL, client_type: 'Residential',
+      client_name: NAME, client_code: reuseCode || undefined, phone: '0179' + S, email: CLIENT_EMAIL, client_type: 'Residential',
       address: '9 Client Lane, Gulshan', district: 'Dhaka', property_type: (ref.property_types || ['House'])[0],
       category: item.group || 'Service', specific_service: item.name, needs_assessment: true,
       assessment_date: TODAY, assigned_officer: 'E2E Surveyor', services_requested: [item.name],
@@ -336,7 +351,9 @@ async function signEnvelope(signers, tag) {
   // ============================================================
   console.log('\n########## C. WORK ORDER EXECUTION (assigned provider) ##########');
   await sleep(400);
-  let wo = arr((await req('GET', '/api/wt-work-orders')).body).find((w) => (w.client_name || '').includes(S));
+  // newest work order for this client (client_code is robust for a reused client
+  // whose name carries an earlier run's stamp); the list is ordered id DESC.
+  let wo = arr((await req('GET', '/api/wt-work-orders')).body).find((w) => w.client_code === clientCode || (w.client_name || '').includes(S));
   if (!wo) { log('FAIL', 'work order auto-raised', 'none found from signed agreement'); }
   else {
     created.woId = wo.id; created.woCode = wo.code;
@@ -350,7 +367,7 @@ async function signEnvelope(signers, tag) {
     log(woFull.client_code === clientCode && !!woFull.project_id ? 'PASS' : 'FAIL',
       'work order linked to client + project', `client=${woFull.client_code} project=${woFull.project_id}`);
     const draftInvs = arr((await req('GET', '/api/wt-invoices')).body)
-      .filter((i) => i.source_type === 'Agreement' && (i.client_name || '').includes(S));
+      .filter((i) => i.source_type === 'Agreement' && (i.client_code === clientCode || (i.client_name || '').includes(S)));
     const orphans = draftInvs.filter((i) => !i.client_code || i.client_name === 'Client' || !i.project_id);
     log(draftInvs.length > 0 && orphans.length === 0 ? 'PASS' : (draftInvs.length ? 'FAIL' : 'WARN'),
       'agreement invoices auto-drafted + linked (no orphans)', `${draftInvs.length} drafts, ${orphans.length} orphaned`);
@@ -379,7 +396,7 @@ async function signEnvelope(signers, tag) {
   // ============================================================
   console.log('\n########## D. WARRANTY + SERVICE REPORT + PAYOUT ##########');
   await sleep(400);
-  const warr = arr((await req('GET', '/api/wt-ops/warranties')).body).find((w) => (w.client_name || '').includes(S) || (wo && w.work_order_code === wo.code));
+  const warr = arr((await req('GET', '/api/wt-ops/warranties')).body).find((w) => (wo && w.work_order_code === wo.code) || w.client_code === clientCode || (w.client_name || '').includes(S));
   if (warr) { R.ids.warranty = warr.code; created.warrantyCode = warr.code; log('PASS', 'warranty AUTO-registered', `${warr.code} type=${warr.warranty_type} exp=${warr.expiry_date}`); }
   else log('WARN', 'warranty', 'not auto-registered');
 
@@ -416,7 +433,7 @@ async function signEnvelope(signers, tag) {
   // E. INVOICE + PAYMENT, AMC, COMPLAINT
   // ============================================================
   console.log('\n########## E. INVOICE / AMC / COMPLAINT ##########');
-  let inv = arr((await req('GET', '/api/wt-invoices')).body).find((i) => (i.client_name || '').includes(S));
+  let inv = arr((await req('GET', '/api/wt-invoices')).body).find((i) => i.client_code === clientCode || (i.client_name || '').includes(S));
   if (!inv) {
     const mk = await req('POST', '/api/wt-invoices', { body: { client_name: NAME, client_code: clientCode, bill_to_email: CLIENT_EMAIL, inv_type: 'Final', issue_date: TODAY, lines: [{ kind: 'service', code: item.code, name: item.name, qty: 1, price: item.standard_price }] } });
     inv = mk.body;
@@ -436,7 +453,7 @@ async function signEnvelope(signers, tag) {
 
   // E1. invoice client-lookup: the client resolves with their projects + due balance
   console.log('\n-- E1. Invoice client-lookup (projects + due balance) --');
-  const look = arr((await req('GET', `/api/wt-invoices/client-lookup?q=${encodeURIComponent(S)}`)).body);
+  const look = arr((await req('GET', `/api/wt-invoices/client-lookup?q=${encodeURIComponent(clientCode)}`)).body);
   const me = look.find((c) => c.code === clientCode) || look[0];
   log(me ? 'PASS' : 'FAIL', 'client-lookup finds the client', me ? `${me.code}` : 'no match');
   if (me) {
