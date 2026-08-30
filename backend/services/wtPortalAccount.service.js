@@ -190,13 +190,14 @@ async function statusOf({ party_type, party_id, branch_id }) {
  * exist, so an operator can see at a glance who has access, who was invited and
  * never signed in, and who cannot be invited because no email is on file.
  */
-async function directory({ branch_id, party_type }) {
+async function directory({ branch_id, party_type, service_line }) {
   const out = [];
   const types = party_type ? [party_type] : ['provider', 'client'];
 
   for (const type of types) {
     const rows = await partyModel(type).findAll({
-      where: { branch_id }, order: [['id', 'DESC']], limit: 400, raw: true,
+      // Providers and clients are service-scoped, so a console only lists its own.
+      where: { branch_id, ...(service_line ? { service_line } : {}) }, order: [['id', 'DESC']], limit: 400, raw: true,
     });
     const userIds = rows.map((r) => r.portal_user_id).filter(Boolean);
     const users = userIds.length

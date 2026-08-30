@@ -7,7 +7,7 @@
  * existed, a client who changed their email, someone who needs their password
  * reset, or access that has to stop today.
  */
-const { asyncHandler, branchScope, resolveBranchId } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, resolveServiceLine } = require('../utils/controllerHelpers');
 const svc = require('../services/wtPortalAccount.service');
 
 const fail = (res, e) => {
@@ -28,6 +28,7 @@ exports.directory = asyncHandler(async (req, res) => {
   const rows = await svc.directory({
     branch_id: resolveBranchId(req),
     party_type: req.query.party_type || null,
+    service_line: resolveServiceLine(req),
   });
 
   const q = String(req.query.q || '').trim().toLowerCase();

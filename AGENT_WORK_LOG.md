@@ -4076,3 +4076,12 @@ used "the last line starting with `import`", which landed inside a multi-line
   repair…") — now built dynamically from svcReports().types (AC: Site Assessment/Installation/
   Servicing/Cleaning/Repair/AMC).
 - VERIFIED: /wt-providers/reports → WT 2 reports, AC 0 (scoped); build passes.
+
+### 2026-08-30 11:20 | Claude Code (Opus 4.8) | COMPLETED | AC fix — portal-accounts directory scoped by service line
+- BUG: /wt-ops/portal-accounts (wtPortalAccount.service.directory) queried providers/clients by
+  branch only, so the AC console listed ALL Water Tank provider + customer logins. Threaded
+  service_line: the controller passes resolveServiceLine(req); the service filters WtProvider/
+  WtClient by service_line. provision/suspend/reinstate act on a specific id from the now-scoped
+  list, so no change needed there.
+- VERIFIED: portal-accounts → WT 40 accounts, AC 3 (its own providers/client). UI was already
+  service-neutral. Build passes.
