@@ -4114,3 +4114,14 @@ used "the last line starting with `import`", which landed inside a multi-line
   balance) all filter by service_line.
 - VERIFIED: reports rows WT/AC → client-payments 3/0, provider-payouts 6/0, service-completion
   1/0, bank-statement 9/0. Fully isolated. Build/load pass.
+
+### 2026-08-30 12:40 | Claude Code (Opus 4.8) | COMPLETED | AC fix — new Service Request form copy
+- ServiceRequestNew: the dropdowns (category, System Type, property type, catalogue) already
+  adapt from the now-service-aware /wt-intake/request-reference (AC categories Consultation/
+  Installation/Relocation, System Type Split/Inverter/Cassette, 45 AC catalogue items). Fixed the
+  remaining hard-coded WT copy: the "single intake for a water-tank job" subtitle, the "Existing
+  water-tank clients" / "not yet a water-tank client" lookup titles (→ svcProfile().label), and the
+  "Specific service" placeholder (→ first catalogue service name, so AC shows "Residential AC
+  Consultation").
+- VERIFIED: request-reference returns AC vocab; build passes; only a code comment still says
+  "water-tank".

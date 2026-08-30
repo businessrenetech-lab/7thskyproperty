@@ -5,7 +5,7 @@ import {
   CalendarClock, FileText, Plus, RotateCcw, Loader2, Sparkles, Truck, Ban, AlertTriangle,
 } from 'lucide-react';
 import api from '../../services/api';
-import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, svcEquip } from './common';
+import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, svcEquip, svcProfile } from './common';
 
 /*
  * New Service Request — the front door of the water-tank operation.
@@ -203,7 +203,7 @@ export default function ServiceRequestNew() {
           {' › '}<span style={{ color: 'var(--wt-accent-ink)' }}>New request</span>
         </div>}
         title="New Service Request"
-        subtitle="Sec. 5 — the single intake for a water-tank job, through to assessment or quotation"
+        subtitle={`Sec. 5 — the single intake for a ${svcProfile().label} job, through to assessment or quotation`}
       >
         <button className="wt-btn" onClick={() => nav('/water-tank/service-requests')}><X size={14} /> Cancel</button>
       </WtHead>
@@ -248,7 +248,7 @@ export default function ServiceRequestNew() {
                 <>
                   {hits.water_tank.length > 0 && (
                     <div>
-                      <div className="wt-sec-title" style={{ marginBottom: 8 }}>Existing water-tank clients</div>
+                      <div className="wt-sec-title" style={{ marginBottom: 8 }}>Existing {svcProfile().label} clients</div>
                       <div className="wt-lookup">
                         {hits.water_tank.map((c) => (
                           <button key={c.id} className="wt-lookup-item" onClick={() => useClient(c, true)}>
@@ -265,7 +265,7 @@ export default function ServiceRequestNew() {
                   )}
                   {hits.contacts.length > 0 && (
                     <div>
-                      <div className="wt-sec-title" style={{ marginBottom: 8 }}>Known to Seventh Sky, not yet a water-tank client</div>
+                      <div className="wt-sec-title" style={{ marginBottom: 8 }}>Known to Seventh Sky, not yet a {svcProfile().label} client</div>
                       <div className="wt-lookup">
                         {hits.contacts.map((c) => (
                           <button key={c.id} className="wt-lookup-item" onClick={() => useClient(c, false)}>
@@ -354,7 +354,7 @@ export default function ServiceRequestNew() {
               <div className="wt-grid2">
                 <div className="wt-field"><label>Specific service requested</label>
                   <input className="wt-input" value={f.specific_service} onChange={(e) => set('specific_service', e.target.value)}
-                    placeholder="e.g. Rooftop tank cleaning" /></div>
+                    placeholder={`e.g. ${(ref?.catalog || [])[0]?.name || 'the exact service the client asked for'}`} /></div>
                 <div className="wt-field"><label>Client's preferred date</label>
                   <DatePicker value={f.preferred_date} onChange={(v) => set('preferred_date', v)} /></div>
               </div>
