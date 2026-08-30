@@ -230,10 +230,13 @@ exports.setDecision = asyncHandler(async (req, res) => {
     const client = await M.WtClient.findOne({
       where: { ...scope, [Op.or]: [{ code: quote.client_code || ' ' }, { name: quote.client_name }] },
     }) || { code: quote.client_code, name: quote.client_name };
+    // Repeat jobs STACK under the client's one ongoing project: an explicit link
+    // wins, else the client's existing OPEN project is reused, else a fresh one is
+    // opened (client has none, or their last project was closed). No forceNew — a
+    // new quotation joins the running engagement rather than opening a parallel one.
     const project = await identity.ensureProject(quote.branch_id, client, {
       project_id: quote.project_id || undefined,
       service_line: quote.service_line || resolveServiceLine(req),
-      forceNew: !quote.project_id,
       // Omit title so ensureProject derives the service-line label (AC vs Water Tank).
       stage: 'Agreement',
       detail: `Opened on approval of quotation ${quote.code}`,

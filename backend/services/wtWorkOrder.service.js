@@ -261,6 +261,17 @@ async function createFromQuotation(quote, { branchId, actor = 'System', transact
   const providerFee = Math.max(0, num(quote.service_charges) || (total - ssFee));
   const stages = { ...blankStages(), raised: true };
 
+  // Stack this repeat job under the client's ongoing project: the quote's project
+  // wins, else the client's existing open project (opening one only if none).
+  let projectId = quote.project_id || null;
+  if (!projectId && client) {
+    try {
+      const identity = require('./wtIdentity.service');
+      const proj = await identity.ensureProject(bid, client, { service_line: quote.service_line || 'water_tank' }, transaction);
+      projectId = proj?.code || null;
+    } catch { /* best-effort project linkage */ }
+  }
+
   const wo = await M.WtWorkOrder.create({
     branch_id: bid,
     service_line: quote.service_line || 'water_tank',
@@ -269,7 +280,7 @@ async function createFromQuotation(quote, { branchId, actor = 'System', transact
     client_code: quote.client_code || client?.code || null,
     client_phone: client?.mobile || null,
     site_address: quote.site_address || client?.service_address || null,
-    project_id: quote.project_id || null,
+    project_id: projectId,
     category: lines[0]?.name || 'Water Tank Service',
     scope: quote.notes || null,
     special_conditions: quote.payment_terms || null,
