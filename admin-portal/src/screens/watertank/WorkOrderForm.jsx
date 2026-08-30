@@ -209,7 +209,7 @@ export default function WorkOrderForm() {
                   onChange={(e) => set('special_conditions', e.target.value)} /></div>
               <div className="wt-field"><label>Warranty covered</label>
                 <input className="wt-input" value={f.warranty} onChange={(e) => set('warranty', e.target.value)}
-                  placeholder="e.g. 90 days post-disinfection" /></div>
+                  placeholder="e.g. 90 days workmanship, 1 year parts" /></div>
             </>
           )}
 

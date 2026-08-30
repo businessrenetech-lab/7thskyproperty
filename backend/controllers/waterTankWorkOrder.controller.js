@@ -50,8 +50,11 @@ exports.reference = asyncHandler(async (req, res) => {
     P.WtProviderDocument.findAll({ where: scope, raw: true }),
     M.WtWorkOrder.findAll({ where: scope, raw: true }),
   ]);
-  const requiredCompliance = ['Trade Licence', 'Company Registration', 'TIN', 'BIN', 'Safety Certification'];
-  const requiredInsurance = ['Public Liability Insurance', 'Workers Compensation', 'Contractor Insurance', 'Vehicle Insurance'];
+  // Provider assignability gates on the docs the ACTIVE service line requires
+  // (AC adds Electrical / Refrigerant Handling certs), read from the manifest.
+  const reqDocs = getServiceLine(resolveServiceLine(req)).required_docs || {};
+  const requiredCompliance = reqDocs.compliance || ['Trade Licence', 'Company Registration', 'TIN', 'BIN', 'Safety Certification'];
+  const requiredInsurance = reqDocs.insurance || ['Public Liability Insurance', 'Workers Compensation', 'Contractor Insurance', 'Vehicle Insurance'];
   const shaped = await Promise.all(providers.map(async (p) => {
     const approved = String(p.status || '').toLowerCase() === 'approved';
     const active = await commercial.getActiveAgreement(p);

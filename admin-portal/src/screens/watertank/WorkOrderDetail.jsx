@@ -8,7 +8,7 @@ import {
 import api from '../../services/api';
 import { useSvcNav,
   WtHead, Pill, Loading, EmptyState, WtDrawer, DatePicker, RecordComments,
-  dateFmt, dateTimeFmt, bdt, toast, errText,
+  dateFmt, dateTimeFmt, bdt, toast, errText, svcProfile,
 } from './common';
 
 /*
@@ -263,7 +263,7 @@ export default function WorkOrderDetail() {
           {' › '}<span style={{ color: 'var(--wt-accent-ink)' }}>{w.code}</span>
         </div>}
         title={w.client_name}
-        subtitle={[w.category, w.site_address].filter(Boolean).join(' · ') || 'Water tank service'}
+        subtitle={[w.category, w.site_address].filter(Boolean).join(' · ') || `${svcProfile().label} service`}
       >
         <button className="wt-btn" onClick={load}><RefreshCw size={14} /> Refresh</button>
         <button className="wt-btn" onClick={() => nav(`/water-tank/work-orders/${w.code}/edit`)}><Pencil size={14} /> Edit</button>

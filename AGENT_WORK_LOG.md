@@ -3979,3 +3979,19 @@ used "the last line starting with `import`", which landed inside a multi-line
 - VERIFIED: inviting an AC provider (SP-0023) returns
   http://…/admin/air-condition-provider-onboard/<token>. Only builder of the link; api.js already
   sends X-Service-Line for that path. WT invites unchanged.
+
+### 2026-08-30 08:25 | Claude Code (Opus 4.8) | COMPLETED | AC check — Work Orders + Invoices screens
+- Invoices: reference catalogue already service-aware (branch+vertical); statuses/types/payment
+  methods are generic. No WT-specific copy. Nothing to change.
+- Work Orders:
+  - waterTankWorkOrder.reference: the provider-assignability gate hard-coded WT required
+    compliance/insurance docs → now reads required_docs from the active service line's manifest
+    (AC adds Electrical / Refrigerant Handling certs).
+  - WorkOrderDocument.jsx: the "Sections 4 & 5 — Tank details and scope" heading now uses
+    ref.section4_label (Equipment Details for AC); the "Chemicals Required" line becomes
+    "Spare Parts Required" under AC. Section-4 fields + Section-3 service groups already came
+    from the service-aware document/reference.
+  - WorkOrderDetail.jsx: the "Water tank service" subtitle fallback → svcProfile().label.
+  - WorkOrderForm.jsx: warranty placeholder "post-disinfection" → generic workmanship/parts.
+- VERIFIED: WO document/reference → AC = "Section 4 — Equipment Details", AC service groups,
+  45-item AC catalogue; WT unchanged. Build passes.

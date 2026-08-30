@@ -5,7 +5,7 @@ import {
   FileSignature, Copy, Ban, Plus, Trash2, Search, AlertTriangle, Lock, ShieldCheck,
 } from 'lucide-react';
 import api from '../../services/api';
-import { useSvcNav, WtHead, Loading, EmptyState, Pill, DatePicker, bdt, dateFmt, toast, errText, parseJson } from './common';
+import { useSvcNav, WtHead, Loading, EmptyState, Pill, DatePicker, bdt, dateFmt, toast, errText, parseJson, svcBase } from './common';
 
 /*
  * Project Work Order — SSPC-WTCM-PWO-01 v0.2.
@@ -341,7 +341,7 @@ export default function WorkOrderDocument() {
         {/* ── 3. Sections 4–5 ── */}
         {step === 2 && (
           <>
-            <div className="wt-wizpane-h"><h2>Sections 4 &amp; 5 — Tank details and scope</h2>
+            <div className="wt-wizpane-h"><h2>Sections 4 &amp; 5 — {(ref?.section4_label || 'Tank Details').replace(/^Section 4 — /, '')} and scope</h2>
               <p>What the provider will find on site, and precisely what they are contracted to deliver.</p></div>
             <div className="wt-grid3">
               {(ref?.tank_fields || []).map(([key, label]) => (
@@ -358,7 +358,7 @@ export default function WorkOrderDocument() {
           <>
             <div className="wt-wizpane-h"><h2>Sections 6 &amp; 7 — Materials, equipment and timeline</h2>
               <p>What must be on the van, and the dates both parties are committing to.</p></div>
-            {[['materials_required', 'Materials Required'], ['chemicals_required', 'Chemicals Required'], ['equipment_required', 'Equipment Required']].map(([key, label]) => (
+            {[['materials_required', 'Materials Required'], ['chemicals_required', svcBase() === '/air-conditioning' ? 'Spare Parts Required' : 'Chemicals Required'], ['equipment_required', 'Equipment Required']].map(([key, label]) => (
               <div key={key} style={{ marginBottom: 16 }}>
                 <h3 className="wt-section-title">{label}</h3>
                 <LineTable
