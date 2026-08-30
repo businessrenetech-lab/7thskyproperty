@@ -270,6 +270,21 @@ async function signEnvelope(signers, tag) {
   }
 
   console.log('\n-- B2. Site assessment: Scheduled -> In Progress -> Completed --');
+
+  // B2.0 — the assessment reference (safety checklist, templates, equipment) must
+  // speak the ACTIVE line's vocabulary, not leak Water Tank wording into another
+  // line's "Safety verification" step.
+  const aref = (await req('GET', '/api/wt-ops/assessment-reference')).body;
+  const arefText = JSON.stringify([aref.standard_checks, aref.templates, aref.equipment_options]);
+  const WT_ASSESS_HINT = /\btank\b|confined space|algae|sludge|rooftop tank|chlorine|coliform|disinfect|water test|turbidity/i;
+  if (SL === 'water_tank') {
+    log(WT_ASSESS_HINT.test(arefText) ? 'PASS' : 'WARN', 'assessment reference speaks Water Tank vocabulary', `${(aref.standard_checks || []).length} checks`);
+  } else {
+    const leaked = WT_ASSESS_HINT.test(arefText);
+    log(!leaked ? 'PASS' : 'FAIL', 'assessment safety checks are the active line\'s (no Water Tank leak)',
+      leaked ? `WT wording leaked: ${(arefText.match(WT_ASSESS_HINT) || [])[0]}` : `${(aref.standard_checks || []).length} checks, ${(aref.templates || []).length} templates`);
+  }
+
   let assess = sr.assessment || null;
   if (assess && assess.id) {
     created.assessmentId = assess.id;
