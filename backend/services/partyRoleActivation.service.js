@@ -408,34 +408,35 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
        * to expect, warranties to claim on — so the account is created here
        * rather than waiting for somebody to remember.
        *
-       * Best-effort, like the two above: a signature that has completed must not
-       * be rolled back because SMTP was down or the client has no email on file.
+       * DEFERRED to after commit, like the provider account below: provisioning
+       * writes its own rows and makes an SMTP call, which inside this tx can make
+       * the commit fail with "connection is in closed state". Best-effort: a
+       * completed signature is never rolled back because SMTP was down or the
+       * client has no email on file.
        */
-      try {
-        const accounts = require('./wtPortalAccount.service');
-        const M2 = require('../models/waterTankOps');
+      {
+        const branchId = envelope.branch_id;
         const sb = typeof terms.schedule_b === 'string'
           ? (() => { try { return JSON.parse(terms.schedule_b) || {}; } catch { return {}; } })()
           : (terms.schedule_b || {});
         const clientCode = terms.client_code || sb.client_code;
-        const client = clientCode
-          ? await M2.WtClient.findOne({ where: { branch_id: envelope.branch_id, code: clientCode } })
-          : await M2.WtClient.findOne({ where: { branch_id: envelope.branch_id, name: terms.client_name } });
-
-        if (client && !client.portal_user_id) {
-          const out = await accounts.provision({
-            party_type: 'client', party_id: client.id, branch_id: envelope.branch_id,
-          });
-          if (out.created && out.password) {
-            await accounts.sendCredentials({
-              to: out.user.email, name: out.party.name, password: out.password, partyType: 'client',
-            });
-            console.log(`[waterTank] customer portal account created for ${out.user.email}`);
+        const clientName = terms.client_name;
+        deferred.push(async () => {
+          const accounts = require('./wtPortalAccount.service');
+          const M2 = require('../models/waterTankOps');
+          const client = clientCode
+            ? await M2.WtClient.findOne({ where: { branch_id: branchId, code: clientCode } })
+            : await M2.WtClient.findOne({ where: { branch_id: branchId, name: clientName } });
+          if (client && !client.portal_user_id) {
+            const out = await accounts.provision({ party_type: 'client', party_id: client.id, branch_id: branchId });
+            if (out.created && out.password) {
+              await accounts.sendCredentials({
+                to: out.user.email, name: out.party.name, password: out.password, partyType: 'client',
+              }).catch((e) => console.warn('[waterTank] customer credential email failed:', e.message));
+              console.log(`[waterTank] customer portal account created for ${out.user.email}`);
+            }
           }
-        }
-      } catch (e) {
-        // A missing email is the ordinary case, not a fault — say so quietly.
-        console.warn('[waterTank] customer portal account on sign:', e.message);
+        });
       }
     }
 
@@ -486,32 +487,31 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
          * provider starts receiving work, so their login is created here rather
          * than waiting for someone to remember after the first job is assigned.
          *
-         * Outside the transaction's concerns and best-effort: a fully executed
-         * agreement must never be rolled back because SMTP was unreachable or
-         * the provider has no contact email recorded.
+         * DEFERRED to after commit: provisioning writes its own rows on a separate
+         * connection and then makes an SMTP call — doing that inside this tx made
+         * the commit fail with "connection is in closed state". Best-effort, so a
+         * fully executed agreement is never rolled back because SMTP was
+         * unreachable or the provider has no contact email on file.
          */
-        try {
-          const accounts = require('./wtPortalAccount.service');
-          if (!provider.portal_user_id) {
-            const out = await accounts.provision({
-              party_type: 'provider', party_id: provider.id, branch_id: envelope.branch_id,
-            });
+        if (!provider.portal_user_id) {
+          const providerId = provider.id;
+          const branchId = envelope.branch_id;
+          deferred.push(async () => {
+            const accounts = require('./wtPortalAccount.service');
+            const out = await accounts.provision({ party_type: 'provider', party_id: providerId, branch_id: branchId });
             if (out.created && out.password) {
               await accounts.sendCredentials({
                 to: out.user.email, name: out.party.name, password: out.password, partyType: 'provider',
-              });
+              }).catch((e) => console.warn('[waterTank] provider credential email failed:', e.message));
               await P.WtProviderEvent.create({
-                branch_id: envelope.branch_id, provider_id: provider.id, event_type: 'portal',
+                branch_id: branchId, provider_id: providerId, event_type: 'portal',
                 title: 'Provider portal access issued',
                 detail: `Login created for ${out.user.email} and credentials emailed.`,
                 actor: 'eSign automation', occurred_at: new Date(),
-              }, { transaction: tx }).catch(() => {});
+              }).catch(() => {});
               console.log(`[waterTank] provider portal account created for ${out.user.email}`);
             }
-          }
-        } catch (e) {
-          // No email on file is the ordinary case, not a fault.
-          console.warn('[waterTank] provider portal account on sign:', e.message);
+          });
         }
       }
     }

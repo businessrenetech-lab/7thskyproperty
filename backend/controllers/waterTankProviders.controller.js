@@ -139,7 +139,7 @@ exports.create = asyncHandler(async (req, res) => {
 
   const provider = await M.WtProvider.create({
     ...body, branch_id: branchId, service_line: resolveServiceLine(req),
-    code: await identity.nextCode('providers', branchId),
+    code: await identity.nextCode('providers', branchId, undefined, resolveServiceLine(req)),
     application_date: req.body.application_date || today(), status: 'Pending',
     onboarding_stage: 'Application', stage_updated_at: new Date(),
     onboarding_submission_status: body.onboarding_submission_status || 'Staff Draft',
@@ -211,16 +211,30 @@ const logEvent = (branchId, providerId, event_type, title, detail, actor) =>
  * Gate status for one provider: which SOP steps are satisfied and what still
  * blocks approval. Drives the readiness panel and the Approve button.
  */
+// Required compliance/insurance specs for a provider's OWN service line —
+// manifest-driven (Air Conditioning adds Electrical/Refrigerant/Safety Training,
+// Professional Indemnity, Equipment Insurance), falling back to the Water Tank
+// constants when a line declares none. Keeps the onboarding gate in step with the
+// assignment gate, which already reads the manifest.
+function requiredDocSpecs(serviceLine) {
+  const rd = getServiceLine(serviceLine || 'water_tank').required_docs || {};
+  const toSpecs = (list, fallback) => (Array.isArray(list) && list.length
+    ? list.map((type) => ({ type, required: true }))
+    : fallback);
+  return { compliance: toSpecs(rd.compliance, COMPLIANCE_DOCS), insurance: toSpecs(rd.insurance, INSURANCE_DOCS) };
+}
+
 function buildGates(provider, docs) {
   const byType = (cat) => docs.filter((d) => d.category === cat);
   const isGood = (d) => d.verified && String(d.status).toLowerCase() !== 'rejected'
     && (!d.expiry_date || new Date(d.expiry_date) >= new Date(today()));
 
-  const compliance = COMPLIANCE_DOCS.map((spec) => {
+  const specs = requiredDocSpecs(provider.service_line);
+  const compliance = specs.compliance.map((spec) => {
     const doc = byType('compliance').find((d) => d.doc_type === spec.type);
     return { ...spec, doc: doc || null, satisfied: doc ? isGood(doc) : !spec.required };
   });
-  const insurance = INSURANCE_DOCS.map((spec) => {
+  const insurance = specs.insurance.map((spec) => {
     const doc = byType('insurance').find((d) => d.doc_type === spec.type);
     return { ...spec, doc: doc || null, satisfied: doc ? isGood(doc) : !spec.required };
   });
@@ -577,7 +591,7 @@ exports.sanction = asyncHandler(async (req, res) => {
       const exists = await P.WtProtectedClient.findOne({ where: { ...scoped(req), client_name: client, provider_id: provider.id, status: 'Protected' } });
       if (exists) continue;
       await P.WtProtectedClient.create({
-        branch_id: branchId,
+        branch_id: branchId, ...serviceScope(req),
         code: await nextCode(P.WtProtectedClient, 'PC-', 4, 1, branchId),
         client_name: client,
         provider_id: provider.id,
@@ -655,6 +669,12 @@ exports.saveDocument = asyncHandler(async (req, res) => {
   delete body.id; delete body.createdAt; delete body.updatedAt;
   if (!body.provider_id || !body.doc_type) return res.status(400).json({ error: 'provider_id and doc_type are required.' });
 
+  // Tag the evidence with the provider's OWN service line so the onboarding and
+  // assignment gates (which read within the active line) can see it — otherwise
+  // an Air Conditioning provider's docs default to water_tank and stay invisible.
+  const owner = await M.WtProvider.findOne({ where: { branch_id: branchId, id: body.provider_id }, attributes: ['service_line'] }).catch(() => null);
+  body.service_line = owner?.service_line || resolveServiceLine(req);
+
   // one row per (provider, category, doc_type) — re-saving updates in place
   const existing = await P.WtProviderDocument.findOne({
     where: { branch_id: branchId, provider_id: body.provider_id, category: body.category || 'compliance', doc_type: body.doc_type },
@@ -710,7 +730,7 @@ exports.createAudit = asyncHandler(async (req, res) => {
 
   const row = await P.WtProviderAudit.create({
     ...req.body,
-    branch_id: branchId,
+    branch_id: branchId, ...serviceScope(req),
     provider_name: provider.business_name,
     code: await nextCode(P.WtProviderAudit, 'AUD-', 4, 1, branchId),
     outcome: req.body.outcome || 'Scheduled',
@@ -911,7 +931,7 @@ exports.createProtected = asyncHandler(async (req, res) => {
   const start = req.body.protection_start || today();
   const row = await P.WtProtectedClient.create({
     ...req.body,
-    branch_id: branchId,
+    branch_id: branchId, ...serviceScope(req),
     code: await nextCode(P.WtProtectedClient, 'PC-', 4, 1, branchId),
     protection_start: start,
     protection_end: req.body.protection_end || addMonths(start, PROTECTION_MONTHS),

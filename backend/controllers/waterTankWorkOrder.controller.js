@@ -172,9 +172,13 @@ exports.assign = asyncHandler(async (req, res) => {
   const approved = String(provider.status || '').toLowerCase() === 'approved';
   const activeAgreement = await commercial.getActiveAgreement(provider);
   const providerDocs = await P.WtProviderDocument.findAll({ where: { ...scoped(req), provider_id: provider.id }, raw: true });
+  // Required evidence is the ACTIVE service line's — Air Conditioning enforces its
+  // own (Electrical, Refrigerant Handling, …), not Water Tank's. Falls back to the
+  // Water Tank baseline when a line declares none, matching the onboarding gate.
+  const reqDocs = getServiceLine(provider.service_line || resolveServiceLine(req)).required_docs || {};
   const required = {
-    compliance: ['Trade Licence', 'Company Registration', 'TIN', 'BIN', 'Safety Certification'],
-    insurance: ['Public Liability Insurance', 'Workers Compensation', 'Contractor Insurance', 'Vehicle Insurance'],
+    compliance: reqDocs.compliance?.length ? reqDocs.compliance : ['Trade Licence', 'Company Registration', 'TIN', 'BIN', 'Safety Certification'],
+    insurance: reqDocs.insurance?.length ? reqDocs.insurance : ['Public Liability Insurance', 'Workers Compensation', 'Contractor Insurance', 'Vehicle Insurance'],
   };
   const docOk = (type, category) => providerDocs.some((d) => d.category === category && d.doc_type === type && d.verified
     && (!d.expiry_date || new Date(d.expiry_date) >= new Date(today())));
