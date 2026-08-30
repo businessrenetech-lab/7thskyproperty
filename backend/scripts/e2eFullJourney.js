@@ -10,12 +10,16 @@
  *   B. CLIENT INTAKE — service request (status transitions) -> site assessment
  *      (Scheduled -> In Progress -> Completed) -> quotation -> customer agreement
  *      (warranty selected, every party signs).
- *   C. WORK ORDER — auto-raised on signing -> assign the onboarded provider ->
- *      accept -> schedule -> start -> complete -> verify (Sec. 9 Step 9).
+ *   C. WORK ORDER — auto-raised on signing (asserts it + the auto-drafted invoices
+ *      are LINKED to the client and a project — no unlinked "Client" orphans) ->
+ *      assign the onboarded provider -> accept -> schedule -> start -> complete ->
+ *      verify (Sec. 9 Step 9).
  *   D. warranty auto-registers -> provider files a service report -> provider payout.
- *   E. invoice + client payment -> AMC -> after-sale complaint (logged + resolved).
- *   F. PORTALS — client + provider accounts (the provider's is auto-provisioned on
- *      agreement signing), login, dossier loads.
+ *   E. invoice + client payment -> invoice client-lookup (resolves the client with
+ *      their projects + due balance) -> raise an invoice straight from the work
+ *      order (linked to client + project) -> AMC -> after-sale complaint (resolved).
+ *   F. PORTALS — client + provider accounts (both auto-provisioned on agreement
+ *      signing; the script resets to log in), login, dossier loads.
  *
  *   G. PAYOUT TERMS — the payout auto-computes Seventh Sky commission from the
  *      agreement rate card + commission_pct, and the payout due date from
@@ -324,6 +328,18 @@ async function signEnvelope(signers, tag) {
     checkCode('work', wo.code, 'work order auto-raised (own code)');
     log('PASS', 'work order status', `${wo.code} status=${wo.status}`);
 
+    // C0. the auto-raised WO + the auto-drafted invoices must be LINKED to the
+    // client and a project (regression guard for the "unlinked Client" bug).
+    const woFull = (await req('GET', `/api/wt-work-orders/${wo.id}`)).body.work_order || wo;
+    created.projectCode = created.projectCode || woFull.project_id;
+    log(woFull.client_code === clientCode && !!woFull.project_id ? 'PASS' : 'FAIL',
+      'work order linked to client + project', `client=${woFull.client_code} project=${woFull.project_id}`);
+    const draftInvs = arr((await req('GET', '/api/wt-invoices')).body)
+      .filter((i) => i.source_type === 'Agreement' && (i.client_name || '').includes(S));
+    const orphans = draftInvs.filter((i) => !i.client_code || i.client_name === 'Client' || !i.project_id);
+    log(draftInvs.length > 0 && orphans.length === 0 ? 'PASS' : (draftInvs.length ? 'FAIL' : 'WARN'),
+      'agreement invoices auto-drafted + linked (no orphans)', `${draftInvs.length} drafts, ${orphans.length} orphaned`);
+
     // C1. assign the freshly-onboarded provider (proves every gate passed)
     const asg = await req('POST', `/api/wt-work-orders/${wo.id}/assign`, { body: { provider_id: prov.id } });
     if (asg.status < 400) log('PASS', 'provider ASSIGNED to work order', `${prov.code} -> ${wo.code}`);
@@ -403,6 +419,28 @@ async function signEnvelope(signers, tag) {
     log(pay.status < 400 ? 'PASS' : 'WARN', 'client payment collected', pay.status < 400 ? `৳${amt} of ৳${outstanding}` : `HTTP ${pay.status} ${JSON.stringify(pay.body).slice(0,140)}`);
   } else log('WARN', 'invoice', JSON.stringify(inv).slice(0, 120));
 
+  // E1. invoice client-lookup: the client resolves with their projects + due balance
+  console.log('\n-- E1. Invoice client-lookup (projects + due balance) --');
+  const look = arr((await req('GET', `/api/wt-invoices/client-lookup?q=${encodeURIComponent(S)}`)).body);
+  const me = look.find((c) => c.code === clientCode) || look[0];
+  log(me ? 'PASS' : 'FAIL', 'client-lookup finds the client', me ? `${me.code}` : 'no match');
+  if (me) {
+    log(Array.isArray(me.projects) && me.projects.length > 0 ? 'PASS' : 'FAIL', 'lookup returns the client\'s projects', `${(me.projects || []).length} project(s)`);
+    log('due_balance' in me ? 'PASS' : 'FAIL', 'lookup returns a due balance', `৳${me.due_balance}`);
+  }
+
+  // E2. raise an invoice straight from the completed work order (own lines/client/project)
+  if (created.woId) {
+    console.log('\n-- E2. Raise invoice from the work order --');
+    const wr = await req('POST', `/api/wt-work-orders/${created.woId}/raise-invoice`);
+    const wInv = wr.body;
+    if (wInv.code) {
+      created.woInvoiceCode = wInv.code;
+      const linked = wInv.client_code === clientCode && !!wInv.project_id && wInv.work_order_code === created.woCode;
+      log(linked ? 'PASS' : 'FAIL', 'invoice raised from work order + linked', `${wInv.code} client=${wInv.client_code} project=${wInv.project_id} wo=${wInv.work_order_code}`);
+    } else log('WARN', 'raise invoice from WO', `HTTP ${wr.status} ${JSON.stringify(wInv).slice(0, 140)}`);
+  }
+
   const amc = await req('POST', '/api/wt-amc', { body: { client: { name: NAME, code: clientCode, phone: '0179' + S }, package_name: `${TAG} Annual Care`, annual_value: 12000, visits_per_year: 4, start_date: TODAY, status: 'Active' } });
   if (amc.status < 400) { R.ids.amc = amc.body.code || (amc.body.amc && amc.body.amc.code); created.amcCode = R.ids.amc; log('PASS', 'AMC created', R.ids.amc); }
   else log('WARN', 'AMC', `HTTP ${amc.status}`);
@@ -417,8 +455,12 @@ async function signEnvelope(signers, tag) {
   // ============================================================
   console.log('\n########## F. PORTALS (client + provider) ##########');
 
-  console.log('\n-- F1. Provision + open CLIENT portal --');
-  const cAcc = await req('POST', `/api/wt-ops/portal-accounts/client/${(sr.client || {}).id}`, { body: {} });
+  console.log('\n-- F1. Client portal (auto-provisioned on agreement signing) --');
+  let cAcc = await req('POST', `/api/wt-ops/portal-accounts/client/${(sr.client || {}).id}`, { body: {} });
+  if (cAcc.body && cAcc.body.created === false) {
+    log('PASS', 'client portal auto-provisioned on agreement signing', 'account already existed — resetting to log in');
+    cAcc = await req('POST', `/api/wt-ops/portal-accounts/client/${(sr.client || {}).id}`, { body: { reset: true } });
+  }
   const cPass = cAcc.body.temporary_password;
   const cUserEmail = (cAcc.body.user && cAcc.body.user.email) || CLIENT_EMAIL;
   if (cUserEmail) created.portalEmails.push(cUserEmail);
@@ -502,7 +544,10 @@ async function teardown() {
   }
   // client-side chain
   if (c.warrantyCode) await del('warranties', M.WtWarranty, { code: c.warrantyCode });
-  if (c.invoiceCode) await del('invoices', M.WtInvoice, { code: c.invoiceCode });
+  // every invoice for this run's client (auto-drafted agreement stages, the manual
+  // fallback and the one raised from the work order)
+  if (c.clientCode) await del('invoices', M.WtInvoice, { client_code: c.clientCode });
+  else if (c.invoiceCode) await del('invoices', M.WtInvoice, { code: c.invoiceCode });
   if (c.woId) await del('work_orders', M.WtWorkOrder, { id: c.woId });
   if (c.quoteCode) await del('quotations', M.WtQuotation, { code: c.quoteCode });
   if (c.assessmentId) await del('site_assessments', M.WtSiteAssessment, { id: c.assessmentId });
