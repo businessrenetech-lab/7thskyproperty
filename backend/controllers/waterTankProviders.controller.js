@@ -171,10 +171,17 @@ exports.invite = asyncHandler(async (req, res) => {
   });
   await logEvent(resolveBranchId(req), provider.id, 'invitation', 'Provider onboarding invitation issued', `Expires ${expires.toISOString().slice(0, 10)}`, actorOf(req));
   const base = process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get('host')}/admin`;
-  const link = `${base}/water-tank-provider-onboard/${token}`;
+  // The onboarding link path follows the provider's own service line so an Air
+  // Conditioning provider gets an /air-condition-provider-onboard/ URL.
+  const sl = getServiceLine(provider.service_line || 'water_tank');
+  const onboardPath = provider.service_line === 'air_conditioning'
+    ? 'air-condition-provider-onboard'
+    : 'water-tank-provider-onboard';
+  const link = `${base}/${onboardPath}/${token}`;
   try {
     const { sendEmail } = require('../services/communication.service');
-    await sendEmail(provider.contact_email, 'Complete your Seventh Sky Water Tank provider onboarding', `<p>Dear ${provider.contact_person || provider.business_name},</p><p>Please complete your business, compliance, payment and proposed-rate details:</p><p><a href="${link}">${link}</a></p><p>This secure link expires in 30 days.</p>`).catch(() => {});
+    const svcName = sl.ui?.full_label || sl.label || 'Water Tank';
+    await sendEmail(provider.contact_email, `Complete your Seventh Sky ${svcName} provider onboarding`, `<p>Dear ${provider.contact_person || provider.business_name},</p><p>Please complete your business, compliance, payment and proposed-rate details:</p><p><a href="${link}">${link}</a></p><p>This secure link expires in 30 days.</p>`).catch(() => {});
   } catch { /* best effort */ }
   res.json({ link, expires_at: expires, status: 'Invited' });
 });

@@ -3971,3 +3971,11 @@ used "the last line starting with `import`", which landed inside a multi-line
   Repair Contractor…", compliance docs incl. Electrical Certification / Refrigerant Handling /
   Safety Training, and the AC catalogue. Even though the invite URL was the /water-tank-… path,
   the content follows the provider's own service line. WT providers unchanged; build passes.
+
+### 2026-08-30 08:05 | Claude Code (Opus 4.8) | COMPLETED | AC invite link uses the /air-condition-provider-onboard path
+- waterTankProviders.invite now builds the onboarding link path from the provider's service_line:
+  air_conditioning → /air-condition-provider-onboard/:token, else /water-tank-provider-onboard.
+  The email subject uses the service label ("…Air Conditioning Solutions provider onboarding").
+- VERIFIED: inviting an AC provider (SP-0023) returns
+  http://…/admin/air-condition-provider-onboard/<token>. Only builder of the link; api.js already
+  sends X-Service-Line for that path. WT invites unchanged.
