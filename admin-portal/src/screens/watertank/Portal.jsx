@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { CloudLightning, RefreshCw, LogOut, Phone, Mail, MapPin } from 'lucide-react';
 import api from '../../services/api';
-import { Loading, EmptyState, toast, errText, ToastHost } from './common';
+import { Loading, EmptyState, toast, errText, ToastHost, profileForLine } from './common';
 import PortalClient from './PortalClient';
 import PortalProvider from './PortalProvider';
 import '../../styles/wt-scope.css';
@@ -142,7 +142,7 @@ export default function Portal() {
 
   if (error || !data) {
     return (
-      <Shell title="Portal" subtitle="Water Tank Services">
+      <Shell title="Portal" subtitle="Seventh Sky Property Care">
         <div className="wt-card">
           <EmptyState eyebrow="Link" title="This portal could not be opened" hint={error}
             action={<button className="wt-btn" onClick={load}><RefreshCw size={14} /> Try again</button>} />
@@ -154,6 +154,9 @@ export default function Portal() {
   const isProvider = data.party_type === 'provider';
   const party = (isProvider ? data.provider : data.client) || {};
   const who = isProvider ? party.business_name : party.name;
+  // The portal runs outside the console URL, so its wording comes from the
+  // party's own service line, not the path.
+  const profile = profileForLine(data.service_line);
 
   return (
     <Shell
@@ -168,8 +171,8 @@ export default function Portal() {
       )}
     >
       {isProvider
-        ? <PortalProvider data={data} base={base} reload={load} />
-        : <PortalClient data={data} base={base} reload={load} />}
+        ? <PortalProvider data={data} base={base} reload={load} eq={profile.equipment} />
+        : <PortalClient data={data} base={base} reload={load} eq={profile.equipment} />}
 
       <Footer party={party} isProvider={isProvider} token={token} />
     </Shell>

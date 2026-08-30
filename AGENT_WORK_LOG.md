@@ -3897,3 +3897,18 @@ used "the last line starting with `import`", which landed inside a multi-line
 - VERIFIED: reference endpoints return the right vocab per X-Service-Line; admin build passes.
 - Note: the client/provider self-service Portal screens (Portal.jsx/PortalClient.jsx) still
   say "Water Tank Services" — separate public surface, not in the console; left for a follow-up.
+
+### 2026-08-30 05:55 | Claude Code (Opus 4.8) | COMPLETED | AC milestone 4b — client/provider Portal shows the party's service wording
+- The self-service Portal (/portal/:token) runs outside the console URL, so svcBase() can't
+  read the service line from the path. Fixed by carrying it in the data:
+- BACKEND: publicWtPortal.controller view() now returns `service_line` (from the client/provider
+  record) in the portal dossier.
+- FRONTEND: added profileForLine(serviceLine) to common.jsx (maps a service_line string → UI
+  profile, for surfaces outside the console URL). Portal.jsx derives the profile from
+  data.service_line and passes equipment labels to PortalClient/PortalProvider; PortalClient's
+  Property panel renders Tank/Equipment labels from it (property facts + assessment facts).
+  Replaced the "Water Tank Services" error subtitle and "your tanks" copy.
+- An AC client's portal now reads Equipment Details / System Type / Capacity / Refrigerant Type;
+  a Water Tank client's portal is unchanged (service_line defaults to water_tank).
+- VERIFIED: backend returns service_line; Portal threads profileForLine → Property; both builds
+  pass; dist rebuilt.

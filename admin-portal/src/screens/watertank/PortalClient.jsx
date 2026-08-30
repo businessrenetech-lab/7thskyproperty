@@ -5,7 +5,7 @@ import {
   CalendarDays, FolderOpen,
 } from 'lucide-react';
 import api from '../../services/api';
-import { bdt, dateFmt, Pill, toast, errText } from './common';
+import { bdt, dateFmt, Pill, toast, errText, profileForLine } from './common';
 import Photos from './Photos';
 import {
   Kpi, Alerts, PortalTabs, Expandable, Facts, Nothing, SectionTitle,
@@ -104,7 +104,7 @@ function Overview({ data, go }) {
 
 /* ── property ──────────────────────────────────────────────────────────── */
 
-function Property({ data }) {
+function Property({ data, eq }) {
   const p = data.property || {};
   const assessments = data.assessments || [];
 
@@ -118,16 +118,16 @@ function Property({ data }) {
           ['Address', p.service_address],
           ['Area', p.district],
           ['Property type', p.property_type],
-          ['Number of tanks', p.tanks_count || null],
-          ['Tank type', p.tank_type],
-          ['Capacity', p.tank_capacity],
-          ['Last cleaned', p.last_cleaning],
+          [eq.count_label, p.tanks_count || null],
+          [eq.type_label, p.tank_type],
+          [eq.capacity_label, p.tank_capacity],
+          ['Last serviced', p.last_cleaning],
           ['AMC package', p.amc_package],
         ]} />
       </div>
 
       <SectionTitle count={assessments.length}
-        hint="What the assessor found when they surveyed your tanks — the condition, the risks and the photographs.">
+        hint="What the assessor found when they surveyed your site — the condition, the risks and the photographs.">
         Site assessments
       </SectionTitle>
 
@@ -139,12 +139,12 @@ function Property({ data }) {
           subtitle={`${a.assessed_date ? dateFmt(a.assessed_date) : 'date not recorded'}${a.assessor ? ` · ${a.assessor}` : ''}`}
           badge={<Pill value={a.status} sm />}>
           <Facts items={[
-            ['Tank type', a.tank_type],
-            ['Capacity', a.tank_capacity],
-            ['Material', a.tank_material],
+            [eq.type_label, a.tank_type],
+            [eq.capacity_label, a.tank_capacity],
+            ['Material / Make', a.tank_material],
             ['Location', a.tank_location],
-            ['Water source', a.water_source],
-            ['Last cleaned', a.last_cleaned],
+            [eq.source_label, a.water_source],
+            ['Last serviced', a.last_cleaned],
             ['Contamination', a.contamination],
             ['Leakage', a.leakage],
             ['Safe access', a.access_safe ? 'Yes' : 'No — noted'],
@@ -260,7 +260,7 @@ function Reports({ data }) {
 
       {reports.length === 0 ? (
         <Nothing icon={Camera} title="No reports yet"
-          hint="After each visit the team files a report with before and after photographs of your tanks. They appear here as soon as they are submitted." />
+          hint="After each visit the team files a report with before and after photographs. They appear here as soon as they are submitted." />
       ) : reports.map((r) => (
         <Expandable key={r.code} title={`${r.report_type} · ${r.code}`}
           subtitle={[r.submitted_date ? dateFmt(r.submitted_date) : null, r.provider_name, r.work_order_code]
@@ -706,8 +706,9 @@ export function Messages({ data, base, reload, who }) {
 
 /* ── the client portal ─────────────────────────────────────────────────── */
 
-export default function PortalClient({ data, base, reload }) {
+export default function PortalClient({ data, base, reload, eq }) {
   const [tab, setTab] = useState('overview');
+  const equip = eq || profileForLine(data.service_line).equipment;
   const t = data.totals || {};
   const overdue = (data.invoices || []).filter(isOverdue);
 
@@ -750,7 +751,7 @@ export default function PortalClient({ data, base, reload }) {
       <PortalTabs tabs={tabs} value={tab} onChange={setTab} />
 
       {tab === 'overview' && <Overview data={data} go={setTab} />}
-      {tab === 'property' && <Property data={data} />}
+      {tab === 'property' && <Property data={data} eq={equip} />}
       {tab === 'jobs' && <Jobs data={data} />}
       {tab === 'reports' && <Reports data={data} />}
       {tab === 'quotations' && <Quotations data={data} base={base} reload={reload} />}

@@ -58,6 +58,13 @@ export const SERVICE_UI = {
 };
 /** The active console's UI profile (label, full_label, equipment field labels). */
 export const svcProfile = () => SERVICE_UI[svcBase()] || SERVICE_UI['/water-tank'];
+/**
+ * UI profile for an explicit service_line string (e.g. from an API payload).
+ * For surfaces that run OUTSIDE the console URL — the client/provider portal —
+ * where svcBase() can't read the service line from the path.
+ */
+export const profileForLine = (serviceLine) =>
+  (String(serviceLine || '').startsWith('air_conditioning') ? SERVICE_UI['/air-conditioning'] : SERVICE_UI['/water-tank']);
 /** The active console's service label, e.g. "Air Conditioning". */
 export const svcLabel = () => svcProfile().label;
 /** The active console's equipment field vocabulary (Tank vs Equipment details). */

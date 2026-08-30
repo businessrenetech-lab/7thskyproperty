@@ -62,7 +62,9 @@ exports.view = asyncHandler(async (req, res) => {
       ? await portal.providerDossier(ctx.row)
       : await portal.clientDossier(ctx.row);
     await auditOf(req, ctx, 'viewed_portal');
-    res.json({ party_type: ctx.party_type, ...data });
+    // The party's service line drives the portal's wording (Tank vs Equipment),
+    // since the portal runs outside the console's URL and can't infer it from the path.
+    res.json({ party_type: ctx.party_type, service_line: ctx.row.service_line || 'water_tank', ...data });
   } catch (e) { fail(res, e); }
 });
 
