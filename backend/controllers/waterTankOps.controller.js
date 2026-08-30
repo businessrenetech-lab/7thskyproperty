@@ -682,6 +682,7 @@ exports.moneyJournal = asyncHandler(async (req, res) => {
   const ledger = require('../services/wtLedger.service');
   const out = await ledger.journal({
     branch_id: resolveBranchId(req),
+    service_line: resolveServiceLine(req),
     from: req.query.from || null,
     to: req.query.to || null,
     direction: req.query.direction || null,

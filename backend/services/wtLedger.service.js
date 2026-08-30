@@ -145,6 +145,9 @@ async function append(spec, { transaction }) {
   try {
     const event = await M.WtMoneyEvent.create({
       branch_id: spec.branch_id,
+      // Money events carry the service line so each console's money journal shows
+      // only its own receipts and payouts.
+      service_line: spec.service_line || 'water_tank',
       event_type: spec.event_type,
       direction: meta.direction,
       subject_type: spec.subject_type,
@@ -236,6 +239,7 @@ async function recordClientReceipt(opts, { transaction } = {}) {
 
     const { event, duplicate } = await append({
       branch_id: opts.branch_id,
+      service_line: opts.service_line,
       event_type: 'client_receipt',
       subject_type: 'invoice',
       subject_id: inv.id,
@@ -295,6 +299,7 @@ async function recordBatchClientReceipt(opts, { transaction } = {}) {
       // concurrently inside one transaction would deadlock against itself.
       const out = await recordClientReceipt({
         branch_id: opts.branch_id,
+        service_line: opts.service_line,
         invoice_id: line.invoice_id,
         amount: line.amount,
         method: opts.method,
@@ -361,6 +366,7 @@ async function recordClientRefund(opts, { transaction } = {}) {
 
     const { event, duplicate } = await append({
       branch_id: opts.branch_id,
+      service_line: opts.service_line,
       event_type: 'client_refund',
       subject_type: 'invoice',
       subject_id: inv.id,
@@ -496,6 +502,7 @@ async function recordProviderPayout(opts, { transaction } = {}) {
 
     const { event, duplicate } = await append({
       branch_id: opts.branch_id,
+      service_line: opts.service_line,
       event_type: 'provider_payout',
       subject_type: 'work_order',
       subject_id: wo.id,
@@ -579,6 +586,7 @@ async function recordDirectDisbursement(opts, { transaction } = {}) {
 
     const { event, duplicate } = await append({
       branch_id: opts.branch_id,
+      service_line: opts.service_line,
       event_type: 'direct_disbursement',
       subject_type: 'disbursement',
       subject_id: row.id,
@@ -642,6 +650,7 @@ async function recordDisbursementRun(opts, { transaction } = {}) {
       const key = opts.idempotency_key ? `${opts.idempotency_key}:${line.kind}:${line.id}` : null;
       const common = {
         branch_id: opts.branch_id,
+        service_line: opts.service_line,
         amount: line.amount,
         method: opts.method,
         reference: opts.reference,
@@ -713,6 +722,8 @@ async function reverse(opts, { transaction } = {}) {
 
     const { event } = await append({
       branch_id: opts.branch_id,
+      // A reversal belongs to the same service line as the entry it corrects.
+      service_line: original.service_line || opts.service_line,
       event_type: `${original.event_type}_reversal`,
       subject_type: original.subject_type,
       subject_id: original.subject_id,
@@ -771,8 +782,9 @@ async function reverse(opts, { transaction } = {}) {
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /** Everything that moved in a window, for the Payments & Disbursements screen. */
-async function journal({ branch_id, from, to, direction, limit = 200 }) {
+async function journal({ branch_id, from, to, direction, service_line, limit = 200 }) {
   const where = { branch_id };
+  if (service_line) where.service_line = service_line;
   if (direction) where.direction = direction;
   if (from || to) {
     where.created_at = {};

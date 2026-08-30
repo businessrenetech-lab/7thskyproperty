@@ -161,6 +161,7 @@ exports.create = asyncHandler(async (req, res) => {
   try {
     const out = await ledger.recordDirectDisbursement({
       branch_id: branchId,
+      service_line: resolveServiceLine(req),
       disbursement_id: row.id,
       amount,
       method: b.method || null,
@@ -207,6 +208,7 @@ exports.pay = asyncHandler(async (req, res) => {
   try {
     const out = await ledger.recordDirectDisbursement({
       branch_id: branchId,
+      service_line: resolveServiceLine(req),
       disbursement_id: row.id,
       amount: req.body?.amount != null ? num(req.body.amount) : num(row.amount),
       method: req.body?.method || row.method,
@@ -309,6 +311,7 @@ exports.run = asyncHandler(async (req, res) => {
   try {
     const out = await ledger.recordDisbursementRun({
       branch_id: branchId,
+      service_line: resolveServiceLine(req),
       lines: lines.map((l) => ({ kind: l.kind === 'provider' ? 'provider' : 'direct', id: Number(l.id), amount: num(l.amount) })),
       method: b.method || null,
       reference: b.reference || null,
@@ -420,6 +423,7 @@ exports.reverse = asyncHandler(async (req, res) => {
   try {
     const out = await ledger.reverse({
       branch_id: row.branch_id,
+      service_line: row.service_line,
       event_id: row.money_event_id,
       reason: req.body?.reason,
       actor: actorOf(req),

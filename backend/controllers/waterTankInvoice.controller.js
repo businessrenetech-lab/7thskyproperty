@@ -340,6 +340,7 @@ exports.recordPayment = asyncHandler(async (req, res) => {
   try {
     const out = await ledger.recordClientReceipt({
       branch_id: inv.branch_id,
+      service_line: inv.service_line,
       invoice_id: inv.id,
       amount: num(req.body?.amount),
       method: req.body?.method || null,
@@ -398,6 +399,7 @@ exports.reversePayment = asyncHandler(async (req, res) => {
   try {
     const out = await ledger.reverse({
       branch_id: inv.branch_id,
+      service_line: inv.service_line,
       event_id: Number(req.params.eventId),
       reason: req.body?.reason,
       actor: actorOf(req),
@@ -499,6 +501,7 @@ exports.bulkPayment = asyncHandler(async (req, res) => {
   try {
     const out = await ledger.recordBatchClientReceipt({
       branch_id: branchId,
+      service_line: resolveServiceLine(req),
       allocations: allocations.map((a) => ({ invoice_id: Number(a.invoice_id), amount: num(a.amount) })),
       total: body.total != null ? num(body.total) : null,
       method: body.method || null,
@@ -551,6 +554,7 @@ exports.refund = asyncHandler(async (req, res) => {
   try {
     const out = await ledger.recordClientRefund({
       branch_id: inv.branch_id,
+      service_line: inv.service_line,
       invoice_id: inv.id,
       amount: num(req.body?.amount),
       reason: req.body?.reason,

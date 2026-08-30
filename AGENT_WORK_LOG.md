@@ -4085,3 +4085,20 @@ used "the last line starting with `import`", which landed inside a multi-line
   list, so no change needed there.
 - VERIFIED: portal-accounts → WT 40 accounts, AC 3 (its own providers/client). UI was already
   service-neutral. Build passes.
+
+### 2026-08-30 11:55 | Claude Code (Opus 4.8) | COMPLETED | AC finance end-to-end — money ledger scoped by service line
+- Audited the finance layer. Reads (invoices list/overview/collections, disbursements list/due,
+  payments) already use scoped(req). Invoice + disbursement creates already tag service_line.
+- GAP: the money ledger (wt_money_events) — the source of the Payments money journal and the
+  collected/disbursed/margin figures — was NOT service-scoped. append() didn't set service_line
+  and journal() didn't filter it, so every AC receipt/payout was mis-tagged water_tank and the AC
+  money journal showed ALL branch cash movements.
+- Fixed: wtLedger.append tags service_line (spec.service_line || 'water_tank'); the 5 append
+  specs + the two delegating opts (batch receipt, disbursement run) carry opts.service_line;
+  reverse inherits the original event's service_line; journal() filters by service_line. Threaded
+  service_line from the controllers: waterTankInvoice (recordClientReceipt/reverse/batch/refund
+  use the invoice's service_line, batch uses resolveServiceLine), waterTankDisbursement
+  (recordDirectDisbursement ×2 / recordDisbursementRun / reverse), and waterTankOps.moneyJournal.
+- VERIFIED: money-journal → WT 9 events, AC 0 (isolated); invoices WT 87 / AC 0; a direct
+  recordDirectDisbursement with service_line:'air_conditioning' writes an event tagged
+  air_conditioning (confirmed via append path). Build/load pass.
