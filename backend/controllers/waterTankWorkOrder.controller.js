@@ -103,7 +103,7 @@ exports.detail = asyncHandler(async (req, res) => {
   const w = wo.toJSON();
   const scope = scoped(req);
 
-  const [client, provider, quotation, invoices, reports, project, comms] = await Promise.all([
+  const [client, provider, quotation, invoices, reports, project, comms, agreementRow] = await Promise.all([
     w.client_code
       ? M.WtClient.findOne({ where: { ...scope, code: w.client_code }, raw: true })
       : M.WtClient.findOne({ where: { ...scope, name: w.client_name }, raw: true }),
@@ -115,7 +115,9 @@ exports.detail = asyncHandler(async (req, res) => {
     P.WtServiceReport.findAll({ where: { ...scope, work_order_code: w.code }, order: [['id', 'DESC']], raw: true }),
     w.project_id ? M.WtProject.findOne({ where: { ...scope, code: w.project_id }, raw: true }) : null,
     M.WtCommLog.findAll({ where: { ...scope, ref_code: w.code }, order: [['id', 'DESC']], limit: 40, raw: true }),
+    w.provider_agreement_id ? P.WtProviderAgreement.findOne({ where: { ...scope, id: w.provider_agreement_id }, raw: true }) : null,
   ]);
+  const ledger = require('../services/wtLedger.service');
 
   const stages = svc.deriveStages(w);
   const progress = svc.computeProgress(stages);
@@ -154,6 +156,21 @@ exports.detail = asyncHandler(async (req, res) => {
       provider_paid: paid,
       provider_due: Math.max(0, fee - paid),
       margin: num(w.total_contract) - fee,
+      // Payout deadline from the signed agreement (trigger + payment_due_days).
+      payout: (() => {
+        const projectInvoices = invoices.filter((i) => !w.project_id || i.project_id === w.project_id);
+        const s = ledger.providerPayoutSchedule(w, agreementRow, projectInvoices);
+        return {
+          trigger: s.payout_trigger,
+          payment_due_days: s.payment_due_days,
+          payable_from: s.payable_from,
+          due_date: s.due_date,
+          days_to_due: s.days_to_due,
+          overdue: s.overdue && paid < fee - 0.009,
+          eligible: s.eligible,
+          blocked_reason: s.blocked_reason,
+        };
+      })(),
     },
   });
 });
@@ -366,6 +383,35 @@ exports.verify = asyncHandler(async (req, res) => {
   else { patch.verified_at = null; patch.verified_by = null; }
 
   await svc.refreshProgress(wo, patch);
+
+  // Verification is the trigger for the default "Completion Verified" agreements,
+  // so the payout due date (verified_at + payment_due_days) can be set now, before
+  // any payout. Cleared when verification is withdrawn. Best-effort — a payout
+  // schedule must never block recording the completion review.
+  try {
+    const ledger = require('../services/wtLedger.service');
+    const agreement = wo.provider_agreement_id
+      ? await P.WtProviderAgreement.findOne({ where: { ...scoped(req), id: wo.provider_agreement_id } })
+      : null;
+    if (agreement) {
+      const sched = ledger.providerPayoutSchedule(wo.toJSON(), agreement, []);
+      const paid = num(wo.provider_paid_amount);
+      const fee = num(wo.provider_fee);
+      const cleared = fee > 0 && paid >= fee - 0.009;
+      // Keep the payout status honest with the (possibly newly-computed) due date:
+      // raise Overdue when it applies, and demote a stale Overdue when it no longer does.
+      let payoutStatus = wo.payout_status;
+      if (allDone && sched.overdue && !cleared) payoutStatus = 'Overdue';
+      else if (String(wo.payout_status) === 'Overdue') {
+        payoutStatus = cleared ? 'Cleared' : (paid > 0.009 ? 'Partially Paid' : 'Pending');
+      }
+      await wo.update({
+        provider_payout_due_date: allDone ? sched.due_date : null,
+        payout_status: payoutStatus,
+      });
+    }
+  } catch (e) { console.warn('[wt-work-order] payout due-date on verify:', e.message); }
+
   await logEvent(req, wo, allDone ? 'completion verified' : 'completion checklist updated');
   res.json(wo);
 });

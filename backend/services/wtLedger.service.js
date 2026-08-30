@@ -451,6 +451,67 @@ async function syncInvoiceCache(inv, { transaction } = {}) {
  * Provider payouts
  * ──────────────────────────────────────────────────────────────────────────── */
 
+// Normalise any date input — a JS Date, an ISO string, or a MySQL datetime
+// string — to a plain YYYY-MM-DD. (String(dateObject) is NOT ISO, so slicing it
+// silently produced garbage dates; always go through Date -> toISOString.)
+const isoDate = (v) => {
+  if (!v) return null;
+  const d = v instanceof Date ? v : new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+};
+const addDays = (dateLike, days) => {
+  const base = isoDate(dateLike);
+  if (!base) return null;
+  const d = new Date(base + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + Number(days || 0));
+  return d.toISOString().slice(0, 10);
+};
+
+/**
+ * When a provider payout becomes payable, and by when it must be paid.
+ *
+ * The signed agreement owns both halves: `payout_trigger` says WHAT makes the
+ * payout fall due (client payment / verified completion / approved milestone),
+ * and `payment_due_days` says how long AFTER that Seventh Sky has to pay. So the
+ * payout's due date is (the date the trigger was satisfied) + payment_due_days.
+ *
+ * Pure: pass the work order, its agreement, and (only needed for the client-
+ * payment trigger) the project's invoices. Returns the schedule; `eligible` is
+ * whether the trigger is satisfied now, `due_date` is null until it is.
+ */
+function providerPayoutSchedule(wo, agreement, invoices = []) {
+  if (!agreement) return { eligible: false, blocked_reason: 'No signed provider agreement snapshot', payout_trigger: null, payment_due_days: 0, payable_from: null, due_date: null, overdue: false, days_to_due: null };
+  const trigger = String(agreement.payout_trigger || 'Completion Verified').trim();
+  const dueDays = num(agreement.payment_due_days);
+  let payableFrom = null;
+  let blocked = null;
+
+  if (trigger === 'Client Payment Received') {
+    const live = (invoices || []).filter((i) => String(i.status || '').toLowerCase() !== 'void' && String(i.status || '').toLowerCase() !== 'cancelled');
+    const clientPaid = live.length > 0 && live.every((i) => num(i.outstanding) <= 0.009);
+    if (clientPaid) {
+      // the latest client-payment date across the project's invoices
+      const stamps = live
+        .map((i) => i.paid_at || i.updatedAt || i.updated_at || i.createdAt || i.created_at)
+        .map((d) => (d ? new Date(d).getTime() : NaN))
+        .filter((n) => !Number.isNaN(n));
+      payableFrom = stamps.length ? isoDate(new Date(Math.max(...stamps))) : today();
+    } else blocked = 'The signed agreement requires client payment before provider payout.';
+  } else if (trigger === 'Approved Milestone') {
+    if (wo.verified_at) payableFrom = isoDate(wo.verified_at);
+    else blocked = 'The signed agreement requires an approved completion milestone before provider payout.';
+  } else { // Completion Verified (default) and any unknown trigger
+    if (wo.verified_at) payableFrom = isoDate(wo.verified_at);
+    else blocked = 'The signed agreement requires verified completion before provider payout.';
+  }
+
+  const dueDate = payableFrom ? addDays(payableFrom, dueDays) : null;
+  const cleared = num(wo.provider_paid_amount) >= round2(wo.provider_fee) - 0.009 && round2(wo.provider_fee) > 0;
+  const overdue = !!(dueDate && !cleared && dueDate < today());
+  const days_to_due = dueDate ? Math.round((new Date(dueDate).getTime() - new Date(today()).getTime()) / 864e5) : null;
+  return { eligible: !!payableFrom, blocked_reason: blocked, payout_trigger: trigger, payment_due_days: dueDays, payable_from: payableFrom, due_date: dueDate, overdue, days_to_due };
+}
+
 /**
  * Pay a provider against a work order.
  *
@@ -473,19 +534,14 @@ async function recordProviderPayout(opts, { transaction } = {}) {
       : null;
     if (!agreement) throw new LedgerError(400, 'This payout has no signed provider agreement snapshot.');
 
-    if (!opts.skip_gates) {
-      const trigger = String(agreement.payout_trigger || '').trim();
-      if (trigger === 'Client Payment Received') {
-        const invoices = wo.project_id
-          ? await M.WtInvoice.findAll({ where: { branch_id: opts.branch_id, project_id: wo.project_id }, raw: true, transaction: t })
-          : [];
-        const live = invoices.filter((i) => String(i.status || '').toLowerCase() !== 'void');
-        const clientPaid = live.length > 0 && live.every((i) => num(i.outstanding) <= 0.009);
-        if (!clientPaid) throw new LedgerError(400, 'The signed agreement requires client payment before provider payout.');
-      }
-      if ((trigger === 'Approved Milestone' || trigger === 'Completion Verified') && !wo.verified_at) {
-        throw new LedgerError(400, `The signed agreement requires ${trigger === 'Approved Milestone' ? 'an approved completion milestone' : 'verified completion'} before provider payout.`);
-      }
+    // The project's invoices are needed to date the client-payment trigger; load
+    // once and reuse for both the gate and the due-date the schedule computes.
+    const projectInvoices = wo.project_id
+      ? await M.WtInvoice.findAll({ where: { branch_id: opts.branch_id, project_id: wo.project_id }, raw: true, transaction: t })
+      : [];
+    const schedule = providerPayoutSchedule(wo, agreement, projectInvoices);
+    if (!opts.skip_gates && !schedule.eligible) {
+      throw new LedgerError(400, schedule.blocked_reason || 'This payout is not yet due under the signed agreement.');
     }
 
     const amount = round2(opts.amount);
@@ -521,15 +577,20 @@ async function recordProviderPayout(opts, { transaction } = {}) {
       actor_id: opts.actor_id,
     }, { transaction: t });
 
-    const standing = await syncWorkOrderCache(wo, { transaction: t });
+    const standing = await syncWorkOrderCache(wo, { transaction: t, schedule });
     return { event, duplicate, workOrder: wo, standing };
   };
 
   return transaction ? run(transaction) : sequelize.transaction(run);
 }
 
-/** Recompute a work order's cached payout columns from the ledger. */
-async function syncWorkOrderCache(wo, { transaction } = {}) {
+/**
+ * Recompute a work order's cached payout columns from the ledger. When a payout
+ * schedule is supplied (or the agreement is on hand to derive one), the payout
+ * due date and an Overdue flag are cached too, so lists and alerts can act on
+ * `payment_due_days` without recomputing the whole agreement each time.
+ */
+async function syncWorkOrderCache(wo, { transaction, schedule } = {}) {
   const events = await historyOf(
     { branch_id: wo.branch_id, subject_type: 'work_order', subject_id: wo.id }, { transaction },
   );
@@ -537,16 +598,34 @@ async function syncWorkOrderCache(wo, { transaction } = {}) {
   const fee = round2(wo.provider_fee);
   const last = events.filter((e) => num(e.amount) > 0).slice(-1)[0];
 
+  // Derive the schedule if the caller didn't pass one (e.g. a reversal path).
+  let sched = schedule;
+  if (sched === undefined && wo.provider_agreement_id) {
+    const P = require('../models/waterTankProviders');
+    const agreement = await P.WtProviderAgreement.findOne({ where: { id: wo.provider_agreement_id, branch_id: wo.branch_id }, transaction });
+    const invoices = agreement && String(agreement.payout_trigger || '') === 'Client Payment Received' && wo.project_id
+      ? await M.WtInvoice.findAll({ where: { branch_id: wo.branch_id, project_id: wo.project_id }, raw: true, transaction })
+      : [];
+    sched = agreement ? providerPayoutSchedule({ ...wo.toJSON(), provider_paid_amount: paid }, agreement, invoices) : null;
+  }
+
+  const cleared = paid >= fee - 0.009 && fee > 0;
+  const overdue = !!(sched && sched.due_date && !cleared && sched.due_date < today());
+  const baseStatus = paid <= 0.009 ? (String(wo.payout_status || '') === 'Not Due' && !(sched && sched.eligible) ? 'Not Due' : 'Pending')
+    : (cleared ? 'Cleared' : 'Partially Paid');
+
   await wo.update({
     provider_paid_amount: paid,
-    payout_status: paid <= 0.009 ? (String(wo.payout_status || '') === 'Not Due' ? 'Not Due' : 'Pending')
-      : (paid >= fee - 0.009 ? 'Cleared' : 'Partially Paid'),
+    // Overdue wins over Pending/Partially Paid so it surfaces in lists; a cleared
+    // payout is never overdue.
+    payout_status: !cleared && overdue ? 'Overdue' : baseStatus,
+    provider_payout_due_date: sched ? sched.due_date : wo.provider_payout_due_date,
     payout_date: last ? (last.received_on || String(last.created_at).slice(0, 10)) : null,
     payout_method: last ? last.method : wo.payout_method,
     payout_reference: last ? last.reference : wo.payout_reference,
   }, { transaction });
 
-  return { fee, paid, remaining: round2(fee - paid) };
+  return { fee, paid, remaining: round2(fee - paid), schedule: sched };
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -836,6 +915,6 @@ module.exports = {
   balanceOf, historyOf, journal, cashOut,
   recordClientReceipt, recordBatchClientReceipt, recordClientRefund,
   recordProviderPayout, recordDirectDisbursement, recordDisbursementRun, reverse,
-  syncInvoiceCache, syncWorkOrderCache,
+  syncInvoiceCache, syncWorkOrderCache, providerPayoutSchedule,
   round2,
 };

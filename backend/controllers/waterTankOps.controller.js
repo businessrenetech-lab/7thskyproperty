@@ -603,23 +603,19 @@ exports.payments = asyncHandler(async (req, res) => {
     .filter((i) => i.due > 0.01 && !eq(i.status, 'cancelled') && !eq(i.status, 'draft'));
 
   const agreementById = Object.fromEntries(agreements.map((agreement) => [agreement.id, agreement]));
+  // One source of truth for "when is this payout due" — the ledger's schedule
+  // helper reads the signed agreement's trigger + payment_due_days.
+  const { providerPayoutSchedule } = require('../services/wtLedger.service');
   const payoutState = (workOrder) => {
     const agreement = agreementById[workOrder.provider_agreement_id];
     if (!agreement) return { eligible: false, blocked_reason: 'No signed provider agreement snapshot' };
     const projectInvoices = invoices.filter((invoice) => workOrder.project_id && invoice.project_id === workOrder.project_id);
-    const clientPaid = projectInvoices.length > 0 && projectInvoices.every((invoice) => eq(invoice.status, 'paid') || num(invoice.paid_amount) >= num(invoice.amount));
-    let triggerAt = null;
-    let blockedReason = null;
-    if (agreement.payout_trigger === 'Client Payment Received') {
-      if (clientPaid) triggerAt = projectInvoices.map((invoice) => invoice.updatedAt || invoice.updated_at || invoice.createdAt || invoice.created_at).filter(Boolean).sort().pop() || new Date();
-      else blockedReason = 'Waiting for client payment';
-    } else if (agreement.payout_trigger === 'Approved Milestone') {
-      if (workOrder.verified_at) triggerAt = workOrder.verified_at;
-      else blockedReason = 'Waiting for an approved completion milestone';
-    } else if (workOrder.verified_at) triggerAt = workOrder.verified_at;
-    else blockedReason = 'Waiting for completion verification';
-    const dueAt = triggerAt ? new Date(new Date(triggerAt).getTime() + num(agreement.payment_due_days) * 864e5).toISOString().slice(0, 10) : null;
-    return { eligible: !!triggerAt, blocked_reason: blockedReason, payout_trigger: agreement.payout_trigger, payment_due_days: num(agreement.payment_due_days), due_at: dueAt, agreement_code: agreement.code };
+    const s = providerPayoutSchedule(workOrder, agreement, projectInvoices);
+    return {
+      eligible: s.eligible, blocked_reason: s.blocked_reason, payout_trigger: s.payout_trigger,
+      payment_due_days: s.payment_due_days, due_at: s.due_date, overdue: s.overdue,
+      days_to_due: s.days_to_due, agreement_code: agreement.code,
+    };
   };
 
   // Payout eligibility follows the signed agreement's structured trigger.

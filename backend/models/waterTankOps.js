@@ -184,6 +184,8 @@ const WtWorkOrder = sequelize.define('WtWorkOrder', {
   // provider payout tracking (Payments & Disbursements)
   provider_paid_amount: { type: D.DECIMAL(15, 2), defaultValue: 0 },
   payout_status: { type: D.STRING(30), defaultValue: 'Not Due' },
+  // Deadline to pay the provider = trigger-satisfied date + agreement.payment_due_days.
+  provider_payout_due_date: D.DATEONLY,
   payout_date: D.DATEONLY, payout_method: D.STRING(40), payout_reference: D.STRING(80),
   // ── delivery lifecycle (Sec. 8 Steps 7-10, Sec. 9 Step 9) ──
   source_quotation: D.STRING(30), source_agreement: D.STRING(40),
