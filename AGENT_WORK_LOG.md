@@ -3927,3 +3927,16 @@ used "the last line starting with `import`", which landed inside a multi-line
   "Already a <service> client" lookup titles and search copy, generic equipment placeholders.
 - VERIFIED: wt-clients/reference returns AC categories + services (Consultation → Residential AC
   Consultation…) and System Type options under X-Service-Line; WT unchanged; admin build passes.
+
+### 2026-08-30 06:55 | Claude Code (Opus 4.8) | COMPLETED | AC bugfix — ServiceItem must scope by branch+vertical, never service_line
+- BUG: opening the quotation builder from an assessment (/…/site-assessments/:code/quotation)
+  failed with "Unknown column 'ServiceItem.service_line' in 'WHERE'". care_services (ServiceItem)
+  has NO service_line column — it is separated by `vertical` — but the earlier service-line
+  scoping pass had spread the full scoped(req) (branch + service_line) into ServiceItem queries.
+- Fixed the ServiceItem catalogue queries to scope by branchScope + vertical only:
+  waterTankQuotation.builder (the visible error) and waterTankProject.reference (which had a
+  .catch that silently returned an EMPTY catalog for both WT and AC — the project builder's
+  price list was quietly blank). waterTankAmc/Intake/Invoice already used branchScope; made
+  them explicit for clarity.
+- VERIFIED: AC builder for SA-0407 returns 45 catalog items (no error); wt-projects/reference
+  catalog is 41 (WT) / 45 (AC).

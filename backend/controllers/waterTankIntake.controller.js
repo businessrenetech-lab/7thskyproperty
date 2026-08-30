@@ -149,7 +149,8 @@ exports.publicEnquiry = asyncHandler(async (req, res) => {
 exports.requestReference = asyncHandler(async (req, res) => {
   const scope = branchScope(req);
   const [catalogRows, providers] = await Promise.all([
-    ServiceItem.findAll({ where: { ...scope, vertical: catalogueVertical(req), is_active: true }, order: [['sort_order', 'ASC']], raw: true }),
+    // ServiceItem is keyed by `vertical`, not service_line — scope by branch + vertical only.
+    ServiceItem.findAll({ where: { ...branchScope(req), vertical: catalogueVertical(req), is_active: true }, order: [['sort_order', 'ASC']], raw: true }),
     M.WtProvider.findAll({ where: scope, order: [['rank', 'ASC'], ['business_name', 'ASC']], raw: true }),
   ]);
 

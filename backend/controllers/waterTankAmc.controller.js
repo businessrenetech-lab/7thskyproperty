@@ -34,7 +34,8 @@ exports.reference = asyncHandler(async (req, res) => {
   const branchId = resolveBranchId(req);
   const [providers, catalogRows, agreements, projects] = await Promise.all([
     M.WtProvider.findAll({ where: scope, order: [['business_name', 'ASC']], raw: true }),
-    ServiceItem.findAll({ where: { ...scope, vertical: catalogueVertical(req), is_active: true }, order: [['sort_order', 'ASC']], raw: true }).catch(() => []),
+    // ServiceItem is keyed by `vertical`, not service_line — scope by branch + vertical only.
+    ServiceItem.findAll({ where: { ...branchScope(req), vertical: catalogueVertical(req), is_active: true }, order: [['sort_order', 'ASC']], raw: true }).catch(() => []),
     M.WtClient.findAll({ where: { ...scope, agreement_status: 'Signed' }, attributes: ['code', 'name', 'agreement_code'], raw: true }).catch(() => []),
     M.WtProject.findAll({ where: scope, attributes: ['code', 'name', 'client_name'], order: [['id', 'DESC']], limit: 50, raw: true }).catch(() => []),
   ]);

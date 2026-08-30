@@ -321,9 +321,11 @@ exports.builder = asyncHandler(async (req, res) => {
 
   const [client, catalogRows, existing, branding] = await Promise.all([
     M.WtClient.findOne({ where: { ...scope, name: a.client_name }, raw: true }),
-    // Schedule C of the Customer Service Agreement — the standard price schedule
+    // Schedule C of the Customer Service Agreement — the standard price schedule.
+    // ServiceItem (care_services) is separated by `vertical`, NOT service_line, so
+    // it must be scoped by branch + vertical — never the full service scope.
     ServiceItem.findAll({
-      where: { ...scope, vertical: catalogueVertical(req) },
+      where: { ...branchScope(req), vertical: catalogueVertical(req) },
       order: [['sort_order', 'ASC'], ['code', 'ASC']],
       raw: true,
     }),
