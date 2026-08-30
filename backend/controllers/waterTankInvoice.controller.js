@@ -124,24 +124,50 @@ exports.clientLookup = asyncHandler(async (req, res) => {
     limit: 10, order: [['id', 'DESC']], raw: true,
   });
 
-  const byClient = projects.reduce((acc, p) => {
-    if (!p.client_code) return acc;
-    (acc[p.client_code] = acc[p.client_code] || []).push({ code: p.code, name: p.name, value: num(p.contract_value) });
+  const codes = clients.map((c) => c.code).filter(Boolean);
+
+  // ALL of each matched client's projects (not only the ones that matched the search
+  // term), so the "Against project" picker shows every open engagement.
+  const allProjects = codes.length
+    ? await M.WtProject.findAll({
+      where: { ...scope, client_code: { [Op.in]: codes } },
+      attributes: ['code', 'name', 'client_code', 'contract_value', 'status'],
+      order: [['id', 'DESC']], raw: true,
+    }).catch(() => [])
+    : [];
+  const byClient = allProjects.reduce((acc, p) => {
+    (acc[p.client_code] = acc[p.client_code] || []).push({ code: p.code, name: p.name, value: num(p.contract_value), status: p.status });
     return acc;
   }, {});
+
+  // Each client's outstanding due balance — the sum still owed on their live
+  // invoices (a draft is not yet owed; void/cancelled/paid are done).
+  const dueByClient = {};
+  if (codes.length) {
+    const invs = await M.WtInvoice.findAll({
+      where: { ...scope, client_code: { [Op.in]: codes } },
+      attributes: ['client_code', 'outstanding', 'status'], raw: true,
+    }).catch(() => []);
+    for (const inv of invs) {
+      const st = String(inv.status || '').toLowerCase();
+      if (['draft', 'void', 'cancelled', 'paid'].includes(st)) continue;
+      dueByClient[inv.client_code] = (dueByClient[inv.client_code] || 0) + num(inv.outstanding);
+    }
+  }
 
   res.json(clients.map((c) => ({
     id: c.id, code: c.code, name: c.name, email: c.email, mobile: c.mobile,
     address: c.service_address, district: c.district, client_type: c.client_type,
     agreement_status: c.agreement_status, agreement_code: c.agreement_code,
     projects: byClient[c.code] || [],
+    due_balance: round2(dueByClient[c.code] || 0),
     // why this row matched, so the operator can see the search worked
     matched_on: [
       c.name && c.name.toLowerCase().includes(q.toLowerCase()) && 'name',
       c.email && c.email.toLowerCase().includes(q.toLowerCase()) && 'email',
       c.mobile && c.mobile.includes(q) && 'mobile',
       c.code && c.code.toLowerCase().includes(q.toLowerCase()) && 'client code',
-      (byClient[c.code] || []).length && 'project',
+      projects.some((p) => p.client_code === c.code) && 'project',
     ].filter(Boolean),
   })));
 });

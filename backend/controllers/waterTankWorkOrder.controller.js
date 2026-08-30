@@ -330,6 +330,17 @@ exports.schedule = asyncHandler(async (req, res) => {
   res.json(wo);
 });
 
+/** POST /wt-work-orders/:id/raise-invoice — draft an invoice from this job. */
+exports.raiseInvoice = asyncHandler(async (req, res) => {
+  const wo = await load(req, res); if (!wo) return;
+  const invoiceSvc = require('../services/wtInvoice.service');
+  const inv = await invoiceSvc.createFromWorkOrder(wo.get({ plain: true }), {
+    branchId: resolveBranchId(req), actor: actorOf(req),
+  });
+  await logEvent(req, wo, `invoice ${inv.code} raised from work order`);
+  res.status(201).json(inv);
+});
+
 /** POST /wt-work-orders/:id/start — crew attended. */
 exports.start = asyncHandler(async (req, res) => {
   const wo = await load(req, res); if (!wo) return;

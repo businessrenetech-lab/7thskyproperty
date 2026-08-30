@@ -30,6 +30,7 @@ router.post('/:id/schedule', canOperate, ctrl.schedule);
 router.post('/:id/start', canOperate, ctrl.start);
 router.post('/:id/complete', canOperate, ctrl.complete);
 router.post('/:id/verify', canOperate, ctrl.verify);
+router.post('/:id/raise-invoice', canOperate, ctrl.raiseInvoice);
 // Provider payouts — moved here from the unguarded generic /wt-ops router, and
 // written through the single money ledger. Recording one is a finance action;
 // reversing one is a correction to the books and stays with administrators.

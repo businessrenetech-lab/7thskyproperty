@@ -245,7 +245,13 @@ export default function WorkOrderDetail() {
       ],
       onSubmit: (f) => post('/verify', f, 'Verification saved'),
     }),
-    invoice: () => nav('/water-tank/invoices'),
+    invoice: async () => {
+      try {
+        const { data } = await api.post(`/wt-work-orders/${w.id}/raise-invoice`);
+        toast.ok(`${data.code} drafted from ${w.code}`);
+        nav(`/water-tank/invoices/${data.code}`);
+      } catch (e) { toast.err(errText(e, 'Could not raise the invoice')); }
+    },
   };
 
   const decline = () => setStep({

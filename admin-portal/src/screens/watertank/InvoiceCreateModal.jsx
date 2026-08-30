@@ -140,6 +140,16 @@ export default function InvoiceCreateModal({ onClose, onCreated }) {
                   <div style={{ fontSize: 11.5, color: 'var(--wt-muted)' }}>
                     {[client.code, client.mobile, client.email, client.address].filter(Boolean).join(' · ')}
                   </div>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 3, flexWrap: 'wrap' }}>
+                    {Number(client.due_balance) > 0 && (
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--wt-red, #c0392b)' }}>
+                        Due balance: {bdt(client.due_balance)}
+                      </span>
+                    )}
+                    {client.projects?.length > 0 && (
+                      <span style={{ fontSize: 11.5, color: 'var(--wt-muted)' }}>{client.projects.length} project(s)</span>
+                    )}
+                  </div>
                   {client.agreement_status === 'Signed' && (
                     <div style={{ fontSize: 11.5, color: 'var(--wt-green)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                       <ShieldCheck size={12} /> Agreement {client.agreement_code} signed
@@ -166,6 +176,7 @@ export default function InvoiceCreateModal({ onClose, onCreated }) {
                           <span className="mt">
                             {[c.code, c.mobile, c.email].filter(Boolean).join(' · ')}
                             {c.projects?.length ? ` · ${c.projects.length} project(s)` : ''}
+                            {Number(c.due_balance) > 0 ? ` · due ${bdt(c.due_balance)}` : ''}
                           </span>
                         </span>
                         {c.matched_on?.length > 0 && (

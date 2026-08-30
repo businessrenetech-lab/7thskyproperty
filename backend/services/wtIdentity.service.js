@@ -141,6 +141,13 @@ async function ensureProject(branchId, client, hint = {}, transaction, dryRun = 
     code: await nextCode('projects', branchId, transaction, sl),
     name: `${client.name} — ${hint.title || `${serviceLabel(sl)} Service`}`,
     client_name: client.name,
+    // Carry the client's identity onto the project so the client file, invoice
+    // client-lookup and project dashboard can all resolve the project to a client.
+    client_code: client.code || null,
+    client_id: client.id || null,
+    client_type: client.client_type || 'Residential',
+    client_phone: client.mobile || client.phone || null,
+    client_email: client.email || null,
     assigned_provider: hint.provider_name || null,
     start_date: today(),
     stage: hint.stage || 'Lead',

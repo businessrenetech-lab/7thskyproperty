@@ -427,10 +427,63 @@ async function createFromAmc(amc, { branchId, actor, transaction, onlyFirst = fa
   return out;
 }
 
+/**
+ * Raise a DRAFT invoice straight from a completed/assigned work order — the "Raise
+ * the invoice" action on the job. Bills the work order's own priced lines to its
+ * client and project. Idempotent: a work order that already has an invoice returns
+ * that one rather than a duplicate.
+ */
+async function createFromWorkOrder(wo, { branchId, actor, transaction } = {}) {
+  const bid = branchId || wo.branch_id || 1;
+  const existing = await M.WtInvoice.findOne({
+    where: { branch_id: bid, work_order_code: wo.code }, transaction,
+  });
+  if (existing) return existing;
+
+  const sl = wo.service_line || 'water_tank';
+  const rawLines = asArray(wo.lines);
+  const lines = rawLines.length
+    ? rawLines.map((l) => ({
+      code: l.code || null,
+      name: l.name || l.description || 'Service',
+      description: l.description || null,
+      qty: num(l.qty) || 1,
+      unit: l.unit || null,
+      // work-order lines store the client price under `price`; fall back sensibly
+      unit_price: num(l.price ?? l.unit_price ?? l.agreed_price ?? l.line_total),
+      group: l.group || 'service',
+    }))
+    // a work order with no coded lines still bills its contract value as one line
+    : [{ code: null, name: wo.category || 'Service', qty: 1, unit_price: num(wo.total_contract), group: 'service' }];
+
+  // resolve the client's bill-to details
+  let client = null;
+  if (wo.client_code) client = await M.WtClient.findOne({ where: { branch_id: bid, code: wo.client_code }, transaction, raw: true });
+  if (!client && wo.client_name) client = await M.WtClient.findOne({ where: { branch_id: bid, name: wo.client_name }, transaction, raw: true });
+
+  return persistDraft({
+    service_line: sl,
+    client_name: wo.client_name,
+    client_code: wo.client_code || client?.code || null,
+    client_id: client?.id || null,
+    bill_to_name: wo.client_name,
+    bill_to_email: client?.email || null,
+    bill_to_phone: wo.client_phone || client?.mobile || null,
+    bill_to_address: wo.site_address || client?.service_address || null,
+    site_address: wo.site_address || client?.service_address || null,
+    project_id: wo.project_id || null,
+    inv_type: 'Final',
+    lines,
+    work_order_code: wo.code,
+    source_type: 'WorkOrder',
+    notes: `Raised from work order ${wo.code}.`,
+  }, { branchId: bid, actor: actor || 'System' }, transaction);
+}
+
 module.exports = {
   INVOICE_STATUSES, INVOICE_TYPES, EDITABLE_STATUSES,
   computeTotals, deriveStatus, lineTotal, nextInvoiceCode,
-  buildFromAgreement, buildAmcSchedule,
+  buildFromAgreement, buildAmcSchedule, createFromWorkOrder,
   persistDraft, createFromSignedAgreement, createFromAmc,
   num, round2, today, eq, asArray, asObject, addDays,
 };
