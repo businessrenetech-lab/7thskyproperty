@@ -3912,3 +3912,18 @@ used "the last line starting with `import`", which landed inside a multi-line
   a Water Tank client's portal is unchanged (service_line defaults to water_tank).
 - VERIFIED: backend returns service_line; Portal threads profileForLine → Property; both builds
   pass; dist rebuilt.
+
+### 2026-08-30 06:30 | Claude Code (Opus 4.8) | COMPLETED | AC milestone 4c — new-client registration wizard is service-aware
+- /air-conditioning/clients/new still asked Water Tank things: the consultation service picker
+  (category → services) came from wt-clients/reference's hard-coded SERVICE_CATALOGUE, plus tank
+  dropdowns and "water-tank client" copy.
+- Added `service_catalogue` to each service line's manifest ui (WT = the existing map; AC =
+  Consultation/Installation/Relocation/Maintenance/Repairs/Cleaning/Refrigerant/Smart Climate/
+  AMC/Emergency → real AC services). wt-clients/reference (both the endpoint and the client
+  dossier's embedded reference) now serve the active service line's service_catalogue,
+  property_types, and equipment.type_options for tank_types.
+- ClientCreate.jsx: the requested-service picker, equipment fields and copy now follow the
+  service line — buildSteps(eq) for the consultation step hint, svcProfile().label for the
+  "Already a <service> client" lookup titles and search copy, generic equipment placeholders.
+- VERIFIED: wt-clients/reference returns AC categories + services (Consultation → Residential AC
+  Consultation…) and System Type options under X-Service-Line; WT unchanged; admin build passes.

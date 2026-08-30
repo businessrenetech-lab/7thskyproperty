@@ -50,6 +50,14 @@ const SERVICE_LINES = {
       project_types: ['Cleaning & Maintenance', 'Tank Sanitisation', 'Repair & Waterproofing', 'Water Quality & Testing', 'AMC Visit', 'Inspection Only', 'Mixed Scope'],
       categories: ['Cleaning', 'Disinfection', 'Repairs', 'Water Quality', 'Maintenance', 'AMC', 'Inspection'],
       property_types: ['Apartment', 'House', 'Duplex', 'Commercial Building', 'Hotel', 'Restaurant', 'School', 'Hospital', 'Factory', 'Warehouse', 'Mosque', 'Other'],
+      // The consultation service picker: category → the services a client can request.
+      service_catalogue: {
+        Residential: ['Rooftop Water Tank Cleaning', 'Underground Water Tank Cleaning', 'Apartment Water Tank Cleaning', 'House Water Tank Cleaning', 'Tank Sanitisation', 'Bacteria & Algae Treatment', 'Water Tank Inspection', 'Tank Maintenance'],
+        Commercial: ['Commercial Buildings', 'Hotels', 'Restaurants', 'Schools', 'Hospitals', 'Factories', 'Warehouses'],
+        Repair: ['Crack Repair', 'Leakage Repair', 'Valve Replacement', 'Pipe Repair', 'Waterproofing', 'Structural Reinforcement'],
+        'Water Quality': ['Water Testing', 'Water Treatment', 'Filtration Systems', 'Water Purification'],
+        AMC: ['Residential AMC', 'Commercial AMC'],
+      },
       // The project's tank_type/tanks_count/tank_capacity/water_source columns are
       // reused per service; only the labels and option lists differ.
       equipment: {
@@ -101,6 +109,18 @@ const SERVICE_LINES = {
       project_types: ['Consultation', 'Installation', 'Relocation', 'Maintenance & Repairs', 'Cleaning', 'Refrigerant Service', 'AMC Visit', 'Smart Climate Control', 'Emergency Service', 'Mixed Scope'],
       categories: ['Consultation', 'Installation', 'Relocation', 'Maintenance', 'Repairs', 'Cleaning', 'Refrigerant', 'AMC', 'Smart Climate', 'Emergency'],
       property_types: ['House', 'Apartment', 'Office', 'Retail Shop', 'Restaurant', 'Café', 'School', 'Hospital', 'Warehouse', 'Factory', 'Commercial Building', 'Other'],
+      service_catalogue: {
+        Consultation: ['Residential AC Consultation', 'Commercial Site Assessment', 'Energy Efficiency Assessment'],
+        Installation: ['Split AC Installation', 'Inverter AC Installation', 'Cassette AC Installation', 'Ducted AC Installation', 'Multi-Zone AC Installation'],
+        Relocation: ['Residential AC Relocation', 'Commercial AC Relocation'],
+        Maintenance: ['Preventive Maintenance', 'Commercial Preventive Maintenance', 'Fault Diagnosis'],
+        Repairs: ['Compressor Replacement', 'Fan Motor Replacement', 'PCB Replacement', 'Sensor Replacement'],
+        Cleaning: ['Standard AC Cleaning', 'Deep Chemical Cleaning', 'Indoor Unit Cleaning', 'Outdoor Unit Cleaning'],
+        Refrigerant: ['Leak Detection', 'Refrigerant Gas Top-Up', 'Full Refrigerant Gas Refill'],
+        'Smart Climate': ['Smart Thermostat Installation', 'Wi-Fi Smart AC Configuration'],
+        AMC: ['Residential AMC', 'Commercial AMC'],
+        Emergency: ['Emergency Call-Out', 'After Hours / Public Holiday Call-Out'],
+      },
       // Reuses the project's tank_* / water_source columns as generic equipment
       // fields — no migration needed; only the labels and options change.
       equipment: {

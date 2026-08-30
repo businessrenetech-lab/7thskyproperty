@@ -11,7 +11,7 @@
  * so the API refuses to move a client to Provider Assignment without one.
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine, serviceUi } = require('../utils/controllerHelpers');
 // Branch + service-line scope for wt_* reads (Contact queries keep plain branchScope).
 const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
@@ -75,16 +75,23 @@ const CLOSURE_CHECKLIST = [
 // Sec. 9 Step 10 handover pack
 const HANDOVER_DOCS = ['Cleaning Report', 'Inspection Report', 'Water Testing Results', 'Warranty Information', 'Maintenance Recommendations'];
 
-exports.reference = (req, res) => res.json({
-  stages: STAGES,
-  stage_phase: STAGE_PHASE,
-  service_catalogue: SERVICE_CATALOGUE,
-  property_types: PROPERTY_TYPES,
-  tank_types: TANK_TYPES,
-  enquiry_channels: ENQUIRY_CHANNELS,
-  closure_checklist: CLOSURE_CHECKLIST,
-  handover_docs: HANDOVER_DOCS,
-});
+exports.reference = (req, res) => {
+  const ui = serviceUi(req);
+  res.json({
+    stages: STAGES,
+    stage_phase: STAGE_PHASE,
+    // Consultation service picker + property/equipment options come from the
+    // active service line, so the AC console never lists Water Tank services.
+    service_catalogue: ui.service_catalogue || SERVICE_CATALOGUE,
+    property_types: ui.property_types || PROPERTY_TYPES,
+    tank_types: ui.equipment?.type_options || TANK_TYPES,
+    equipment: ui.equipment || null,
+    service_label: ui.full_label || null,
+    enquiry_channels: ENQUIRY_CHANNELS,
+    closure_checklist: CLOSURE_CHECKLIST,
+    handover_docs: HANDOVER_DOCS,
+  });
+};
 
 const logEvent = (branchId, clientId, event_type, title, detail, actor) =>
   M.WtClientEvent.create({ branch_id: branchId, client_id: clientId, event_type, title, detail, actor, occurred_at: new Date() });
@@ -309,7 +316,7 @@ exports.detail = asyncHandler(async (req, res) => {
     ...gateInfo,
     stages: STAGES,
     stage_phase: STAGE_PHASE,
-    reference: { closure_checklist: CLOSURE_CHECKLIST, handover_docs: HANDOVER_DOCS, service_catalogue: SERVICE_CATALOGUE },
+    reference: { closure_checklist: CLOSURE_CHECKLIST, handover_docs: HANDOVER_DOCS, service_catalogue: serviceUi(req).service_catalogue || SERVICE_CATALOGUE, equipment: serviceUi(req).equipment || null },
     account: {
       lifetime_value: invoices.reduce((s, i) => s + num(i.amount), 0),
       collected: invoices.reduce((s, i) => s + (num(i.paid_amount) || (eq(i.status, 'paid') ? num(i.amount) : 0)), 0),

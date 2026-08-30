@@ -5,7 +5,7 @@ import {
   ClipboardList, Sparkles, Users, X, Loader2,
 } from 'lucide-react';
 import api from '../../../services/api';
-import { useSvcNav, WtHead, DatePicker, EmptyState, toast, errText, Pill, svcEquip } from '../common';
+import { useSvcNav, WtHead, DatePicker, EmptyState, toast, errText, Pill, svcEquip, svcProfile } from '../common';
 
 /*
  * New Client — SSPC-WTCM-SOP-01 Sec. 5 Phase 1 (Client Enquiry).
@@ -15,11 +15,11 @@ import { useSvcNav, WtHead, DatePicker, EmptyState, toast, errText, Pill, svcEqu
  * actually makes on the call.
  */
 
-const STEPS = [
+const buildSteps = (eq) => [
   { key: 'who', label: 'Who is the client', hint: 'Search first, then register', icon: Users, sop: 'Sec. 5 Step 1' },
   { key: 'contact', label: 'Contact & property', hint: 'Address and property type', icon: Building2, sop: 'Sec. 5 Step 1' },
   { key: 'service', label: 'Requested service', hint: 'What they are asking for', icon: ClipboardList, sop: 'Sec. 5 Step 1' },
-  { key: 'consult', label: 'Initial consultation', hint: 'Tanks, issues, AMC', icon: Droplets, sop: 'Sec. 5 Step 2' },
+  { key: 'consult', label: 'Initial consultation', hint: `${eq.section_label.replace(' Details', '')}, issues, AMC`, icon: Droplets, sop: 'Sec. 5 Step 2' },
 ];
 
 const DISTRICTS = ['Dhaka', 'Cumilla', 'Chattogram', 'Sylhet', 'Rajshahi', 'Khulna', 'Barishal', 'Rangpur', 'Mymensingh', 'Gazipur', 'Narayanganj'];
@@ -27,6 +27,8 @@ const CLIENT_TYPES = ['Residential', 'Commercial', 'Industrial'];
 const initials = (n) => String(n || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
 export default function ClientCreate() {
+  const STEPS = buildSteps(svcEquip());
+  const svc = svcProfile().label;
   const nav = useSvcNav();
   const eq = svcEquip();
   const [step, setStep] = useState(0);
@@ -151,7 +153,7 @@ export default function ClientCreate() {
             <>
               <div className="wt-wizpane-h">
                 <h2>Is this client already on file?</h2>
-                <p>Search the water-tank client book and the wider Seventh Sky contact directory first — linking an existing record keeps their service history in one place.</p>
+                <p>Search the {svc.toLowerCase()} client book and the wider Seventh Sky contact directory first — linking an existing record keeps their service history in one place.</p>
               </div>
               <label className="wt-search" style={{ width: '100%', maxWidth: 460 }}>
                 <Search />
@@ -163,7 +165,7 @@ export default function ClientCreate() {
                 <>
                   {hits.water_tank.length > 0 && (
                     <div>
-                      <div className="wt-sec-title" style={{ marginBottom: 8 }}>Already a water-tank client ({hits.water_tank.length})</div>
+                      <div className="wt-sec-title" style={{ marginBottom: 8 }}>Already a {svc} client ({hits.water_tank.length})</div>
                       <div className="wt-lookup">
                         {hits.water_tank.map((c) => (
                           <button key={c.id} className="wt-lookup-item" onClick={() => nav(`/water-tank/clients/${c.code}`)}>
@@ -182,7 +184,7 @@ export default function ClientCreate() {
 
                   {hits.contacts.length > 0 && (
                     <div>
-                      <div className="wt-sec-title" style={{ marginBottom: 8 }}>Known to Seventh Sky, not yet a water-tank client ({hits.contacts.length})</div>
+                      <div className="wt-sec-title" style={{ marginBottom: 8 }}>Known to Seventh Sky, not yet a {svc} client ({hits.contacts.length})</div>
                       <div className="wt-lookup">
                         {hits.contacts.map((c) => (
                           <button key={c.id} className="wt-lookup-item" onClick={() => useContact(c)}>
@@ -237,7 +239,7 @@ export default function ClientCreate() {
               </div>
               <div className="wt-field"><label>Service address *</label>
                 <input className="wt-input" value={f.service_address} onChange={(e) => set('service_address', e.target.value)}
-                  placeholder="House / road / area — where the tanks actually are" /></div>
+                  placeholder="House / road / area — where the equipment actually is" /></div>
               <div className="wt-grid2">
                 <div className="wt-field"><label>District</label>
                   <select className="wt-select" value={f.district} onChange={(e) => set('district', e.target.value)}>
