@@ -149,7 +149,9 @@ export default function AssessmentForm() {
     ...f,
     duration_minutes: Number(f.duration_minutes) || 0,
     photos_count: f.photos.length + f.photos_after.length,
-    access_safe: f.checklist.tank_access_safe === true,
+    // "site access safe" = any Access & Safety check confirmed (the first such check
+    // differs per service line — tank access for Water Tank, power isolation for AC).
+    access_safe: activeChecks.some((c) => c.group === 'Access & Safety' && f.checklist[c.key] === true),
     assessed_date: f.assessed_date || null,
     signed_off_date: f.signed_off_date || null,
   });
@@ -376,22 +378,19 @@ export default function AssessmentForm() {
               <div className="wt-wizpane-h"><h2>{svcAssess().quality_label}</h2>
                 <p>What you can see, and what the on-site checks say. Readings here feed the assessment report.</p></div>
               <div className="wt-grid2">
-                <div className="wt-field"><label>Contamination observed</label>
+                <div className="wt-field"><label>{svcAssess().obs1_label || 'Contamination observed'}</label>
                   <input className="wt-input" value={f.contamination} onChange={(e) => set('contamination', e.target.value)}
-                    placeholder="Algae bloom, sediment, biofilm…" /></div>
-                <div className="wt-field"><label>Leakage observed</label>
+                    placeholder={svcAssess().obs1_ph || 'Algae bloom, sediment, biofilm…'} /></div>
+                <div className="wt-field"><label>{svcAssess().obs2_label || 'Leakage observed'}</label>
                   <input className="wt-input" value={f.leakage} onChange={(e) => set('leakage', e.target.value)}
-                    placeholder="Hairline crack at base joint…" /></div>
+                    placeholder={svcAssess().obs2_ph || 'Hairline crack at base joint…'} /></div>
               </div>
-              <div className="wt-field"><label>On-site water test readings</label>
+              <div className="wt-field"><label>{svcAssess().readings_label || 'On-site readings'}</label>
                 <div className="wt-grid3">
-                  <input className="wt-input" value={f.water_test.ph || ''} onChange={(e) => setWater('ph', e.target.value)} placeholder="pH" />
-                  <input className="wt-input" value={f.water_test.tds || ''} onChange={(e) => setWater('tds', e.target.value)} placeholder="TDS (ppm)" />
-                  <input className="wt-input" value={f.water_test.turbidity || ''} onChange={(e) => setWater('turbidity', e.target.value)} placeholder="Turbidity (NTU)" />
-                </div>
-                <div className="wt-grid2" style={{ marginTop: 8 }}>
-                  <input className="wt-input" value={f.water_test.chlorine || ''} onChange={(e) => setWater('chlorine', e.target.value)} placeholder="Residual chlorine (mg/L)" />
-                  <input className="wt-input" value={f.water_test.bacteria || ''} onChange={(e) => setWater('bacteria', e.target.value)} placeholder="Bacteria / coliform result" />
+                  {(svcAssess().readings || []).map((rd) => (
+                    <input key={rd.key} className="wt-input" value={f.water_test[rd.key] || ''}
+                      onChange={(e) => setWater(rd.key, e.target.value)} placeholder={rd.ph} />
+                  ))}
                 </div>
               </div>
             </>

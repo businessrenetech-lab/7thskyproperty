@@ -430,9 +430,13 @@ exports.assessmentReference = (req, res) => {
   // active service line so the AC assessment never lists tank materials.
   const ui = serviceUi(req);
   res.json({
-    standard_checks: STANDARD_CHECKS,
-    templates: Object.entries(CHECK_TEMPLATES).map(([key, t]) => ({ key, label: t.label, extra: t.extra })),
-    equipment_options: EQUIPMENT_OPTIONS,
+    // Safety checklist, templates and equipment follow the active service line too,
+    // so the AC assessment shows AC checks (power isolation, refrigerant, coils)
+    // rather than the Water Tank tank-access / confined-space list.
+    standard_checks: ui.assess_checks || STANDARD_CHECKS,
+    templates: ui.assess_templates
+      || Object.entries(CHECK_TEMPLATES).map(([key, t]) => ({ key, label: t.label, extra: t.extra })),
+    equipment_options: ui.assess_equipment || EQUIPMENT_OPTIONS,
     comment_categories: COMMENT_CATEGORIES,
     risk_levels: ['Low', 'Medium', 'High', 'Critical'],
     equipment: ui.equipment || null,

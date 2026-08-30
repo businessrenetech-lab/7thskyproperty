@@ -44,6 +44,13 @@ export const SERVICE_UI = {
     assess: {
       profile_label: 'Tank profile', profile_hint: 'Type, capacity, source',
       quality_label: 'Water quality', quality_hint: 'Contamination & readings',
+      obs1_label: 'Contamination observed', obs1_ph: 'Algae bloom, sediment, biofilm…',
+      obs2_label: 'Leakage observed', obs2_ph: 'Hairline crack at base joint…',
+      readings_label: 'On-site water test readings',
+      readings: [
+        { key: 'ph', ph: 'pH' }, { key: 'tds', ph: 'TDS (ppm)' }, { key: 'turbidity', ph: 'Turbidity (NTU)' },
+        { key: 'chlorine', ph: 'Residual chlorine (mg/L)' }, { key: 'bacteria', ph: 'Bacteria / coliform result' },
+      ],
     },
     report_types: ['Site Assessment', 'Cleaning', 'Inspection', 'Testing', 'Repair', 'AMC'],
     report_placeholder: 'e.g. Drained and scrubbed both rooftop tanks, disinfected, flushed lines and tested residual.',
@@ -77,6 +84,14 @@ export const SERVICE_UI = {
     assess: {
       profile_label: 'Equipment profile', profile_hint: 'Type, capacity, refrigerant',
       quality_label: 'Condition & performance', quality_hint: 'Faults & readings',
+      obs1_label: 'Faults / issues observed', obs1_ph: 'Weak cooling, unusual noise, ice-up, tripping…',
+      obs2_label: 'Leakage observed', obs2_ph: 'Refrigerant oil traces, condensate / water drip…',
+      readings_label: 'On-site performance readings',
+      readings: [
+        { key: 'supply_temp', ph: 'Supply air (°C)' }, { key: 'return_temp', ph: 'Return air (°C)' },
+        { key: 'pressure', ph: 'Refrigerant pressure (psi)' },
+        { key: 'current', ph: 'Current draw (A)' }, { key: 'superheat', ph: 'Superheat / subcool' },
+      ],
     },
     report_types: ['Site Assessment', 'Installation', 'Servicing', 'Cleaning', 'Repair', 'AMC'],
     report_placeholder: 'e.g. Serviced 2 split units, chemical-washed coils and filters, checked refrigerant pressure and tested cooling.',

@@ -146,6 +146,42 @@ const SERVICE_LINES = {
       },
       assess_materials: ['Gree', 'Midea', 'Daikin', 'General', 'Carrier', 'Samsung', 'LG', 'Chigo', 'Other'],
       assess_sources: ['R32', 'R410A', 'R22', 'R290', 'Other'],
+      // Site-assessment safety/condition checklist for Air Conditioning — replaces
+      // the Water Tank tank-access/confined-space checks so the AC assessment never
+      // shows tank wording under "Safety verification".
+      assess_checks: [
+        { key: 'power_isolated', label: 'Power supply isolated / breaker off before work', group: 'Access & Safety' },
+        { key: 'height_access_safe', label: 'Safe access to high / roof-mounted outdoor units (ladder, scaffold)', group: 'Access & Safety' },
+        { key: 'electrical_earth', label: 'Earthing and electrical safety verified', group: 'Access & Safety' },
+        { key: 'refrigerant_ppe', label: 'Refrigerant handling PPE and recovery kit on site', group: 'Access & Safety' },
+        { key: 'unit_mounting_secure', label: 'Indoor / outdoor unit mounting secure', group: 'Condition' },
+        { key: 'drainage_clear', label: 'Condensate drainage clear and correctly routed', group: 'Condition' },
+        { key: 'coil_condition', label: 'Coils and fins condition assessed (corrosion, damage)', group: 'Condition' },
+        { key: 'refrigerant_leak', label: 'Refrigerant leak indicators checked (oil traces, low gas)', group: 'Condition' },
+        { key: 'electrical_load', label: 'Electrical supply / load adequate for the unit', group: 'Systems' },
+        { key: 'controls_functional', label: 'Thermostat / controls functional test pass', group: 'Systems' },
+      ],
+      assess_templates: [
+        { key: 'standard', label: 'Standard (all systems)', extra: [] },
+        { key: 'split', label: 'Split / Inverter', extra: [
+          { key: 'outdoor_unit_access', label: 'Outdoor unit accessible for service', group: 'Access & Safety' },
+          { key: 'pipe_run_lagged', label: 'Refrigerant pipe run insulated / lagged', group: 'Condition' },
+        ] },
+        { key: 'cassette_ducted', label: 'Cassette / Ducted', extra: [
+          { key: 'ceiling_access', label: 'Ceiling / plenum access available', group: 'Access & Safety' },
+          { key: 'duct_condition', label: 'Ductwork condition and airflow assessed', group: 'Condition' },
+        ] },
+        { key: 'vrf_commercial', label: 'VRF / Commercial', extra: [
+          { key: 'permit_to_work', label: 'Permit to work issued by site management', group: 'Access & Safety' },
+          { key: 'shutdown_window', label: 'Shutdown window agreed with the client', group: 'Access & Safety' },
+          { key: 'multi_zone_map', label: 'Multi-zone / indoor-unit map recorded', group: 'Systems' },
+        ] },
+      ],
+      assess_equipment: [
+        'Refrigerant gauge manifold', 'Vacuum pump', 'Recovery machine', 'Leak detector',
+        'Coil cleaning pump', 'Nitrogen purge kit', 'Multimeter / clamp meter', 'Fin comb',
+        'Ladder / scaffold', 'PPE set',
+      ],
       recommended_services: ['Servicing', 'Standard Cleaning', 'Deep Chemical Cleaning', 'Gas Refill', 'Leak Detection', 'Fault Diagnosis', 'Compressor Replacement', 'PCB Replacement', 'Smart Thermostat Installation', 'AMC Enrolment'],
       report_types: ['Site Assessment', 'Installation', 'Servicing', 'Cleaning', 'Repair', 'AMC'],
       warranty_types: ['Installation', 'Labour', 'Repairs', 'Compressor', 'Parts', 'Manufacturer', 'General Workmanship'],
