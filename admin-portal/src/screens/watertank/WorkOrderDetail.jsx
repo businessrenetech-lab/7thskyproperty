@@ -252,6 +252,18 @@ export default function WorkOrderDetail() {
         nav(`/water-tank/invoices/${data.code}`);
       } catch (e) { toast.err(errText(e, 'Could not raise the invoice')); }
     },
+    payout: () => setStep({
+      title: 'Pay provider', subtitle: `${w.code} · ${w.provider_name || 'provider'}`, submitLabel: 'Record payout',
+      note: `Net payable to the provider, after Seventh Sky's ${bdt(m.ss_fee)} commission. The full amount still owed is prefilled — leave it to clear the payout, or enter less for a partial payment.`,
+      fields: [
+        { key: 'amount', label: 'Payout amount (৳)', type: 'number', value: m.provider_due, hint: `Still owed on this job: ${bdt(m.provider_due)}.` },
+        { key: 'method', label: 'Method', value: 'Bank Transfer' },
+        { key: 'reference', label: 'Reference', value: '' },
+        { key: 'paid_on', label: 'Paid on', type: 'date', value: new Date().toISOString().slice(0, 10) },
+      ],
+      onSubmit: (f) => post('/pay-provider', { ...f, amount: Number(f.amount) || 0 },
+        Number(f.amount) >= m.provider_due - 0.01 ? 'Payout cleared' : 'Partial payout recorded'),
+    }),
   };
 
   const decline = () => setStep({
@@ -372,9 +384,15 @@ export default function WorkOrderDetail() {
                 .map(([k, v]) => <div className="f" key={k}><div className="k">{k}</div><div className="v">{v}</div></div>)}
             </div>
             {m.provider_due > 0 && (
-              <button className="wt-btn" style={{ justifyContent: 'center' }} onClick={() => nav('/water-tank/payments')}>
-                <Wallet size={13} /> Pay provider
-              </button>
+              m.payout?.eligible === false ? (
+                <div className="wt-note" style={{ marginTop: 6 }}>
+                  {m.payout.blocked_reason || 'Payout not due yet.'}
+                </div>
+              ) : (
+                <button className="wt-btn primary" style={{ justifyContent: 'center' }} onClick={() => ACTIONS.payout()}>
+                  <Wallet size={13} /> Pay provider {bdt(m.provider_due)}
+                </button>
+              )
             )}
           </div>
         </div>
