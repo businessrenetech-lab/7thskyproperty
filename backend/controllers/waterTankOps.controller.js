@@ -5,7 +5,7 @@
  * quotations, work-orders, projects, providers, amc, invoices, complaints, comms).
  */
 const { Op } = require('sequelize');
-const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
+const { asyncHandler, branchScope, resolveBranchId, serviceScope, resolveServiceLine, serviceUi } = require('../utils/controllerHelpers');
 // Branch + service-line scope so each service line sees only its own data.
 const scoped = (req) => ({ ...branchScope(req), ...serviceScope(req) });
 const M = require('../models/waterTankOps');
@@ -385,21 +385,27 @@ const EQUIPMENT_OPTIONS = [
 ];
 const COMMENT_CATEGORIES = ['Note', 'Observation', 'Risk', 'Client Request', 'Follow-up'];
 
-exports.assessmentReference = (req, res) => res.json({
-  standard_checks: STANDARD_CHECKS,
-  templates: Object.entries(CHECK_TEMPLATES).map(([key, t]) => ({ key, label: t.label, extra: t.extra })),
-  equipment_options: EQUIPMENT_OPTIONS,
-  comment_categories: COMMENT_CATEGORIES,
-  risk_levels: ['Low', 'Medium', 'High', 'Critical'],
-  tank_types: ['Overhead', 'Underground', 'Rooftop', 'Ground Level', 'Sectional', 'Pressure Vessel'],
-  materials: ['Concrete', 'PVC / Plastic', 'Stainless Steel', 'Mild Steel', 'Fibreglass (GRP)', 'Brick / Masonry'],
-  water_sources: ['WASA Supply', 'Deep Tube Well', 'Shallow Tube Well', 'Surface Water', 'Rainwater Harvesting', 'Tanker Delivery'],
-  recommended_services: [
-    'Tank Cleaning', 'Disinfection', 'Sterilisation', 'Bacteria & Algae Treatment',
-    'Leak Detection', 'Crack Repair', 'Waterproofing', 'Valve Replacement',
-    'Pipe Connection Repair', 'Pump Maintenance', 'Water Quality Testing', 'AMC Enrolment',
-  ],
-});
+exports.assessmentReference = (req, res) => {
+  // Equipment options, materials, sources and recommended services follow the
+  // active service line so the AC assessment never lists tank materials.
+  const ui = serviceUi(req);
+  res.json({
+    standard_checks: STANDARD_CHECKS,
+    templates: Object.entries(CHECK_TEMPLATES).map(([key, t]) => ({ key, label: t.label, extra: t.extra })),
+    equipment_options: EQUIPMENT_OPTIONS,
+    comment_categories: COMMENT_CATEGORIES,
+    risk_levels: ['Low', 'Medium', 'High', 'Critical'],
+    equipment: ui.equipment || null,
+    tank_types: ui.equipment?.type_options || ['Overhead', 'Underground', 'Rooftop', 'Ground Level', 'Sectional', 'Pressure Vessel'],
+    materials: ui.assess_materials || ['Concrete', 'PVC / Plastic', 'Stainless Steel', 'Mild Steel', 'Fibreglass (GRP)', 'Brick / Masonry'],
+    water_sources: ui.assess_sources || ['WASA Supply', 'Deep Tube Well', 'Shallow Tube Well', 'Surface Water', 'Rainwater Harvesting', 'Tanker Delivery'],
+    recommended_services: ui.recommended_services || [
+      'Tank Cleaning', 'Disinfection', 'Sterilisation', 'Bacteria & Algae Treatment',
+      'Leak Detection', 'Crack Repair', 'Waterproofing', 'Valve Replacement',
+      'Pipe Connection Repair', 'Pump Maintenance', 'Water Quality Testing', 'AMC Enrolment',
+    ],
+  });
+};
 
 /* ── running commentary on any record ── */
 

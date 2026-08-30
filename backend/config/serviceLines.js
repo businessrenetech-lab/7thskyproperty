@@ -70,6 +70,11 @@ const SERVICE_LINES = {
         source_label: 'Water Source',
         source_options: ['Municipal (WASA)', 'Deep Tube Well', 'Both', 'Other'],
       },
+      // Site-assessment reference: construction materials and a shortlist of
+      // services the assessor commonly recommends.
+      assess_materials: ['Concrete', 'PVC / Plastic', 'Stainless Steel', 'Mild Steel', 'Fibreglass (GRP)', 'Brick / Masonry'],
+      assess_sources: ['WASA Supply', 'Deep Tube Well', 'Shallow Tube Well', 'Surface Water', 'Rainwater Harvesting', 'Tanker Delivery'],
+      recommended_services: ['Tank Cleaning', 'Disinfection', 'Sterilisation', 'Bacteria & Algae Treatment', 'Leak Detection', 'Crack Repair', 'Waterproofing', 'Valve Replacement', 'Pipe Connection Repair', 'Pump Maintenance', 'Water Quality Testing', 'AMC Enrolment'],
     },
   },
 
@@ -133,6 +138,9 @@ const SERVICE_LINES = {
         source_label: 'Refrigerant Type',
         source_options: ['R32', 'R410A', 'R22', 'R290', 'Other'],
       },
+      assess_materials: ['Gree', 'Midea', 'Daikin', 'General', 'Carrier', 'Samsung', 'LG', 'Chigo', 'Other'],
+      assess_sources: ['R32', 'R410A', 'R22', 'R290', 'Other'],
+      recommended_services: ['Servicing', 'Standard Cleaning', 'Deep Chemical Cleaning', 'Gas Refill', 'Leak Detection', 'Fault Diagnosis', 'Compressor Replacement', 'PCB Replacement', 'Smart Thermostat Installation', 'AMC Enrolment'],
     },
   },
 };

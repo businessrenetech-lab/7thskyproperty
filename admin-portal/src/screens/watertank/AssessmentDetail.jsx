@@ -111,7 +111,7 @@ export default function AssessmentDetail() {
           {' › '}<span style={{ color: 'var(--wt-accent-ink)' }}>{rec.code}</span>
         </div>}
         title={rec.client_name}
-        subtitle={[rec.tank_type, rec.tank_capacity, rec.tank_location].filter(Boolean).join(' · ') || 'Tank profile not yet captured'}
+        subtitle={[rec.tank_type, rec.tank_capacity, rec.tank_location].filter(Boolean).join(' · ') || `${eq.section_label.replace(' Details', '')} profile not yet captured`}
       >
         <button className="wt-btn" onClick={load}><RefreshCw size={14} /> Refresh</button>
         <button className="wt-btn" onClick={() => nav(`/water-tank/site-assessments/${rec.code}/edit`)}><Pencil size={14} /> Edit assessment</button>

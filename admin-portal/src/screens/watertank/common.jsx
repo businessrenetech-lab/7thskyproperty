@@ -38,6 +38,11 @@ export const SERVICE_UI = {
       source_options: ['Municipal (WASA)', 'Deep Tube Well', 'Both', 'Other'],
       unit_word: 'tank',
     },
+    // Site-assessment wizard step wording.
+    assess: {
+      profile_label: 'Tank profile', profile_hint: 'Type, capacity, source',
+      quality_label: 'Water quality', quality_hint: 'Contamination & readings',
+    },
   },
   '/air-conditioning': {
     label: 'Air Conditioning',
@@ -54,6 +59,10 @@ export const SERVICE_UI = {
       source_options: ['R32', 'R410A', 'R22', 'R290', 'Other'],
       unit_word: 'unit',
     },
+    assess: {
+      profile_label: 'Equipment profile', profile_hint: 'Type, capacity, refrigerant',
+      quality_label: 'Condition & performance', quality_hint: 'Faults & readings',
+    },
   },
 };
 /** The active console's UI profile (label, full_label, equipment field labels). */
@@ -69,6 +78,8 @@ export const profileForLine = (serviceLine) =>
 export const svcLabel = () => svcProfile().label;
 /** The active console's equipment field vocabulary (Tank vs Equipment details). */
 export const svcEquip = () => svcProfile().equipment;
+/** The active console's site-assessment step wording. */
+export const svcAssess = () => svcProfile().assess || SERVICE_UI['/water-tank'].assess;
 
 // Service-aware navigate. These screens are shared across every service console
 // and were written with hard-coded `/water-tank/...` targets. Rather than touch

@@ -5,7 +5,7 @@ import {
   Droplets, Wrench, Camera, PenLine, Save, Loader2, AlertTriangle,
 } from 'lucide-react';
 import api from '../../services/api';
-import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, parseJson, svcEquip } from './common';
+import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, parseJson, svcEquip, svcAssess } from './common';
 import WtPhotoGrid from './PhotoUpload';
 
 /*
@@ -15,11 +15,11 @@ import WtPhotoGrid from './PhotoUpload';
  * can stop after the safety walk and come back for the water test.
  */
 
-const STEPS = [
+const buildSteps = (as) => [
   { key: 'visit', label: 'Visit details', hint: 'Who, when, conditions', icon: ClipboardList },
-  { key: 'tank', label: 'Tank profile', hint: 'Type, capacity, source', icon: Building2 },
+  { key: 'tank', label: as.profile_label, hint: as.profile_hint, icon: Building2 },
   { key: 'safety', label: 'Safety checklist', hint: 'Verify before entry', icon: ShieldAlert },
-  { key: 'quality', label: 'Water quality', hint: 'Contamination & readings', icon: Droplets },
+  { key: 'quality', label: as.quality_label, hint: as.quality_hint, icon: Droplets },
   { key: 'risks', label: 'Risks & scope', hint: 'Findings and variations', icon: Wrench },
   { key: 'photos', label: 'Photo evidence', hint: 'Before and after', icon: Camera },
   { key: 'signoff', label: 'Sign-off', hint: 'Confirm and close', icon: PenLine },
@@ -32,6 +32,7 @@ export default function AssessmentForm() {
   const { code } = useParams();
   const nav = useSvcNav();
   const eq = svcEquip();
+  const STEPS = buildSteps(svcAssess());
   const isNew = !code;
 
   const [ref, setRef] = useState(null);
@@ -275,7 +276,7 @@ export default function AssessmentForm() {
           {/* ── 2 TANK ── */}
           {step === 1 && (
             <>
-              <div className="wt-wizpane-h"><h2>Tank profile</h2>
+              <div className="wt-wizpane-h"><h2>{svcAssess().profile_label}</h2>
                 <p>What is actually on site. This drives the checklist template and the services you can recommend.</p></div>
               <div className="wt-grid3">
                 <div className="wt-field"><label>{eq.type_label}</label>
@@ -315,7 +316,7 @@ export default function AssessmentForm() {
           {step === 2 && (
             <>
               <div className="wt-wizpane-h"><h2>Safety verification checklist</h2>
-                <p>Pick the template that matches the tank, work through the list, and add any check this site needs that the standard list does not cover.</p></div>
+                <p>Pick the template that matches the site, work through the list, and add any check this site needs that the standard list does not cover.</p></div>
               <div className="wt-field"><label>Checklist template</label>
                 <select className="wt-select" value={f.template_key} onChange={(e) => set('template_key', e.target.value)}>
                   {(ref?.templates || []).map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
@@ -372,8 +373,8 @@ export default function AssessmentForm() {
           {/* ── 4 WATER QUALITY ── */}
           {step === 3 && (
             <>
-              <div className="wt-wizpane-h"><h2>Contamination &amp; water quality</h2>
-                <p>What you can see, and what the on-site test says. Readings here feed the water quality report.</p></div>
+              <div className="wt-wizpane-h"><h2>{svcAssess().quality_label}</h2>
+                <p>What you can see, and what the on-site checks say. Readings here feed the assessment report.</p></div>
               <div className="wt-grid2">
                 <div className="wt-field"><label>Contamination observed</label>
                   <input className="wt-input" value={f.contamination} onChange={(e) => set('contamination', e.target.value)}

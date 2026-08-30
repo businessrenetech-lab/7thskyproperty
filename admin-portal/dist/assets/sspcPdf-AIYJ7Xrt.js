@@ -1,5 +1,5 @@
 const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/html2pdf-ekMMXuhg.js","assets/vendor-react-D-beFdsj.js"])))=>i.map(i=>d[i]);
-import{_ as $}from"./index-BXjPylAM.js";import"./vendor-editor-BwiC-GYm.js";import"./vendor-react-D-beFdsj.js";import"./vendor-utils-CvNDeEjv.js";const y="#003768",v="#12b6f3",e=t=>String(t??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");function m(t,o){return`
+import{_ as $}from"./index-CjFdsoxY.js";import"./vendor-editor-BwiC-GYm.js";import"./vendor-react-D-beFdsj.js";import"./vendor-utils-CvNDeEjv.js";const y="#003768",v="#12b6f3",e=t=>String(t??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");function m(t,o){return`
   <div style="display:flex;align-items:center;gap:12px;border-bottom:4px solid ${v};padding-bottom:12px;margin-bottom:6px;">
     <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,${y},${v});color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;font-family:Arial;">7S</div>
     <div style="font-family:Arial;">

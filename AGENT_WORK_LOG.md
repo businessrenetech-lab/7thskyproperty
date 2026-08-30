@@ -3995,3 +3995,20 @@ used "the last line starting with `import`", which landed inside a multi-line
   - WorkOrderForm.jsx: warranty placeholder "post-disinfection" → generic workmanship/parts.
 - VERIFIED: WO document/reference → AC = "Section 4 — Equipment Details", AC service groups,
   45-item AC catalogue; WT unchanged. Build passes.
+
+### 2026-08-30 08:55 | Claude Code (Opus 4.8) | COMPLETED | AC check — Assessments + Quotations screens
+- Quotations: no WT-specific copy (catalogue already service-aware; QuotationAgreement Schedule B
+  equipment labels done earlier). Nothing to change.
+- Assessments:
+  - assessment-reference (/wt-ops/assessment-reference) now serves the active service line's
+    tank_types (equipment options), materials (AC: makes — Gree/Midea/Daikin…), water_sources
+    (AC: refrigerant types) and recommended_services (AC: Servicing/Cleaning/Gas Refill…) from
+    the manifest ui (added assess_materials/assess_sources/recommended_services per line).
+  - AssessmentForm: the wizard steps "Tank profile" / "Water quality" and their headings now come
+    from a per-service `assess` profile (AC: "Equipment profile" / "Condition & performance");
+    "matches the tank" → "matches the site". Added svcAssess() to common.jsx.
+  - AssessmentDetail: "Tank profile not yet captured" subtitle → equipment word.
+- Fixed a serviceLines.js brace typo introduced while adding the assess_* keys (had broken the
+  controller load → 404 on assessment-reference); caught and corrected before committing.
+- VERIFIED: AC assessment-reference → Split/Inverter/Cassette, Gree/Midea/Daikin makes,
+  Servicing/Cleaning/Gas Refill recommended; WT unchanged; build passes.
