@@ -139,7 +139,10 @@ export default function QuotationBuilder() {
         advance_amount: totals.advance,
       });
       setQuote(saved);
-      if (!silent) toast.ok(`Quotation ${saved.code} saved — ${bdt(saved.total)}`);
+      if (!silent) {
+        toast.ok(`Quotation ${saved.code} saved — ${bdt(saved.total)}`);
+        if (saved.work_order) toast.ok(`Work order ${saved.work_order.code} drafted — client is covered by a signed agreement`);
+      }
       return saved;
     } catch (e) { toast.err(errText(e, 'Could not save the quotation')); return null; }
     finally { setSaving(false); }

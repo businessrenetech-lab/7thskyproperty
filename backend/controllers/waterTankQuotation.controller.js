@@ -442,9 +442,6 @@ exports.save = asyncHandler(async (req, res) => {
   let quote = standalone || await M.WtQuotation.findOne({ where: { ...scope, source_assessment: assessment.code } });
   if (quote) {
     await quote.update(payload);
-    // Keep any draft work order raised from this quote in step with the edit.
-    const { refreshDraftFromQuotation } = require('../services/wtWorkOrder.service');
-    await refreshDraftFromQuotation(quote, { branchId }).catch((e) => console.warn('[waterTank] sync draft WO from quote:', e.message));
   } else {
     const quoteCode = await nextCode('quotations', branchId, undefined, resolveServiceLine(req));
     quote = await M.WtQuotation.create({ ...payload, branch_id: branchId, service_line: resolveServiceLine(req), code: quoteCode });
@@ -471,7 +468,33 @@ exports.save = asyncHandler(async (req, res) => {
     });
   }
 
-  res.json(quote);
+  /*
+   * Draft (or refresh) the work order for a client already covered by a signed
+   * agreement — the SAME behaviour as the direct-quote path, so a quotation raised
+   * through the builder also produces its work order instead of silently doing
+   * nothing. Idempotent per quotation; refresh keeps a draft WO in step with edits.
+   * Best-effort: a failure here must not fail saving the quote.
+   */
+  let workOrder = null;
+  try {
+    const position = await agreementPosition(scope, quote.client_name, quote.client_code);
+    const wantsWo = req.body.draft_work_order !== false
+      && (position.has_signed_agreement || req.body.agreement_choice === 'continue');
+    if (wantsWo) {
+      if (!quote.client_code && position.client_code) await quote.update({ client_code: position.client_code });
+      const { createFromQuotation, refreshDraftFromQuotation } = require('../services/wtWorkOrder.service');
+      workOrder = await createFromQuotation(quote, { branchId, actor: req.user?.name || 'Operations' });
+      await refreshDraftFromQuotation(quote, { branchId });
+    } else {
+      // no agreement yet → still keep any existing draft WO in step with edits
+      const { refreshDraftFromQuotation } = require('../services/wtWorkOrder.service');
+      await refreshDraftFromQuotation(quote, { branchId });
+    }
+  } catch (e) { console.warn('[waterTank] draft/sync WO from quotation:', e.message); }
+
+  const out = quote.toJSON();
+  out.work_order = workOrder ? { code: workOrder.code, status: workOrder.status } : null;
+  res.json(out);
 });
 
 /* ═══ DOCUMENT ════════════════════════════════════════════════ */
