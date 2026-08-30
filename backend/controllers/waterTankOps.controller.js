@@ -170,22 +170,49 @@ async function onWorkOrderCompleted(req, wo) {
   const P = require('../models/waterTankProviders');
   const addMonths = (n) => { const x = new Date(); x.setMonth(x.getMonth() + n); return x.toISOString().slice(0, 10); };
 
-  // Sec. 9 Step 12 — warranty registration
-  const existingWarranty = await M.WtWarranty.findOne({ where: { ...scope, work_order_code: wo.code } });
+  // Sec. 9 Step 12 — warranty registration, but ONLY when the client actually
+  // agreed one: the signed Customer Service Agreement for this job must have
+  // ticked warranty coverage in Schedule D. A job with no agreed warranty gets
+  // none auto-created (the operator can still register one by hand).
+  const sl = wo.service_line || resolveServiceLine(req);
+  const existingWarranty = await M.WtWarranty.findOne({ where: { branch_id: branchId, service_line: sl, work_order_code: wo.code } });
   if (!existingWarranty) {
-    await M.WtWarranty.create({
-      branch_id: branchId,
-      code: await nextCode(ENTITIES.warranties, branchId),
-      client_name: wo.client_name,
-      project_id: wo.project_id,
-      work_order_code: wo.code,
-      provider_name: wo.provider_name,
-      warranty_type: wo.category || 'Water Tank Service',
-      coverage: wo.warranty || wo.scope || null,
-      start_date: today(),
-      expiry_date: addMonths(12),
-      status: 'Active',
+    const SigningEnvelope = require('../models/SigningEnvelope');
+    const asObj = (v) => { let o = v; for (let i = 0; i < 3 && typeof o === 'string'; i++) { try { o = JSON.parse(o); } catch { return {}; } } return o && typeof o === 'object' ? o : {}; };
+    // The completed customer agreement for this client/project (envelope has no
+    // service_line, so match by the service line's related_type + branch).
+    const agreement = await SigningEnvelope.findOne({
+      where: {
+        branch_id: branchId,
+        related_type: `${sl}_customer_agreement`,
+        status: 'completed',
+        [Op.or]: [
+          { title: { [Op.like]: `%${wo.client_name}%` } },
+          ...(wo.project_id ? [{ terms: { [Op.like]: `%"${wo.project_id}"%` } }] : []),
+        ],
+      },
+      order: [['id', 'DESC']],
     });
+    const terms = agreement ? asObj(agreement.terms) : {};
+    if (agreement && terms.warranty_selected) {
+      const ui = serviceUi(req);
+      const wType = (ui.warranty_types || [])[0] || wo.category || `${ui.full_label || 'Service'}`;
+      const months = (ui.warranty_months || {})[wType] || 12;
+      await M.WtWarranty.create({
+        branch_id: branchId, service_line: sl,
+        code: await nextCode(ENTITIES.warranties, branchId),
+        client_name: wo.client_name,
+        project_id: wo.project_id,
+        work_order_code: wo.code,
+        provider_name: wo.provider_name,
+        warranty_type: wType,
+        coverage: (terms.warranty_items || []).join(', ') || wo.warranty || wo.scope || null,
+        terms: terms.warranty_period ? `Agreed period: ${terms.warranty_period}` : null,
+        start_date: wo.completed_at ? new Date(wo.completed_at).toISOString().slice(0, 10) : today(),
+        expiry_date: addMonths(months),
+        status: 'Active',
+      });
+    }
   }
 
   // Sec. 12 — protected client register
@@ -196,7 +223,7 @@ async function onWorkOrderCompleted(req, wo) {
     });
     if (!already) {
       await P.WtProtectedClient.create({
-        branch_id: branchId,
+        branch_id: branchId, service_line: sl,
         code: await nextCode({ model: P.WtProtectedClient, prefix: 'PC-', pad: 4, start: 1 }, branchId),
         client_name: wo.client_name,
         provider_id: provider?.id || null,

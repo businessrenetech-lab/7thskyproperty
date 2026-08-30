@@ -614,12 +614,18 @@ function buildAgreement(data = {}) {
     <div style="margin-top:22px;padding-top:10px;border-top:1px solid #d1d5db;font-size:11px;color:#6b7280;">This Agreement becomes effective when signed by both Parties through the Seventh Sky electronic signing system. The electronic record, audit trail and content hash constitute proof of execution.</div>
   </div>`;
 
+  // Schedule D warranty selection, persisted so the job's completion can decide
+  // whether to auto-register a warranty (only when the client agreed one here).
+  const warrantyItems = [...checklistSet].filter((c) => (pack.checklist_groups['Warranty Coverage'] || []).includes(c));
   const terms = {
     doc_no, selected_services: [...servicesSet], schedule_b: b,
     project_code: b.project_no || data.project_code || null,
     pricing_summary: pricing.summary, payment_schedule: pricing.payment_schedule,
     advance_amount: pricing.summary?.advance_amount ?? null,
     balance_due: pricing.summary?.balance_due ?? null,
+    warranty_selected: warrantyItems.length > 0,
+    warranty_items: warrantyItems,
+    warranty_period: b.warranty_period || null,
     agreed_lines: pricing.lines.map((l) => ({ code: l.code, name: l.name, qty: l.qty, agreed_price: l.agreed_price, line_total: l.line_total, group: l.group })),
   };
   return { title, doc_no, html, terms };

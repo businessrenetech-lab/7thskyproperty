@@ -54,10 +54,21 @@ const EDITABLE_STATUSES = ['Draft'];
 /* ────────────────────────────────────────────────────────────────────────────
  * Totals — derived from the lines, every time
  * ──────────────────────────────────────────────────────────────────────────── */
-const lineTotal = (l) => round2(num(l.unit_price) * (num(l.qty) || 1));
+// A line's unit price. The invoice model stores it as `unit_price`, but a line
+// coming from a quotation, work order or the intake wizard carries it as
+// `price` / `agreed_price` — so normalise, and a hand-built line can never total
+// zero just because the field was named differently.
+const unitPriceOf = (l) => {
+  for (const k of ['unit_price', 'price', 'agreed_price', 'rate', 'amount']) {
+    if (l[k] != null && l[k] !== '') return num(l[k]);
+  }
+  return 0;
+};
+const lineTotal = (l) => round2(unitPriceOf(l) * (num(l.qty) || 1));
 
 function computeTotals(input = {}) {
-  const lines = asArray(input.lines).map((l) => ({ ...l, line_total: lineTotal(l) }));
+  // Persist the resolved unit_price so the stored line is self-consistent.
+  const lines = asArray(input.lines).map((l) => ({ ...l, unit_price: unitPriceOf(l), line_total: lineTotal(l) }));
   const subtotal = round2(lines.reduce((s, l) => s + l.line_total, 0));
 
   const discount = Math.max(0, num(input.discount));
