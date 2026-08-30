@@ -48,7 +48,7 @@ const NAV = [
   { key: 'care', label: 'Services', icon: Layers, children: [
     { group: true, label: 'Service Lines' },
     { to: '/water-tank', label: 'Water Tank Services' },
-    { to: '/services/lines/air-conditioning', label: 'Air Conditioning' },
+    { to: '/air-conditioning', label: 'Air Conditioning' },
     { to: '/services/lines/interior-design', label: 'Interior Design' },
     { to: '/services/lines/removal', label: 'Removal Services' },
     { to: '/services/lines/solar-energy', label: 'Solar & Energy' },
