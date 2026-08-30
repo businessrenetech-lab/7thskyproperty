@@ -17,23 +17,49 @@
  *   F. PORTALS — client + provider accounts (the provider's is auto-provisioned on
  *      agreement signing), login, dossier loads.
  *
- * Asserts codes are branded to the active line (ACP-/ACCM-C/ACR-/ACA-/ACQ-/ACW-/ACI-)
- * and that the line's own compliance docs gate onboarding (AC: Electrical,
- * Refrigerant Handling, Safety Training, …).
+ *   G. PAYOUT TERMS — the payout auto-computes Seventh Sky commission from the
+ *      agreement rate card + commission_pct, and the payout due date from
+ *      payment_due_days (verified date + N days); asserts the arithmetic.
  *
- *   node scripts/e2eFullJourney.js [service_line]   (default air_conditioning)
+ * Service-line agnostic — the same script serves Water Tank, Air Conditioning and
+ * any future line. It reads each line's own catalogue, required docs and code
+ * prefixes, and asserts every chain code is branded to the active line
+ * (Water Tank SP-/WTCM-C/SR-/SA-/Q-/WO-/INV-; Air Conditioning ACP-/ACCM-C/ACR-/
+ * ACA-/ACQ-/ACW-/ACI-; an unknown future line is exercised with lenient checks).
+ *
+ *   node scripts/e2eFullJourney.js [service_line] [--clean]
+ *     water_tank        exercise the LIVE Water Tank console (pass --clean to remove
+ *                       the test records afterwards, leaving the console untouched)
+ *     air_conditioning  the default; keeps its data for UI inspection
+ *     <future_line>     the next duplicated service line, once it is in the manifest
  *
  * Requires the backend on PORT (default 50001) and admin creds in the env
- * (E2E_EMAIL / E2E_PASSWORD) or the defaults below. Keeps everything it creates.
+ * (E2E_EMAIL / E2E_PASSWORD) or the defaults below. Keeps everything it creates
+ * unless --clean is passed (recommended for the live water_tank line).
  */
 const http = require('http');
 
-const SL = process.argv[2] || 'air_conditioning';
+const SL = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : 'air_conditioning';
+const CLEAN = process.argv.includes('--clean');
 const PORT = Number(process.env.PORT) || 50001;
 const EMAIL = process.env.E2E_EMAIL || 'admin@seventhskyproperty.com';
 const PASSWORD = process.env.E2E_PASSWORD || 'Admin#2026';
 const TODAY = '2026-08-30';
 const FUTURE = '2027-08-30';
+
+// Short tag + expected code prefixes per line. Known lines get strict prefix
+// assertions; an unknown future line is exercised leniently (code must exist).
+const TAG = ({ air_conditioning: 'AC', water_tank: 'WT' })[SL] || SL.split('_').map((w) => w[0]).join('').toUpperCase();
+const PREFIX = ({
+  water_tank: { provider: 'SP-', client: 'WTCM-C', request: 'SR-', assessment: 'SA-', quote: 'Q-', work: 'WO-', invoice: 'INV-' },
+  air_conditioning: { provider: 'ACP-', client: 'ACCM-C', request: 'ACR-', assessment: 'ACA-', quote: 'ACQ-', work: 'ACW-', invoice: 'ACI-' },
+})[SL] || null;
+const DUE_DAYS = 7;         // payment_due_days set on the provider agreement (for the payout assertion)
+const COMMISSION = 10;      // commission_pct set on the provider agreement
+const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+
+// Records this run created — used only for --clean teardown.
+const created = { stamp: null, envelopeIds: [], portalEmails: [] };
 
 let TOKEN = '';
 const R = { pass: 0, fail: 0, warn: 0, items: [], ids: {} };
@@ -62,6 +88,18 @@ function req(method, path, opts = {}) {
 const arr = (x) => Array.isArray(x) ? x : (x && Array.isArray(x.rows) ? x.rows : (x && Array.isArray(x.data) ? x.data : []));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Assert a code is present and branded to the active line's prefix (strict for a
+// known line; lenient for a future line whose prefixes we don't have mapped yet).
+function checkCode(kind, code, label) {
+  if (!code) return log('FAIL', label, 'no code minted');
+  R.ids[kind] = code;
+  if (PREFIX && PREFIX[kind]) {
+    const ok = String(code).startsWith(PREFIX[kind]);
+    return log(ok ? 'PASS' : 'FAIL', label, ok ? code : `${code} (expected ${PREFIX[kind]}*)`);
+  }
+  return log('PASS', label, `${code} (prefix not asserted for ${SL})`);
+}
+
 async function signEnvelope(signers, tag) {
   const ordered = (signers || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
   let ok = true;
@@ -81,11 +119,12 @@ async function signEnvelope(signers, tag) {
 
 (async () => {
   const S = Date.now().toString().slice(-6);
-  const NAME = `AC Full ${S}`;
-  const CLIENT_EMAIL = `ac.full.${S}@example.com`;
-  const PROV_NAME = `AC Provider ${S}`;
-  const PROV_EMAIL = `ac.prov.${S}@example.com`;
-  console.log(`\n===== FULL CLIENT + PROVIDER + PORTALS E2E — ${SL} =====\n`);
+  created.stamp = S;
+  const NAME = `${TAG} Full ${S}`;
+  const CLIENT_EMAIL = `e2e.${SL}.${S}@example.com`;
+  const PROV_NAME = `${TAG} Provider ${S}`;
+  const PROV_EMAIL = `e2e.prov.${SL}.${S}@example.com`;
+  console.log(`\n===== FULL CLIENT + PROVIDER + PORTALS E2E — ${SL}${CLEAN ? ' (--clean)' : ''} =====\n`);
 
   TOKEN = (await req('POST', '/api/auth/login', { body: { email: EMAIL, password: PASSWORD }, noSl: true })).body.token;
   if (!TOKEN) return log('FAIL', 'admin login') || finish();
@@ -99,7 +138,7 @@ async function signEnvelope(signers, tag) {
   const insDocs = (provRef.insurance_docs || []).filter((d) => d.required);
   const provCats = (provRef.service_categories || []).slice(0, 2);
   log('PASS', 'references loaded', `${cat.length} catalogue; required docs ${compDocs.length} compliance / ${insDocs.length} insurance`);
-  console.log(`  AC compliance docs the gate now enforces: ${compDocs.map((d) => d.type).join(', ')}`);
+  console.log(`  ${TAG} compliance docs the gate enforces: ${compDocs.map((d) => d.type).join(', ')}`);
 
   // ============================================================
   // A. PROVIDER ONBOARDING (full journey to Approved + assignable)
@@ -118,20 +157,19 @@ async function signEnvelope(signers, tag) {
   });
   const prov = pRes.body;
   if (!prov.id) return log('FAIL', 'provider create', JSON.stringify(prov).slice(0, 180)) || finish();
-  R.ids.provider = prov.code; R.ids.providerId = prov.id;
+  created.providerId = prov.id;
   log('PASS', 'provider created', `${prov.code} (${prov.business_name}) status=${prov.status}`);
-  if (SL === 'air_conditioning' && !/^ACP-/.test(prov.code)) log('FAIL', 'provider code prefix', prov.code);
-  else log('PASS', 'provider code is own service line', prov.code);
+  checkCode('provider', prov.code, 'provider code is own service line');
 
   console.log('\n-- A2. Send onboarding invitation --');
   const invite = await req('POST', `/api/wt-providers/${prov.id}/invite`, { body: { email: PROV_EMAIL } });
   log(invite.status < 400 ? 'PASS' : 'WARN', 'invitation sent', invite.status < 400 ? (invite.body.status || 'Invited') + (invite.body.link ? ' + link' : '') : `HTTP ${invite.status}`);
 
   console.log('\n-- A3. Capability assessment --');
-  const capp = await req('POST', `/api/wt-providers/${prov.id}/capability`, { body: { capability_score: 85, notes: 'Strong AC install + service history.' } });
+  const capp = await req('POST', `/api/wt-providers/${prov.id}/capability`, { body: { capability_score: 85, notes: `Strong ${TAG} service history.` } });
   log(capp.status < 400 ? 'PASS' : 'WARN', 'capability assessed', capp.status < 400 ? 'score 85' : `HTTP ${capp.status} ${JSON.stringify(capp.body).slice(0,120)}`);
 
-  console.log('\n-- A4. Compliance evidence (AC-specific) upload + verify --');
+  console.log(`\n-- A4. Compliance evidence (${TAG}-specific) upload + verify --`);
   for (const d of compDocs) {
     const saved = await req('POST', '/api/wt-providers/documents', {
       body: { provider_id: prov.id, category: 'compliance', doc_type: d.type, doc_number: `C-${S}-${d.type.slice(0,3)}`, issue_date: TODAY, expiry_date: FUTURE, file_url: 'https://example.com/doc.pdf' },
@@ -158,14 +196,19 @@ async function signEnvelope(signers, tag) {
       provider: { full_name: PROV_NAME, email: PROV_EMAIL, phone: '0188' + S },
       org: { name: 'Seventh Sky Property Care', represented_by: 'Ops Manager', email: EMAIL },
       effective_date: TODAY, term_months: 12,
+      // Known commission + due-days so the payout arithmetic can be asserted later.
+      commission_pct: COMMISSION, payout_trigger: 'Completion Verified', payment_due_days: DUE_DAYS,
       // Price the catalogue code the client job will use, so the master agreement
-      // actually rates ACS-001 and the work order can be assigned without override.
+      // actually rates that line and the work order can be assigned without override.
       pricing_input: { selected: [{ code: item.code, agreed_price: item.standard_price }] },
       send: true,
     },
   });
   const pab = pAgr.body;
   R.ids.providerAgreement = pab.envelope_code || (pab.agreement && pab.agreement.code) || pab.code;
+  if (pab.envelope_id) created.envelopeIds.push(pab.envelope_id);
+  if (pab.agreement && pab.agreement.id) created.providerAgreementId = pab.agreement.id;
+  else if (pab.id) created.providerAgreementId = pab.id;
   const pSigners = pab.links || pab.signers;   // provider agreement returns links[] with tokens
   if (pSigners && pSigners.length) {
     log('PASS', 'provider agreement raised', `${R.ids.providerAgreement} (${pSigners.length} signers)`);
@@ -210,8 +253,12 @@ async function signEnvelope(signers, tag) {
   const sr = srRes.body;
   const clientCode = (sr.client || {}).code;
   const srRow = sr.request || {};
-  R.ids.client = clientCode; R.ids.sr = srRow.code;
+  created.clientId = (sr.client || {}).id; created.clientCode = clientCode;
+  created.srId = srRow.id; created.srCode = srRow.code;
+  if (sr.project && sr.project.code) created.projectCode = sr.project.code;
   log(clientCode ? 'PASS' : 'FAIL', 'client + service request created', `client ${clientCode} / SR ${srRow.code}`);
+  checkCode('client', clientCode, 'client code is own service line');
+  checkCode('request', srRow.code, 'service request code is own service line');
   // move the SR through statuses
   for (const st of ['In Progress', 'Assessment Scheduled']) {
     const up = await req('PATCH', `/api/wt-ops/service-requests/${srRow.id}`, { body: { current_status: st } });
@@ -221,8 +268,9 @@ async function signEnvelope(signers, tag) {
   console.log('\n-- B2. Site assessment: Scheduled -> In Progress -> Completed --');
   let assess = sr.assessment || null;
   if (assess && assess.id) {
-    R.ids.assessment = assess.code;
-    log('PASS', 'assessment created', `${assess.code} status=${assess.status}`);
+    created.assessmentId = assess.id;
+    checkCode('assessment', assess.code, 'assessment created (own code)');
+    log('PASS', 'assessment status', `${assess.code} status=${assess.status}`);
     for (const st of ['In Progress', 'Completed']) {
       const body = st === 'Completed'
         ? { status: st, findings: 'Two split units; recommend deep service + gas top-up + coil clean.', recommendation: item.name, completed_date: TODAY }
@@ -241,8 +289,8 @@ async function signEnvelope(signers, tag) {
     quote = q.body.quotation || q.body;
   }
   if (quote.code) {
-    R.ids.quote = quote.code;
-    log(/^ACQ-/.test(quote.code) || SL !== 'air_conditioning' ? 'PASS' : 'FAIL', 'quotation created', quote.code);
+    created.quoteCode = quote.code;
+    checkCode('quote', quote.code, 'quotation created (own code)');
   } else log('WARN', 'quotation', JSON.stringify(quote).slice(0, 120));
 
   console.log('\n-- B4. Customer agreement (warranty selected) + sign --');
@@ -258,6 +306,7 @@ async function signEnvelope(signers, tag) {
   });
   if (agr.body.id) {
     R.ids.customerAgreement = agr.body.envelope_code;
+    created.envelopeIds.push(agr.body.id);
     log('PASS', 'customer agreement raised', `${agr.body.envelope_code}`);
     await signEnvelope(agr.body.signers, 'customer agreement');
     await sleep(700);
@@ -271,8 +320,9 @@ async function signEnvelope(signers, tag) {
   let wo = arr((await req('GET', '/api/wt-work-orders')).body).find((w) => (w.client_name || '').includes(S));
   if (!wo) { log('FAIL', 'work order auto-raised', 'none found from signed agreement'); }
   else {
-    R.ids.workOrder = wo.code;
-    log('PASS', 'work order auto-raised', `${wo.code} status=${wo.status}`);
+    created.woId = wo.id; created.woCode = wo.code;
+    checkCode('work', wo.code, 'work order auto-raised (own code)');
+    log('PASS', 'work order status', `${wo.code} status=${wo.status}`);
 
     // C1. assign the freshly-onboarded provider (proves every gate passed)
     const asg = await req('POST', `/api/wt-work-orders/${wo.id}/assign`, { body: { provider_id: prov.id } });
@@ -299,7 +349,7 @@ async function signEnvelope(signers, tag) {
   console.log('\n########## D. WARRANTY + SERVICE REPORT + PAYOUT ##########');
   await sleep(400);
   const warr = arr((await req('GET', '/api/wt-ops/warranties')).body).find((w) => (w.client_name || '').includes(S) || (wo && w.work_order_code === wo.code));
-  if (warr) { R.ids.warranty = warr.code; log('PASS', 'warranty AUTO-registered', `${warr.code} type=${warr.warranty_type} exp=${warr.expiry_date}`); }
+  if (warr) { R.ids.warranty = warr.code; created.warrantyCode = warr.code; log('PASS', 'warranty AUTO-registered', `${warr.code} type=${warr.warranty_type} exp=${warr.expiry_date}`); }
   else log('WARN', 'warranty', 'not auto-registered');
 
   if (wo) {
@@ -307,16 +357,28 @@ async function signEnvelope(signers, tag) {
     const rpt = await req('POST', '/api/wt-providers/reports', {
       body: { report_type: (provRef.report_types || ['Service Report'])[0] || 'Service Report', work_order_code: wo.code, provider_id: prov.id, findings: 'All units serviced; cooling within spec.', status: 'Submitted', service_date: TODAY },
     });
-    if (rpt.status < 400 && (rpt.body.code || rpt.body.id)) { R.ids.serviceReport = rpt.body.code || `#${rpt.body.id}`; log('PASS', 'service report filed', R.ids.serviceReport); }
+    if (rpt.status < 400 && (rpt.body.code || rpt.body.id)) { R.ids.serviceReport = rpt.body.code || `#${rpt.body.id}`; created.serviceReportId = rpt.body.id; log('PASS', 'service report filed', R.ids.serviceReport); }
     else log('WARN', 'service report', `HTTP ${rpt.status} ${JSON.stringify(rpt.body).slice(0,160)}`);
 
-    console.log('\n-- D2. Provider payout on the completed job --');
+    console.log('\n-- D2. Payout terms: commission + due date (from the agreement) --');
     const woNow = (await req('GET', `/api/wt-work-orders/${wo.id}`)).body;
-    const woRow = woNow.workOrder || woNow;
+    const woRow = woNow.work_order || woNow.workOrder || woNow;
+    const money = woNow.money || {};
+    const payout = money.payout || {};
+    // Commission math: gross x commission_pct = Seventh Sky's cut; net = gross - commission.
+    const gross = Number(woRow.provider_gross_charge) || 0;
+    const expectComm = Math.round(gross * COMMISSION) / 100;
+    const commOk = gross > 0 && Math.abs(Number(woRow.provider_commission_amount) - expectComm) < 0.5 && Number(woRow.provider_commission_pct) === COMMISSION;
+    log(commOk ? 'PASS' : (gross > 0 ? 'FAIL' : 'WARN'), 'Seventh Sky commission auto-calculated', `gross ৳${gross} x ${COMMISSION}% = ৳${woRow.provider_commission_amount} (ss_fee ৳${money.ss_fee}), net ৳${woRow.provider_net_payable}`);
+    // Due date: verified date + payment_due_days.
+    const expectDue = payout.payable_from ? addDays(payout.payable_from, DUE_DAYS) : addDays(TODAY, DUE_DAYS);
+    const dueOk = payout.due_date === expectDue && payout.overdue === false;
+    log(dueOk ? 'PASS' : 'WARN', 'payout due date = verified + payment_due_days', `due ${payout.due_date} (expected ${expectDue}), days_to_due ${payout.days_to_due}, overdue ${payout.overdue}`);
+
     const payable = Number(woRow.provider_net_payable || woRow.provider_fee || item.standard_price) || 1000;
     const payAmt = Math.max(1, Math.round(payable * 0.6));
     const pay = await req('POST', `/api/wt-work-orders/${wo.id}/pay-provider`, { body: { amount: payAmt, method: 'Bank Transfer', reference: 'PAYOUT-' + S, paid_on: TODAY } });
-    log(pay.status < 400 ? 'PASS' : 'WARN', 'provider payout recorded', pay.status < 400 ? `৳${payAmt} of ৳${payable}` : `HTTP ${pay.status} ${JSON.stringify(pay.body).slice(0,140)}`);
+    log(pay.status < 400 ? 'PASS' : 'WARN', 'provider payout recorded (capped at net payable)', pay.status < 400 ? `৳${payAmt} of ৳${payable}` : `HTTP ${pay.status} ${JSON.stringify(pay.body).slice(0,140)}`);
   }
 
   // ============================================================
@@ -329,8 +391,8 @@ async function signEnvelope(signers, tag) {
     inv = mk.body;
   }
   if (inv.code) {
-    R.ids.invoice = inv.code;
-    log(/^ACI/.test(inv.code) || SL !== 'air_conditioning' ? 'PASS' : 'WARN', 'invoice present', inv.code);
+    created.invoiceCode = inv.code; created.invoiceId = inv.id;
+    checkCode('invoice', inv.code, 'invoice present (own code)');
     const snd = await req('POST', `/api/wt-invoices/${inv.code}/send`, { body: { email: CLIENT_EMAIL } });
     if (snd.status >= 400) log('WARN', 'invoice send', `HTTP ${snd.status} ${JSON.stringify(snd.body).slice(0,120)}`);
     // pay against the actual outstanding (the auto-draft invoice may be the advance only)
@@ -341,13 +403,13 @@ async function signEnvelope(signers, tag) {
     log(pay.status < 400 ? 'PASS' : 'WARN', 'client payment collected', pay.status < 400 ? `৳${amt} of ৳${outstanding}` : `HTTP ${pay.status} ${JSON.stringify(pay.body).slice(0,140)}`);
   } else log('WARN', 'invoice', JSON.stringify(inv).slice(0, 120));
 
-  const amc = await req('POST', '/api/wt-amc', { body: { client: { name: NAME, code: clientCode, phone: '0179' + S }, package_name: 'AC Annual Care', annual_value: 12000, visits_per_year: 4, start_date: TODAY, status: 'Active' } });
-  if (amc.status < 400) { R.ids.amc = amc.body.code || (amc.body.amc && amc.body.amc.code); log('PASS', 'AMC created', R.ids.amc); }
+  const amc = await req('POST', '/api/wt-amc', { body: { client: { name: NAME, code: clientCode, phone: '0179' + S }, package_name: `${TAG} Annual Care`, annual_value: 12000, visits_per_year: 4, start_date: TODAY, status: 'Active' } });
+  if (amc.status < 400) { R.ids.amc = amc.body.code || (amc.body.amc && amc.body.amc.code); created.amcCode = R.ids.amc; log('PASS', 'AMC created', R.ids.amc); }
   else log('WARN', 'AMC', `HTTP ${amc.status}`);
 
-  const comp = await req('POST', '/api/wt-ops/registers/complaints', { body: { client_name: NAME, client_code: clientCode, incident_type: (ref.complaint_types || ['Service Quality'])[0], severity: 'Medium', logged_date: TODAY, disclosure: 'Cooling weak in one room.' } });
+  const comp = await req('POST', '/api/wt-ops/registers/complaints', { body: { client_name: NAME, client_code: clientCode, incident_type: (ref.complaint_types || ['Service Quality'])[0], severity: 'Medium', logged_date: TODAY, disclosure: 'Service quality follow-up.' } });
   const cRow = comp.body.complaint || comp.body;
-  if (cRow.code) { R.ids.complaint = cRow.code; log('PASS', 'complaint logged', cRow.code); const rv = await req('PATCH', `/api/wt-ops/complaints/${cRow.id}`, { body: { status: 'Resolved', resolution: 'Re-visited and fixed.' } }); log(rv.status < 400 ? 'PASS' : 'WARN', 'complaint resolved'); }
+  if (cRow.code) { R.ids.complaint = cRow.code; created.complaintId = cRow.id; log('PASS', 'complaint logged', cRow.code); const rv = await req('PATCH', `/api/wt-ops/complaints/${cRow.id}`, { body: { status: 'Resolved', resolution: 'Re-visited and fixed.' } }); log(rv.status < 400 ? 'PASS' : 'WARN', 'complaint resolved'); }
   else log('WARN', 'complaint', JSON.stringify(comp.body).slice(0, 120));
 
   // ============================================================
@@ -359,6 +421,7 @@ async function signEnvelope(signers, tag) {
   const cAcc = await req('POST', `/api/wt-ops/portal-accounts/client/${(sr.client || {}).id}`, { body: {} });
   const cPass = cAcc.body.temporary_password;
   const cUserEmail = (cAcc.body.user && cAcc.body.user.email) || CLIENT_EMAIL;
+  if (cUserEmail) created.portalEmails.push(cUserEmail);
   if (cPass) {
     log('PASS', 'client portal account provisioned', cUserEmail);
     const cLogin = await req('POST', '/api/auth/login', { body: { email: cUserEmail, password: cPass }, noSl: true, token: null });
@@ -378,6 +441,7 @@ async function signEnvelope(signers, tag) {
   }
   const vPass = vAcc.body.temporary_password;
   const vUserEmail = (vAcc.body.user && vAcc.body.user.email) || PROV_EMAIL;
+  if (vUserEmail) created.portalEmails.push(vUserEmail);
   if (vPass) {
     log('PASS', 'provider portal account provisioned', vUserEmail);
     const vLogin = await req('POST', '/api/auth/login', { body: { email: vUserEmail, password: vPass }, noSl: true, token: null });
@@ -392,10 +456,85 @@ async function signEnvelope(signers, tag) {
   finish();
 })();
 
-function finish() {
+/**
+ * Remove exactly the records this run created (in child-first order), so the full
+ * journey can be exercised against the LIVE water_tank console and leave it as it
+ * was. Best-effort and idempotent — each delete is independent. Uses the models
+ * directly; it never widens to a whole service line the way the isolation harness
+ * does, so it is safe on water_tank.
+ */
+async function teardown() {
+  require('dotenv').config();
+  const { Op } = require('sequelize');
+  const M = require('../models/waterTankOps');
+  const P = require('../models/waterTankProviders');
+  let Env; let Signer; let Field; let User;
+  try { Env = require('../models/SigningEnvelope'); Signer = require('../models/EnvelopeSigner'); Field = require('../models/SignatureField'); } catch { /* optional */ }
+  try { User = require('../models/User'); } catch { /* optional */ }
+
+  const c = created;
+  const codes = [c.srCode, c.quoteCode, c.woCode, c.invoiceCode, c.amcCode, c.warrantyCode].filter(Boolean);
+  const removed = {};
+  const del = async (label, model, where) => {
+    if (!model || !where) return;
+    try { const n = await model.destroy({ where }); if (n) removed[label] = (removed[label] || 0) + n; } catch (e) { removed[label] = `err: ${e.message.slice(0, 40)}`; }
+  };
+
+  // signing envelopes (customer + provider) and their signers/fields
+  if (c.envelopeIds.length) {
+    await del('signature_fields', Field, { envelope_id: { [Op.in]: c.envelopeIds } });
+    await del('envelope_signers', Signer, { envelope_id: { [Op.in]: c.envelopeIds } });
+    await del('signing_envelopes', Env, { id: { [Op.in]: c.envelopeIds } });
+  }
+  // ledger events for this job's work order + invoice
+  const subj = [];
+  if (c.woId) subj.push({ subject_type: 'work_order', subject_id: c.woId });
+  if (c.invoiceId) subj.push({ subject_type: 'invoice', subject_id: c.invoiceId });
+  if (subj.length) await del('money_events', M.WtMoneyEvent, { [Op.or]: subj });
+  // provider sub-records
+  if (c.providerAgreementId) await del('agreement_rates', P.WtProviderAgreementRate, { agreement_id: c.providerAgreementId });
+  if (c.providerId) {
+    await del('provider_events', P.WtProviderEvent, { provider_id: c.providerId });
+    await del('provider_documents', P.WtProviderDocument, { provider_id: c.providerId });
+    await del('service_reports', P.WtServiceReport, { provider_id: c.providerId });
+    await del('provider_agreements', P.WtProviderAgreement, { provider_id: c.providerId });
+    await del('protected_clients', P.WtProtectedClient, { provider_id: c.providerId });
+  }
+  // client-side chain
+  if (c.warrantyCode) await del('warranties', M.WtWarranty, { code: c.warrantyCode });
+  if (c.invoiceCode) await del('invoices', M.WtInvoice, { code: c.invoiceCode });
+  if (c.woId) await del('work_orders', M.WtWorkOrder, { id: c.woId });
+  if (c.quoteCode) await del('quotations', M.WtQuotation, { code: c.quoteCode });
+  if (c.assessmentId) await del('site_assessments', M.WtSiteAssessment, { id: c.assessmentId });
+  if (c.srId) await del('service_requests', M.WtServiceRequest, { id: c.srId });
+  if (c.amcCode) await del('amc_contracts', M.WtAmcContract, { code: c.amcCode });
+  if (c.complaintId) await del('complaints', M.WtComplaint, { id: c.complaintId });
+  if (c.projectCode) await del('projects', M.WtProject, { code: c.projectCode });
+  if (M.WtClientEvent && c.clientId) await del('client_events', M.WtClientEvent, { client_id: c.clientId });
+  if (codes.length) await del('comm_logs', M.WtCommLog, { ref_code: { [Op.in]: codes } });
+  if (c.stamp) await del('comm_logs', M.WtCommLog, { client_name: { [Op.like]: `%${c.stamp}%` } });
+  if (c.clientId) await del('clients', M.WtClient, { id: c.clientId });
+  if (c.providerId) await del('providers', M.WtProvider, { id: c.providerId });
+  // portal logins created for this client + provider
+  if (User && c.portalEmails.length) await del('portal_users', User, { email: { [Op.in]: c.portalEmails } });
+
+  return removed;
+}
+
+async function finish() {
+  if (CLEAN) {
+    console.log('\n-- teardown (--clean): removing this run\'s records --');
+    try {
+      const removed = await teardown();
+      console.log('  removed:', JSON.stringify(removed));
+    } catch (e) { console.log('  teardown error:', e.message); }
+  }
   console.log(`\n===== ${SL}: ${R.pass} PASS, ${R.fail} FAIL, ${R.warn} WARN =====`);
-  console.log('\nKEPT RECORDS (visible in the UI):');
-  for (const [k, v] of Object.entries(R.ids)) if (!/Id$/.test(k)) console.log(`  ${k.padEnd(18)} ${v}`);
+  if (CLEAN) console.log('(records removed — the console is left as it was)');
+  else {
+    console.log('\nKEPT RECORDS (visible in the UI):');
+    for (const [k, v] of Object.entries(R.ids)) if (!/Id$/.test(k)) console.log(`  ${k.padEnd(18)} ${v}`);
+  }
   if (R.fail) { console.log('\nFAILURES:'); R.items.filter((i) => i.s === 'FAIL').forEach((i) => console.log(`  x ${i.m}${i.d !== undefined ? ' -- ' + i.d : ''}`)); }
   if (R.warn) { console.log('\nWARNINGS:'); R.items.filter((i) => i.s === 'WARN').forEach((i) => console.log(`  ! ${i.m}${i.d !== undefined ? ' -- ' + i.d : ''}`)); }
   process.exit(R.fail ? 1 : 0);
