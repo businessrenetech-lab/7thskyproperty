@@ -24,6 +24,7 @@ router.post('/:id/document/send', canBind, ctrl.sendDocument);
 router.post('/:id/document/void', canOperate, ctrl.voidDocument);
 // lifecycle
 router.post('/:id/assign', canOperate, ctrl.assign);
+router.post('/:id/allocate', canOperate, ctrl.allocate);
 router.post('/:id/accept', canOperate, ctrl.accept);
 router.post('/:id/decline', canOperate, ctrl.decline);
 router.post('/:id/schedule', canOperate, ctrl.schedule);

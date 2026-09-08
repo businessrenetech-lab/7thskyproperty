@@ -14,9 +14,9 @@ const customerSvc = require('../services/wtCustomerAgreement.service');
 // downstream work-order/invoice creation all stay in the right service.
 const relatedTypeFor = (req, kind) => getServiceLine(resolveServiceLine(req)).related_type[kind];
 const envPrefixFor = (req, kind) => {
-  const sl = resolveServiceLine(req);
+  const envTag = getServiceLine(resolveServiceLine(req)).env_tag || 'WT';
   const tag = kind === 'customer' ? 'CSA' : 'PSA';
-  return sl === 'air_conditioning' ? `ENV-ACS${tag}` : `ENV-WT${tag}`;
+  return `ENV-${envTag}${tag}`;
 };
 const providerSvc = require('../services/wtProviderAgreement.service');
 const SigningEnvelope = require('../models/SigningEnvelope');
@@ -329,7 +329,7 @@ async function sendSavedAgreement(req, agreement, provider) {
     const envelope = await SigningEnvelope.create({
       branch_id: agreement.branch_id,
       envelope_code: await generateCode(SigningEnvelope, 'envelope_code',
-        resolveServiceLine(req) === 'air_conditioning' ? 'ENV-ACSDP-' : 'ENV-WTSDP-', 6),
+        `ENV-${getServiceLine(resolveServiceLine(req)).env_tag || 'WT'}SDP-`, 6),
       agreement_template_id: built.template_id,
       title: `${built.title} — ${provider.business_name} — v${agreement.version_no}`,
       document_html: built.html, related_type: relatedTypeFor(req, 'provider'), related_id: provider.id,

@@ -4173,3 +4173,251 @@ used "the last line starting with `import`", which landed inside a multi-line
   node scripts/e2eServiceLine.js air_conditioning [--keep]. Refuses to wipe water_tank on cleanup.
 - VERIFIED: air_conditioning -> 32 PASS / 0 FAIL, test data removed. This is the reusable check to
   run when duplicating the next service line.
+
+### 2026-09-02 | Claude Code (Opus 4.8) | STARTED | Land & Property Assessment service line (Doc Verification & Transfer #1)
+- Duplicating the shared core for a THIRD service line: `land_property_assessment` (Survey & Valuation),
+  the first sub-service of the "Property Doc Verification & Transfer Support" parent. Source docs:
+  Downloads/Property Doc Verification and Transfer Support/Land and Property Assessment Support (SOPs,
+  workflow checklist, customer agreement, provider master agreement, work order — SSPC-SVS-*).
+- Plan: manifest entry + customer-agreement pack + work-order pack (generalize packForWo to a map) +
+  catalogue seed (prices 0, set at frontend) + provider master agreement seed; frontend console/nav/routes,
+  generalize the binary WT-vs-AC helpers (svcBase/svcVertical/svcProfile/profileForLine/api header) to N-way,
+  SERVICE_UI entry, dashboard parent group. Water Tank + AC untouched. Acceptance: e2eFullJourney.js land_property_assessment.
+
+### 2026-09-02 | Claude Code (Opus 4.8) | COMPLETED | Land & Property Assessment service line (Doc Verification & Transfer #1)
+- Stood up the THIRD service line `land_property_assessment` (Survey & Valuation) as pure config on the
+  shared core — Water Tank + Air Conditioning untouched. Console at /land-property-assessment (indigo),
+  linked from the main dashboard as "Doc Verification & Transfer — Land & Property Assessment" (the parent's
+  first live sub-service; the other 3 slot in later as sibling service lines).
+- BACKEND: serviceLines.js manifest (codes LPAS-C/-P, LPAR-/LPAA-/LPAQ-/LPAW-/LPAI-/LPAS-SP-, docs SSPC-SVS-*,
+  vertical land_property_assessment_csa, env_tag SVS, full ui block: property_types/service_catalogue/
+  equipment(Property & Land)/assess_checks(10, survey-safety)/assess_templates/assess_equipment/warranty/
+  complaint/incident vocab). Customer-agreement pack LPAS_PACK (SSPC-SVS-CSA-01, 23 clauses, Schedule A
+  Land Survey/Valuation/Technical/NRB, Schedule-D warranty=rectification). Work-order pack LPAS_PACK
+  (SSPC-SVS-PWO-01) + generalized packForWo to a map lookup. Provider master agreement seed
+  seedLpaProviderAgreement.js (SSPC-SVS-SDPMA-01, template #8). Catalogue seed
+  seedLandPropertyAssessmentCatalog.js — 47 items (SVS-/GOV-/TPC-/PRO-), ALL prices 0 (set at frontend,
+  flow into Schedule C + WO). AMC packages/visit types added for the line (survey has no AMC in docs, so
+  monitoring/portfolio-review tiers).
+- GENERALIZED the binary WT-vs-AC branches a 3rd line exposed: env-prefix (3 sites, now manifest env_tag),
+  provider onboard path (manifest route_base/onboard_path), serviceLineOf + PROVIDER_DOC (N-way via
+  SERVICE_LINE_KEYS), AMC packagesFor/visitTypesFor (maps). Frontend: svcBase/svcVertical/profileForLine
+  now N-way (SVC_BASES/BASE_TO_VERTICAL/LINE_TO_BASE), SERVICE_UI + wo_consumables_label per line, api.js
+  header derivation is a path->line table.
+- BUG FIXED (root cause of a stuck journey): signing_envelopes.related_type was VARCHAR(40); the LPAS
+  related_types (`land_property_assessment_customer_agreement` = 43) were silently TRUNCATED to 40, so the
+  endsWith('_customer_agreement')/('_provider_agreement') completion hooks missed -> WO never auto-raised,
+  provider agreement stuck at "Sent". Migration 0095 widens it to VARCHAR(100) (+ model). Fixes this line
+  and the 3 longer future Doc-Verification sub-service names too.
+- Harness: e2eFullJourney now selects warranty items from the ACTIVE line's own Schedule-D 'Warranty
+  Coverage' via /customer/meta (was hardcoded WT/AC names), so warranty auto-registration verifies for any line.
+- VERIFIED: e2eFullJourney land_property_assessment = 66 PASS / 0 FAIL / 4 WARN. All codes LPAS-branded,
+  assessment vocab isolated (10 survey checks, no tank leak), WO auto-raised + assigned->verified, warranty
+  auto-registered (WTY type "Survey Report"), invoice-from-WO linked, client-lookup projects+due balance,
+  payout due date correct, both portals. The 4 WARNs are ALL prices-at-0 (commission/payout/invoice-send/
+  payment) — expected until standard prices are set on the Price Schedule screen. admin build passes.
+- Test data KEPT (user preference): clients LPAS-C0001..C0003 (C0001 is the pre-fix partial run). Backend
+  restarted on :50001 after the migration.
+
+### 2026-09-03 | Claude Code (Opus 4.8) | COMPLETED | Client Document Manager (Property Doc Verification & Transfer only)
+- New per-client document management for Doc-Verification lines (manifest `doc_manager: true`; land_property_assessment
+  has it, Water Tank / Air Conditioning do NOT — gated everywhere).
+- Required assessment documents defined in the manifest as ui.client_docs (17 items, 6 groups: Identity, Ownership &
+  Title, Land Records, Plans & Maps, Statutory, Other) — grounded in the SOP (Mouza/JL/Dag/Khatian, existing plans),
+  Work Order checklist (Client Documents Received, Property Ownership Documents), Property Register (CS/SA/RS/BS) + the
+  standard BD conveyancing set (NID/passport, title deed, mutation, DCR, khajna/holding tax, PoA). NID + Title Deed +
+  RS Khatian marked required.
+- BACKEND: 2 tables (wt_client_documents, wt_client_doc_requests) + migration 0096. Controller/routes
+  /api/wt-client-docs (reference, summary, list w/ search+filters, create/verify/delete, request links). PUBLIC tokenised
+  upload flow /api/public/doc-request/:token (view/upload/submit), mirroring provider onboarding — token hashed, expiry,
+  required-docs gate on submit. All scoped by branch+service_line; reused the existing /uploads multer + FileUpload.
+- FRONTEND (Doc-Verification lines only): "Doc Manager" side-menu item under Sales & Intake (injected into the LPAS
+  console nav only) + DocManager.jsx (per-client index, checklist grouped by category, staff upload/verify/reject/remove,
+  request-link generator, global document search). Client dashboard Documents tab gained a "Client Property Documents"
+  section (svcDocManager()-gated) with the same checklist + request link. Public page DocumentRequest.jsx at
+  /document-request/:token (client fills doc no./date + uploads, submit gated on required). svcDocManager() helper +
+  doc_manager flag in SERVICE_UI.
+- DRIFT FIXED: server.js mounts routes from its OWN hardcoded list (NOT routes/manifest.js) — added both mounts to
+  server.js as well (manifest.js is for the monolith/production-server.js). This is the server.js≠monolith drift the
+  duplication doc warns about.
+- Bug fixed: requested_docs (Sequelize D.JSON over this MySQL) reads back as a string with raw/instance reads → parse
+  defensively on read in both controllers.
+- VERIFIED via live HTTP E2E: 14/14 PASS — reference, request link, public view (no auth), submit-blocks-on-required
+  (NID/Title Deed/RS Khatian), public uploads, submit success, staff list (source=client_link), search by doc number,
+  per-client summary, staff verify, water_tank 404 isolation gate. admin build passes. Backend on :50001.
+
+### 2026-09-03 | Claude Code (Opus 4.8) | COMPLETED | Loan & Financial Support service line (Doc Verification & Transfer #2)
+- Stood up the 4th service line `loan_financial_support` (2nd Doc-Verification sub-service) as config on the shared
+  core + ONE new module. Water Tank / Air Conditioning / Land & Property Assessment untouched. Console at
+  /loan-financial-support (teal). Main dashboard nav now groups "Doc Verification & Transfer" with two sub-services
+  (Land & Property Assessment, Loan & Financial Support).
+- Read all docs (SSPC-LFSS-*): client + third-party SOPs, workflow/registers, customer agreement, provider master
+  agreement, work order, CRM workbook. The core lifecycle is the SAME 9-phase spine (Phase 4 Document Collection =
+  the Doc Manager). The one genuinely loan-specific workflow artifact (workbook Sheet 8 Loan Application Tracker +
+  Sheet 10 Banking Liaison) is NOT in the shared spine -> built as a new module.
+- CONFIG (like LPAS): serviceLines.js manifest (RLFS-C/-P, RLFR-/RLFA-/RLFQ-/RLFW-/RLFI-/RLFS-SP-; docs SSPC-LFSS-*;
+  vertical loan_financial_support_csa; env_tag LFS; doc_manager true + loan_tracker true; ui: finance equipment fields,
+  eligibility assess_checks, loan client_docs, warranty=rectification). Customer-agreement pack LFS_PACK
+  (SSPC-LFSS-CSA-01, 24 clauses incl. Financial Services Disclaimer, Schedule A Loan/Valuation/Documentation/NRB).
+  Work-order pack LFS_PACK (SSPC-LFSS-PWO-01, Section 4 = Finance & Property). Catalogue seed
+  seedLoanFinancialCatalog.js (46 items LFS-/PRO-/TPC-, ALL prices 0). Provider master seed seedLfsProviderAgreement.js
+  (SSPC-LFSS-SDPMA-01, template #9).
+- NEW MODULE — Loan Application Tracker: model waterTankLoanApplications.js (wt_loan_applications) + migration 0097;
+  controller/routes /api/wt-loan-applications (reference, list w/ search+status filter, summary, create, verify/status
+  update w/ auto decision-date, delete); gated by manifest loan_tracker; scoped by branch+service_line. Frontend
+  LoanApplications.jsx (summary chips, searchable table, create/edit drawer with lender/RM/loan type/amount/status/
+  outcome) + "Loan Applications" nav item (LFS console only). Mounted in BOTH server.js and manifest.js (drift).
+- FRONTEND: consoles.js loanFinancialSupportConsole (teal) + Doc Manager + Loan Applications nav injected; console
+  shell; App.jsx route block + provider-onboard + public doc-request routes; api.js path->line; common.jsx SERVICE_UI
+  entry (finance vocab) + SVC_BASES/BASE_TO_VERTICAL/LINE_TO_BASE + svcLoanTracker helper.
+- VERIFIED: e2eFullJourney loan_financial_support = 64 PASS / 0 FAIL / 4 WARN (all WARN are prices-at-0: commission/
+  payout/invoice-send/payment). Codes RLFS-branded, assessment vocab isolated (10 eligibility checks), WO auto-raised,
+  warranty auto-registered (Administrative Rectification), both portals. LFS-modules HTTP test 10/10: Doc Manager
+  (12 loan docs, public upload), Loan Application Tracker (LAPP-0001 create/list/approve+decision-date/summary),
+  water_tank 404 gates. admin build passes. Backend on :50001. Test data KEPT (client RLFS-C0001).
+
+### 2026-09-03 | Claude Code (Opus 4.8) | COMPLETED | Property Documentation & Verification service line (Doc Verification & Transfer #3)
+- Stood up the 5th service line `property_documentation_verification` (3rd Doc-Verification sub-service) as config on
+  the shared core + ONE new module. Other lines untouched. Console at /property-documentation-verification (orange).
+  Main dashboard "Doc Verification & Transfer" group now lists all three live sub-services.
+- Read all docs (SSPC-PDVS-*): client + third-party SOPs, workflow/registers, customer agreement, provider master
+  agreement, work order, enterprise workbook. Core lifecycle = the same 9-phase spine (Phase 4 Document Collection =
+  Doc Manager; Phase 6 Verification & Investigation + Phase 8 Mutation/Transfer). The loan-tracker-style bespoke need
+  here is the Verification Register (workbook Sheet 8 Government Search + Sheet 9 Findings/Risk).
+- CONFIG: serviceLines.js manifest (PDV-C/-P, PDVR-/PDVA-/PDVQ-/PDVW-/PDVI-/PDV-SP-; docs SSPC-PDVS-*; vertical
+  property_documentation_verification_csa; env_tag PDV; doc_manager true + verification_register true; ui: property/
+  records equipment fields, due-diligence assess_checks, 12 client_docs (deed/mutation/porcha/tax/NID/PoA/court),
+  warranty=rectification). Customer-agreement pack PDV_PACK (SSPC-PDVS-CSA-01, 24 clauses incl. Documentation &
+  Verification Process + Service Standards; Schedule A Verification/Mutation/Documentation/Conveyancing/NRB). WO pack
+  PDV_PACK (SSPC-PDVS-PWO-01, Section 4 = Property & Records). Catalogue seedPropertyDocVerificationCatalog.js (43
+  items PDV-/PRO-/TPC-, prices 0). Provider master seedPdvProviderAgreement.js (SSPC-PDVS-SDPMA-01, template #10).
+- NEW MODULE — Verification Register: model waterTankVerifications.js (wt_verification_checks) + migration 0098;
+  controller/routes /api/wt-verifications (reference/list+search+status/risk filter/summary-by-risk/create/update-with-
+  auto-verified-date/delete) gated by manifest verification_register; scoped by branch+service_line. Frontend
+  VerificationRegister.jsx (risk-toned pills, summary chips incl. flagged High/Critical, searchable table, create/edit
+  drawer: check type, authority, reference, status, risk, finding, recommended action) + "Verifications" nav item
+  (PDV console only). Mounted in BOTH server.js and manifest.js.
+- FRONTEND: consoles.js propertyDocVerificationConsole (orange) + Doc Manager + Verifications nav; console shell;
+  App.jsx route block + provider-onboard route; api.js path->line; common.jsx SERVICE_UI entry (verification vocab) +
+  SVC_BASES/BASE_TO_VERTICAL/LINE_TO_BASE + svcVerificationRegister helper; Layout.jsx third sub-service in the group.
+- VERIFIED: e2eFullJourney property_documentation_verification = 64 PASS / 0 FAIL / 4 WARN (all WARN prices-at-0).
+  PDV-modules HTTP test 11/11: Doc Manager (12 property docs, public upload), Verification Register (VER-0001 create/
+  complete+verified-date/list/summary-by-risk), water_tank AND loan-line 404 gates. admin build passes. Backend :50001.
+  Test data KEPT (client PDV-C0001). One Doc-Verification sub-service remains: Property Will Succession.
+
+### 2026-09-03 | Claude Code (Opus 4.8) | COMPLETED | Property Will & Succession service line (Doc Verification & Transfer #4 — FINAL)
+- Stood up the 6th service line `property_will_succession` (4th/final Doc-Verification sub-service) as config on the
+  shared core + ONE new module. Other lines untouched. Console at /property-will-succession (rose). The main dashboard
+  "Doc Verification & Transfer" group now lists ALL FOUR sub-services — the parent is complete.
+- Read all docs (SSPC-PWSS-*): client + third-party SOPs, workflow/registers, customer agreement, provider master
+  agreement, work order, workbook. Core lifecycle = same 8/9-phase spine (Document Collection = Doc Manager). Note:
+  the source customer-agreement + work-order doc-no fields carried a PDVS copy-paste slip; used the correct PWSS codes.
+  The bespoke need is a Beneficiary / Heirs Register (workbook Sheet 3 Beneficiaries + Sheet 7 Beneficiary Documents).
+- CONFIG: serviceLines.js manifest (PWS-C/-P, PWSR-/PWSA-/PWSQ-/PWSW-/PWSI-/PWS-SP-; docs SSPC-PWSS-*; vertical
+  property_will_succession_csa; env_tag PWS; doc_manager true + beneficiary_register true; ui: estate/property equipment
+  fields with Will Status, succession-readiness assess_checks, 11 client_docs (will/death cert/succession cert/probate/
+  beneficiary docs), warranty=rectification). Customer-agreement pack PWS_PACK (SSPC-PWSS-CSA-01, 24 clauses incl.
+  Service Delivery Process + Professional Service Standards; Schedule A Will/Transfer/Nomination/Legal/Succession). WO
+  pack PWS_PACK (SSPC-PWSS-PWO-01, Section 4 = Estate & Property). Catalogue seedPropertyWillSuccessionCatalog.js (43
+  items PWS-/PRO-/TPC-, prices 0). Provider master seedPwsProviderAgreement.js (SSPC-PWSS-SDPMA-01, template #11).
+- NEW MODULE — Beneficiary / Heirs Register: model waterTankBeneficiaries.js (wt_beneficiaries, code BEN-,
+  beneficiary_name/relationship/nid/share_percent/entitlement/status) + migration 0099; controller/routes
+  /api/wt-beneficiaries (reference/list+search/summary-with-per-client-share-totals/create/update/delete) gated by
+  manifest beneficiary_register. Frontend BeneficiaryRegister.jsx (grouped per client/estate, share-total badge that
+  flags != 100%, disputed chip, create/edit drawer) + "Beneficiaries" nav item (PWS console only). Mounted in BOTH
+  server.js and manifest.js.
+- FRONTEND: consoles.js propertyWillSuccessionConsole (rose) + Doc Manager + Beneficiaries nav; console shell; App.jsx
+  route block + provider-onboard route; api.js path->line; common.jsx SERVICE_UI entry (will/succession vocab) +
+  SVC_BASES/BASE_TO_VERTICAL/LINE_TO_BASE + svcBeneficiaryRegister helper; Layout.jsx fourth sub-service in the group.
+- VERIFIED: e2eFullJourney property_will_succession = 64 PASS / 0 FAIL / 4 WARN (all WARN prices-at-0). PWS-modules
+  HTTP test 11/11: Doc Manager (11 docs, public upload), Beneficiary Register (BEN-0001..3 create, disputed update,
+  summary with 100% share total + disputed count), water_tank AND PDV-line 404 gates. admin build passes. Backend :50001.
+  Test data KEPT (client PWS-C0001). ALL FOUR Property Doc Verification & Transfer sub-services now built and verified.
+
+### 2026-09-08 | Claude Code (Opus 4.8) | COMPLETED | Removal & Relocation service line (internal Team & Fleet — no provider agreement)
+- Stood up the 7th service line `removal_relocation` on the shared core. First line with a DIFFERENT delivery model:
+  work is done by our OWN crew + vehicles (not third-party providers), so NO provider service agreement. Optional
+  external providers still supported per-work-order (name + fee + disbursement). Console at /removal-relocation
+  (amber-brown). Sits under the "Services" submenu next to Water Tank / Air Conditioning / Doc Verification.
+- Read all docs (SSPC-RRS-*): removal SOPs, customer service agreement, and the pricing/checklist Excel. Core lifecycle
+  = same 8-phase spine, but Provider Allocation becomes internal Resource Allocation (crew + vehicle), and the site
+  assessment carries pickup + drop-off (two locations).
+- NEW BEHAVIOR FLAGS on the manifest (default off, so existing lines are untouched): delivery_model:'internal_team',
+  provider_agreement_required:false, team_fleet, inventory, two_locations. The shared core reads these to flip:
+  work-order "Assign provider" -> "Allocate crew & vehicle"; consoles.js swaps the Providers nav group for Team & Fleet
+  and adds Inventory; App.jsx omits provider-agreement routes for this line.
+- CONFIG: serviceLines.js manifest (RRS-C/-P, RRSR-/RRSA-/RRSQ-/RRSW-/RRSI-; docs SSPC-RRS-*; vertical
+  removal_relocation_csa; env_tag RRS; crew_roles, vehicle_types; ui: Schedule A 7 service groups, move equipment
+  fields, 10 removal assess_checks, move vocab). Customer-agreement pack RRS_PACK (SSPC-RRS-CSA-01, 23 clauses;
+  Schedule A REM-001..030; checklist groups incl. Prohibited Items Declaration + Inventory Acknowledgement; default
+  split 50/25/25). WO pack RRS_PACK (SSPC-RRS-PWO-01, Section 4 = Move Details). Catalogue
+  seedRemovalRelocationCatalog.js (50 items: REM-/LAB-/VEH-/MAT-/SUR-, prices 0). Migration 0100 (team/fleet/inventory
+  tables + WO allocation columns + assessment pickup/drop-off).
+- NEW MODULES — Team & Fleet + Inventory: models waterTankResources.js (wt_crew CREW-, wt_vehicles VH-) +
+  wt_inventory_items; controllers/routes /api/wt-resources (crew+vehicle CRUD, availability double-booking check by
+  move_date) and /api/wt-inventory (list/summary/CRUD, fragile + high-value), both gated by manifest team_fleet /
+  inventory. Work-order `allocate` endpoint (POST /:id/allocate) sets crew_ids/vehicle_ids/external provider + auto-
+  accepts (internal team). Frontend TeamFleet.jsx, Inventory.jsx, RemovalRelocationConsole.jsx; AllocateDrawer in
+  WorkOrderDetail.jsx (crew/vehicle checkboxes with availability conflict flags). Mounted in BOTH server.js and manifest.js.
+- FIXES found during verification: (1) assessment-reference leaked Water Tank vocab (tank_types/materials/
+  water_sources) as hardcoded fallbacks to EVERY line — now gated to the water_tank line only, so a Removal assessment
+  shows move types + vehicle types, never tank types. Benefits all non-water-tank lines. (2) Migration 0100 had
+  silently swallowed the addColumn for the DECIMAL/BOOLEAN work-order columns (external_provider_fee/_disbursed/
+  delay_hours/delay_charge), leaving the table partially migrated — surfaced only as "Unknown column" when signing
+  auto-raised the WO. Added the 4 columns and made the migration log swallowed addColumn errors instead of hiding them.
+- VERIFIED: focused Removal end-to-end 20 PASS / 0 FAIL — assessment vocab (removal, no water-tank terms); agreement
+  declarations (Prohibited Items + Inventory Acknowledgement); crew CREW-/vehicle VH-; intake->client RRS-C0007->
+  request RRSR->quote RRSQ; customer agreement ENV-RRSCSA + 2/2 sign -> WO auto-raised RRSW-0001; allocate (3 crew +
+  truck -> Accepted, provider_name summary, crew_ids stored); availability double-booking flag; schedule/start/
+  complete/verify; invoice-from-WO RRSI-0005; inventory create + summary; water_tank AND PWS-line 404 gates. admin
+  build passes. Backend :50001. (e2eFullJourney is provider-centric so not used for this internal-team line.)
+
+### 2026-09-08 | Claude Code (Opus 4.8) | STARTED | Property Care & Concierge service line (8th line — internal team, recurring via AMC)
+- Read SSPC-PCCS SOP + customer agreement + CRM Excel. Internal-team delivery (like Removal): reuses Team
+  & Fleet + allocate, NO provider agreement. Recurring/ongoing services reuse the AMC visit engine.
+- Building: manifest property_care_concierge (PCC, emerald), catalogue seed (7 groups), CSA pack
+  SSPC-PCCS-CSA-01, WO pack SSPC-PCCS-PWO-01, PCC AMC packages/visit types. 3 new modules (Property Asset
+  Register, Concierge & Access, Utility Coordination) + extend shared Incident register with PCC damage
+  fields/vocab. Migration 0101. Console /property-care-concierge under Services. Spec:
+  docs/superpowers/specs/2026-09-08-property-care-concierge-design.md.
+
+### 2026-09-08 | Claude Code (Opus 4.8) | COMPLETED | Property Care & Concierge service line (8th line — internal team + recurring via AMC)
+- Stood up the 8th service line `property_care_concierge` on the shared core. Internal-team delivery like Removal
+  (own crew/vehicles via Team & Fleet + allocate, optional external subcontractor per WO, NO provider agreement —
+  customer agreement only). Console at /property-care-concierge (emerald), under the Services submenu. Read SSPC-PCCS
+  SOP + customer agreement + the CRM Excel; the SOP is the standard 7-phase spine. Spec:
+  docs/superpowers/specs/2026-09-08-property-care-concierge-design.md.
+- What made it different (and drove the net-new work): recurring/ongoing services (Frequency), a Property Asset &
+  Maintenance register, Concierge & Access (key-holding/entry-exit), and Utility Coordination.
+- CONFIG: serviceLines.js manifest (PCC-C/-P, PCCR-/PCCA-/PCCQ-/PCCW-/PCCI-; docs SSPC-PCCS-*; vertical
+  property_care_concierge_csa; env_tag PCC; flags delivery_model:internal_team, provider_agreement_required:false,
+  team_fleet, asset_register, concierge, utility_coordination; 7 service categories; single-location property-condition
+  assess_checks; service_frequencies vocab). CSA pack PCC_PACK (SSPC-PCCS-CSA-01, 22 clauses, Schedule A = 7 groups,
+  checklist groups Client Acknowledgements + Property Access & Valuables Declaration + Service Standards + Warranty
+  Coverage). WO pack PCC_PACK (SSPC-PCCS-PWO-01, Section 4 = Service & Property Details). Catalogue
+  seedPropertyCareConciergeCatalog.js (60 items: 40 service PCM/PPR/SPS/SEC/MKT/NRB/CON, 8 labour, 12 material; prices 0).
+- RECURRING via AMC (reuse, not rebuild): added PCC_PACKAGES (Home Care Plan / Vacant Property Watch / NRB Owner Care /
+  Commercial Facility Care) + PCC_VISIT_TYPES (Cleaning/Gardening/Inspection/Monitoring/Maintenance/Concierge) to the
+  by-line maps in wtAmc.service; ongoing plans run through the existing per-line AMC console.
+- NEW MODULES (line-specific-module pattern; models in waterTankPropertyCare.js, migration 0101): Property Asset
+  Register (wt_property_assets AST-, /api/wt-assets, due-soon/overdue/warranty-expiring summary, gated asset_register);
+  Concierge & Access (wt_access_declarations ACC- + wt_property_visits VIS- Entry/Exit, /api/wt-concierge, gated
+  concierge); Utility Coordination (wt_utility_requests UTL-, /api/wt-utilities, gated utility_coordination). 4th
+  selection reused the shared Incident register: added PCC incident_types vocab + damage columns to wt_incidents
+  (pre_existing/estimated_cost/responsibility/rectification_action, migration 0101 + WtIncident model + registers
+  controller create). Routes mounted in BOTH server.js and manifest.js.
+- FRONTEND: consoles.js propertyCareConciergeConsole (emerald) + nav (Team & Fleet replaces Providers group; Property
+  Assets under intake; Concierge & Access + Utilities under delivery); PropertyCareConciergeConsole.jsx shell +
+  PropertyAssets.jsx / Concierge.jsx (two tabs) / Utilities.jsx (tidy-sheet UI); App.jsx route block (customer agreement
+  + AMC only, no provider routes); api.js path->line; common.jsx SERVICE_UI entry + SVC_BASES/LINE_TO_BASE/
+  BASE_TO_VERTICAL + helpers svcAssetRegister/svcConcierge/svcUtilityCoordination; Layout.jsx Services submenu link
+  (replaced the old /services/lines/ placeholder).
+- FIX: migration 0101 first run double-wrapped the object-typed incident columns ({type} nested as a type) → SQL
+  "[object Object]" error for pre_existing/estimated_cost; added those two directly and normalised the migration to
+  accept both bare-type and attribute-object column defs. The 4 new tables + string columns created cleanly.
+- VERIFIED: focused end-to-end 26 PASS / 0 FAIL — assessment vocab (property care, no tank/removal terms); CSA
+  declarations; AMC recurring plans; crew CREW-/vehicle VH-; intake->client PCC-C0001->request PCCR->quote PCCQ->CSA
+  ENV-PCCCSA + 2/2 sign -> WO auto-raised PCCW-0001 -> allocate (3 crew + van -> Accepted) -> complete/verify ->
+  invoice PCCI; incident with damage fields (pre_existing/cost/responsibility); property asset + due/warranty summary;
+  access declaration + entry visit + concierge summary; utility request + summary; water_tank / PWS / Removal all
+  404-gated on the three PCC modules. admin build passes (npm run build). Backend :50001.

@@ -193,6 +193,15 @@ const WtWorkOrder = sequelize.define('WtWorkOrder', {
   client_code: D.STRING(30), site_address: D.STRING(255), client_phone: D.STRING(40),
   provider_id: D.INTEGER, assigned_at: D.DATE, assigned_by: D.STRING(120),
   accepted_at: D.DATE, accepted_by: D.STRING(120), declined_reason: D.TEXT,
+  // ── Removal & Relocation: internal team + fleet allocation, pickup/drop-off,
+  //    optional external provider, delay charges (migration 0100) ──
+  pickup_address: D.STRING(400), pickup_access: D.STRING(255),
+  dropoff_address: D.STRING(400), dropoff_access: D.STRING(255), move_date: D.DATEONLY,
+  crew_ids: D.JSON, vehicle_ids: D.JSON,
+  external_provider_name: D.STRING(200), external_provider_fee: { type: D.DECIMAL(15, 2), defaultValue: 0 },
+  external_provider_disbursed: { type: D.BOOLEAN, defaultValue: false },
+  delay_hours: { type: D.DECIMAL(6, 2), defaultValue: 0 }, delay_charge: { type: D.DECIMAL(15, 2), defaultValue: 0 },
+  allocated_at: D.DATE, allocated_by: D.STRING(120),
   scheduled_date: D.DATEONLY, started_at: D.DATE, completed_at: D.DATE,
   crew_size: { type: D.INTEGER, defaultValue: 0 }, attendance: D.JSON,
   stages: D.JSON, progress: { type: D.INTEGER, defaultValue: 0 },
@@ -541,6 +550,12 @@ const WtIncident = sequelize.define('WtIncident', {
   // Resolved job context (0089) — written from the work order, never typed.
   work_order_id: D.INTEGER, client_code: D.STRING(30), site_address: D.STRING(255),
   raised_via: { type: D.STRING(20), defaultValue: 'staff' }, logged_by: D.STRING(120),
+  // Property-damage columns (0101) — let the shared register double as the Property
+  // Damage register for Property Care & Concierge (pre-existing vs caused, cost, fault).
+  pre_existing: { type: D.BOOLEAN, defaultValue: false },
+  estimated_cost: { type: D.DECIMAL(15, 2), defaultValue: 0 },
+  responsibility: D.STRING(120),
+  rectification_action: D.TEXT,
 }, { tableName: 'wt_incidents' });
 
 /* SOP-01 client lifecycle timeline. */

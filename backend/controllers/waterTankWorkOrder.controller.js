@@ -124,11 +124,17 @@ exports.detail = asyncHandler(async (req, res) => {
   const paid = num(w.provider_paid_amount);
   const fee = num(w.provider_fee);
 
+  // Internal-team lines (Removal) allocate crew + vehicle instead of assigning an
+  // agreement-bound provider, and auto-accept (it's our own team).
+  const internalTeam = getServiceLine(w.service_line || resolveServiceLine(req)).delivery_model === 'internal_team';
+
   // what the operator should do next, in SOP order
   const nextAction = (() => {
     if (String(w.status).toLowerCase() === 'cancelled') return null;
-    if (!stages.assigned) return { key: 'assign', label: 'Assign a provider', sop: 'Sec. 8 Step 7' };
-    if (!stages.accepted) return { key: 'accept', label: 'Record provider acceptance', sop: 'Sec. 7 Step 7' };
+    if (!stages.assigned) return internalTeam
+      ? { key: 'allocate', label: 'Allocate crew & vehicle', sop: 'Sec. 13' }
+      : { key: 'assign', label: 'Assign a provider', sop: 'Sec. 8 Step 7' };
+    if (!internalTeam && !stages.accepted) return { key: 'accept', label: 'Record provider acceptance', sop: 'Sec. 7 Step 7' };
     if (!stages.scheduled) return { key: 'schedule', label: 'Schedule the visit', sop: 'Sec. 8 Step 8' };
     if (!stages.attended) return { key: 'start', label: 'Mark crew attended', sop: 'Sec. 8 Step 8' };
     if (!stages.work_done) return { key: 'complete', label: 'Mark work completed', sop: 'Sec. 8 Step 8' };
@@ -282,6 +288,52 @@ exports.assign = asyncHandler(async (req, res) => {
     commission_pct: fees.commission_pct, commission: fees.commission_amount,
     net_payable: fees.net_provider_payable, overridden: !!fees.override_reason,
   } });
+});
+
+/**
+ * POST /wt-work-orders/:id/allocate — internal Team & Fleet resource allocation
+ * for delivery_model:'internal_team' lines (Removal & Relocation). No provider
+ * master agreement: assigns crew + vehicle (+ optional external provider & fee),
+ * writes a human summary into provider_name and moves the WO to Accepted so the
+ * normal schedule → start → complete → verify flow proceeds unchanged.
+ */
+exports.allocate = asyncHandler(async (req, res) => {
+  if (getServiceLine(resolveServiceLine(req)).delivery_model !== 'internal_team') {
+    return res.status(400).json({ error: 'Resource allocation is only for internal-team service lines.' });
+  }
+  const wo = await load(req, res); if (!wo) return;
+  const b = req.body || {};
+  const crewIds = Array.isArray(b.crew_ids) ? b.crew_ids.map(Number).filter(Boolean) : [];
+  const vehicleIds = Array.isArray(b.vehicle_ids) ? b.vehicle_ids.map(Number).filter(Boolean) : [];
+  if (!crewIds.length && !b.external_provider_name) {
+    return res.status(400).json({ error: 'Allocate at least one crew member or name an external provider.' });
+  }
+  const R = require('../models/waterTankResources');
+  const crew = crewIds.length ? await R.WtCrew.findAll({ where: { ...scoped(req), id: { [Op.in]: crewIds } }, raw: true }) : [];
+  const vehicles = vehicleIds.length ? await R.WtVehicle.findAll({ where: { ...scoped(req), id: { [Op.in]: vehicleIds } }, raw: true }) : [];
+  const lead = crew.find((c) => /lead/i.test(c.role || '')) || crew[0];
+  const parts = [];
+  if (b.external_provider_name) parts.push(b.external_provider_name);
+  if (lead) parts.push(`${lead.name}${crew.length > 1 ? ` +${crew.length - 1} crew` : ''}`);
+  if (vehicles.length) parts.push(vehicles.map((v) => v.vehicle_type || v.reg_no).filter(Boolean).join(', '));
+  const summary = parts.join(' · ') || 'Internal team';
+
+  await svc.refreshProgress(wo, {
+    crew_ids: crewIds, vehicle_ids: vehicleIds,
+    external_provider_name: b.external_provider_name || null,
+    external_provider_fee: b.external_provider_fee != null ? Number(b.external_provider_fee) || 0 : wo.external_provider_fee,
+    move_date: b.move_date || wo.move_date,
+    pickup_address: b.pickup_address != null ? b.pickup_address : wo.pickup_address,
+    dropoff_address: b.dropoff_address != null ? b.dropoff_address : wo.dropoff_address,
+    provider_name: summary,
+    status: ['Draft', 'Assigned'].includes(wo.status) ? 'Accepted' : wo.status,
+    assigned_at: wo.assigned_at || new Date(), assigned_by: actorOf(req),
+    accepted_at: wo.accepted_at || new Date(), accepted_by: summary,
+    allocated_at: new Date(), allocated_by: actorOf(req),
+  });
+  await logEvent(req, wo, 'resources allocated', summary);
+  await wo.reload();
+  res.json(wo);
 });
 
 /** POST /wt-work-orders/:id/accept — provider confirms availability and price. */
@@ -649,7 +701,7 @@ exports.sendDocument = asyncHandler(async (req, res) => {
     const envelope = await SigningEnvelope.create({
       branch_id: wo.branch_id,
       envelope_code: await generateCode(SigningEnvelope, 'envelope_code',
-        resolveServiceLine(req) === 'air_conditioning' ? 'ENV-ACPWO-' : 'ENV-WTPWO-', 6),
+        `ENV-${getServiceLine(wo.service_line || resolveServiceLine(req)).env_tag || 'WT'}PWO-`, 6),
       title: `${built.title} — ${wo.client_name}`,
       document_html: built.html,
       // The work order's own service line drives its related_type so the hub,

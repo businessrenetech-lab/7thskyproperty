@@ -113,10 +113,59 @@ const AC_PACKAGES = [
   },
 ];
 
+// Land & Property Assessment (Survey & Valuation) periodic-service packages.
+// The client docs describe no AMC, so these cover the realistic recurring work:
+// property monitoring for NRB owners and periodic portfolio re-inspection.
+const LPAS_PACKAGES = [
+  {
+    key: 'property_monitoring_lpa', label: 'Property Monitoring AMC', client_type: 'Residential',
+    blurb: 'Periodic inspection and status reporting for an owner (including NRB) property.',
+    visits: { Inspection: 4, 'Progress Inspection': 2, 'Valuation Review': 1 },
+    response_hours: 72, water_testing_included: false, emergency_callouts_included: 0,
+  },
+  {
+    key: 'portfolio_review_lpa', label: 'Portfolio Review AMC', client_type: 'Commercial',
+    blurb: 'Periodic re-inspection and valuation review across a commercial property portfolio.',
+    visits: { Inspection: 4, 'Re-measurement': 2, 'Valuation Review': 2 },
+    response_hours: 48, water_testing_included: false, emergency_callouts_included: 0,
+  },
+];
+
+// Property Care & Concierge ongoing-service plans. Property Care is an internal-team
+// line whose "AMC" is a recurring care plan — cleaning/gardening/monitoring visits
+// spread across the term (SOP frequency: weekly / fortnightly / monthly / quarterly).
+const PCC_PACKAGES = [
+  {
+    key: 'home_care_plan', label: 'Home Care Plan', client_type: 'Residential',
+    blurb: 'Ongoing cleaning, gardening and periodic inspection for an occupied home.',
+    visits: { Cleaning: 52, Gardening: 26, Inspection: 12 },
+    response_hours: 48, water_testing_included: false, emergency_callouts_included: 2,
+  },
+  {
+    key: 'vacant_property_watch', label: 'Vacant Property Watch', client_type: 'Residential',
+    blurb: 'Regular security checks, monitoring and maintenance visits for a vacant property.',
+    visits: { Inspection: 52, Monitoring: 52, Maintenance: 4 },
+    response_hours: 24, water_testing_included: false, emergency_callouts_included: 4,
+  },
+  {
+    key: 'nrb_owner_care', label: 'NRB Owner Care', client_type: 'Residential',
+    blurb: 'Periodic video inspection, property visit reports and care for an overseas (NRB) owner.',
+    visits: { Inspection: 12, Monitoring: 12, Concierge: 4 },
+    response_hours: 72, water_testing_included: false, emergency_callouts_included: 1,
+  },
+  {
+    key: 'commercial_facility_care', label: 'Commercial Facility Care', client_type: 'Commercial',
+    blurb: 'Scheduled cleaning, maintenance and inspection for a commercial property.',
+    visits: { Cleaning: 52, Maintenance: 12, Inspection: 12 },
+    response_hours: 24, water_testing_included: false, emergency_callouts_included: 4,
+  },
+];
+
 // Packages by service line; combined for key lookup (keys are unique across lines).
 const PACKAGES = WT_PACKAGES; // default (Water Tank) — kept for back-compat exports
-const ALL_PACKAGES = [...WT_PACKAGES, ...AC_PACKAGES];
-const packagesFor = (serviceLine) => (serviceLine === 'air_conditioning' ? AC_PACKAGES : WT_PACKAGES);
+const PACKAGES_BY_LINE = { water_tank: WT_PACKAGES, air_conditioning: AC_PACKAGES, land_property_assessment: LPAS_PACKAGES, property_care_concierge: PCC_PACKAGES };
+const ALL_PACKAGES = [...WT_PACKAGES, ...AC_PACKAGES, ...LPAS_PACKAGES, ...PCC_PACKAGES];
+const packagesFor = (serviceLine) => PACKAGES_BY_LINE[serviceLine] || WT_PACKAGES;
 const packageByKey = (key) => ALL_PACKAGES.find((p) => p.key === key || eq(p.label, key)) || null;
 
 /* Visit activities per service line. WT: SOP §10's four; AC: servicing/cleaning/gas/inspection. */
@@ -132,8 +181,23 @@ const AC_VISIT_TYPES = [
   { key: 'Gas Check', label: 'Refrigerant / gas check', sop: 'Sec. 14' },
   { key: 'Inspection', label: 'Inspection visit', sop: 'Sec. 14' },
 ];
+const LPAS_VISIT_TYPES = [
+  { key: 'Inspection', label: 'Site inspection', sop: 'Sec. 7' },
+  { key: 'Re-measurement', label: 'Re-measurement', sop: 'Sec. 7' },
+  { key: 'Valuation Review', label: 'Valuation review', sop: 'Sec. 7' },
+  { key: 'Progress Inspection', label: 'Construction progress inspection', sop: 'Sec. 7' },
+];
+const PCC_VISIT_TYPES = [
+  { key: 'Cleaning', label: 'Cleaning visit', sop: 'Sec. 5' },
+  { key: 'Gardening', label: 'Gardening & landscaping visit', sop: 'Sec. 5' },
+  { key: 'Inspection', label: 'Property inspection', sop: 'Sec. 6' },
+  { key: 'Monitoring', label: 'Monitoring / security check', sop: 'Sec. 5' },
+  { key: 'Maintenance', label: 'Maintenance visit', sop: 'Sec. 5' },
+  { key: 'Concierge', label: 'Concierge / owner-care visit', sop: 'Sec. 5' },
+];
 const VISIT_TYPES = WT_VISIT_TYPES; // default (Water Tank) — kept for back-compat exports
-const visitTypesFor = (serviceLine) => (serviceLine === 'air_conditioning' ? AC_VISIT_TYPES : WT_VISIT_TYPES);
+const VISIT_TYPES_BY_LINE = { water_tank: WT_VISIT_TYPES, air_conditioning: AC_VISIT_TYPES, land_property_assessment: LPAS_VISIT_TYPES, property_care_concierge: PCC_VISIT_TYPES };
+const visitTypesFor = (serviceLine) => VISIT_TYPES_BY_LINE[serviceLine] || WT_VISIT_TYPES;
 
 /* Clause 9. `per_year` drives the instalment split. */
 const PAYMENT_FREQUENCIES = [

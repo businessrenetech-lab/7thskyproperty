@@ -39,6 +39,22 @@ import ServiceCatalog from './screens/ServiceCatalog';
 import ServiceLineDashboard from './screens/services/ServiceLineDashboard';
 import WaterTankConsole from './screens/watertank/WaterTankConsole';
 import AirConditioningConsole from './screens/watertank/AirConditioningConsole';
+import LandPropertyAssessmentConsole from './screens/watertank/LandPropertyAssessmentConsole';
+import DocManager from './screens/watertank/DocManager';
+import DocumentRequest from './screens/DocumentRequest';
+import LoanFinancialSupportConsole from './screens/watertank/LoanFinancialSupportConsole';
+import LoanApplications from './screens/watertank/LoanApplications';
+import PropertyDocVerificationConsole from './screens/watertank/PropertyDocVerificationConsole';
+import VerificationRegister from './screens/watertank/VerificationRegister';
+import PropertyWillSuccessionConsole from './screens/watertank/PropertyWillSuccessionConsole';
+import BeneficiaryRegister from './screens/watertank/BeneficiaryRegister';
+import RemovalRelocationConsole from './screens/watertank/RemovalRelocationConsole';
+import TeamFleet from './screens/watertank/TeamFleet';
+import Inventory from './screens/watertank/Inventory';
+import PropertyCareConciergeConsole from './screens/watertank/PropertyCareConciergeConsole';
+import PropertyAssets from './screens/watertank/PropertyAssets';
+import Concierge from './screens/watertank/Concierge';
+import Utilities from './screens/watertank/Utilities';
 import WaterTankDashboard from './screens/watertank/Dashboard';
 import WaterTankProviders from './screens/watertank/providers/ProviderDirectory';
 import WaterTankProviderDetail from './screens/watertank/providers/ProviderDetail';
@@ -188,6 +204,11 @@ export default function App() {
             <Route path="/provider-register/:token" element={<ProviderRegister />} />
             <Route path="/water-tank-provider-onboard/:token" element={<WaterTankProviderOnboard />} />
             <Route path="/air-condition-provider-onboard/:token" element={<WaterTankProviderOnboard />} />
+            <Route path="/land-property-assessment-provider-onboard/:token" element={<WaterTankProviderOnboard />} />
+            <Route path="/loan-financial-support-provider-onboard/:token" element={<WaterTankProviderOnboard />} />
+            <Route path="/property-documentation-verification-provider-onboard/:token" element={<WaterTankProviderOnboard />} />
+            <Route path="/property-will-succession-provider-onboard/:token" element={<WaterTankProviderOnboard />} />
+            <Route path="/document-request/:token" element={<DocumentRequest />} />
             {/* Provider and customer portals. PUBLIC by design — the token in the
                 URL is the credential, so this must sit outside RequireAuth. */}
             <Route path="/portal/:token" element={<WTPortal />} />
@@ -430,6 +451,376 @@ export default function App() {
               <Route path="/air-conditioning/catalogue" element={<WaterTankCatalogue />} />
               <Route path="/air-conditioning/portal-accounts" element={<WTPortalAccounts />} />
               <Route path="/air-conditioning/settings" element={<WaterTankSettings />} />
+            </Route>
+            {/* ── Land & Property Assessment console — Survey & Valuation, same
+                screens as Water Tank, scoped to land_property_assessment (first
+                sub-service of Property Doc Verification & Transfer Support) ── */}
+            <Route element={<RequireAuth><AdminGate><LandPropertyAssessmentConsole /></AdminGate></RequireAuth>}>
+              <Route path="/land-property-assessment" element={<WaterTankDashboard />} />
+              <Route path="/land-property-assessment/clients" element={<WTClients />} />
+              <Route path="/land-property-assessment/clients/new" element={<WTClientCreate />} />
+              <Route path="/land-property-assessment/clients/:code" element={<WTClientDetail />} />
+              <Route path="/land-property-assessment/service-requests" element={<WTServiceRequests />} />
+              <Route path="/land-property-assessment/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/land-property-assessment/doc-manager" element={<DocManager />} />
+              <Route path="/land-property-assessment/site-assessments" element={<WTSiteAssessments />} />
+              <Route path="/land-property-assessment/site-assessments/new" element={<WTAssessmentForm />} />
+              <Route path="/land-property-assessment/site-assessments/:code" element={<WTAssessmentDetail />} />
+              <Route path="/land-property-assessment/site-assessments/:code/edit" element={<WTAssessmentForm />} />
+              <Route path="/land-property-assessment/site-assessments/:code/quotation" element={<WTQuotationBuilder />} />
+              <Route path="/land-property-assessment/site-assessments/:code/quotation/:quoteCode/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/land-property-assessment/quotations" element={<WTQuotations />} />
+              <Route path="/land-property-assessment/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/land-property-assessment/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/land-property-assessment/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/land-property-assessment/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/land-property-assessment/work-orders" element={<WTWorkOrders />} />
+              <Route path="/land-property-assessment/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/land-property-assessment/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/land-property-assessment/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/land-property-assessment/projects" element={<WTProjects />} />
+              <Route path="/land-property-assessment/projects/new" element={<WTProjectForm />} />
+              <Route path="/land-property-assessment/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/land-property-assessment/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/land-property-assessment/providers" element={<WaterTankProviders />} />
+              <Route path="/land-property-assessment/providers/new" element={<WaterTankProviderOnboarding />} />
+              <Route path="/land-property-assessment/providers/:id" element={<WaterTankProviderDetail />} />
+              <Route path="/land-property-assessment/providers/:code/edit" element={<WaterTankProviderOnboarding />} />
+              <Route path="/land-property-assessment/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/land-property-assessment/agreements/provider" element={<WtProviderAgreements />} />
+              <Route path="/land-property-assessment/agreements/provider/new" element={<WtProviderAgreements />} />
+              <Route path="/land-property-assessment/agreements/provider/:id" element={<WtProviderAgreements />} />
+              <Route path="/land-property-assessment/agreements/provider/:id/edit" element={<WtProviderAgreements />} />
+              <Route path="/land-property-assessment/compliance" element={<WTCompliance />} />
+              <Route path="/land-property-assessment/reports" element={<WTReports />} />
+              <Route path="/land-property-assessment/reports/:kind" element={<WTReports />} />
+              <Route path="/land-property-assessment/service-reports" element={<WTServiceReports />} />
+              <Route path="/land-property-assessment/service-reports/:code" element={<WTServiceReports />} />
+              <Route path="/land-property-assessment/agreements" element={<WTAgreementsHub />} />
+              <Route path="/land-property-assessment/work-queue" element={<WTWorkQueue />} />
+              <Route path="/land-property-assessment/amc" element={<WTAmc />} />
+              <Route path="/land-property-assessment/amc/create-amc" element={<WTAmcForm />} />
+              <Route path="/land-property-assessment/amc/:code" element={<WTAmcDetail />} />
+              <Route path="/land-property-assessment/invoices" element={<WTInvoices />} />
+              <Route path="/land-property-assessment/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/land-property-assessment/payments" element={<WTPayments />} />
+              <Route path="/land-property-assessment/calendar" element={<WTCalendar />} />
+              <Route path="/land-property-assessment/registers" element={<WTRegisters />} />
+              <Route path="/land-property-assessment/registers/:kind" element={<WTRegisters />} />
+              <Route path="/land-property-assessment/registers/:kind/:code" element={<WTRegisters />} />
+              <Route path="/land-property-assessment/complaints" element={<WTComplaints />} />
+              <Route path="/land-property-assessment/complaints/:code" element={<WTComplaints />} />
+              <Route path="/land-property-assessment/communication" element={<WTCommLog />} />
+              <Route path="/land-property-assessment/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/land-property-assessment/portal-accounts" element={<WTPortalAccounts />} />
+              <Route path="/land-property-assessment/settings" element={<WaterTankSettings />} />
+            </Route>
+            {/* ── Loan & Financial Support console — same screens as Water Tank,
+                scoped to loan_financial_support (2nd Doc-Verification sub-service);
+                adds the Doc Manager + Loan Application Tracker ── */}
+            <Route element={<RequireAuth><AdminGate><LoanFinancialSupportConsole /></AdminGate></RequireAuth>}>
+              <Route path="/loan-financial-support" element={<WaterTankDashboard />} />
+              <Route path="/loan-financial-support/clients" element={<WTClients />} />
+              <Route path="/loan-financial-support/clients/new" element={<WTClientCreate />} />
+              <Route path="/loan-financial-support/clients/:code" element={<WTClientDetail />} />
+              <Route path="/loan-financial-support/service-requests" element={<WTServiceRequests />} />
+              <Route path="/loan-financial-support/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/loan-financial-support/loan-applications" element={<LoanApplications />} />
+              <Route path="/loan-financial-support/doc-manager" element={<DocManager />} />
+              <Route path="/loan-financial-support/site-assessments" element={<WTSiteAssessments />} />
+              <Route path="/loan-financial-support/site-assessments/new" element={<WTAssessmentForm />} />
+              <Route path="/loan-financial-support/site-assessments/:code" element={<WTAssessmentDetail />} />
+              <Route path="/loan-financial-support/site-assessments/:code/edit" element={<WTAssessmentForm />} />
+              <Route path="/loan-financial-support/site-assessments/:code/quotation" element={<WTQuotationBuilder />} />
+              <Route path="/loan-financial-support/site-assessments/:code/quotation/:quoteCode/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/loan-financial-support/quotations" element={<WTQuotations />} />
+              <Route path="/loan-financial-support/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/loan-financial-support/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/loan-financial-support/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/loan-financial-support/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/loan-financial-support/work-orders" element={<WTWorkOrders />} />
+              <Route path="/loan-financial-support/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/loan-financial-support/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/loan-financial-support/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/loan-financial-support/projects" element={<WTProjects />} />
+              <Route path="/loan-financial-support/projects/new" element={<WTProjectForm />} />
+              <Route path="/loan-financial-support/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/loan-financial-support/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/loan-financial-support/providers" element={<WaterTankProviders />} />
+              <Route path="/loan-financial-support/providers/new" element={<WaterTankProviderOnboarding />} />
+              <Route path="/loan-financial-support/providers/:id" element={<WaterTankProviderDetail />} />
+              <Route path="/loan-financial-support/providers/:code/edit" element={<WaterTankProviderOnboarding />} />
+              <Route path="/loan-financial-support/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/loan-financial-support/agreements/provider" element={<WtProviderAgreements />} />
+              <Route path="/loan-financial-support/agreements/provider/new" element={<WtProviderAgreements />} />
+              <Route path="/loan-financial-support/agreements/provider/:id" element={<WtProviderAgreements />} />
+              <Route path="/loan-financial-support/agreements/provider/:id/edit" element={<WtProviderAgreements />} />
+              <Route path="/loan-financial-support/compliance" element={<WTCompliance />} />
+              <Route path="/loan-financial-support/reports" element={<WTReports />} />
+              <Route path="/loan-financial-support/reports/:kind" element={<WTReports />} />
+              <Route path="/loan-financial-support/service-reports" element={<WTServiceReports />} />
+              <Route path="/loan-financial-support/service-reports/:code" element={<WTServiceReports />} />
+              <Route path="/loan-financial-support/agreements" element={<WTAgreementsHub />} />
+              <Route path="/loan-financial-support/work-queue" element={<WTWorkQueue />} />
+              <Route path="/loan-financial-support/amc" element={<WTAmc />} />
+              <Route path="/loan-financial-support/amc/create-amc" element={<WTAmcForm />} />
+              <Route path="/loan-financial-support/amc/:code" element={<WTAmcDetail />} />
+              <Route path="/loan-financial-support/invoices" element={<WTInvoices />} />
+              <Route path="/loan-financial-support/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/loan-financial-support/payments" element={<WTPayments />} />
+              <Route path="/loan-financial-support/calendar" element={<WTCalendar />} />
+              <Route path="/loan-financial-support/registers" element={<WTRegisters />} />
+              <Route path="/loan-financial-support/registers/:kind" element={<WTRegisters />} />
+              <Route path="/loan-financial-support/registers/:kind/:code" element={<WTRegisters />} />
+              <Route path="/loan-financial-support/complaints" element={<WTComplaints />} />
+              <Route path="/loan-financial-support/complaints/:code" element={<WTComplaints />} />
+              <Route path="/loan-financial-support/communication" element={<WTCommLog />} />
+              <Route path="/loan-financial-support/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/loan-financial-support/portal-accounts" element={<WTPortalAccounts />} />
+              <Route path="/loan-financial-support/settings" element={<WaterTankSettings />} />
+            </Route>
+            {/* ── Property Documentation & Verification console — same screens as
+                Water Tank, scoped to property_documentation_verification (3rd
+                Doc-Verification sub-service); adds the Doc Manager + Verification Register ── */}
+            <Route element={<RequireAuth><AdminGate><PropertyDocVerificationConsole /></AdminGate></RequireAuth>}>
+              <Route path="/property-documentation-verification" element={<WaterTankDashboard />} />
+              <Route path="/property-documentation-verification/clients" element={<WTClients />} />
+              <Route path="/property-documentation-verification/clients/new" element={<WTClientCreate />} />
+              <Route path="/property-documentation-verification/clients/:code" element={<WTClientDetail />} />
+              <Route path="/property-documentation-verification/service-requests" element={<WTServiceRequests />} />
+              <Route path="/property-documentation-verification/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/property-documentation-verification/verifications" element={<VerificationRegister />} />
+              <Route path="/property-documentation-verification/doc-manager" element={<DocManager />} />
+              <Route path="/property-documentation-verification/site-assessments" element={<WTSiteAssessments />} />
+              <Route path="/property-documentation-verification/site-assessments/new" element={<WTAssessmentForm />} />
+              <Route path="/property-documentation-verification/site-assessments/:code" element={<WTAssessmentDetail />} />
+              <Route path="/property-documentation-verification/site-assessments/:code/edit" element={<WTAssessmentForm />} />
+              <Route path="/property-documentation-verification/site-assessments/:code/quotation" element={<WTQuotationBuilder />} />
+              <Route path="/property-documentation-verification/site-assessments/:code/quotation/:quoteCode/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/property-documentation-verification/quotations" element={<WTQuotations />} />
+              <Route path="/property-documentation-verification/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/property-documentation-verification/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/property-documentation-verification/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/property-documentation-verification/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/property-documentation-verification/work-orders" element={<WTWorkOrders />} />
+              <Route path="/property-documentation-verification/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/property-documentation-verification/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/property-documentation-verification/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/property-documentation-verification/projects" element={<WTProjects />} />
+              <Route path="/property-documentation-verification/projects/new" element={<WTProjectForm />} />
+              <Route path="/property-documentation-verification/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/property-documentation-verification/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/property-documentation-verification/providers" element={<WaterTankProviders />} />
+              <Route path="/property-documentation-verification/providers/new" element={<WaterTankProviderOnboarding />} />
+              <Route path="/property-documentation-verification/providers/:id" element={<WaterTankProviderDetail />} />
+              <Route path="/property-documentation-verification/providers/:code/edit" element={<WaterTankProviderOnboarding />} />
+              <Route path="/property-documentation-verification/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/property-documentation-verification/agreements/provider" element={<WtProviderAgreements />} />
+              <Route path="/property-documentation-verification/agreements/provider/new" element={<WtProviderAgreements />} />
+              <Route path="/property-documentation-verification/agreements/provider/:id" element={<WtProviderAgreements />} />
+              <Route path="/property-documentation-verification/agreements/provider/:id/edit" element={<WtProviderAgreements />} />
+              <Route path="/property-documentation-verification/compliance" element={<WTCompliance />} />
+              <Route path="/property-documentation-verification/reports" element={<WTReports />} />
+              <Route path="/property-documentation-verification/reports/:kind" element={<WTReports />} />
+              <Route path="/property-documentation-verification/service-reports" element={<WTServiceReports />} />
+              <Route path="/property-documentation-verification/service-reports/:code" element={<WTServiceReports />} />
+              <Route path="/property-documentation-verification/agreements" element={<WTAgreementsHub />} />
+              <Route path="/property-documentation-verification/work-queue" element={<WTWorkQueue />} />
+              <Route path="/property-documentation-verification/amc" element={<WTAmc />} />
+              <Route path="/property-documentation-verification/amc/create-amc" element={<WTAmcForm />} />
+              <Route path="/property-documentation-verification/amc/:code" element={<WTAmcDetail />} />
+              <Route path="/property-documentation-verification/invoices" element={<WTInvoices />} />
+              <Route path="/property-documentation-verification/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/property-documentation-verification/payments" element={<WTPayments />} />
+              <Route path="/property-documentation-verification/calendar" element={<WTCalendar />} />
+              <Route path="/property-documentation-verification/registers" element={<WTRegisters />} />
+              <Route path="/property-documentation-verification/registers/:kind" element={<WTRegisters />} />
+              <Route path="/property-documentation-verification/registers/:kind/:code" element={<WTRegisters />} />
+              <Route path="/property-documentation-verification/complaints" element={<WTComplaints />} />
+              <Route path="/property-documentation-verification/complaints/:code" element={<WTComplaints />} />
+              <Route path="/property-documentation-verification/communication" element={<WTCommLog />} />
+              <Route path="/property-documentation-verification/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/property-documentation-verification/portal-accounts" element={<WTPortalAccounts />} />
+              <Route path="/property-documentation-verification/settings" element={<WaterTankSettings />} />
+            </Route>
+            {/* ── Property Will & Succession console — same screens as Water Tank,
+                scoped to property_will_succession (4th/final Doc-Verification
+                sub-service); adds the Doc Manager + Beneficiary Register ── */}
+            <Route element={<RequireAuth><AdminGate><PropertyWillSuccessionConsole /></AdminGate></RequireAuth>}>
+              <Route path="/property-will-succession" element={<WaterTankDashboard />} />
+              <Route path="/property-will-succession/clients" element={<WTClients />} />
+              <Route path="/property-will-succession/clients/new" element={<WTClientCreate />} />
+              <Route path="/property-will-succession/clients/:code" element={<WTClientDetail />} />
+              <Route path="/property-will-succession/service-requests" element={<WTServiceRequests />} />
+              <Route path="/property-will-succession/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/property-will-succession/beneficiaries" element={<BeneficiaryRegister />} />
+              <Route path="/property-will-succession/doc-manager" element={<DocManager />} />
+              <Route path="/property-will-succession/site-assessments" element={<WTSiteAssessments />} />
+              <Route path="/property-will-succession/site-assessments/new" element={<WTAssessmentForm />} />
+              <Route path="/property-will-succession/site-assessments/:code" element={<WTAssessmentDetail />} />
+              <Route path="/property-will-succession/site-assessments/:code/edit" element={<WTAssessmentForm />} />
+              <Route path="/property-will-succession/site-assessments/:code/quotation" element={<WTQuotationBuilder />} />
+              <Route path="/property-will-succession/site-assessments/:code/quotation/:quoteCode/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/property-will-succession/quotations" element={<WTQuotations />} />
+              <Route path="/property-will-succession/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/property-will-succession/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/property-will-succession/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/property-will-succession/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/property-will-succession/work-orders" element={<WTWorkOrders />} />
+              <Route path="/property-will-succession/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/property-will-succession/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/property-will-succession/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/property-will-succession/projects" element={<WTProjects />} />
+              <Route path="/property-will-succession/projects/new" element={<WTProjectForm />} />
+              <Route path="/property-will-succession/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/property-will-succession/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/property-will-succession/providers" element={<WaterTankProviders />} />
+              <Route path="/property-will-succession/providers/new" element={<WaterTankProviderOnboarding />} />
+              <Route path="/property-will-succession/providers/:id" element={<WaterTankProviderDetail />} />
+              <Route path="/property-will-succession/providers/:code/edit" element={<WaterTankProviderOnboarding />} />
+              <Route path="/property-will-succession/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/property-will-succession/agreements/provider" element={<WtProviderAgreements />} />
+              <Route path="/property-will-succession/agreements/provider/new" element={<WtProviderAgreements />} />
+              <Route path="/property-will-succession/agreements/provider/:id" element={<WtProviderAgreements />} />
+              <Route path="/property-will-succession/agreements/provider/:id/edit" element={<WtProviderAgreements />} />
+              <Route path="/property-will-succession/compliance" element={<WTCompliance />} />
+              <Route path="/property-will-succession/reports" element={<WTReports />} />
+              <Route path="/property-will-succession/reports/:kind" element={<WTReports />} />
+              <Route path="/property-will-succession/service-reports" element={<WTServiceReports />} />
+              <Route path="/property-will-succession/service-reports/:code" element={<WTServiceReports />} />
+              <Route path="/property-will-succession/agreements" element={<WTAgreementsHub />} />
+              <Route path="/property-will-succession/work-queue" element={<WTWorkQueue />} />
+              <Route path="/property-will-succession/amc" element={<WTAmc />} />
+              <Route path="/property-will-succession/amc/create-amc" element={<WTAmcForm />} />
+              <Route path="/property-will-succession/amc/:code" element={<WTAmcDetail />} />
+              <Route path="/property-will-succession/invoices" element={<WTInvoices />} />
+              <Route path="/property-will-succession/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/property-will-succession/payments" element={<WTPayments />} />
+              <Route path="/property-will-succession/calendar" element={<WTCalendar />} />
+              <Route path="/property-will-succession/registers" element={<WTRegisters />} />
+              <Route path="/property-will-succession/registers/:kind" element={<WTRegisters />} />
+              <Route path="/property-will-succession/registers/:kind/:code" element={<WTRegisters />} />
+              <Route path="/property-will-succession/complaints" element={<WTComplaints />} />
+              <Route path="/property-will-succession/complaints/:code" element={<WTComplaints />} />
+              <Route path="/property-will-succession/communication" element={<WTCommLog />} />
+              <Route path="/property-will-succession/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/property-will-succession/portal-accounts" element={<WTPortalAccounts />} />
+              <Route path="/property-will-succession/settings" element={<WaterTankSettings />} />
+            </Route>
+            {/* ── Removal & Relocation console — same screens as Water Tank, scoped
+                to removal_relocation. Delivered by our own crew + vehicles: Team &
+                Fleet + Inventory instead of provider onboarding; work orders use the
+                Resource Allocation step (no provider master agreement). ── */}
+            <Route element={<RequireAuth><AdminGate><RemovalRelocationConsole /></AdminGate></RequireAuth>}>
+              <Route path="/removal-relocation" element={<WaterTankDashboard />} />
+              <Route path="/removal-relocation/clients" element={<WTClients />} />
+              <Route path="/removal-relocation/clients/new" element={<WTClientCreate />} />
+              <Route path="/removal-relocation/clients/:code" element={<WTClientDetail />} />
+              <Route path="/removal-relocation/service-requests" element={<WTServiceRequests />} />
+              <Route path="/removal-relocation/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/removal-relocation/inventory" element={<Inventory />} />
+              <Route path="/removal-relocation/team-fleet" element={<TeamFleet />} />
+              <Route path="/removal-relocation/site-assessments" element={<WTSiteAssessments />} />
+              <Route path="/removal-relocation/site-assessments/new" element={<WTAssessmentForm />} />
+              <Route path="/removal-relocation/site-assessments/:code" element={<WTAssessmentDetail />} />
+              <Route path="/removal-relocation/site-assessments/:code/edit" element={<WTAssessmentForm />} />
+              <Route path="/removal-relocation/site-assessments/:code/quotation" element={<WTQuotationBuilder />} />
+              <Route path="/removal-relocation/site-assessments/:code/quotation/:quoteCode/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/removal-relocation/quotations" element={<WTQuotations />} />
+              <Route path="/removal-relocation/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/removal-relocation/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/removal-relocation/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/removal-relocation/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/removal-relocation/work-orders" element={<WTWorkOrders />} />
+              <Route path="/removal-relocation/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/removal-relocation/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/removal-relocation/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/removal-relocation/projects" element={<WTProjects />} />
+              <Route path="/removal-relocation/projects/new" element={<WTProjectForm />} />
+              <Route path="/removal-relocation/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/removal-relocation/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/removal-relocation/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/removal-relocation/reports" element={<WTReports />} />
+              <Route path="/removal-relocation/reports/:kind" element={<WTReports />} />
+              <Route path="/removal-relocation/service-reports" element={<WTServiceReports />} />
+              <Route path="/removal-relocation/service-reports/:code" element={<WTServiceReports />} />
+              <Route path="/removal-relocation/agreements" element={<WTAgreementsHub />} />
+              <Route path="/removal-relocation/work-queue" element={<WTWorkQueue />} />
+              <Route path="/removal-relocation/amc" element={<WTAmc />} />
+              <Route path="/removal-relocation/amc/create-amc" element={<WTAmcForm />} />
+              <Route path="/removal-relocation/amc/:code" element={<WTAmcDetail />} />
+              <Route path="/removal-relocation/invoices" element={<WTInvoices />} />
+              <Route path="/removal-relocation/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/removal-relocation/payments" element={<WTPayments />} />
+              <Route path="/removal-relocation/calendar" element={<WTCalendar />} />
+              <Route path="/removal-relocation/registers" element={<WTRegisters />} />
+              <Route path="/removal-relocation/registers/:kind" element={<WTRegisters />} />
+              <Route path="/removal-relocation/registers/:kind/:code" element={<WTRegisters />} />
+              <Route path="/removal-relocation/complaints" element={<WTComplaints />} />
+              <Route path="/removal-relocation/complaints/:code" element={<WTComplaints />} />
+              <Route path="/removal-relocation/communication" element={<WTCommLog />} />
+              <Route path="/removal-relocation/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/removal-relocation/portal-accounts" element={<WTPortalAccounts />} />
+              <Route path="/removal-relocation/settings" element={<WaterTankSettings />} />
+            </Route>
+            {/* ── Property Care & Concierge console — same screens as Water Tank,
+                scoped to property_care_concierge. Delivered by our own team +
+                vehicles: Team & Fleet instead of provider onboarding; adds the
+                Property Assets, Concierge & Access and Utilities registers. Ongoing
+                care plans run through the shared AMC console. No provider agreement. ── */}
+            <Route element={<RequireAuth><AdminGate><PropertyCareConciergeConsole /></AdminGate></RequireAuth>}>
+              <Route path="/property-care-concierge" element={<WaterTankDashboard />} />
+              <Route path="/property-care-concierge/clients" element={<WTClients />} />
+              <Route path="/property-care-concierge/clients/new" element={<WTClientCreate />} />
+              <Route path="/property-care-concierge/clients/:code" element={<WTClientDetail />} />
+              <Route path="/property-care-concierge/service-requests" element={<WTServiceRequests />} />
+              <Route path="/property-care-concierge/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/property-care-concierge/property-assets" element={<PropertyAssets />} />
+              <Route path="/property-care-concierge/concierge" element={<Concierge />} />
+              <Route path="/property-care-concierge/utilities" element={<Utilities />} />
+              <Route path="/property-care-concierge/team-fleet" element={<TeamFleet />} />
+              <Route path="/property-care-concierge/site-assessments" element={<WTSiteAssessments />} />
+              <Route path="/property-care-concierge/site-assessments/new" element={<WTAssessmentForm />} />
+              <Route path="/property-care-concierge/site-assessments/:code" element={<WTAssessmentDetail />} />
+              <Route path="/property-care-concierge/site-assessments/:code/edit" element={<WTAssessmentForm />} />
+              <Route path="/property-care-concierge/site-assessments/:code/quotation" element={<WTQuotationBuilder />} />
+              <Route path="/property-care-concierge/site-assessments/:code/quotation/:quoteCode/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/property-care-concierge/quotations" element={<WTQuotations />} />
+              <Route path="/property-care-concierge/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/property-care-concierge/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/property-care-concierge/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/property-care-concierge/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/property-care-concierge/work-orders" element={<WTWorkOrders />} />
+              <Route path="/property-care-concierge/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/property-care-concierge/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/property-care-concierge/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/property-care-concierge/projects" element={<WTProjects />} />
+              <Route path="/property-care-concierge/projects/new" element={<WTProjectForm />} />
+              <Route path="/property-care-concierge/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/property-care-concierge/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/property-care-concierge/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/property-care-concierge/reports" element={<WTReports />} />
+              <Route path="/property-care-concierge/reports/:kind" element={<WTReports />} />
+              <Route path="/property-care-concierge/service-reports" element={<WTServiceReports />} />
+              <Route path="/property-care-concierge/service-reports/:code" element={<WTServiceReports />} />
+              <Route path="/property-care-concierge/agreements" element={<WTAgreementsHub />} />
+              <Route path="/property-care-concierge/work-queue" element={<WTWorkQueue />} />
+              <Route path="/property-care-concierge/amc" element={<WTAmc />} />
+              <Route path="/property-care-concierge/amc/create-amc" element={<WTAmcForm />} />
+              <Route path="/property-care-concierge/amc/:code" element={<WTAmcDetail />} />
+              <Route path="/property-care-concierge/invoices" element={<WTInvoices />} />
+              <Route path="/property-care-concierge/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/property-care-concierge/payments" element={<WTPayments />} />
+              <Route path="/property-care-concierge/calendar" element={<WTCalendar />} />
+              <Route path="/property-care-concierge/registers" element={<WTRegisters />} />
+              <Route path="/property-care-concierge/registers/:kind" element={<WTRegisters />} />
+              <Route path="/property-care-concierge/registers/:kind/:code" element={<WTRegisters />} />
+              <Route path="/property-care-concierge/complaints" element={<WTComplaints />} />
+              <Route path="/property-care-concierge/complaints/:code" element={<WTComplaints />} />
+              <Route path="/property-care-concierge/communication" element={<WTCommLog />} />
+              <Route path="/property-care-concierge/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/property-care-concierge/portal-accounts" element={<WTPortalAccounts />} />
+              <Route path="/property-care-concierge/settings" element={<WaterTankSettings />} />
             </Route>
 
             {/* Short Term Stay — the second separated operations console, sharing

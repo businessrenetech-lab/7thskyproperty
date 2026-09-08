@@ -137,8 +137,263 @@ const AC_PACK = {
   warranty_rows: AC_WARRANTY_ROWS,
   checklist_groups: AC_CHECKLIST_GROUPS,
 };
-const WO_PACKS = { water_tank: WT_PACK, air_conditioning: AC_PACK };
-const packForWo = (v) => (String(v || '').startsWith('air_conditioning') ? AC_PACK : WT_PACK);
+// ── Land & Property Assessment (Survey & Valuation) — Project Work Order ──
+const LPAS_PROPERTY_TYPES = ['Residential Property', 'Commercial Property', 'Industrial Property',
+  'Agricultural Property', 'Vacant Land', 'Mixed Use Development', 'Apartment / Unit', 'Office Building',
+  'Shopping Complex', 'Hotel / Resort', 'Factory / Warehouse', 'Development Site', 'Government Property',
+  'Educational Institution', 'Hospital / Healthcare', 'Other'];
+
+const LPAS_SERVICE_GROUPS = {
+  'Land Survey': ['Boundary Survey', 'Cadastral Survey', 'Topographic Survey', 'Contour Survey', 'Construction / Engineering Survey', 'Subdivision Survey', 'GIS / Digital Mapping', 'Drone Survey', 'Utility Mapping'],
+  'Property Valuation': ['Residential', 'Commercial', 'Industrial', 'Agricultural', 'Land', 'Rental Assessment', 'Insurance', 'Mortgage / Investment', 'Development Site'],
+  'Technical Property Services': ['Property Condition Assessment', 'Due Diligence Inspection', 'Site Verification', 'Measurement Verification', 'Technical Property Report'],
+  'NRB Property Support': ['Remote Property Inspection', 'Property Verification', 'Video Inspection', 'Construction Progress Inspection', 'Ownership Verification Coordination'],
+};
+
+const LPAS_PROPERTY_FIELDS = [
+  ['mouza', 'Mouza'], ['jl_no', 'JL No.'], ['khatian_no', 'Khatian No.'], ['dag_no', 'Dag / Plot No.(s)'],
+  ['land_area', 'Land Area'], ['building_area', 'Building Area'], ['current_land_use', 'Current Land Use'],
+  ['gps_coordinates', 'GPS Coordinates'],
+];
+
+const LPAS_WARRANTY_ROWS = [
+  ['survey_report', 'Survey Report'], ['valuation_report', 'Valuation Report'],
+  ['technical_report', 'Technical Report'], ['rectification', 'Rectification / Reporting Error'],
+];
+
+const LPAS_CHECKLIST_GROUPS = {
+  'Before Project': ['Client Service Agreement Signed', 'Quotation Approved', 'Work Order Approved', 'Client Documents Received', 'Site Access Confirmed', 'Resources Assigned'],
+  'During Project': ['Site Inspection Completed', 'Survey Measurements Completed', 'Property Photographs Taken', 'Client Updated on Progress', 'Data Verified'],
+  Completion: ['Survey Plan Completed', 'Reports Issued', 'Client Handover Completed', 'Final Invoice Issued', 'Warranty / Rectification Summary Issued', 'Client Acceptance Received'],
+};
+
+const LPAS_PACK = {
+  doc_no: 'SSPC-SVS-PWO-01',
+  header_subtitle: 'SURVEY &amp; VALUATION SERVICES',
+  division: 'Seventh Sky Survey &amp; Valuation Services',
+  document_type: 'land_property_assessment_work_order',
+  property_types: LPAS_PROPERTY_TYPES,
+  service_groups: LPAS_SERVICE_GROUPS,
+  section4_label: 'Section 4 — Property & Land Details',
+  section4_fields: LPAS_PROPERTY_FIELDS,
+  warranty_rows: LPAS_WARRANTY_ROWS,
+  checklist_groups: LPAS_CHECKLIST_GROUPS,
+};
+// ── Loan & Financial Support — Project Work Order (SSPC-LFSS-PWO-01) ──
+const LFS_PROPERTY_TYPES = ['House', 'Apartment', 'Residential Building', 'Commercial Property',
+  'Industrial Property', 'Agricultural Property', 'Vacant Land', 'Mixed Use', 'Other'];
+
+const LFS_SERVICE_GROUPS = {
+  'Loan & Mortgage Support': ['Home Loan Assistance', 'Investment Property Loan', 'Commercial Property Loan', 'Construction Loan', 'Land Purchase Loan', 'Mortgage Coordination', 'Loan Refinancing', 'Loan Documentation Assistance', 'Banking Liaison', 'Loan Settlement Coordination'],
+  'Property Valuation Coordination': ['Residential Valuation', 'Commercial Valuation', 'Industrial Valuation', 'Agricultural Valuation', 'Land Valuation', 'Mortgage Valuation', 'Independent Valuation', 'Valuation Report Review'],
+  'Financial Documentation Support': ['Financial Document Review', 'Income Verification', 'Asset Verification', 'Liability Assessment', 'Loan Application Documentation', 'Supporting Documentation', 'Compliance Documentation'],
+  'NRB Financial Support': ['Overseas Client Coordination', 'Remote Documentation Support', 'Digital Verification', 'Financial Institution Liaison', 'Overseas Settlement Coordination', 'Cross-Border Documentation Support'],
+};
+
+// Section 4 = the finance/property snapshot (WO Section 2 "Project Summary").
+const LFS_FINANCE_FIELDS = [
+  ['finance_purpose', 'Purpose of Finance'], ['property_value', 'Estimated Property Value'],
+  ['loan_amount', 'Estimated Loan Amount'], ['lender', 'Preferred Lender'],
+  ['applicants', 'Number of Applicants'], ['target_completion', 'Target Completion Date'],
+];
+
+const LFS_WARRANTY_ROWS = [
+  ['loan_submitted', 'Loan Application Submitted'], ['loan_outcome', 'Loan Outcome'],
+  ['valuation', 'Valuation Coordinated'], ['documentation', 'Financial Documents Completed'],
+  ['settlement', 'Settlement Coordinated'],
+];
+
+const LFS_CHECKLIST_GROUPS = {
+  'Before Work': ['Client Identity Verified', 'Quotation Approved', 'Work Order Approved', 'Required Documents Received', 'Consultant Confirmed', 'Privacy Consent Obtained'],
+  'During Project': ['Client Consultation Completed', 'Documentation Reviewed', 'Loan Application Prepared', 'Loan Application Submitted', 'Financial Institution Liaison', 'Valuation Coordinated', 'Progress Updates Provided'],
+  Completion: ['Loan Outcome Communicated', 'Settlement Completed', 'Final Documents Issued', 'Outstanding Fees Paid', 'Client Acceptance Received', 'Project Closed'],
+};
+
+const LFS_PACK = {
+  doc_no: 'SSPC-LFSS-PWO-01',
+  header_subtitle: 'LOAN &amp; FINANCIAL SUPPORT SERVICES',
+  division: 'Seventh Sky Loan &amp; Financial Support Services',
+  document_type: 'loan_financial_support_work_order',
+  property_types: LFS_PROPERTY_TYPES,
+  service_groups: LFS_SERVICE_GROUPS,
+  section4_label: 'Section 4 — Finance & Property Details',
+  section4_fields: LFS_FINANCE_FIELDS,
+  warranty_rows: LFS_WARRANTY_ROWS,
+  checklist_groups: LFS_CHECKLIST_GROUPS,
+};
+// ── Property Documentation & Verification — Project Work Order (SSPC-PDVS-PWO-01) ──
+const PDV_PROPERTY_TYPES = ['House', 'Apartment', 'Residential Building', 'Commercial Property',
+  'Industrial Property', 'Agricultural Property', 'Vacant Land', 'Mixed Use', 'Development Site', 'Other'];
+
+const PDV_SERVICE_GROUPS = {
+  'Property Documentation & Verification': ['Deed Verification', 'Chain of Ownership Verification', 'Title Review', 'Property Document Verification', 'Land Record Verification', 'Government Record Verification', 'Encumbrance Review', 'Due Diligence Review', 'Property Background Verification'],
+  'Mutation & Land Record Support': ['Mutation Documentation Review', 'Mutation Application Support', 'Land Record Correction', 'Government Liaison', 'Record Status Verification', 'Mutation Follow-up'],
+  'Documentation & Correspondence': ['Documentation Review', 'Correspondence Drafting', 'Official Correspondence', 'File Compilation', 'Record Management'],
+  'Conveyancing & Transfer': ['Transfer Documentation', 'Conveyancing Coordination', 'Sale & Purchase Review', 'Registration Coordination', 'Settlement Coordination'],
+  'NRB Documentation': ['Overseas Documentation', 'Remote Verification', 'Digital Documentation', 'Ownership Verification', 'Cross-Border Coordination'],
+};
+
+// Section 4 = property + records snapshot (Work Order Section 2/Property Details).
+const PDV_PROPERTY_FIELDS = [
+  ['mouza', 'Mouza'], ['jl_no', 'JL No.'], ['khatian_no', 'Khatian No.'], ['dag_no', 'Dag / Plot No.(s)'],
+  ['land_area', 'Land Area'], ['latest_record', 'Latest Land Record'], ['district', 'District'], ['upazila', 'Upazila'],
+];
+
+const PDV_WARRANTY_ROWS = [
+  ['documentation_review', 'Documentation Review'], ['verification', 'Verification'],
+  ['govt_record', 'Government Record Verification'], ['mutation', 'Mutation / Registration Support'],
+  ['final_report', 'Final Report Issued'],
+];
+
+const PDV_CHECKLIST_GROUPS = {
+  'Before Work': ['Client Documents Received', 'Quotation Approved', 'Work Order Approved', 'Written Authority Obtained', 'Specialist Assigned'],
+  'Verification & Investigation': ['Registry Search', 'Land Office Search', 'Record Verification', 'Mutation Review', 'Risk Assessment'],
+  Completion: ['Findings Compiled', 'Final Report Issued', 'Client Briefing Completed', 'Final Invoice Issued', 'Client Acceptance Received', 'Project Closed'],
+};
+
+const PDV_PACK = {
+  doc_no: 'SSPC-PDVS-PWO-01',
+  header_subtitle: 'PROPERTY DOCUMENTATION &amp; VERIFICATION SERVICES',
+  division: 'Seventh Sky Property Documentation &amp; Verification Services',
+  document_type: 'property_documentation_verification_work_order',
+  property_types: PDV_PROPERTY_TYPES,
+  service_groups: PDV_SERVICE_GROUPS,
+  section4_label: 'Section 4 — Property & Records',
+  section4_fields: PDV_PROPERTY_FIELDS,
+  warranty_rows: PDV_WARRANTY_ROWS,
+  checklist_groups: PDV_CHECKLIST_GROUPS,
+};
+// ── Property Will & Succession Support — Project Work Order (SSPC-PWSS-PWO-01) ──
+const PWS_PROPERTY_TYPES = ['House', 'Apartment', 'Residential Building', 'Commercial Property',
+  'Industrial Property', 'Agricultural Property', 'Vacant Land', 'Mixed Use', 'Estate / Portfolio', 'Other'];
+
+const PWS_SERVICE_GROUPS = {
+  'Will Documentation Support': ['Will Documentation Review', 'Will Preparation Coordination', 'Will Documentation Assistance', 'Witness Coordination', 'Will Registration Coordination', 'Estate Documentation Review'],
+  'Ownership Transfer Support': ['Transfer Documentation', 'Beneficiary Documentation', 'Ownership Transfer Coordination', 'Estate Transfer Coordination', 'Succession Documentation Review', 'Property Record Verification'],
+  'Nomination & Record Support': ['Beneficiary Record Review', 'Nomination Documentation', 'Ownership Record Review', 'Family Property Record Coordination', 'Portfolio Record Review'],
+  'Legal & Professional Coordination': ['Lawyer Coordination', 'Conveyancer Coordination', 'Probate Coordination', 'Estate Administration', 'Land Registry Coordination', 'Government Authority Liaison'],
+  'Succession Support': ['Succession Planning', 'Family Property Succession', 'Estate Documentation', 'Beneficiary Coordination', 'Succession Administration', 'Property Distribution', 'NRB Succession Support'],
+};
+
+// Section 4 = estate / property + beneficiary snapshot.
+const PWS_ESTATE_FIELDS = [
+  ['will_status', 'Will Status'], ['estate_value', 'Estimated Estate Value'], ['beneficiaries', 'Number of Beneficiaries'],
+  ['mouza', 'Mouza'], ['dag_no', 'Dag / Plot No.'], ['khatian_no', 'Khatian No.'],
+];
+
+const PWS_WARRANTY_ROWS = [
+  ['will_review', 'Will Documentation Review'], ['succession_review', 'Succession Review'],
+  ['beneficiary_review', 'Beneficiary Review'], ['transfer', 'Ownership Transfer Coordination'],
+  ['final_report', 'Final Deliverables Issued'],
+];
+
+const PWS_CHECKLIST_GROUPS = {
+  'Before Work': ['Client Documents Received', 'Quotation Approved', 'Work Order Approved', 'Beneficiary Details Received', 'Specialist Assigned'],
+  'Review & Coordination': ['Documentation Review', 'Succession Review', 'Beneficiary Review', 'Legal Coordination', 'Estate Coordination'],
+  Completion: ['Findings Compiled', 'Final Deliverables Issued', 'Client Briefing Completed', 'Final Invoice Issued', 'Client Acceptance Received', 'Project Closed'],
+};
+
+const PWS_PACK = {
+  doc_no: 'SSPC-PWSS-PWO-01',
+  header_subtitle: 'PROPERTY WILL &amp; SUCCESSION SUPPORT SERVICES',
+  division: 'Seventh Sky Property Will &amp; Succession Support Services',
+  document_type: 'property_will_succession_work_order',
+  property_types: PWS_PROPERTY_TYPES,
+  service_groups: PWS_SERVICE_GROUPS,
+  section4_label: 'Section 4 — Estate & Property',
+  section4_fields: PWS_ESTATE_FIELDS,
+  warranty_rows: PWS_WARRANTY_ROWS,
+  checklist_groups: PWS_CHECKLIST_GROUPS,
+};
+// ── Removal & Relocation — Project Work Order (SSPC-RRS-PWO-01) ──
+const RRS_PROPERTY_TYPES = ['Studio Apartment', '1 Bedroom', '2 Bedroom', '3 Bedroom', '4 Bedroom+',
+  'Office', 'Retail Shop', 'Warehouse', 'House', 'Other'];
+
+const RRS_SERVICE_GROUPS = {
+  'Residential Relocation': ['Studio', '1 Bedroom', '2 Bedroom', '3 Bedroom', '4 Bedroom+'],
+  'Commercial Relocation': ['Office', 'Retail Shop', 'Warehouse', 'Business'],
+  'Packing': ['Packing', 'Unpacking', 'Fragile Packing', 'Furniture Wrapping', 'Carton Supply'],
+  'Furniture': ['Moving', 'Dismantling', 'Reassembly', 'Heavy Item'],
+  'Clearance & Support': ['Household Clearance', 'Office Clearance', 'Disposal', 'Move-In/Out Support', 'Utility Coordination'],
+};
+
+// Section 4 = the move snapshot (pickup/drop-off + resources).
+const RRS_MOVE_FIELDS = [
+  ['pickup_address', 'Pickup Address'], ['dropoff_address', 'Drop-off Address'], ['move_type', 'Move Type'],
+  ['volume', 'Estimated Volume'], ['vehicle', 'Vehicle Required'], ['move_date', 'Scheduled Move Date'],
+];
+
+const RRS_WARRANTY_ROWS = [
+  ['inventory', 'Inventory Verified'], ['loaded', 'Loaded & Signed Off'],
+  ['delivered', 'Delivered & Unloaded'], ['damage', 'Damage Reported'], ['signoff', 'Customer Sign-Off'],
+];
+
+const RRS_CHECKLIST_GROUPS = {
+  'Before Move': ['Agreement + Declarations Signed', 'Deposit (50%) Received', 'Work Order Approved', 'Inventory Prepared', 'Crew & Vehicle Allocated', 'Prohibited-Items Check'],
+  'Loading (Sec. 15)': ['Inventory Verified', 'Vehicle Inspected', 'Fragile Items Secured', 'Heavy Items Balanced', 'Customer Sign-Off (Loading)'],
+  Delivery: ['Access Verified', 'Items Unloaded', 'Inventory Checked', 'Furniture Positioned', 'Customer Sign-Off (Delivery)', 'Final Payment Received', 'Job Closed'],
+};
+
+const RRS_PACK = {
+  doc_no: 'SSPC-RRS-PWO-01',
+  header_subtitle: 'REMOVAL &amp; RELOCATION SERVICES',
+  division: 'Seventh Sky Removal &amp; Relocation Services',
+  document_type: 'removal_relocation_work_order',
+  property_types: RRS_PROPERTY_TYPES,
+  service_groups: RRS_SERVICE_GROUPS,
+  section4_label: 'Section 4 — Move Details',
+  section4_fields: RRS_MOVE_FIELDS,
+  warranty_rows: RRS_WARRANTY_ROWS,
+  checklist_groups: RRS_CHECKLIST_GROUPS,
+};
+const PCC_PROPERTY_TYPES = ['Apartment', 'House', 'Townhouse', 'Villa', 'Commercial', 'Retail', 'Office', 'Warehouse', 'Vacant Land', 'Other'];
+
+const PCC_SERVICE_GROUPS = {
+  'Property Care & Maintenance': ['Cleaning', 'Gardening', 'Repairs', 'Painting', 'Renovation', 'Emergency', 'Inspection'],
+  'Property Presentation': ['Styling', 'Home Staging', 'Furnishing', 'Seasonal Prep', 'Readiness'],
+  'Smart Property Solutions': ['CCTV', 'Smart Lock', 'Smart Devices', 'Access Control', 'Remote Monitoring'],
+  'Security & Monitoring': ['Vacant Checks', 'Monitoring', 'Emergency Response', 'Patrol'],
+  'Marketing & NRB': ['Photography', 'Videography', 'Drone', 'Listing Prep', 'Owner Reporting', 'Video Inspection'],
+  'Concierge': ['Mail Collection', 'Key Holding', 'Opening & Closing', 'Appointment Coordination', 'Utility Assistance', 'Pre-Arrival Prep'],
+};
+
+// Section 4 = the service & property snapshot (frequency + access).
+const PCC_SERVICE_FIELDS = [
+  ['service_category', 'Service Category'], ['frequency', 'Service Frequency'], ['occupancy', 'Occupancy Status'],
+  ['access_method', 'Access Method'], ['start_date', 'Scheduled Start'], ['property_type', 'Property Type'],
+];
+
+const PCC_WARRANTY_ROWS = [
+  ['prep', 'Preparation Verified'], ['attended', 'Property Attended'],
+  ['performed', 'Services Performed'], ['inspected', 'Final Inspection Passed'], ['signoff', 'Client Sign-Off'],
+];
+
+const PCC_CHECKLIST_GROUPS = {
+  'Preparation (SOP Sec. 7)': ['Agreement + Declarations Signed', 'Required Payment Confirmed', 'Work Order Approved', 'Access / Keys Confirmed', 'Staff & Vehicle Allocated', 'Materials Available'],
+  'Execution (SOP Sec. 5)': ['Arrival & Access Recorded', 'Pre-Service Photos Taken', 'Work Area Protected', 'Services Performed to Scope', 'Waste Removed & Cleaned', 'Client Update Provided'],
+  'Completion (SOP Sec. 6-7)': ['Final Inspection Passed', 'Before & After Photos Uploaded', 'Property Secured & Access Returned', 'Client Walkthrough Completed', 'Client Acceptance Recorded', 'Final Invoice Confirmed'],
+};
+
+const PCC_PACK = {
+  doc_no: 'SSPC-PCCS-PWO-01',
+  header_subtitle: 'PROPERTY CARE &amp; CONCIERGE SERVICES',
+  division: 'Seventh Sky Property Care &amp; Concierge Services',
+  document_type: 'property_care_concierge_work_order',
+  property_types: PCC_PROPERTY_TYPES,
+  service_groups: PCC_SERVICE_GROUPS,
+  section4_label: 'Section 4 — Service & Property Details',
+  section4_fields: PCC_SERVICE_FIELDS,
+  warranty_rows: PCC_WARRANTY_ROWS,
+  checklist_groups: PCC_CHECKLIST_GROUPS,
+};
+const WO_PACKS = { water_tank: WT_PACK, air_conditioning: AC_PACK, land_property_assessment: LPAS_PACK, loan_financial_support: LFS_PACK, property_documentation_verification: PDV_PACK, property_will_succession: PWS_PACK, removal_relocation: RRS_PACK, property_care_concierge: PCC_PACK };
+// Resolve a pack by service_line key (or catalogue vertical / related_type prefix
+// for callers that pass those). Falls back to Water Tank.
+const packForWo = (v) => {
+  const s = String(v || '');
+  const hit = Object.keys(WO_PACKS).find((k) => s === k || s.startsWith(k));
+  return WO_PACKS[hit] || WT_PACK;
+};
 
 const PRICING_NOTES = [
   "The above prices are based on Seventh Sky's Standard Price Schedule.",

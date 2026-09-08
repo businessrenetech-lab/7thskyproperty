@@ -10,7 +10,11 @@ const SigningEnvelope = sequelize.define('SigningEnvelope', {
   agreement_id: DataTypes.INTEGER,
   title: { type: DataTypes.STRING, allowNull: false },
   status: { type: DataTypes.ENUM('draft', 'pending_approval', 'sent', 'viewed', 'partially_signed', 'completed', 'declined', 'voided', 'expired'), defaultValue: 'draft' },
-  related_type: DataTypes.STRING(40),
+  // Widened from 40: service-line-scoped related_types like
+  // `land_property_assessment_customer_agreement` (43 chars) exceeded 40 and were
+  // silently truncated, so the endsWith('_customer_agreement') completion hooks
+  // missed. 100 leaves headroom for the longer Doc-Verification sub-service names.
+  related_type: DataTypes.STRING(100),
   related_id: DataTypes.INTEGER,
   document_html: DataTypes.TEXT('long'),
   message: DataTypes.TEXT,

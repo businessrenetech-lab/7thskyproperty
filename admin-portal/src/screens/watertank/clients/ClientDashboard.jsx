@@ -19,13 +19,18 @@ import {
   Mail,
   MapPin,
   Download,
+  FileText,
+  Trash2,
+  Send,
+  Copy,
 } from 'lucide-react';
 import api from '../../../services/api';
+import FileUpload, { fileSrc } from '../../../ui/FileUpload';
 import PortalLinkCard from '../PortalLinkCard';
 import ReportView from '../ReportView';
 import { useSvcNav,
   WtHead, WtTabs, Pill, Loading, EmptyState, DatePicker, WtDrawer, RowActions,
-  dateFmt, dateTimeFmt, bdt, titleCase, toast, errText, parseJson, svcEquip,
+  dateFmt, dateTimeFmt, bdt, titleCase, toast, errText, parseJson, svcEquip, svcDocManager,
 } from '../common';
 
 /*
@@ -38,6 +43,90 @@ import { useSvcNav,
 const TABS = ['Overview', 'Journey', 'Service History', 'Account', 'Transactions', 'AMC & Warranty', 'Complaints', 'Documents', 'Timeline'];
 const initials = (n) => String(n || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 const pct = (v) => (v == null ? '—' : `${v}%`);
+
+/*
+ * Client property documents — only on Property Doc Verification & Transfer lines
+ * (svcDocManager()). The required-document checklist from the manifest, with staff
+ * upload, verify/reject, and a "Request from client" link the client fills in
+ * themselves. Mirrors the Doc Manager, scoped to this one client.
+ */
+function ClientDocsSection({ clientCode }) {
+  const [ref, setRef] = useState({ groups: [], client_docs: [] });
+  const [docs, setDocs] = useState([]);
+  const [link, setLink] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(async () => {
+    try {
+      const [r, d] = await Promise.all([
+        api.get('/wt-client-docs/reference'),
+        api.get('/wt-client-docs', { params: { client_code: clientCode } }),
+      ]);
+      setRef(r.data || { groups: [], client_docs: [] });
+      setDocs(d.data || []);
+    } catch (e) { toast.err(errText(e)); }
+  }, [clientCode]);
+  useEffect(() => { load(); }, [load]);
+
+  const docFor = (key) => docs.find((x) => x.doc_key === key) || null;
+  const attach = async (item, url, file) => {
+    try {
+      await api.post('/wt-client-docs', { client_code: clientCode, doc_key: item.key, doc_type: item.label, category: item.category, file_url: url, original_name: file?.name || (url || '').split('/').pop(), size: file?.size, mime: file?.type });
+      toast.ok(`${item.label} uploaded`); load();
+    } catch (e) { toast.err(errText(e)); }
+  };
+  const setStatus = async (doc, status) => { try { await api.patch(`/wt-client-docs/${doc.id}`, { status }); load(); } catch (e) { toast.err(errText(e)); } };
+  const removeDoc = async (doc) => { if (!window.confirm(`Remove ${doc.doc_type}?`)) return; try { await api.delete(`/wt-client-docs/${doc.id}`); load(); } catch (e) { toast.err(errText(e)); } };
+  const makeLink = async () => {
+    setBusy(true);
+    try { const { data } = await api.post('/wt-client-docs/requests', { client_code: clientCode }); setLink(data.link); toast.ok(data.emailed ? 'Link created and emailed' : 'Upload link created'); }
+    catch (e) { toast.err(errText(e)); }
+    setBusy(false);
+  };
+
+  return (
+    <div className="wt-card" style={{ padding: 0 }}>
+      <div className="wt-panel-head" style={{ padding: '14px 18px 0' }}>
+        <div className="wt-sec-title">Client Property Documents</div>
+        <button className="wt-btn sm" disabled={busy} onClick={makeLink}><Send size={12} /> Request from client</button>
+      </div>
+      {link && (
+        <div className="wt-note" style={{ margin: '10px 18px', background: 'var(--wt-green-bg, #d1fae5)', borderColor: '#a7f3d0', color: 'var(--wt-green, #047857)', display: 'flex', gap: 6, alignItems: 'center' }}>
+          <input className="wt-input" readOnly value={link} style={{ flex: 1, fontSize: 12 }} onFocus={(e) => e.target.select()} />
+          <button className="wt-btn sm" onClick={() => { navigator.clipboard?.writeText(link); toast.ok('Copied'); }}><Copy size={13} /></button>
+        </div>
+      )}
+      {ref.groups.map((g) => (
+        <div key={g.group}>
+          <div style={{ padding: '10px 18px 2px', fontSize: 11.5, fontWeight: 700, color: 'var(--wt-muted)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{g.group}</div>
+          <table className="wt-tbl">
+            <tbody>
+              {g.items.map((item) => {
+                const doc = docFor(item.key);
+                return (
+                  <tr key={item.key}>
+                    <td style={{ width: '46%' }}>{item.label} {item.required && <span className="wt-pill sm red" style={{ marginLeft: 4 }}>Required</span>}</td>
+                    <td style={{ width: 100 }}>{doc ? <Pill value={doc.status} sm /> : <span className="muted" style={{ fontSize: 12 }}>Not provided</span>}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      {doc && doc.file_url ? (
+                        <span style={{ display: 'inline-flex', gap: 6 }}>
+                          <a className="wt-btn ghost sm" href={fileSrc(doc.file_url)} target="_blank" rel="noopener"><FileText size={12} /> View</a>
+                          {doc.status !== 'Verified' && <button className="wt-btn ghost sm" onClick={() => setStatus(doc, 'Verified')}><Check size={12} /></button>}
+                          <button className="wt-btn ghost sm" onClick={() => removeDoc(doc)}><Trash2 size={12} /></button>
+                        </span>
+                      ) : (
+                        <span style={{ minWidth: 190, display: 'inline-block' }}><FileUpload compact label="" value="" onChange={(url, file) => url && attach(item, url, file)} /></span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const Stat = ({ label, value, sub, tone, icon: Icon }) => (
   <div className="wt-card" style={{ padding: '15px 17px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
@@ -576,6 +665,7 @@ export default function ClientDashboard() {
       {/* ═══ DOCUMENTS ═══ */}
       {tab === 'Documents' && (
         <>
+          {svcDocManager() && <ClientDocsSection clientCode={c.code} />}
           <div className="wt-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="wt-panel-head">
               <div className="wt-sec-title">Client Handover Pack (Sec. 9 Step 10)</div>

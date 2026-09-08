@@ -328,12 +328,19 @@ async function signEnvelope(signers, tag) {
   } else log('WARN', 'quotation', JSON.stringify(quote).slice(0, 120));
 
   console.log('\n-- B4. Customer agreement (warranty selected) + sign --');
+  // Pick warranty items from the ACTIVE line's own Schedule-D 'Warranty Coverage'
+  // group (each service line words them differently) so warranty auto-registration
+  // fires for any line, not just the ones whose vocabulary happens to match a
+  // hardcoded list. Falls back to the Water-Tank/AC names.
+  const meta = await req('GET', '/api/wt-agreements/customer/meta');
+  const lineWarranty = (meta.body?.checklist_groups?.['Warranty Coverage']) || [];
+  const checklist = [...lineWarranty, 'Workmanship Warranty', 'Repair Warranty', 'Safe Site Access Provided'];
   const agr = await req('POST', '/api/wt-agreements/customer/agreements', {
     body: {
       client: { full_name: NAME, email: CLIENT_EMAIL, phone: '0179' + S, client_type: 'Residential', client_code: clientCode },
       org: { name: 'Seventh Sky Property Care', represented_by: 'Ops Manager', email: EMAIL },
       witnesses: [{ name: 'Witness One', email: `wit.${S}@example.com` }],
-      checklist: ['Workmanship Warranty', 'Repair Warranty', 'Safe Site Access Provided'],
+      checklist,
       pricing_input: { selected: [{ code: item.code, name: item.name, qty: 1, agreed_price: item.standard_price }], advance_percent: 50 },
       schedule_b: { warranty_period: '12 months' }, quote_code: quote.code || null,
     },

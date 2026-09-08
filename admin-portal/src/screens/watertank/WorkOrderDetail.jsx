@@ -160,6 +160,96 @@ function StepDrawer({ title, subtitle, note, fields, submitLabel, danger, onClos
   );
 }
 
+/* ── allocate internal crew + vehicle (Removal & Relocation) ── */
+function AllocateDrawer({ wo, onClose, onDone }) {
+  const [crew, setCrew] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [busyIds, setBusyIds] = useState({ crew: [], vehicles: [] });
+  const [pickCrew, setPickCrew] = useState([]);
+  const [pickVehicles, setPickVehicles] = useState([]);
+  const [moveDate, setMoveDate] = useState(wo.move_date || wo.scheduled_date || '');
+  const [pickup, setPickup] = useState(wo.pickup_address || wo.site_address || '');
+  const [dropoff, setDropoff] = useState(wo.dropoff_address || '');
+  const [extName, setExtName] = useState(wo.external_provider_name || '');
+  const [extFee, setExtFee] = useState(wo.external_provider_fee || '');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    Promise.all([api.get('/wt-resources/crew', { params: { status: 'Active' } }), api.get('/wt-resources/vehicles')])
+      .then(([c, v]) => { setCrew(c.data || []); setVehicles(v.data || []); })
+      .catch((e) => setErr(errText(e, 'Could not load team & fleet')));
+  }, []);
+  useEffect(() => {
+    if (!moveDate) { setBusyIds({ crew: [], vehicles: [] }); return; }
+    api.get('/wt-resources/availability', { params: { date: moveDate } })
+      .then((r) => setBusyIds({ crew: r.data?.busy_crew_ids || [], vehicles: r.data?.busy_vehicle_ids || [] }))
+      .catch(() => setBusyIds({ crew: [], vehicles: [] }));
+  }, [moveDate]);
+
+  const toggle = (setter, arr, id) => setter(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]);
+
+  const go = async () => {
+    if (!pickCrew.length && !extName.trim()) { setErr('Pick at least one crew member or name an external provider.'); return; }
+    setBusy(true); setErr('');
+    try {
+      await api.post(`/wt-work-orders/${wo.id}/allocate`, {
+        crew_ids: pickCrew, vehicle_ids: pickVehicles, move_date: moveDate || null,
+        pickup_address: pickup || null, dropoff_address: dropoff || null,
+        external_provider_name: extName || null, external_provider_fee: extFee ? Number(extFee) : 0,
+      });
+      onDone();
+    } catch (e) { setErr(errText(e, 'Could not allocate')); setBusy(false); }
+  };
+
+  return (
+    <WtDrawer title="Allocate crew & vehicle" subtitle={`${wo.code} · ${wo.client_name}`} onClose={onClose}
+      footer={<><button className="wt-btn" onClick={onClose}>Cancel</button>
+        <button className="wt-btn primary" disabled={busy} onClick={go}>{busy ? 'Allocating…' : 'Allocate'}</button></>}>
+      {err && <div className="wt-formerr">{err}</div>}
+      <div className="wt-field"><label>Move date</label><DatePicker value={moveDate} onChange={setMoveDate} /></div>
+      <div className="wt-grid2">
+        <div className="wt-field"><label>Pickup address</label><input className="wt-input" value={pickup} onChange={(e) => setPickup(e.target.value)} /></div>
+        <div className="wt-field"><label>Drop-off address</label><input className="wt-input" value={dropoff} onChange={(e) => setDropoff(e.target.value)} /></div>
+      </div>
+
+      <div className="wt-field"><label>Crew {moveDate ? '(items in amber are booked on this date)' : ''}</label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflow: 'auto' }}>
+          {crew.length ? crew.map((c) => {
+            const conflict = busyIds.crew.includes(c.id);
+            return (
+              <label key={c.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, color: conflict ? 'var(--wt-amber, #92400e)' : undefined }}>
+                <input type="checkbox" checked={pickCrew.includes(c.id)} onChange={() => toggle(setPickCrew, pickCrew, c.id)} />
+                {c.name} <span className="muted" style={{ fontSize: 11 }}>· {c.role || 'crew'}</span>{conflict ? <span className="wt-pill sm amber" style={{ marginLeft: 'auto' }}>Booked</span> : null}
+              </label>
+            );
+          }) : <span className="muted" style={{ fontSize: 12 }}>No crew yet — add them under Team & Fleet.</span>}
+        </div>
+      </div>
+
+      <div className="wt-field"><label>Vehicles</label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 160, overflow: 'auto' }}>
+          {vehicles.length ? vehicles.map((v) => {
+            const conflict = busyIds.vehicles.includes(v.id);
+            return (
+              <label key={v.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, color: conflict ? 'var(--wt-amber, #92400e)' : undefined }}>
+                <input type="checkbox" checked={pickVehicles.includes(v.id)} onChange={() => toggle(setPickVehicles, pickVehicles, v.id)} />
+                {v.vehicle_type || v.reg_no} <span className="muted" style={{ fontSize: 11 }}>· {v.reg_no || ''}</span>{conflict ? <span className="wt-pill sm amber" style={{ marginLeft: 'auto' }}>Booked</span> : null}
+              </label>
+            );
+          }) : <span className="muted" style={{ fontSize: 12 }}>No vehicles yet — add them under Team & Fleet.</span>}
+        </div>
+      </div>
+
+      <div className="wt-note" style={{ marginTop: 6 }}>Optional external provider (no agreement) — captured with a fee for disbursement.</div>
+      <div className="wt-grid2">
+        <div className="wt-field"><label>External provider</label><input className="wt-input" value={extName} onChange={(e) => setExtName(e.target.value)} placeholder="e.g. ABC Movers" /></div>
+        <div className="wt-field"><label>Provider fee (৳)</label><input className="wt-input" type="number" value={extFee} onChange={(e) => setExtFee(e.target.value)} /></div>
+      </div>
+    </WtDrawer>
+  );
+}
+
 export default function WorkOrderDetail() {
   const { code } = useParams();
   const nav = useSvcNav();
@@ -167,6 +257,7 @@ export default function WorkOrderDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [assigning, setAssigning] = useState(false);
+  const [allocating, setAllocating] = useState(false);
   const [step, setStep] = useState(null);
 
   const load = useCallback(() => {
@@ -202,6 +293,7 @@ export default function WorkOrderDetail() {
 
   const ACTIONS = {
     assign: () => setAssigning(true),
+    allocate: () => setAllocating(true),
     accept: () => setStep({
       title: 'Record provider acceptance', subtitle: `${w.code} · ${w.provider_name}`, submitLabel: 'Record acceptance',
       note: 'Sec. 7 Step 7 — the provider must confirm availability, resources, pricing and timeline before work begins.',
@@ -499,6 +591,8 @@ export default function WorkOrderDetail() {
 
       {assigning && <AssignDrawer wo={w} onClose={() => setAssigning(false)}
         onDone={() => { setAssigning(false); toast.ok('Provider assigned'); load(); }} />}
+      {allocating && <AllocateDrawer wo={w} onClose={() => setAllocating(false)}
+        onDone={() => { setAllocating(false); toast.ok('Resources allocated'); load(); }} />}
       {step && <StepDrawer {...step} onClose={() => setStep(null)} />}
     </>
   );

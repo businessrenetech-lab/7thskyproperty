@@ -429,6 +429,11 @@ exports.assessmentReference = (req, res) => {
   // Equipment options, materials, sources and recommended services follow the
   // active service line so the AC assessment never lists tank materials.
   const ui = serviceUi(req);
+  // tank_types / materials / water_sources are Water Tank domain vocabulary.
+  // Only the Water Tank line falls back to those hardcoded lists; every other
+  // line emits what it defines (or nothing), so a Removal assessment never
+  // shows tank types or water sources.
+  const isWaterTank = resolveServiceLine(req) === 'water_tank';
   res.json({
     // Safety checklist, templates and equipment follow the active service line too,
     // so the AC assessment shows AC checks (power isolation, refrigerant, coils)
@@ -440,14 +445,17 @@ exports.assessmentReference = (req, res) => {
     comment_categories: COMMENT_CATEGORIES,
     risk_levels: ['Low', 'Medium', 'High', 'Critical'],
     equipment: ui.equipment || null,
-    tank_types: ui.equipment?.type_options || ['Overhead', 'Underground', 'Rooftop', 'Ground Level', 'Sectional', 'Pressure Vessel'],
-    materials: ui.assess_materials || ['Concrete', 'PVC / Plastic', 'Stainless Steel', 'Mild Steel', 'Fibreglass (GRP)', 'Brick / Masonry'],
-    water_sources: ui.assess_sources || ['WASA Supply', 'Deep Tube Well', 'Shallow Tube Well', 'Surface Water', 'Rainwater Harvesting', 'Tanker Delivery'],
-    recommended_services: ui.recommended_services || [
+    tank_types: ui.equipment?.type_options
+      || (isWaterTank ? ['Overhead', 'Underground', 'Rooftop', 'Ground Level', 'Sectional', 'Pressure Vessel'] : []),
+    materials: ui.assess_materials
+      || (isWaterTank ? ['Concrete', 'PVC / Plastic', 'Stainless Steel', 'Mild Steel', 'Fibreglass (GRP)', 'Brick / Masonry'] : []),
+    water_sources: ui.assess_sources
+      || (isWaterTank ? ['WASA Supply', 'Deep Tube Well', 'Shallow Tube Well', 'Surface Water', 'Rainwater Harvesting', 'Tanker Delivery'] : []),
+    recommended_services: ui.recommended_services || (isWaterTank ? [
       'Tank Cleaning', 'Disinfection', 'Sterilisation', 'Bacteria & Algae Treatment',
       'Leak Detection', 'Crack Repair', 'Waterproofing', 'Valve Replacement',
       'Pipe Connection Repair', 'Pump Maintenance', 'Water Quality Testing', 'AMC Enrolment',
-    ],
+    ] : []),
   });
 };
 

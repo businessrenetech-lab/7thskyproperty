@@ -12,9 +12,15 @@ import { Spinner } from '../../ui/kit';
 // The current console's URL base, so shared screens navigate within whichever
 // service the user is in (/air-conditioning/* vs /water-tank/*). Use it in place
 // of a hard-coded '/water-tank' prefix: nav(`${svcBase()}/quotations`).
+// Every non-default console base, matched against the URL. Water Tank is the
+// default. Add a service line by giving it a SERVICE_UI entry (below) and, if its
+// base isn't one of these, listing it here — keeping one N-way source of truth.
+const SVC_BASES = ['/air-conditioning', '/land-property-assessment', '/loan-financial-support', '/property-documentation-verification', '/property-will-succession', '/removal-relocation', '/property-care-concierge'];
 export const svcBase = () => {
-  try { return (window.location.pathname || '').includes('/air-conditioning') ? '/air-conditioning' : '/water-tank'; }
-  catch { return '/water-tank'; }
+  try {
+    const p = window.location.pathname || '';
+    return SVC_BASES.find((b) => p.includes(b)) || '/water-tank';
+  } catch { return '/water-tank'; }
 };
 
 // Per-service UI vocabulary for the shared operations screens, so the Air
@@ -28,6 +34,7 @@ export const SERVICE_UI = {
     full_label: 'Water Tank Cleaning & Maintenance',
     short: 'Water Tank',
     doc_code: 'WTCM', // SSPC-WTCM-… document numbers
+    wo_consumables_label: 'Chemicals Required', // work-order document, Section 6
     accent: '#12b6f3', accent_ink: '#0b6f97', accent_soft: '#e6f6fd', // portal theming
     equipment: {
       section_label: 'Tank Details',
@@ -69,6 +76,7 @@ export const SERVICE_UI = {
     full_label: 'Air Conditioning Solutions',
     short: 'Air Conditioning',
     doc_code: 'ACS', // SSPC-ACS-… document numbers
+    wo_consumables_label: 'Spare Parts Required', // work-order document, Section 6
     accent: '#7c3aed', accent_ink: '#5b21b6', accent_soft: '#efe9fd', // portal theming
     equipment: {
       section_label: 'Equipment Details',
@@ -105,6 +113,272 @@ export const SERVICE_UI = {
       direct_cost_examples: 'Spare parts, refrigerant, transport, government fees and day labour',
     },
   },
+  '/land-property-assessment': {
+    label: 'Land & Property Assessment',
+    full_label: 'Land & Property Assessment (Survey & Valuation)',
+    short: 'Survey & Valuation',
+    doc_code: 'SVS', // SSPC-SVS-… document numbers
+    doc_manager: true, // Property Doc Verification & Transfer collects client documents
+    wo_consumables_label: 'Records / Documents Required', // work-order document, Section 6
+    accent: '#4f46e5', accent_ink: '#3730a3', accent_soft: '#e0e7ff', // portal theming
+    equipment: {
+      section_label: 'Property & Land Details',
+      type_label: 'Property Type',
+      type_options: ['Residential', 'Commercial', 'Industrial', 'Agricultural', 'Vacant Land', 'Mixed Use', 'Development Site', 'Other'],
+      count_label: 'Number of Plots / Units',
+      capacity_label: 'Land Area',
+      capacity_placeholder: 'e.g. 5 Katha / 0.5 Acre',
+      source_label: 'Land Record Basis',
+      source_options: ['CS Khatian', 'SA Khatian', 'RS Khatian', 'BS / City Khatian', 'Mutation Khatian', 'Not Available'],
+      unit_word: 'plot',
+    },
+    assess: {
+      profile_label: 'Property & land profile', profile_hint: 'Type, area, land records',
+      quality_label: 'Site condition & records', quality_hint: 'Boundaries, encroachment, records',
+      obs1_label: 'Site observations / issues', obs1_ph: 'Encroachment, missing boundary pillar, disputed boundary…',
+      obs2_label: 'Access / ownership concerns', obs2_ph: 'Occupant absent, ownership documents unavailable…',
+      readings_label: 'On-site measurements recorded',
+      readings: [
+        { key: 'land_area', ph: 'Measured land area' }, { key: 'frontage', ph: 'Road frontage' },
+        { key: 'plots', ph: 'Number of plots' }, { key: 'boundary_length', ph: 'Boundary length' },
+        { key: 'gps', ph: 'GPS reference' },
+      ],
+    },
+    report_types: ['Site Inspection', 'Survey', 'Valuation', 'Technical Assessment', 'Due Diligence', 'NRB Report'],
+    report_placeholder: 'e.g. Conducted boundary survey of the plot, verified Khatian/Dag against RS records, measured area and prepared the survey plan.',
+    registers: {
+      incident_types: ['Injury', 'Property Access Dispute', 'Boundary Dispute', 'Encroachment', 'Data / Record Loss', 'Other'],
+      warranty_hint: 'e.g. Survey Report, Valuation Report, Reporting Error.',
+      location_placeholder: 'Plot, mouza, site area…',
+      incident_blurb: 'Injury, access dispute, boundary dispute or data loss on site',
+      warranty_scope: 'completed survey, valuation and technical reports',
+      incident_log: 'injuries, access disputes, boundary disputes and data loss',
+      direct_cost_examples: 'Government fees, record collection, transport and day labour',
+    },
+  },
+  '/loan-financial-support': {
+    label: 'Loan & Financial Support',
+    full_label: 'Loan & Financial Support',
+    short: 'Loan & Finance',
+    doc_code: 'LFSS', // SSPC-LFSS-… document numbers
+    doc_manager: true, // collects the client's financial documents (Phase 4)
+    loan_tracker: true, // Loan Application Tracker module
+    wo_consumables_label: 'Documents / Records Required', // work-order document, Section 6
+    accent: '#0d9488', accent_ink: '#115e59', accent_soft: '#ccfbf1', // portal theming (teal)
+    equipment: {
+      section_label: 'Finance Details',
+      type_label: 'Purpose of Finance',
+      type_options: ['Property Purchase', 'Property Construction', 'Property Renovation', 'Property Investment', 'Refinancing', 'Equity Release', 'Business Finance', 'Other'],
+      count_label: 'Number of Applicants',
+      capacity_label: 'Estimated Loan Amount',
+      capacity_placeholder: 'e.g. ৳50,00,000',
+      source_label: 'Preferred Lender',
+      source_options: ['City Bank', 'BRAC Bank', 'Dutch-Bangla Bank', 'Eastern Bank', 'HSBC', 'Standard Chartered', 'IDLC Finance', 'Not decided', 'Other'],
+      unit_word: 'application',
+    },
+    assess: {
+      profile_label: 'Finance profile', profile_hint: 'Purpose, amount, lender',
+      quality_label: 'Eligibility & documents', quality_hint: 'Income, liabilities, readiness',
+      obs1_label: 'Eligibility observations', obs1_ph: 'Income adequate, existing loans, credit concerns…',
+      obs2_label: 'Documentation gaps', obs2_ph: 'Missing salary certificate, bank statements…',
+      readings_label: 'Financial snapshot',
+      readings: [
+        { key: 'monthly_income', ph: 'Monthly income (৳)' }, { key: 'existing_emi', ph: 'Existing EMI (৳)' },
+        { key: 'loan_amount', ph: 'Requested amount (৳)' }, { key: 'property_value', ph: 'Property value (৳)' },
+        { key: 'ltv', ph: 'Loan-to-value (%)' },
+      ],
+    },
+    report_types: ['Financial Eligibility Assessment', 'Loan Assessment Summary', 'Valuation Coordination', 'Documentation Review', 'Banking Liaison', 'Completion Report'],
+    report_placeholder: 'e.g. Assessed eligibility, prepared and submitted the home-loan application to the lender, coordinated the bank valuation and tracked to approval.',
+    registers: {
+      incident_types: ['Data / Privacy Breach', 'Document Loss', 'Fraudulent Document', 'Regulatory Concern', 'Other'],
+      warranty_hint: 'e.g. Administrative Rectification, Documentation Rectification.',
+      location_placeholder: 'Lender, branch, application ref…',
+      incident_blurb: 'Data/privacy breach, document loss, fraudulent document or regulatory concern',
+      warranty_scope: 'completed loan coordination, valuation and documentation services',
+      incident_log: 'data/privacy breaches, document loss, fraudulent documents and regulatory concerns',
+      direct_cost_examples: 'Valuation fees, government charges, bank charges and courier',
+    },
+  },
+  '/property-documentation-verification': {
+    label: 'Property Documentation & Verification',
+    full_label: 'Property Documentation & Verification',
+    short: 'Doc Verification',
+    doc_code: 'PDVS', // SSPC-PDVS-… document numbers
+    doc_manager: true,
+    verification_register: true,
+    wo_consumables_label: 'Documents / Records Required',
+    accent: '#ea580c', accent_ink: '#9a3412', accent_soft: '#ffedd5', // portal theming (orange)
+    equipment: {
+      section_label: 'Property & Records',
+      type_label: 'Property Type',
+      type_options: ['Residential', 'Commercial', 'Industrial', 'Agricultural', 'Vacant Land', 'Mixed Use', 'Development Site', 'Other'],
+      count_label: 'Number of Plots / Units',
+      capacity_label: 'Land Area',
+      capacity_placeholder: 'e.g. 5 Katha / 0.5 Acre',
+      source_label: 'Latest Land Record',
+      source_options: ['CS Khatian', 'SA Khatian', 'RS Khatian', 'BS / City Khatian', 'Mutation Khatian', 'Not Available'],
+      unit_word: 'property',
+    },
+    assess: {
+      profile_label: 'Property & records', profile_hint: 'Type, area, latest record',
+      quality_label: 'Due diligence & risk', quality_hint: 'Title, encumbrance, disputes',
+      obs1_label: 'Verification observations', obs1_ph: 'Chain breaks, mutation pending, name mismatch…',
+      obs2_label: 'Risk / red flags', obs2_ph: 'Encumbrance, ownership dispute, forgery concern…',
+      readings_label: 'Records checked',
+      readings: [
+        { key: 'deed_no', ph: 'Deed no. / date' }, { key: 'khatian', ph: 'Khatian (CS/SA/RS/BS)' },
+        { key: 'mutation', ph: 'Mutation status' }, { key: 'khajna', ph: 'Land tax (Khajna) paid to' },
+        { key: 'encumbrance', ph: 'Encumbrance found?' },
+      ],
+    },
+    report_types: ['Due Diligence Assessment', 'Verification Report', 'Chain of Ownership', 'Mutation Status', 'Encumbrance Report', 'Completion Report'],
+    report_placeholder: 'e.g. Verified the deed and chain of ownership against RS/BS records, confirmed mutation, and searched the Sub-Registry for encumbrances — no adverse findings.',
+    registers: {
+      incident_types: ['Fraud / Forged Document', 'Ownership Dispute', 'Missing Records', 'Litigation', 'Data / Privacy Breach', 'Other'],
+      warranty_hint: 'e.g. Administrative Rectification, Report Correction.',
+      location_placeholder: 'Sub-Registry, AC Land Office, court…',
+      incident_blurb: 'Fraud/forged document, ownership dispute, missing records or litigation',
+      warranty_scope: 'completed verification, mutation and documentation work',
+      incident_log: 'fraud/forgery, ownership disputes, missing records and litigation',
+      direct_cost_examples: 'Government search fees, registration fees, legal fees and courier',
+    },
+  },
+  '/property-will-succession': {
+    label: 'Property Will & Succession',
+    full_label: 'Property Will & Succession Support',
+    short: 'Will & Succession',
+    doc_code: 'PWSS', // SSPC-PWSS-… document numbers
+    doc_manager: true,
+    beneficiary_register: true,
+    wo_consumables_label: 'Documents / Records Required',
+    accent: '#db2777', accent_ink: '#9d174d', accent_soft: '#fce7f3', // portal theming (rose)
+    equipment: {
+      section_label: 'Estate & Property',
+      type_label: 'Property Type',
+      type_options: ['Residential', 'Commercial', 'Industrial', 'Agricultural', 'Vacant Land', 'Mixed Use', 'Estate / Portfolio', 'Other'],
+      count_label: 'Number of Beneficiaries',
+      capacity_label: 'Estimated Estate Value',
+      capacity_placeholder: 'e.g. ৳2,00,00,000',
+      source_label: 'Will Status',
+      source_options: ['Registered Will', 'Unregistered Will', 'Draft Will', 'No Will (Intestate)', 'Unknown'],
+      unit_word: 'beneficiary',
+    },
+    assess: {
+      profile_label: 'Estate profile', profile_hint: 'Property, estate value, will status',
+      quality_label: 'Succession readiness', quality_hint: 'Beneficiaries, documents, disputes',
+      obs1_label: 'Succession observations', obs1_ph: 'Will unregistered, heirs unclear, consent pending…',
+      obs2_label: 'Risk / disputes', obs2_ph: 'Family dispute, beneficiary dispute, court case…',
+      readings_label: 'Estate snapshot',
+      readings: [
+        { key: 'will_status', ph: 'Will status' }, { key: 'beneficiaries', ph: 'Number of beneficiaries' },
+        { key: 'estate_value', ph: 'Estimated estate value (৳)' }, { key: 'properties', ph: 'Number of properties' },
+        { key: 'dispute', ph: 'Dispute present?' },
+      ],
+    },
+    report_types: ['Succession Review', 'Will Documentation Review', 'Beneficiary Summary', 'Ownership Transfer Review', 'Coordination Report', 'Completion Report'],
+    report_placeholder: 'e.g. Reviewed the will and confirmed beneficiaries; coordinated the succession certificate and the transfer of the estate to the heirs.',
+    registers: {
+      incident_types: ['Family Dispute', 'Beneficiary Dispute', 'Ownership Dispute', 'Missing Documents', 'Court Proceedings', 'Data / Privacy Breach', 'Other'],
+      warranty_hint: 'e.g. Administrative Rectification, Documentation Rectification.',
+      location_placeholder: 'Sub-Registry, court, land office…',
+      incident_blurb: 'Family/beneficiary dispute, ownership dispute, missing documents or court proceedings',
+      warranty_scope: 'completed will, succession and transfer coordination work',
+      incident_log: 'family/beneficiary disputes, ownership disputes, missing documents and court proceedings',
+      direct_cost_examples: 'Government/registration fees, court fees, legal fees and courier',
+    },
+  },
+  '/removal-relocation': {
+    label: 'Removal & Relocation',
+    full_label: 'Removal & Relocation Services',
+    short: 'Removal',
+    doc_code: 'RRS', // SSPC-RRS-… document numbers
+    team_fleet: true,
+    inventory: true,
+    internal_team: true,
+    wo_consumables_label: 'Packing Materials Required',
+    accent: '#b45309', accent_ink: '#78350f', accent_soft: '#fef3c7', // portal theming (amber-brown)
+    equipment: {
+      section_label: 'Move Details',
+      type_label: 'Move Type',
+      type_options: ['Residential', 'Commercial', 'Office', 'Packing Only', 'Clearance', 'Storage', 'Other'],
+      count_label: 'Estimated Volume',
+      capacity_label: 'Vehicle Required',
+      capacity_placeholder: 'e.g. 1 × Truck (Medium)',
+      source_label: 'Distance / Route',
+      source_options: ['Within City', 'Intercity', 'Long Distance', 'Local (<10km)'],
+      unit_word: 'move',
+    },
+    assess: {
+      profile_label: 'Move profile', profile_hint: 'Type, volume, vehicle',
+      quality_label: 'Access & risk', quality_hint: 'Pickup/drop-off access, special items',
+      obs1_label: 'Access observations', obs1_ph: 'No lift, narrow stairs, no truck parking…',
+      obs2_label: 'Special / risk items', obs2_ph: 'Piano, safe, glass cabinet, prohibited items…',
+      readings_label: 'Estimate',
+      readings: [
+        { key: 'volume', ph: 'Volume (CBM / items)' }, { key: 'crew', ph: 'Crew size' },
+        { key: 'vehicles', ph: 'Vehicles' }, { key: 'hours', ph: 'Estimated hours' }, { key: 'distance', ph: 'Distance (km)' },
+      ],
+    },
+    report_types: ['Site Inspection', 'Packing', 'Loading', 'Delivery', 'Damage', 'Closure'],
+    report_placeholder: 'e.g. Packed and wrapped all rooms, loaded 1 medium truck, delivered and reassembled furniture at the new address; client signed off.',
+    registers: {
+      incident_types: ['Property Damage', 'Item Damage', 'Item Loss', 'Injury', 'Vehicle Accident', 'Prohibited Item Found', 'Customer Delay', 'Other'],
+      warranty_hint: 'e.g. Service Rectification, Damage Rectification.',
+      location_placeholder: 'Pickup / drop-off / in transit…',
+      incident_blurb: 'Damage, loss, injury, vehicle accident or a prohibited item found',
+      warranty_scope: 'completed packing, moving and delivery work',
+      incident_log: 'damage, loss, injuries, vehicle accidents and prohibited-item findings',
+      direct_cost_examples: 'Fuel, tolls, packing materials, day labour and vehicle hire',
+    },
+  },
+
+  '/property-care-concierge': {
+    label: 'Property Care & Concierge',
+    full_label: 'Property Care & Concierge Services',
+    short: 'Property Care',
+    doc_code: 'PCCS', // SSPC-PCCS-… document numbers
+    team_fleet: true,
+    asset_register: true,
+    concierge: true,
+    utility_coordination: true,
+    internal_team: true,
+    wo_consumables_label: 'Materials & Consumables Required',
+    accent: '#059669', accent_ink: '#065f46', accent_soft: '#d1fae5', // portal theming (emerald)
+    equipment: {
+      section_label: 'Service Details',
+      type_label: 'Primary Service Category',
+      type_options: ['Property Care & Maintenance', 'Property Presentation', 'Smart Property Solutions', 'Security & Monitoring', 'Property Marketing Support', 'NRB Property Services', 'Concierge Services'],
+      count_label: 'Service Frequency',
+      capacity_label: 'Access Method',
+      capacity_placeholder: 'e.g. Key held / Client present / Lockbox',
+      source_label: 'Occupancy Status',
+      source_options: ['Owner-Occupied', 'Tenanted', 'Vacant', 'Overseas Owner (NRB)', 'Mixed Use'],
+      unit_word: 'property',
+    },
+    assess: {
+      profile_label: 'Property profile', profile_hint: 'Category, frequency, access',
+      quality_label: 'Condition & risk', quality_hint: 'Property condition, hazards, utilities',
+      obs1_label: 'Condition observations', obs1_ph: 'Existing damage, wear, areas needing service…',
+      obs2_label: 'Access & risk notes', obs2_ph: 'Key holding, alarm codes, pets, restricted areas, hazards…',
+      readings_label: 'Estimate',
+      readings: [
+        { key: 'areas', ph: 'Areas / rooms' }, { key: 'crew', ph: 'Staff required' },
+        { key: 'hours', ph: 'Estimated hours' }, { key: 'frequency', ph: 'Frequency (if ongoing)' }, { key: 'visits', ph: 'Visits / year' },
+      ],
+    },
+    report_types: ['Site Inspection', 'Property Visit', 'Progress', 'Video Inspection', 'Damage', 'Closure'],
+    report_placeholder: 'e.g. Attended property, completed cleaning and garden maintenance to scope, took before/after photos, secured property and returned keys; client satisfied.',
+    registers: {
+      incident_types: ['Property Damage', 'Security / Access Breach', 'Prohibited Conduct', 'Theft / Loss', 'Injury / WHS', 'Equipment Failure', 'Other'],
+      warranty_hint: 'e.g. Service Rectification, Workmanship Rectification.',
+      location_placeholder: 'Room / area of the property…',
+      incident_blurb: 'Property damage, security/access breach, theft/loss, injury or equipment failure',
+      warranty_scope: 'completed care, maintenance and concierge work',
+      incident_log: 'property damage, security breaches, theft/loss, injuries and equipment failures',
+      direct_cost_examples: 'Cleaning/garden supplies, repair materials, call-out and disposal charges',
+    },
+  },
 };
 /** The active console's UI profile (label, full_label, equipment field labels). */
 export const svcProfile = () => SERVICE_UI[svcBase()] || SERVICE_UI['/water-tank'];
@@ -113,16 +387,54 @@ export const svcProfile = () => SERVICE_UI[svcBase()] || SERVICE_UI['/water-tank
  * For surfaces that run OUTSIDE the console URL — the client/provider portal —
  * where svcBase() can't read the service line from the path.
  */
+const LINE_TO_BASE = {
+  air_conditioning: '/air-conditioning',
+  land_property_assessment: '/land-property-assessment',
+  loan_financial_support: '/loan-financial-support',
+  property_documentation_verification: '/property-documentation-verification',
+  property_will_succession: '/property-will-succession',
+  removal_relocation: '/removal-relocation',
+  property_care_concierge: '/property-care-concierge',
+  water_tank: '/water-tank',
+};
 export const profileForLine = (serviceLine) =>
-  (String(serviceLine || '').startsWith('air_conditioning') ? SERVICE_UI['/air-conditioning'] : SERVICE_UI['/water-tank']);
+  SERVICE_UI[LINE_TO_BASE[String(serviceLine || '')] || '/water-tank'] || SERVICE_UI['/water-tank'];
 /** The active console's service label, e.g. "Air Conditioning". */
 export const svcLabel = () => svcProfile().label;
 /** Build a service-line document number, e.g. svcDoc('SOP-02') → 'SSPC-ACS-SOP-02'. */
 export const svcDoc = (suffix) => `SSPC-${svcProfile().doc_code}-${suffix}`;
 /** The active console's equipment field vocabulary (Tank vs Equipment details). */
 export const svcEquip = () => svcProfile().equipment;
+/** Whether the active console has the client Document Manager (Doc Verification & Transfer). */
+export const svcDocManager = () => !!svcProfile().doc_manager;
+/** Whether the active console has the Loan Application Tracker (Loan & Financial Support). */
+export const svcLoanTracker = () => !!svcProfile().loan_tracker;
+/** Whether the active console has the Verification Register (Property Documentation & Verification). */
+export const svcVerificationRegister = () => !!svcProfile().verification_register;
+/** Whether the active console has the Beneficiary Register (Property Will & Succession). */
+export const svcBeneficiaryRegister = () => !!svcProfile().beneficiary_register;
+/** Whether the active console has internal Team & Fleet (Removal & Relocation). */
+export const svcTeamFleet = () => !!svcProfile().team_fleet;
+/** Whether the active console has the moving Inventory (Removal & Relocation). */
+export const svcInventory = () => !!svcProfile().inventory;
+/** Whether the active console has the Property Asset register (Property Care & Concierge). */
+export const svcAssetRegister = () => !!svcProfile().asset_register;
+/** Whether the active console has Concierge & Access (Property Care & Concierge). */
+export const svcConcierge = () => !!svcProfile().concierge;
+/** Whether the active console has Utility Coordination (Property Care & Concierge). */
+export const svcUtilityCoordination = () => !!svcProfile().utility_coordination;
 /** The active console's catalogue vertical (water_tank_csa / air_conditioning_csa). */
-export const svcVertical = () => (svcBase() === '/air-conditioning' ? 'air_conditioning_csa' : 'water_tank_csa');
+const BASE_TO_VERTICAL = {
+  '/air-conditioning': 'air_conditioning_csa',
+  '/land-property-assessment': 'land_property_assessment_csa',
+  '/loan-financial-support': 'loan_financial_support_csa',
+  '/property-documentation-verification': 'property_documentation_verification_csa',
+  '/property-will-succession': 'property_will_succession_csa',
+  '/removal-relocation': 'removal_relocation_csa',
+  '/property-care-concierge': 'property_care_concierge_csa',
+  '/water-tank': 'water_tank_csa',
+};
+export const svcVertical = () => BASE_TO_VERTICAL[svcBase()] || 'water_tank_csa';
 /** The active console's site-assessment step wording. */
 export const svcAssess = () => svcProfile().assess || SERVICE_UI['/water-tank'].assess;
 /** The active console's warranty/complaint/incident register wording. */

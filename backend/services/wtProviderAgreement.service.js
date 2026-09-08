@@ -10,6 +10,7 @@
 const ServiceItem = require('../models/ServiceItem');
 const AgreementTemplate = require('../models/AgreementTemplate');
 const { merge } = require('./docTemplate.service');
+const { SERVICE_LINE_KEYS } = require('../config/serviceLines');
 
 const money = (v) => '৳' + Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -265,8 +266,14 @@ const checkboxHtml = (options = [], selected = []) => {
 const PROVIDER_DOC = {
   water_tank: { doc_no: 'SSPC-WTCM-SDPMA-01', seed: 'node scripts/seedProviderAgreement.js' },
   air_conditioning: { doc_no: 'SSPC-ACS-SDPMA-01', seed: 'node scripts/seedAcProviderAgreement.js' },
+  land_property_assessment: { doc_no: 'SSPC-SVS-SDPMA-01', seed: 'node scripts/seedLpaProviderAgreement.js' },
 };
-const serviceLineOf = (v) => (String(v || '').startsWith('air_conditioning') ? 'air_conditioning' : 'water_tank');
+// Resolve a service-line key from a vertical / related_type / key. Matches any
+// registered service line by exact or prefix, defaulting to Water Tank.
+const serviceLineOf = (v) => {
+  const s = String(v || '');
+  return SERVICE_LINE_KEYS.find((k) => s === k || s.startsWith(k)) || 'water_tank';
+};
 
 async function getMasterTemplate(serviceLine = 'water_tank') {
   const template = await AgreementTemplate.findOne({

@@ -212,6 +212,12 @@ exports.create = asyncHandler(async (req, res) => {
       reported_by: body.reported_by || actorOf(req),
       status: body.status || 'Open',
       provider_name: body.provider_name || context.provider_name || null,
+      // Property-damage detail (Property Care & Concierge): pre-existing vs caused,
+      // rectification cost, who is responsible, and the corrective action.
+      pre_existing: body.pre_existing !== undefined ? !!body.pre_existing : undefined,
+      estimated_cost: body.estimated_cost !== undefined ? body.estimated_cost : undefined,
+      responsibility: body.responsibility || undefined,
+      rectification_action: body.rectification_action || undefined,
     });
   }
 

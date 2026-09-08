@@ -174,9 +174,10 @@ exports.invite = asyncHandler(async (req, res) => {
   // The onboarding link path follows the provider's own service line so an Air
   // Conditioning provider gets an /air-condition-provider-onboard/ URL.
   const sl = getServiceLine(provider.service_line || 'water_tank');
-  const onboardPath = provider.service_line === 'air_conditioning'
-    ? 'air-condition-provider-onboard'
-    : 'water-tank-provider-onboard';
+  // The onboarding link path follows the provider's own service line. Most lines
+  // derive it from route_base; a line may override with `onboard_path` (Air
+  // Conditioning does, for legacy reasons).
+  const onboardPath = sl.onboard_path || `${sl.route_base || 'water-tank'}-provider-onboard`;
   const link = `${base}/${onboardPath}/${token}`;
   try {
     const { sendEmail } = require('../services/communication.service');

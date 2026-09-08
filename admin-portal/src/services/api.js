@@ -43,9 +43,20 @@ api.interceptors.request.use(
     // Water Tank default). The shared controllers scope their data by this.
     try {
       const p = window.location?.pathname || '';
-      if (p.includes('/air-conditioning') || p.includes('/air-condition-provider-onboard')) {
-        config.headers['X-Service-Line'] = 'air_conditioning';
-      }
+      // Each console (and its public provider-onboard page) maps to a service line.
+      // Water Tank is the default when no fragment matches (no header sent).
+      const SERVICE_LINE_BY_PATH = [
+        ['/air-conditioning', 'air_conditioning'],
+        ['/air-condition-provider-onboard', 'air_conditioning'],
+        ['/land-property-assessment', 'land_property_assessment'],
+        ['/loan-financial-support', 'loan_financial_support'],
+        ['/property-documentation-verification', 'property_documentation_verification'],
+        ['/property-will-succession', 'property_will_succession'],
+        ['/removal-relocation', 'removal_relocation'],
+        ['/property-care-concierge', 'property_care_concierge'],
+      ];
+      const hit = SERVICE_LINE_BY_PATH.find(([frag]) => p.includes(frag));
+      if (hit) config.headers['X-Service-Line'] = hit[1];
     } catch { /* non-browser context */ }
     return config;
   },

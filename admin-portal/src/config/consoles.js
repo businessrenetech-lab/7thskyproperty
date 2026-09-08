@@ -5,6 +5,7 @@ import {
   Inbox, CalendarDays, KeyRound,
   Hotel, CalendarRange, MessageSquareQuote, BookOpen, UserCheck, DoorOpen,
   Home, Sparkles, Wrench, HandCoins, Landmark, BarChart3, TrendingUp,
+  Ruler, FolderArchive, Boxes, Plug,
 } from 'lucide-react';
 
 /*
@@ -451,9 +452,232 @@ export const airConditioningConsole = {
   exitTo: '/dashboard',
 };
 
+/* ── Land & Property Assessment (Doc Verification & Transfer #1) ─────────────
+ * Survey & Valuation Services — the first sub-service of the Property Doc
+ * Verification & Transfer Support parent. Runs the exact same workflow as Water
+ * Tank, so its console is the Water Tank nav rebased onto /land-property-assessment/*
+ * with an indigo accent. Shared screens are scoped to this service line by the
+ * X-Service-Line header (services/api.js) and the backend by serviceScope(req).
+ * The other three sub-services become sibling consoles here when their docs land. */
+// Doc Verification & Transfer collects property documents from the client, so this
+// console gets an extra "Doc Manager" destination under Sales & Intake. Water Tank
+// and Air Conditioning do not (it lives only on this console's nav).
+export const LAND_PROPERTY_ASSESSMENT_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/land-property-assessment')
+  .map((g) => (g.key.endsWith('intake')
+    ? { ...g, items: [...g.items, { to: '/land-property-assessment/doc-manager', label: 'Doc Manager', icon: FolderArchive }] }
+    : g));
+
+export const landPropertyAssessmentConsole = {
+  slug: 'land-property-assessment',
+  storageKey: 'lpa.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Land & Property Assessment',
+    icon: Ruler,
+    accent: '#4f46e5',          // indigo — tells this console apart from WT cyan / AC violet
+    accentStrong: '#4338ca',
+    accentInk: '#3730a3',
+    accentTint: 'rgba(79,70,229,.12)',
+    accentTint2: '#e0e7ff',
+  },
+  navGroups: LAND_PROPERTY_ASSESSMENT_NAV,
+  // Shared Water Tank ops endpoints, scoped to this service line by the header.
+  api: { capabilities: '/wt-ops/capabilities', workQueue: '/wt-ops/work-queue' },
+  exitTo: '/dashboard',
+};
+
+/* ── Loan & Financial Support (Doc Verification & Transfer #2) ───────────────
+ * Second sub-service of the Property Doc Verification & Transfer Support parent.
+ * Same shared workflow as Water Tank, rebased onto /loan-financial-support/* with
+ * a teal accent. It collects the client's financial documents (Doc Manager) and
+ * adds a Loan Application Tracker — both injected into this console's nav only. */
+export const LOAN_FINANCIAL_SUPPORT_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/loan-financial-support')
+  .map((g) => {
+    if (g.key.endsWith('intake')) {
+      return { ...g, items: [...g.items, { to: '/loan-financial-support/doc-manager', label: 'Doc Manager', icon: FolderArchive }] };
+    }
+    if (g.key.endsWith('delivery')) {
+      return { ...g, items: [{ to: '/loan-financial-support/loan-applications', label: 'Loan Applications', icon: Landmark }, ...g.items] };
+    }
+    return g;
+  });
+
+export const loanFinancialSupportConsole = {
+  slug: 'loan-financial-support',
+  storageKey: 'lfs.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Loan & Financial Support',
+    icon: Landmark,
+    accent: '#0d9488',          // teal — tells this console apart from LPAS indigo
+    accentStrong: '#0f766e',
+    accentInk: '#115e59',
+    accentTint: 'rgba(13,148,136,.12)',
+    accentTint2: '#ccfbf1',
+  },
+  navGroups: LOAN_FINANCIAL_SUPPORT_NAV,
+  api: { capabilities: '/wt-ops/capabilities', workQueue: '/wt-ops/work-queue' },
+  exitTo: '/dashboard',
+};
+
+/* ── Property Documentation & Verification (Doc Verification & Transfer #3) ──
+ * Third sub-service of the parent. Same shared workflow, rebased onto
+ * /property-documentation-verification/* with an orange accent. Collects the
+ * client's property documents (Doc Manager) and adds a Verification Register
+ * (government searches + findings/risk) — both injected into this console's nav. */
+export const PROPERTY_DOC_VERIFICATION_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/property-documentation-verification')
+  .map((g) => {
+    if (g.key.endsWith('intake')) {
+      return { ...g, items: [...g.items, { to: '/property-documentation-verification/doc-manager', label: 'Doc Manager', icon: FolderArchive }] };
+    }
+    if (g.key.endsWith('delivery')) {
+      return { ...g, items: [{ to: '/property-documentation-verification/verifications', label: 'Verifications', icon: ShieldCheck }, ...g.items] };
+    }
+    return g;
+  });
+
+export const propertyDocVerificationConsole = {
+  slug: 'property-documentation-verification',
+  storageKey: 'pdv.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Property Documentation & Verification',
+    icon: ShieldCheck,
+    accent: '#ea580c',          // orange — tells this console apart from LFS teal / LPAS indigo
+    accentStrong: '#c2410c',
+    accentInk: '#9a3412',
+    accentTint: 'rgba(234,88,12,.12)',
+    accentTint2: '#ffedd5',
+  },
+  navGroups: PROPERTY_DOC_VERIFICATION_NAV,
+  api: { capabilities: '/wt-ops/capabilities', workQueue: '/wt-ops/work-queue' },
+  exitTo: '/dashboard',
+};
+
+/* ── Property Will & Succession (Doc Verification & Transfer #4) ────────────
+ * Fourth and final sub-service of the parent. Same shared workflow, rebased onto
+ * /property-will-succession/* with a rose accent. Collects the client's will/estate
+ * documents (Doc Manager) and adds a Beneficiary / Heirs Register — both injected
+ * into this console's nav only. */
+export const PROPERTY_WILL_SUCCESSION_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/property-will-succession')
+  .map((g) => {
+    if (g.key.endsWith('intake')) {
+      return { ...g, items: [...g.items, { to: '/property-will-succession/doc-manager', label: 'Doc Manager', icon: FolderArchive }] };
+    }
+    if (g.key.endsWith('delivery')) {
+      return { ...g, items: [{ to: '/property-will-succession/beneficiaries', label: 'Beneficiaries', icon: Users }, ...g.items] };
+    }
+    return g;
+  });
+
+export const propertyWillSuccessionConsole = {
+  slug: 'property-will-succession',
+  storageKey: 'pws.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Property Will & Succession',
+    icon: Users,
+    accent: '#db2777',          // rose — tells this console apart from PDV orange
+    accentStrong: '#be185d',
+    accentInk: '#9d174d',
+    accentTint: 'rgba(219,39,119,.12)',
+    accentTint2: '#fce7f3',
+  },
+  navGroups: PROPERTY_WILL_SUCCESSION_NAV,
+  api: { capabilities: '/wt-ops/capabilities', workQueue: '/wt-ops/work-queue' },
+  exitTo: '/dashboard',
+};
+
+/* ── Removal & Relocation ───────────────────────────────────────────────────
+ * Delivered by Seventh Sky's OWN team + vehicles, so the Providers/Compliance
+ * group is replaced by "Team & Fleet", and an "Inventory" destination is added.
+ * No provider master agreement. Rebased onto /removal-relocation/* with an
+ * amber-brown accent. */
+export const REMOVAL_RELOCATION_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/removal-relocation')
+  .map((g) => {
+    if (g.key.endsWith('intake')) {
+      return { ...g, items: [...g.items, { to: '/removal-relocation/inventory', label: 'Inventory', icon: Boxes }] };
+    }
+    if (g.key.endsWith('providers')) {
+      // internal delivery: swap provider onboarding/compliance for Team & Fleet
+      return { ...g, label: 'Team & Fleet', items: [{ to: '/removal-relocation/team-fleet', label: 'Team & Fleet', icon: Truck }] };
+    }
+    return g;
+  });
+
+export const removalRelocationConsole = {
+  slug: 'removal-relocation',
+  storageKey: 'rrs.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Removal & Relocation',
+    icon: Truck,
+    accent: '#b45309',          // amber-brown — tells this console apart from the others
+    accentStrong: '#92400e',
+    accentInk: '#78350f',
+    accentTint: 'rgba(180,83,9,.12)',
+    accentTint2: '#fef3c7',
+  },
+  navGroups: REMOVAL_RELOCATION_NAV,
+  api: { capabilities: '/wt-ops/capabilities', workQueue: '/wt-ops/work-queue' },
+  exitTo: '/dashboard',
+};
+
+/* ── Property Care & Concierge ──────────────────────────────────────────────
+ * Delivered by Seventh Sky's OWN team + vehicles (internal, like Removal), so the
+ * Providers/Compliance group becomes "Team & Fleet" and there is no provider master
+ * agreement. Adds three Property-Care registers — Property Assets, Concierge & Access
+ * and Utilities — plus the shared AMC console for ongoing/recurring care plans.
+ * Rebased onto /property-care-concierge/* with an emerald accent. */
+export const PROPERTY_CARE_CONCIERGE_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/property-care-concierge')
+  .map((g) => {
+    if (g.key.endsWith('intake')) {
+      return { ...g, items: [...g.items, { to: '/property-care-concierge/property-assets', label: 'Property Assets', icon: Wrench }] };
+    }
+    if (g.key.endsWith('delivery')) {
+      return {
+        ...g,
+        items: [
+          ...g.items,
+          { to: '/property-care-concierge/concierge', label: 'Concierge & Access', icon: KeyRound },
+          { to: '/property-care-concierge/utilities', label: 'Utilities', icon: Plug },
+        ],
+      };
+    }
+    if (g.key.endsWith('providers')) {
+      // internal delivery: swap provider onboarding/compliance for Team & Fleet
+      return { ...g, label: 'Team & Fleet', items: [{ to: '/property-care-concierge/team-fleet', label: 'Team & Fleet', icon: Truck }] };
+    }
+    return g;
+  });
+
+export const propertyCareConciergeConsole = {
+  slug: 'property-care-concierge',
+  storageKey: 'pcc.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Property Care & Concierge',
+    icon: Home,
+    accent: '#059669',          // emerald — tells this console apart from the others
+    accentStrong: '#047857',
+    accentInk: '#065f46',
+    accentTint: 'rgba(5,150,105,.12)',
+    accentTint2: '#d1fae5',
+  },
+  navGroups: PROPERTY_CARE_CONCIERGE_NAV,
+  api: { capabilities: '/wt-ops/capabilities', workQueue: '/wt-ops/work-queue' },
+  exitTo: '/dashboard',
+};
+
 export const CONSOLES = {
   'water-tank': waterTankConsole,
   'air-conditioning': airConditioningConsole,
+  'land-property-assessment': landPropertyAssessmentConsole,
+  'loan-financial-support': loanFinancialSupportConsole,
+  'property-documentation-verification': propertyDocVerificationConsole,
+  'property-will-succession': propertyWillSuccessionConsole,
+  'removal-relocation': removalRelocationConsole,
+  'property-care-concierge': propertyCareConciergeConsole,
   'short-stay': shortStayConsole,
   'property-management': propertyMgmtConsole,
   residential: residentialConsole,
