@@ -396,6 +396,7 @@ export const RESIDENTIAL_NAV = [
     label: 'Buying',
     items: [
       { to: '/residential/buy', label: 'Deals', icon: Briefcase },
+      { to: '/residential/mandates', label: 'Buyer Mandates', icon: ClipboardList },
       { to: '/residential/enquiry', label: 'Buyer Enquiries', icon: MessageSquareQuote },
     ],
   },

@@ -24,6 +24,10 @@ export const propertyFilePath = (category, id) => `${salesBase(category)}/proper
 /** The five-view settlement desk for one property's settlement. */
 export const settlementDeskPath = (category, id) => `${salesBase(category)}/property/${id}/settlement`;
 
+/** Buyer mandates: the list, and one mandate's detail. */
+export const mandatesPath = (category) => `${salesBase(category)}/mandates`;
+export const mandateDetailPath = (category, id) => `${salesBase(category)}/mandates/${id}`;
+
 /** The listing wizard: new when given no id, editing when given one. */
 export const propertyWizardPath = (category, id, query = '') => {
   const base = `${salesBase(category)}/properties/new${id ? `/${id}` : ''}`;

@@ -19,6 +19,8 @@ import SalesPropertyFile from './screens/sales/SalesPropertyFile';
 import SettlementDesk from './screens/sales/settlement-desk/SettlementDesk';
 import AccountingOverview from './screens/sales/AccountingOverview';
 import SalesWorkQueue from './screens/sales/SalesWorkQueue';
+import BuyerMandates from './screens/sales/BuyerMandates';
+import BuyerMandateDetail from './screens/sales/BuyerMandateDetail';
 import RentalProperties from './screens/RentalProperties';
 import PropertyWizard from './screens/PropertyWizard';
 import PropertyMgmtDashboard from './screens/PropertyMgmtDashboard';
@@ -923,6 +925,8 @@ export default function App() {
               <Route path="/residential/settlements" element={<SalesBulkSettlement />} />
               <Route path="/residential/accounting" element={<AccountingOverview />} />
               <Route path="/residential/work-queue" element={<SalesWorkQueue />} />
+              <Route path="/residential/mandates" element={<BuyerMandates />} />
+              <Route path="/residential/mandates/:id" element={<BuyerMandateDetail />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />
