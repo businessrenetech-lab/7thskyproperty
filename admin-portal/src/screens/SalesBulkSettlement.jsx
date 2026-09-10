@@ -23,8 +23,10 @@ export default function SalesBulkSettlement() {
   const [res, setRes] = useState(null);
 
   const load = useCallback(async () => {
+    // Note: does NOT clear `res` — a refresh after run() must keep the
+    // per-row settled/skipped badges visible. `res` is only cleared when a
+    // new run starts (see run() below).
     setLoading(true);
-    setRes(null);
     try {
       const { data } = await api.get('/deals/settlement/bulk-data');
       setRows(data.data || []);
@@ -43,6 +45,7 @@ export default function SalesBulkSettlement() {
   const ids = rows.filter((r) => sel[r.deal_id]).map((r) => r.deal_id);
 
   const run = async () => {
+    setRes(null); // clear stale results only when a new run starts
     try {
       const { data } = await api.post('/deals/settlement/bulk', { deal_ids: ids });
       setRes(data);
@@ -108,7 +111,7 @@ export default function SalesBulkSettlement() {
                     <td style={{ textAlign: 'right' }}>{money(r.expected)}</td>
                     <td style={{ textAlign: 'right' }}>{money(r.received)}</td>
                     <td><Badge tone={r.statuses.payment === 'received' ? 'green' : 'amber'}>{r.statuses.payment}</Badge></td>
-                    <td>{x ? <Badge tone={x.status === 'settled' ? 'green' : 'grey'}>{x.status}</Badge> : ''}</td>
+                    <td>{x ? <Badge tone={x.status === 'settled' ? 'green' : x.status === 'skipped' ? 'amber' : 'grey'}>{x.status}</Badge> : ''}</td>
                   </tr>
                 );
               })}
