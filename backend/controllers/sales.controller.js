@@ -1469,6 +1469,24 @@ exports.createDisbursement = asyncHandler(async (req, res) => {
     const allocated = await SaleDisbursement.findAll({ where: { settlement_line_id: settlementLine.id, settlement_id: locked.id, branch_id: locked.branch_id, status: { [Op.ne]: 'cancelled' } }, transaction, lock: transaction.LOCK.UPDATE });
     const remainingMinor = toMinor(settlementLine.amount) - allocated.reduce((sum, item) => sum + toMinor(item.amount), 0);
     if (toMinor(data.amount) > remainingMinor) fail(409, `Payout exceeds the ${fromMinor(remainingMinor).toFixed(2)} remaining on this obligation`);
+
+    // The per-obligation check above says this payout fits its own line. This
+    // one asks whether the settlement can ever fund every payout together —
+    // the state that used to be allowed and then reported as "they can never
+    // all be paid". Money still expected from the buyer counts as coverage, so
+    // preparing payouts before the final receipt lands stays legal.
+    const allPayments = excludeReversalPairs(await SalePayment.findAll({ where: { settlement_id: locked.id, branch_id: locked.branch_id }, transaction, raw: true }));
+    const clearedIn = allPayments.filter((p) => p.direction === 'incoming' && p.status === 'cleared').reduce((sum, p) => sum + toMinor(p.amount), 0);
+    const clearedOut = allPayments.filter((p) => p.direction === 'outgoing' && p.status === 'cleared').reduce((sum, p) => sum + toMinor(p.amount), 0);
+    const allLines = await SaleSettlementLine.findAll({ where: { settlement_id: locked.id, branch_id: locked.branch_id }, transaction, raw: true });
+    const priceMinor = allLines.filter((l) => l.line_type === 'purchase_price').reduce((sum, l) => sum + toMinor(l.amount), 0);
+    const stillExpected = Math.max(0, priceMinor - clearedIn);
+    const coverage = (clearedIn - clearedOut) + stillExpected;
+    const openPayouts = await SaleDisbursement.findAll({ where: { settlement_id: locked.id, branch_id: locked.branch_id, status: { [Op.notIn]: ['cancelled', 'paid'] } }, transaction, raw: true });
+    const committed = openPayouts.reduce((sum, item) => sum + toMinor(item.amount), 0);
+    if (committed + toMinor(data.amount) > coverage) {
+      fail(409, `This payout would commit ${fromMinor(committed + toMinor(data.amount)).toFixed(2)} against ${fromMinor(coverage).toFixed(2)} the settlement can fund. Reduce it to ${fromMinor(Math.max(0, coverage - committed)).toFixed(2)} or record the outstanding buyer receipt first.`);
+    }
     const created = await SaleDisbursement.create({ ...data, amount: decimalFromMinor(toMinor(data.amount)), branch_id: locked.branch_id, settlement_id: locked.id, status: 'prepared', payout_method: data.payout_method || 'manual_bank', created_by: req.user.id }, { transaction });
     await markSettlementRevised(locked, req.user.id, transaction);
     await recordEvent({ branchId: locked.branch_id, propertyId: saleTransaction.property_id, entityType: 'sale_disbursement', entityId: created.id, eventType: 'DISBURSEMENT_CREATED', actorId: req.user.id, newValue: plain(created), ipAddress: ip(req), transaction });

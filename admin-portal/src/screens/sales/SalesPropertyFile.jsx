@@ -4078,20 +4078,29 @@ export default function SalesPropertyFile({
                           ))}
                       </div>
                       {(() => {
+                        // "Can never be paid" is only true once no more money is
+                        // coming. While the buyer still owes, payouts prepared
+                        // ahead of the final receipt are normal — say what is
+                        // outstanding instead of crying wolf.
                         const pendingTotal = disbursements
                           .filter((item) => !["paid", "cancelled"].includes(item.status))
                           .reduce((sum, item) => sum + number(item.amount), 0);
-                        return minor(pendingTotal) > minor(fundsHeld) ? (
+                        const stillExpected = Math.max(0, number(purchasePrice) - number(received));
+                        const coverage = number(fundsHeld) + stillExpected;
+                        if (minor(pendingTotal) <= minor(coverage)) return null;
+                        return (
                           <div className="st-notice st-notice-error">
                             <AlertTriangle size={15} />
                             <span>
-                              Pending payouts total {money(pendingTotal)} but
-                              only {money(fundsHeld)} is held in the trust
-                              account — they can never all be paid. Cancel or
-                              reduce a payout.
+                              Payouts total {money(pendingTotal)} against{" "}
+                              {money(coverage)} this settlement can fund
+                              {stillExpected > 0
+                                ? ` (${money(fundsHeld)} held + ${money(stillExpected)} still due from the buyer)`
+                                : ""}
+                              . Reduce a payout by {money(pendingTotal - coverage)}.
                             </span>
                           </div>
-                        ) : null;
+                        );
                       })()}
                       <Panel
                         icon={ShieldCheck}
