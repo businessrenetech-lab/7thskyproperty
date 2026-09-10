@@ -7,6 +7,7 @@ const Contact = require('../models/Contact');
 const Property = require('../models/Property');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
+const { createProjectFromTemplate } = require('../services/workflowProject.service');
 
 const clientInc = { model: Client, as: 'client', include: [{ model: Contact, attributes: ['id', 'full_name'] }] };
 const propInc = { model: Property, as: 'property', attributes: ['id', 'property_code', 'title'] };
@@ -62,45 +63,10 @@ exports.create = asyncHandler(async (req, res) => {
   const meta = pick(req.body, ['title', 'vertical_key', 'client_id', 'contact_id', 'property_id', 'service_id', 'priority', 'value', 'start_date', 'due_date', 'notes']);
   if (!meta.title) return res.status(400).json({ error: 'title is required.' });
 
-  const project = await sequelize.transaction(async (t) => {
-    const p = await Project.create({
-      ...meta, branch_id: resolveBranchId(req, req.body.branch_id),
-      project_code: await generateCode(Project, 'project_code', 'SSPC-PJ-'),
-      status: 'lead', created_by: req.user?.id || null,
-    }, { transaction: t });
-
-    // Instantiate stage-gate from the vertical's workflow template (from the workbooks)
-    if (meta.vertical_key) {
-      const [tpl] = await sequelize.query(
-        'SELECT stages FROM workflow_templates WHERE vertical_key = :v AND is_active = 1 ORDER BY id ASC LIMIT 1',
-        { replacements: { v: meta.vertical_key }, transaction: t }
-      );
-      let stages = [];
-      try { stages = tpl[0] ? (typeof tpl[0].stages === 'string' ? JSON.parse(tpl[0].stages) : tpl[0].stages) : []; } catch { stages = []; }
-      for (let i = 0; i < stages.length; i++) {
-        const s = stages[i];
-        await ProjectStage.create({
-          project_id: p.id, stage_key: s.key, stage_name: s.name, sort_order: s.order ?? i + 1,
-          status: i === 0 ? 'in_progress' : 'pending',
-          checklist: (s.checklist || []).map((c) => ({
-            label: c.label,
-            required: !!c.required,
-            done: false,
-            detailed_task: c.detailed_task || '',
-            responsible: c.responsible || '',
-            evidence_required: c.evidence_required || '',
-            output: c.output || '',
-            evidence_url: '',
-            evidence_name: '',
-            remarks: ''
-          })),
-          required_documents: s.required_docs || [],
-        }, { transaction: t });
-      }
-      if (stages[0]) await p.update({ current_stage_key: stages[0].key }, { transaction: t });
-    }
-    return p;
-  });
+  const project = await sequelize.transaction(async (t) => createProjectFromTemplate(
+    { ...meta, branch_id: resolveBranchId(req, req.body.branch_id), actorId: req.user?.id || null },
+    t,
+  ));
 
   const fresh = await Project.findByPk(project.id, { include: [{ model: ProjectStage, as: 'stages' }] });
   res.status(201).json({ data: hydrate(fresh), message: 'Project created with workflow stages.' });
