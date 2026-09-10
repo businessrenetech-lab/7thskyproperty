@@ -294,6 +294,49 @@ exports.accountingOverview = asyncHandler(async (req, res) => {
   res.json({ data: { headline, worklists } });
 });
 
+// Role-derived pending work across the sales pipeline — read-only. Each item's
+// `kind` maps to the role that owns it and the desk view that resolves it.
+// Filtered to the caller's role unless ?scope=all (admin/manager only).
+const QUEUE_ROLE_MEMBERS = {
+  accounts: ['super_admin', 'branch_admin', 'accounts'],
+  admin: ['super_admin', 'branch_admin'],
+  prepare: ['super_admin', 'branch_admin', 'property_manager', 'sales_executive'],
+};
+exports.workQueue = asyncHandler(async (req, res) => {
+  const { propertyById, settlements } = await scanSettlements(req);
+  const role = req.user?.role;
+  const isManager = ['super_admin', 'branch_admin', 'property_manager'].includes(role);
+  const wantAll = req.query.scope === 'all' && isManager;
+  const items = [];
+  const push = (queueRole, kind, label, row, extra = {}) => items.push({ ...row, kind, label, role: queueRole, ...extra });
+  for (const s of settlements) {
+    if (s.status === 'locked') continue;
+    const lines = s.lines || []; const payments = s.payments || []; const disb = s.disbursements || [];
+    const calc = calculateSettlement(lines, payments, disb);
+    const tx = s.SaleTransaction; const prop = propertyById.get(Number(tx?.property_id)) || {};
+    const row = { deal_id: tx?.property_deal_id || null, property_id: tx?.property_id || null, property_code: prop.property_code || null, title: prop.title || null };
+    const name = prop.title || prop.property_code || `deal ${row.deal_id}`;
+    if (['draft', 'returned'].includes(s.status)) push('prepare', lines.length ? 'submit' : 'prepare', `${lines.length ? 'Submit' : 'Prepare'} settlement for ${name}`, row);
+    else if (s.status === 'submitted') push('accounts', 'review', `Review settlement for ${name}`, row);
+    else if (s.status === 'reviewed') push('admin', 'approve', `Approve settlement for ${name}`, row);
+    else if (s.status === 'approved') {
+      if (calc.receipts < calc.purchase_price) push('accounts', 'record_receipt', `Record buyer receipt for ${name}`, row, { amount: Math.max(0, calc.purchase_price - calc.receipts) });
+      if (payments.some((p) => p.status === 'cleared' && p.reconciliation_status !== 'reconciled')) push('accounts', 'match_bank', `Match a bank payment for ${name}`, row);
+      if (disb.some((d) => !['paid', 'cancelled'].includes(d.status))) push('accounts', 'pay_out', `Pay out for ${name}`, row, { amount: fromMinor(disb.filter((d) => !['paid', 'cancelled'].includes(d.status)).reduce((sum, d) => sum + toMinor(d.amount), 0)) });
+      if (toMinor(calc.residual) === 0 && !calc.pending_disbursements && calc.receipts >= calc.purchase_price) push('admin', 'lock', `Lock & complete ${name}`, row);
+    }
+  }
+  if (propertyById.size) {
+    const openOffers = await SaleOffer.findAll({ where: { property_id: { [Op.in]: [...propertyById.keys()] }, status: { [Op.in]: ['submitted', 'countered'] }, ...branchScope(req) }, raw: true });
+    for (const o of openOffers) {
+      const prop = propertyById.get(Number(o.property_id)) || {};
+      push('prepare', 'offer_review', `Review an offer on ${prop.title || prop.property_code || o.property_id}`, { deal_id: null, property_id: o.property_id, property_code: prop.property_code || null, title: prop.title || null });
+    }
+  }
+  const visible = wantAll ? items : items.filter((it) => (QUEUE_ROLE_MEMBERS[it.role] || []).includes(role));
+  res.json({ data: { items: visible } });
+});
+
 exports.dashboard = asyncHandler(async (req, res) => {
   const category = req.query.category;
   if (category && !['residential', 'commercial', 'rural', 'business'].includes(category)) return res.status(400).json({ error: 'Invalid property category' });
