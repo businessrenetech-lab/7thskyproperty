@@ -331,7 +331,7 @@ export default function SalesPropertyFile({
   const [formError, setFormError] = useState("");
   const [buyerDestination, setBuyerDestination] = useState("offer");
   const [statement, setStatement] = useState(null);
-  const [settleTab, setSettleTab] = useState("statement");
+  const [settleTab, setSettleTab] = useState("money");
   const [fundsSubTab, setFundsSubTab] = useState("ledger");
   const [showInlineBlockers, setShowInlineBlockers] = useState(false);
   const [accountingOptions, setAccountingOptions] = useState({
@@ -411,10 +411,10 @@ export default function SalesPropertyFile({
         openSection("assessment");
       } else if (code.includes("reconciled") || code.includes("bank")) {
         openSection("settlement");
-        setSettleTab("bank_recon");
+        setSettleTab("bank");
       } else if (code.includes("trust") || code.includes("beneficiary")) {
         openSection("settlement");
-        setSettleTab("beneficiaries");
+        setSettleTab("records");
       } else if (
         code.includes("payout") ||
         code.includes("disbursement") ||
@@ -422,10 +422,10 @@ export default function SalesPropertyFile({
         code.includes("refund")
       ) {
         openSection("settlement");
-        setSettleTab("payouts");
+        setSettleTab("money");
       } else if (code.includes("residual") || code.includes("line")) {
         openSection("settlement");
-        setSettleTab("statement");
+        setSettleTab("money");
       } else {
         openSection("settlement");
       }
@@ -3295,24 +3295,26 @@ export default function SalesPropertyFile({
                     className="pm-segment"
                     style={{ alignSelf: "flex-start", flexWrap: "wrap", gap: 2, padding: 3 }}
                   >
+                    {/* Three groups, not seven tabs: what the money is (Money),
+                        proving it moved (Bank), and the history behind it
+                        (Records). Nothing was removed — only regrouped by the
+                        job the user is doing. */}
                     {[
-                      ["statement", "Statement", Scale, null],
+                      ["money", "Money", Scale, null],
                       [
-                        "funds",
-                        "Trust Ledger",
-                        WalletCards,
+                        "bank",
+                        "Bank",
+                        FileCheck2,
+                        unreconciledPaymentCount + fundingRequests.length > 0
+                          ? `${unreconciledPaymentCount + fundingRequests.length}`
+                          : null,
+                      ],
+                      [
+                        "records",
+                        "Records",
+                        FileText,
                         pendingPaymentCount > 0 ? `${pendingPaymentCount}` : null,
                       ],
-                      [
-                        "bank_recon",
-                        "Bank Recon",
-                        FileCheck2,
-                        unreconciledPaymentCount > 0 ? `${unreconciledPaymentCount}` : null,
-                      ],
-                      ["beneficiaries", "Beneficiary Ledgers", ShieldCheck, null],
-                      ["funding", "Funding Requests", Link2, fundingRequests.length ? `${fundingRequests.length}` : null],
-                      ["payouts", "Payouts", Banknote, null],
-                      ["audit", "Audit Trail", FileText, null],
                     ].map(([key, label, Icon, badge]) => {
                       const isActive = settleTab === key;
                       return (
@@ -3346,7 +3348,7 @@ export default function SalesPropertyFile({
                     })}
                   </div>
 
-                  {settleTab === "statement" && (
+                  {settleTab === "money" && (
                     <Panel
                       icon={Scale}
                       heading="Settlement statement"
@@ -3420,7 +3422,7 @@ export default function SalesPropertyFile({
                     </Panel>
                   )}
 
-                  {settleTab === "funds" && (
+                  {settleTab === "records" && (
                     <Panel
                       icon={WalletCards}
                       heading="Trust account"
@@ -3774,7 +3776,7 @@ export default function SalesPropertyFile({
                     </Panel>
                   )}
 
-                  {settleTab === "funding" && (
+                  {settleTab === "bank" && (
                     <Panel
                       icon={Link2}
                       heading="Buyer funding requests"
@@ -3896,7 +3898,7 @@ export default function SalesPropertyFile({
                     </Panel>
                   )}
 
-                  {settleTab === "bank_recon" && (
+                  {settleTab === "bank" && (
                     <Panel
                       icon={FileCheck2}
                       heading="Trust-bank statement lines"
@@ -3964,7 +3966,7 @@ export default function SalesPropertyFile({
                     </Panel>
                   )}
 
-                  {settleTab === "beneficiaries" && (
+                  {settleTab === "records" && (
                     <Panel
                       icon={WalletCards}
                       heading="Beneficiary trust ledgers"
@@ -4015,7 +4017,7 @@ export default function SalesPropertyFile({
                     </Panel>
                   )}
 
-                  {settleTab === "payouts" && (
+                  {settleTab === "money" && (
                     <>
                       {!transactionCancelled &&
                         settlement.status !== "approved" &&
@@ -4440,7 +4442,7 @@ export default function SalesPropertyFile({
                     </>
                   )}
 
-                  {settleTab === "audit" && (
+                  {settleTab === "records" && (
                     <>
                       <Panel
                         icon={FileText}
