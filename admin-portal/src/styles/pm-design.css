@@ -694,3 +694,29 @@
   .pm-scope .ss-activity li { grid-template-columns:14px minmax(0,1fr); }
   .pm-scope .ss-activity time { grid-column:2; }
 }
+
+/* Row overflow menu — demotes rare payout actions (report a problem, sync,
+   record a different payment) out of the primary action row without hiding
+   them. Uses the existing surface/line/muted tokens. */
+.row-more { position: relative; display: inline-block; }
+.row-more > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  font-size: 12.5px; font-weight: 650; color: var(--muted);
+  padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px;
+}
+.row-more > summary::-webkit-details-marker { display: none; }
+.row-more > summary:hover { color: var(--ink); border-color: var(--muted); }
+.row-more > summary:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+.row-more[open] > summary { color: var(--ink); border-color: var(--muted); }
+.row-more-menu {
+  position: absolute; right: 0; z-index: 20; min-width: 190px; margin-top: 4px;
+  display: flex; flex-direction: column; padding: 4px;
+  background: var(--surface, #fff); border: 1px solid var(--line);
+  border-radius: 10px; box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+}
+.row-more-menu button {
+  text-align: left; background: none; border: 0; cursor: pointer;
+  padding: 7px 10px; border-radius: 6px; font-size: 13px; color: var(--ink);
+}
+.row-more-menu button:hover { background: var(--cyan-weak, #f1f5f9); }
+.row-more-menu button:focus-visible { outline: 2px solid var(--navy); outline-offset: -2px; }

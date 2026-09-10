@@ -1556,6 +1556,17 @@ export default function SalesPropertyFile({
         confirm: `Create a payout of ${money(form.amount)} to ${form.payee_name || "the selected party"}?`,
       },
     );
+  // One action for "the money went out". The server resolves the payment —
+  // reusing an existing unallocated one or creating it — so nobody has to know
+  // whether a payment row already exists.
+  const payOutRow = (row) =>
+    perform(
+      () => api.post(`/sales/disbursements/${row.id}/pay-out`, {}),
+      "Payment recorded — match it to the bank statement to finish",
+      {
+        confirm: `Pay ${money(row.amount)} to ${row.payee_name || title(row.payee_type)}?`,
+      },
+    );
   const payDisbursement = () => {
     if (settlement.status !== "approved") {
       setFormError(
@@ -4347,36 +4358,55 @@ export default function SalesPropertyFile({
                                           {row.status === "failed" ? "Retry" : "Submit"}
                                         </Button>
                                       )}
+                                      {/* One primary action per row. "Allocate
+                                          payment" vs "Record bank payment" was
+                                          a database question — the server now
+                                          resolves the payment itself. */}
                                       {settlement.status === "approved" &&
+                                        !row.payment_id &&
                                         ["prepared", "pending", "submitted", "processing", "failed"].includes(row.status) && (
+                                        <Button size="sm" onClick={() => payOutRow(row)}>
+                                          Pay out
+                                        </Button>
+                                      )}
+                                      {settlement.status === "approved" &&
+                                        row.payment_id &&
+                                        row.status !== "paid" && (
                                         <Button
                                           size="sm"
                                           variant="secondary"
                                           onClick={() =>
                                             openDrawer("pay-disbursement", {
                                               ...row,
-                                              payment_id: "",
+                                              payment_id: row.payment_id || "",
                                             })
                                           }
                                         >
-                                          Allocate payment
+                                          Mark paid
                                         </Button>
                                       )}
                                       {settlement.status === "approved" &&
-                                        ["prepared", "submitted", "failed"].includes(row.status) && (
-                                        <Button size="sm" variant="ghost" onClick={() => recordOutgoingPaymentFor(row)}>
-                                          Record bank payment
-                                        </Button>
-                                      )}
-                                      {row.status === "processing" && row.payout_method === "sslcommerz_refund" && (
-                                        <Button size="sm" variant="ghost" onClick={() => syncDisbursement(row)}>
-                                          Sync refund
-                                        </Button>
-                                      )}
-                                      {["submitted", "processing"].includes(row.status) && (
-                                        <Button size="sm" variant="ghost" onClick={() => failDisbursement(row)}>
-                                          Mark failed
-                                        </Button>
+                                        row.status !== "paid" && (
+                                        <details className="row-more">
+                                          <summary>More</summary>
+                                          <div className="row-more-menu">
+                                            {["prepared", "submitted", "failed"].includes(row.status) && (
+                                              <button type="button" onClick={() => recordOutgoingPaymentFor(row)}>
+                                                Record a different payment
+                                              </button>
+                                            )}
+                                            {row.status === "processing" && row.payout_method === "sslcommerz_refund" && (
+                                              <button type="button" onClick={() => syncDisbursement(row)}>
+                                                Sync refund
+                                              </button>
+                                            )}
+                                            {["submitted", "processing"].includes(row.status) && (
+                                              <button type="button" onClick={() => failDisbursement(row)}>
+                                                Report a problem
+                                              </button>
+                                            )}
+                                          </div>
+                                        </details>
                                       )}
                                       {["draft", "returned"].includes(
                                         settlement.status,
