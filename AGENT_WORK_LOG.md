@@ -4613,3 +4613,12 @@ used "the last line starting with `import`", which landed inside a multi-line
 - PROGRAM COMPLETE (headline): Phase 0 audit, D1 money fix, P1 Bulk Rent Collection, P2 Bulk Owner Disbursement,
   P3 UI consistency, P4 Bulk Rent Reminders, P5 fixes + green e2e. Optional remaining: browser deep-UI pass (needs
   Chrome extension + logins), D4b active-tenant seed.
+
+### 2026-09-10 | Claude Code (Opus 4.8) | COMPLETED | D4b — active-tenant portal test login + tenant self-service verified
+- scripts/seedActiveTenantLogin.js: provisions a durable ACTIVE-tenant portal login the way client.controller.enablePortal
+  does — tenant User -> Client.portal_user_id -> an active tenancy's contact (resolveTenantContactId path). Idempotent
+  (resets password + re-links). Login: activetenant@example.com / Tenant#2026 (currently tenancy SSPC-TN-000013, contact 36).
+- VERIFIED the active-tenant self-service flow (the 3 calls that failed only as a test-login artifact): login OK role=tenant;
+  /api/tenant/me returns the active tenancy; payment-proof 201, work-order 201, vacancy-notice 201 — all green. Conclusively
+  confirms the Phase 5 residual findings were a closed-tenancy test login, not production bugs.
+- Memory updated (property-mgmt-command-center) with both tenant test logins + the bulk-run endpoints.
