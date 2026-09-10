@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { PageHead, DataTable, StatusBadge, Drawer, SearchInput, KV, Spinner, Button, Badge } from '../ui/kit';
 import { Plus, Building2 as BuildingIcon } from 'lucide-react';
 import { NewDealDrawer, NewPropertyDrawer } from './CrmForms';
+import DealSettlementWorkspace from './sales/DealSettlementWorkspace';
 
 const money = (v) => (v == null ? '—' : 'BDT ' + Number(v).toLocaleString());
 
@@ -85,6 +86,9 @@ export default function DealsBoard({ category, dealType, title, desc }) {
               <div className="form-section-title"><Handshake size={13} /> Settlement</div>
               <KV k="Settlement date" v={detail.settlement_date} />
               <KV k="Notes" v={detail.notes} />
+              <div style={{ marginTop: 12 }}>
+                <DealSettlementWorkspace dealId={sel.id} />
+              </div>
             </>
           )}
         </Drawer>
