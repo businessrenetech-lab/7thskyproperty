@@ -2142,90 +2142,95 @@ export default function SalesPropertyFile({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(145px,1fr))",
+            gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
           }}
         >
+          {/* Only the three figures a settlement decision actually turns on.
+              Everything else is supporting detail and sits in the row below. */}
           {[
-            ["Purchase price", purchasePrice],
-            ["Received (cleared)", received],
-            pendingReceipts > 0 ? ["Pending clearance", pendingReceipts] : null,
-            refundsDue > 0 ? ["Refund due", refundsDue] : null,
-            ["Refunded to buyer", refunded],
-            ["Deductions", deductions],
-            ["Vendor proceeds", vendorProceeds],
-            ["Paid / disbursed", paid],
-            ["Funds held", fundsHeld],
-          ]
-            .filter(Boolean)
-            .map(([label, value], index) => (
+            ["Purchase price", purchasePrice, null],
+            ["Funds held", fundsHeld, null],
+            ["Residual", residual, balanced ? "good" : "bad"],
+          ].map(([label, value, tone], index) => (
             <div
               key={label}
               style={{
-                padding: "12px 15px",
+                padding: "16px 18px",
                 borderLeft: index ? "1px solid var(--line)" : "none",
+                background:
+                  tone === "bad"
+                    ? "var(--bad-bg)"
+                    : tone === "good"
+                      ? "var(--good-bg)"
+                      : undefined,
               }}
             >
               <div
-                className="pm-eyebrow"
-                style={{ color: "var(--muted)", letterSpacing: ".06em" }}
+                style={{
+                  fontSize: 12,
+                  color:
+                    tone === "bad"
+                      ? "var(--bad)"
+                      : tone === "good"
+                        ? "var(--good)"
+                        : "var(--muted)",
+                }}
               >
                 {label}
               </div>
-              <div className="pm-num" style={{ fontWeight: 800, marginTop: 4 }}>
+              <div
+                className="pm-num"
+                style={{
+                  fontWeight: 800,
+                  fontSize: 22,
+                  marginTop: 2,
+                  color:
+                    tone === "bad"
+                      ? "var(--bad)"
+                      : tone === "good"
+                        ? "var(--good)"
+                        : undefined,
+                }}
+              >
                 {money(value)}
               </div>
             </div>
           ))}
-          <div
-            style={{
-              padding: "12px 15px",
-              borderLeft: "1px solid var(--line)",
-              background: balanced ? "var(--good-bg)" : "var(--bad-bg)",
-            }}
-          >
-            <div
-              className="pm-eyebrow"
-              style={{
-                color: balanced ? "var(--good)" : "var(--bad)",
-                letterSpacing: ".06em",
-              }}
-            >
-              Residual
-            </div>
-            <div
-              className="pm-num"
-              style={{
-                fontWeight: 900,
-                marginTop: 4,
-                color: balanced ? "var(--good)" : "var(--bad)",
-              }}
-            >
-              {money(residual)}
-            </div>
-          </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "6px 20px",
+            padding: "10px 18px",
+            borderTop: "1px solid var(--line)",
+          }}
+        >
+          {[
+            ["Received", received],
+            pendingReceipts > 0 ? ["Pending clearance", pendingReceipts] : null,
+            refundsDue > 0 ? ["Refund due", refundsDue] : null,
+            refunded > 0 ? ["Refunded", refunded] : null,
+            ["Deductions", deductions],
+            ["Vendor proceeds", vendorProceeds],
+            ["Paid out", paid],
+          ]
+            .filter(Boolean)
+            .map(([label, value]) => (
+              <span key={label} style={{ fontSize: 13 }}>
+                <span style={{ color: "var(--muted)" }}>{label}</span>{" "}
+                <strong className="pm-num" style={{ fontWeight: 700 }}>
+                  {money(value)}
+                </strong>
+              </span>
+            ))}
         </div>
       </div>
       )}
 
-      {section !== "settlement" && blockers.length > 0 && (
-        <div>
-          <button
-            type="button"
-            className="pm-pill"
-            style={{
-              borderColor: "var(--warn)",
-              background: "var(--warn-bg)",
-              color: "var(--warn)",
-              fontWeight: 750,
-            }}
-            onClick={() => openDrawer("blockers", {})}
-          >
-            <AlertTriangle size={14} /> {blockers.length} blocker
-            {blockers.length === 1 ? "" : "s"} — view checklist
-          </button>
-        </div>
-      )}
-      {section !== "settlement" && nextAction && (
+      {/* One bar, not two — the blockers count and the next action were saying
+          related things in separate stripes and doubled the noise. */}
+      {section !== "settlement" && (nextAction || blockers.length > 0) && (
         <div
           style={{
             display: "flex",
@@ -2235,21 +2240,36 @@ export default function SalesPropertyFile({
             borderRadius: 12,
             background: "var(--cyan-weak)",
             border: "1px solid #bfeafd",
+            flexWrap: "wrap",
           }}
         >
           <CheckCircle2 size={18} color="var(--navy)" />
-          <div style={{ flex: 1 }}>
-            <div className="pm-eyebrow" style={{ color: "var(--navy)" }}>
-              Next action
-            </div>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <div style={{ fontSize: 12, color: "var(--navy)" }}>Next action</div>
             <strong>
-              {nextActionLabel}
+              {nextActionLabel || "Clear the outstanding checklist items"}
             </strong>
-            {nextAction.description && (
+            {nextAction?.description && (
               <div className="cell-sub">{nextAction.description}</div>
             )}
           </div>
-          {nextAction.section && (
+          {blockers.length > 0 && (
+            <button
+              type="button"
+              className="pm-pill"
+              style={{
+                borderColor: "var(--warn)",
+                background: "var(--warn-bg)",
+                color: "var(--warn)",
+                fontWeight: 750,
+              }}
+              onClick={() => openDrawer("blockers", {})}
+            >
+              <AlertTriangle size={14} /> {blockers.length} blocker
+              {blockers.length === 1 ? "" : "s"}
+            </button>
+          )}
+          {nextAction?.section && (
             <Button size="sm" onClick={() => openSection(nextAction.section)}>
               {nextAction.cta || "Open"}
             </Button>
@@ -2281,11 +2301,7 @@ export default function SalesPropertyFile({
             alignItems: "start",
           }}
         >
-          <Panel
-            icon={Building2}
-            heading="Sales overview"
-            sub="Property, authority and agreed commercial terms"
-          >
+          <Panel icon={Building2} heading="Sales overview">
             <div
               style={{
                 display: "grid",
