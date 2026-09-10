@@ -63,10 +63,12 @@ exports.receive = asyncHandler(async (req, res) => {
     });
     invoiceId = inv.id;
   }
+  const VALID_METHODS = ['cash', 'bank_transfer', 'bkash', 'nagad', 'card', 'cheque', 'sslcommerz', 'other'];
+  const method = VALID_METHODS.includes(req.body.method) ? req.body.method : (req.body.method ? 'other' : 'bank_transfer');
   const base = `http://127.0.0.1:${process.env.PORT || 50001}`;
   const r = await fetch(`${base}/api/invoices/${invoiceId}/payments`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: req.headers.authorization, 'X-Branch-Id': req.headers['x-branch-id'] || String(resolveBranchId(req) || '') },
-    body: JSON.stringify({ amount, method: req.body.method || 'bank', reference: `DEAL:${deal.deal_code} ${req.body.reference || ''}`.trim(), notes: `Deal ${deal.deal_code} ${req.body.kind || 'fee'}` }),
+    body: JSON.stringify({ amount, method, reference: `DEAL:${deal.deal_code} ${req.body.reference || ''}`.trim(), notes: `Deal ${deal.deal_code} ${req.body.kind || 'fee'}` }),
   });
   if (!r.ok) { const e = await r.json().catch(() => ({})); return res.status(502).json({ error: e.error || 'Payment failed.' }); }
   await svc.recomputeStatuses(deal);
