@@ -47,6 +47,7 @@ import { Combo } from "../../ui/pickers";
 import FileUpload, { fileSrc } from "../../ui/FileUpload";
 import SalesAssessmentWorkspace from "./SalesAssessmentWorkspace";
 import { settlementDeskPath } from "./paths";
+import UploadButton from "../../ui/UploadButton";
 
 const unwrap = (response) =>
   response?.data?.data ?? response?.data ?? response ?? {};
@@ -200,6 +201,7 @@ const SECTIONS = [
   { key: "offers", label: "Offers", icon: HandCoins },
   { key: "settlement", label: "Settlement", icon: Scale },
   { key: "onboarding", label: "Onboarding", icon: ClipboardCheck },
+  { key: "workflow", label: "Workflow", icon: ClipboardCheck },
   { key: "documents", label: "Documents", icon: FileText },
   { key: "activity", label: "Activity / Audit", icon: Activity },
 ];
@@ -361,6 +363,38 @@ export default function SalesPropertyFile({
       setEnquiries([]);
     }
   }, [propertyId]);
+
+  // SOP workflow (properties_sale). undefined = not loaded, null = none yet.
+  const [sop, setSop] = useState(undefined);
+  const loadSop = useCallback(async () => {
+    if (!propertyId) return;
+    try {
+      const { data } = await api.get(`/sales/properties/${propertyId}/sop`);
+      setSop(data.data);
+    } catch {
+      setSop(null);
+    }
+  }, [propertyId]);
+  const startSop = async () => {
+    try {
+      const { data } = await api.post(`/sales/properties/${propertyId}/sop`);
+      setSop(data.data);
+      toast.success("SOP workflow started");
+    } catch (e) {
+      toast.error(e.response?.data?.error || "Could not start the workflow");
+    }
+  };
+  const patchStage = async (stage, patch) => {
+    try {
+      await api.patch(`/projects/${sop.id}/stages/${stage.id}`, patch);
+      loadSop();
+    } catch (e) {
+      toast.error(e.response?.data?.error || "Update failed");
+    }
+  };
+  useEffect(() => {
+    if (section === "workflow" && sop === undefined) loadSop();
+  }, [section, sop, loadSop]);
 
   const openSection = useCallback(
     (nextSection) => {
@@ -3124,6 +3158,108 @@ export default function SalesPropertyFile({
               </Button>
             </div>
           </Panel>
+        </div>
+      )}
+
+      {section === "workflow" && (
+        <div className="pm-col">
+          {sop === undefined ? (
+            <Panel icon={ClipboardCheck} heading="Sale SOP workflow">
+              <Spinner />
+            </Panel>
+          ) : sop === null ? (
+            <Empty
+              icon={ClipboardCheck}
+              heading="No SOP workflow yet"
+              text="Start the residential sale SOP to track every stage, checklist and evidence."
+              action={
+                canPrepare ? (
+                  <Button onClick={startSop}>Start SOP workflow</Button>
+                ) : null
+              }
+            />
+          ) : (
+            (sop.stages || []).map((stage) => (
+              <Panel
+                key={stage.id}
+                icon={ClipboardCheck}
+                heading={stage.stage_name}
+                sub={stage.status}
+                action={
+                  canPrepare && stage.status !== "done" ? (
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {stage.status !== "in_progress" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => patchStage(stage, { status: "in_progress" })}
+                        >
+                          Start
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        onClick={() => patchStage(stage, { status: "done" })}
+                      >
+                        Mark done
+                      </Button>
+                    </div>
+                  ) : (
+                    <StatusBadge status={stage.status} />
+                  )
+                }
+              >
+                {(stage.checklist || []).length === 0 ? (
+                  <p className="cell-sub">No checklist for this stage.</p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {(stage.checklist || []).map((item, idx) => (
+                      <div
+                        key={idx}
+                        style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}
+                      >
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 200 }}>
+                          <input
+                            type="checkbox"
+                            checked={!!item.done}
+                            disabled={!canPrepare || stage.status === "done"}
+                            onChange={(event) => {
+                              const checklist = (stage.checklist || []).map((c, i) =>
+                                i === idx ? { ...c, done: event.target.checked } : c,
+                              );
+                              patchStage(stage, { checklist });
+                            }}
+                          />
+                          <span>
+                            {item.label}
+                            {item.required ? " *" : ""}
+                          </span>
+                        </label>
+                        {canPrepare && stage.status !== "done" && (
+                          <UploadButton
+                            value={item.evidence_url}
+                            onChange={(url) => {
+                              const checklist = (stage.checklist || []).map((c, i) =>
+                                i === idx ? { ...c, evidence_url: url } : c,
+                              );
+                              patchStage(stage, { checklist });
+                            }}
+                            folder="documents"
+                            label="Evidence"
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {(stage.required_documents || []).length > 0 && (
+                  <p className="cell-sub" style={{ marginTop: 8 }}>
+                    Required documents: {(stage.required_documents || []).join(", ")}
+                  </p>
+                )}
+              </Panel>
+            ))
+          )}
         </div>
       )}
 
