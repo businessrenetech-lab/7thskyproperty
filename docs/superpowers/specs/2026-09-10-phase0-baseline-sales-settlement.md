@@ -93,3 +93,21 @@ Carried from the plan's §13 — these four are the ones Phase 1 money work depe
 **Next after this baseline:** on owner answers to §5, write a separately-reviewed **Phase 1 spec** = "connect
 `/deals` → `/sales` per the §3 repoint map + fix the five essential money defects" (receipt linkage,
 self-HTTP, payout evidence/posting, concurrency lock, unify settled). No implementation until that spec is approved.
+
+## 6. Owner answers to §5 (2026-09-10) — gate CLEARED
+
+1. **[✓] Money mode = client-money via trust account.** Buyer pays into a trust account; payouts flow out
+   from it. The trust account may be **Seventh Sky's** (`SaleTrustAccount.account_type='agency'`) **or the
+   seller's** (`'vendor'`/`'third_party'`). Maps directly to existing `SalesTrustModels`.
+2. **[✓] Documents:** V0.2 templates **approved**.
+3. **[✓] Fees:** **commission (base) + other fees** included; **service fee generated from the vendor
+   agreement**. Workflow: **settlement initiated → commission fee drafted** as an **editable invoice**;
+   **agreement-included services drafted too**; **settlement done → service fee + commission available for
+   payout**. **Invoices editable**, and **manual invoice creation** supported.
+   *(Verified: commission auto-draft on settlement + audited editable fee already exist in `/sales`
+   — `agencyFees.service`, `sales.controller.js:692–701,1389–1413`. Genuine gaps: catalogue **service-fee**
+   drafting on settlement, **manual invoice**, and an explicit "available for payout after settlement done" state.)*
+4. **[✓] Approval policy:** **keep** the existing `/sales` independent review/thresholds.
+
+Phase 0 gate is cleared. Proceed to the Phase 1 spec:
+`docs/superpowers/specs/2026-09-10-phase1-deals-sales-connect.md` (to be written; review before implementation).
