@@ -4983,3 +4983,55 @@ used "the last line starting with `import`", which landed inside a multi-line
 - KNOWN (pre-existing, out of scope): at phone width the board itself is contained, but the global ConsoleShell (.wt-main/.wt-shell) still overflows horizontally — same admin-sidebar-doesn't-collapse issue flagged earlier; affects all pages, not the board.
 - Deferred (later Phase 3 sub-projects): Calendar view, saved-view presets, buyer mandates + shortlist, versioned offers/approvals + introductions, SOP stage-gates + deadlines/escalation.
 - Not merged; no PR.
+
+### 2026-09-11 03:22 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Property Management website sync (add/edit property to public site, enquiries & applications)
+- Request: Do the same for Property Management sections: add new property goes to public site, edit options, enquiries receive, applications receive from website (at http://localhost:3000/admin/property-management/enquiries and http://localhost:3000/admin/property-management/applications).
+- Scope: `backend/controllers/property.controller.js`, `backend/controllers/publicWebsite.controller.js`, `backend/controllers/rentalEnquiry.controller.js`, `backend/controllers/tenantApplication.controller.js`, `backend/utils/controllerHelpers.js`, `admin-portal/src/screens/PropertyWizard.jsx`, `admin-portal/src/screens/RentalProperties.jsx`, `website-mock/src/services/api.js`, `website-mock/src/pages/PropertyDetailPage.jsx`.
+- Changes:
+  - Property Creation & Publishing:
+    - In `backend/controllers/property.controller.js`, updated `create` to bidirectionally sync `approved_monthly_rent` and `price` for rental properties, default `price_unit = 'month'`, and set `is_published: true` and `listing_status: 'active'` when status is available/listed.
+    - In `admin-portal/src/screens/PropertyWizard.jsx`, defaulted `is_published: true`, included `price: f.approved_monthly_rent || f.price`, `approved_monthly_rent`, `is_published`, `is_featured`, `is_negotiable` in the review payload, and updated UI to show live website status and monthly rent details.
+    - In `admin-portal/src/screens/RentalProperties.jsx`, defaulted quick create form with `is_published: true`, synced `price` and `approved_monthly_rent`, added "Rent / Mo" column, "Public Site" column with Live badge and link to public site, "Live on Website" button in detail header, and "Edit & Photos" row action.
+  - Property Editing:
+    - In `backend/controllers/property.controller.js`, updated `update` to keep `price` and `approved_monthly_rent` bidirectionally synchronized and preserve `price_unit: 'month'`. Edits update the public website immediately.
+  - Rental Enquiries:
+    - In `backend/controllers/publicWebsite.controller.js`, `submitRentalEnquiry` returns `reference_number` and `enquiry_code`.
+    - In `backend/controllers/rentalEnquiry.controller.js`, `list` uses flexible branch scope (`Op.or: [{ branch_id: bScope.branch_id }, { branch_id: null }]`) and safe search so website inquiries appear in the Admin Rental Enquiries desk (`http://localhost:3000/admin/property-management/enquiries`).
+  - Tenancy Applications:
+    - In `backend/controllers/publicWebsite.controller.js`, `submitTenantApplication` seeds 8 `TenantVerification` checklist items upon submission and returns `reference_number` and `application_code`.
+    - In `backend/controllers/tenantApplication.controller.js`, `list` handles `?status=all` cleanly and uses flexible branch matching (`Op.or: [{ branch_id }, { branch_id: null }]`) so online applications appear in the Admin Tenant Applications desk (`http://localhost:3000/admin/property-management/applications`).
+  - Website Mock:
+    - In `website-mock/src/services/api.js`, implemented case-insensitive purpose matching (`purpose.toLowerCase().includes('rent')`), mapped `listing_type = 'rent'`, and formatted rental prices as `৳X,XXX / month`.
+    - In `website-mock/src/pages/PropertyDetailPage.jsx`, enabled the "Apply for Tenancy Online" button for rental listings.
+- Verification:
+  - Automated verification script (`scratch/verifyPropertyManagementWebsiteSync.js`) executed all 8 checks successfully:
+    1. Created rental property "Gulshan Diplomatic Suite #3263" (`ID: 35, Code: SSPC-PR-000033`, ৳85,000 / month, published: true).
+    2. Verified property on public website catalog (`http://localhost:3050/properties`) with `price_display: "৳85,000 / month"`.
+    3. Verified property detail page (`http://localhost:3050/properties/35`) with correct monthly pricing and attributes.
+    4. Edited property in admin portal (price ৳92,000 / month, title updated).
+    5. Confirmed edit updated public website catalog & detail page immediately (`৳92,000 / month`).
+    6. Submitted public rental enquiry (`SSPC-EQ-000006`).
+    7. Verified enquiry appeared immediately in Admin Rental Enquiries desk (`/property-management/enquiries`) in the New column.
+    8. Submitted public tenant application (`SSPC-APP-000010`) and verified it appeared in Admin Tenant Applications desk (`/property-management/applications`) with all 8 verification checklist items initialized.
+  - Regression verified Short Stay price sync and enquiries: 100% passing (`scratch/verifyPriceSyncAndEnquiries.js`).
+  - Production builds:
+    - `admin-portal`: `npm run build` passed cleanly (2,035 modules transformed in 11.10s).
+    - `website-mock`: `npm run build` passed cleanly (1,499 modules transformed in 7.15s).
+  - Zero git commits or pushes performed.
+- Handoff: Property Management rental property onboarding, live edits, rental inquiries desk, and tenant applications desk are fully wired to the public website and verified end-to-end.
+
+### 2026-09-11 03:25 | Antigravity (Gemini 3.8 Flash) | STARTED | Fix property detail white screen and website enquiry reception
+- Request: Fix http://localhost:3050/properties/SSPC-PR-000001 not loading / getting white screen; fix enquiries submitted from website not receiving in the admin panel.
+- Scope: `website-mock/src/pages/PropertyDetailPage.jsx`, `website-mock/src/services/api.js`, `backend/controllers/publicWebsite.controller.js`, `website-mock/src/components/Modals.jsx`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Investigating root causes of the white screen and enquiry ingestion pipelines.
+
+
+### 2026-09-11 | Claude Code (Opus 4.8) | COMPLETED | Phase 3 sub-project 2 — Buyer Mandates + shortlist
+- Built the propertyless buyer engagement per docs/superpowers/plans/2026-09-11-buyer-mandates.md + spec 2026-09-11-buyer-mandates-design.md. Committed on air-conditioning/phase-0-duplicate.
+- Backend: migration 0105 (buyer_mandates + mandate_candidates), models, buyerMandate.controller + routes (CRUD, candidate add/patch/remove, transactional convert). Convert creates a property-linked buy PropertyDeal (status lead), flips the candidate to converted, advances the mandate to engaged. Registered in manifest AND server.js explicit mount (server.js mounts by explicit mount() calls, not the manifest loop — worth remembering for future routes).
+- Frontend: BuyerMandates list + BuyerMandateDetail (requirements + edit + cancel-with-reason + shortlist add/status/feedback/remove/convert), 'Buyer Mandates' nav (Buying group), routes, path helpers.
+- Verified live end-to-end: created SSPC-BM-000001, added candidate (property 36 / SSPC-PR-000034), convert -> buy deal SSPC-DL-000032 (buy/lead/property 36) now on the Deals board Lead column; candidate shows 'converted · #32' with Convert/Remove hidden; mandate Engaged; duplicate candidate + re-convert both 409. Backend npm test 27/0 + test:full 28/0 unchanged (new tables, no money touch).
+- Deferred (later Phase 3): compare view, auto-suggested matches, scheduled viewings, versioned offers, SOP gates.
+- Not merged; no PR.
