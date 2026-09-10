@@ -14,5 +14,6 @@ router.put('/:id', ctrl.update);
 router.get('/:id/settlement', settle.getSettlement);
 router.post('/:id/settlement/prepare', settle.prepare);
 router.post('/:id/settlement/approve', settle.approve);
+router.post('/:id/settlement/receive', settle.receive);
 
 module.exports = router;
