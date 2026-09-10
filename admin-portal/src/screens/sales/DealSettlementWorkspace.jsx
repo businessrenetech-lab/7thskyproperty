@@ -28,12 +28,14 @@ import { Button, Field, Input, Select, Spinner, Badge, EmptyState } from '../../
 
 const money = (v) => 'BDT ' + Number(v || 0).toLocaleString();
 const unwrap = (res) => res?.data?.data ?? res?.data ?? {};
+const arr = (v) => (Array.isArray(v) ? v : []);
 const label = (s) => (s == null || s === '' ? '—' : String(s).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()));
 
 const STATUS_TONE = {
   none: 'grey', draft: 'grey', drafted: 'amber', sent: 'amber', submitted: 'amber', reviewed: 'amber',
   pending: 'amber', prepared: 'amber', processing: 'amber', partial: 'amber', in_progress: 'amber', returned: 'red', failed: 'red',
-  signed: 'green', approved: 'green', received: 'green', disbursed: 'green', locked: 'green', paid: 'green',
+  signed: 'green', approved: 'green', received: 'green', disbursed: 'green', locked: 'green', paid: 'green', cleared: 'green', reconciled: 'green',
+  unreconciled: 'amber', matched: 'amber', rejected: 'red', reversed: 'red',
   cancelled: 'grey',
 };
 
@@ -78,12 +80,23 @@ export default function DealSettlementWorkspace({ dealId }) {
   const [propertyId, setPropertyId] = useState(null);
   const [salesFile, setSalesFile] = useState(null);
   const [statement, setStatement] = useState(null);
+  const [partyBankAccounts, setPartyBankAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
   const [rcv, setRcv] = useState({ transaction_party_id: '', amount: '', reference: '', method: 'bank_transfer' });
-  const [payout, setPayout] = useState({ settlement_line_id: '', amount: '', reference: '' });
+  const [payout, setPayout] = useState({ settlement_line_id: '', amount: '', reference: '', proof_url: '', party_bank_account_id: '' });
   const [editing, setEditing] = useState(null); // { id, amount, edit_reason }
+
+  // Guided payout stepper state. A disbursement isn't linked to its outgoing
+  // SalePayment on the backend until /pay succeeds, so we track the payment
+  // we create for it locally (self-heals via auto-match in linkedPaymentFor
+  // if this component remounts before pay).
+  const [payoutLinks, setPayoutLinks] = useState({}); // { [disbursementId]: paymentId }
+  const [recordFor, setRecordFor] = useState(null); // disbursement id showing the "record payment" form
+  const [recordForm, setRecordForm] = useState({});
+  const [reconcileFor, setReconcileFor] = useState(null); // payment id showing the "reconcile" form
+  const [reconcileForm, setReconcileForm] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -105,15 +118,22 @@ export default function DealSettlementWorkspace({ dealId }) {
       setPropertyId(propId);
 
       if (pic?.settlement && propId) {
-        const [fileRes, stmtRes] = await Promise.allSettled([
+        // Party bank accounts (for selecting a verified payout destination)
+        // come from the same read SalesPropertyFile.jsx uses — scoped to the
+        // sales transaction, not the property file. Requires ACCOUNTS role on
+        // the backend; degrades gracefully (empty list) if denied.
+        const [fileRes, stmtRes, bankRes] = await Promise.allSettled([
           api.get(`/sales/properties/${propId}`),
           api.get(`/sales/settlements/${pic.settlement.id}/statement`),
+          pic.transaction?.id ? api.get(`/sales/transactions/${pic.transaction.id}/bank-accounts`) : Promise.reject(new Error('no transaction id')),
         ]);
         setSalesFile(fileRes.status === 'fulfilled' ? unwrap(fileRes.value) : null);
         setStatement(stmtRes.status === 'fulfilled' ? unwrap(stmtRes.value) : null);
+        setPartyBankAccounts(bankRes.status === 'fulfilled' ? arr(unwrap(bankRes.value)) : []);
       } else {
         setSalesFile(null);
         setStatement(null);
+        setPartyBankAccounts([]);
       }
     } catch (e) {
       toast.error(e.response?.data?.error || 'Could not load the sales picture');
@@ -124,16 +144,19 @@ export default function DealSettlementWorkspace({ dealId }) {
   }, [dealId, toast]);
   useEffect(() => { load(); }, [load]);
 
+  // Returns the response on success (truthy — and callers that need the
+  // created record, e.g. the payout stepper, can read res.data) or null on
+  // failure, so `if (result)` checks used elsewhere keep working.
   const call = async (fn, ok) => {
     setBusy(true);
     try {
       const res = await fn();
       toast.success(res?.data?.message || ok);
       await load();
-      return true;
+      return res;
     } catch (e) {
       toast.error(e.response?.data?.error || 'Failed');
-      return false;
+      return null;
     } finally {
       setBusy(false);
     }
@@ -179,6 +202,7 @@ export default function DealSettlementWorkspace({ dealId }) {
 
   const lines = salesFile?.settlement?.lines || [];
   const disbursements = salesFile?.settlement?.disbursements || [];
+  const payments = salesFile?.settlement?.payments || salesFile?.settlement?.receipts || [];
   const parties = salesFile?.transaction?.parties || salesFile?.active_transaction?.parties || [];
   const buyerParties = parties.filter((p) => p.party_type === 'buyer' && p.status === 'active');
   const partyName = (id) => parties.find((p) => Number(p.id) === Number(id))?.snapshot_name;
@@ -190,6 +214,48 @@ export default function DealSettlementWorkspace({ dealId }) {
     .reduce((s, d) => s + Number(d.amount || 0), 0));
   const payoutLines = lines.filter((l) => PAYOUT_LINE_TYPES.includes(l.line_type) && remainingForLine(l) > 0);
   const editableFees = ['draft', 'returned'].includes(settlement.status);
+
+  // ---- guided payout stepper helpers ----
+  // payee_type/party_type -> SalePayment.payment_kind, mirrors
+  // recordOutgoingPaymentFor() in SalesPropertyFile.jsx verbatim.
+  const payoutKind = (d) => {
+    const party = parties.find((p) => Number(p.id) === Number(d.transaction_party_id));
+    if (party?.party_type === 'buyer') return 'buyer_refund';
+    if (d.payee_type === 'vendor') return 'vendor_payout';
+    if (d.payee_type === 'agency') return 'agency_fee';
+    return 'third_party';
+  };
+  // A disbursement isn't linked to its outgoing payment (payment_id) until
+  // /pay succeeds, so before that we either use the id we tracked locally
+  // when we created it, or auto-match an unclaimed outgoing payment with the
+  // same kind/party/amount (same idea as SalesPropertyFile's eligible-payments filter).
+  const linkedPaymentFor = (d) => {
+    const linkedId = payoutLinks[d.id] || d.payment_id;
+    if (linkedId) return payments.find((p) => Number(p.id) === Number(linkedId)) || null;
+    const kind = payoutKind(d);
+    const claimed = new Set([
+      ...disbursements.filter((x) => x.payment_id).map((x) => Number(x.payment_id)),
+      ...Object.values(payoutLinks).map(Number),
+    ]);
+    return payments.find((p) => p.direction === 'outgoing' && p.payment_kind === kind
+      && Number(p.transaction_party_id || 0) === Number(d.transaction_party_id || 0)
+      && Number(p.amount) === Number(d.amount)
+      && !['rejected', 'reversed'].includes(p.status)
+      && !claimed.has(Number(p.id))) || null;
+  };
+  // create -> record -> clear -> reconcile -> pay. `pay` additionally
+  // requires settlement.status === 'approved' — checked separately below so
+  // the button can still show while explaining why it's disabled.
+  const payoutStepFor = (d) => {
+    if (d.status === 'paid') return 'paid';
+    if (d.status === 'cancelled') return 'cancelled';
+    const payment = linkedPaymentFor(d);
+    if (!payment) return 'record';
+    if (payment.status === 'pending') return 'clear';
+    if (payment.status === 'cleared' && payment.reconciliation_status === 'reconciled' && payment.bank_statement_line_id) return 'pay';
+    if (payment.status === 'cleared') return 'reconcile';
+    return 'blocked'; // rejected / reversed — needs a fresh payment
+  };
 
   const startEditFee = (line) => setEditing({ id: line.id, amount: line.amount, edit_reason: '' });
   const saveEditFee = () => {
@@ -211,25 +277,117 @@ export default function DealSettlementWorkspace({ dealId }) {
     }), 'Receipt recorded').then((ok) => { if (ok) setRcv({ transaction_party_id: '', amount: '', reference: '', method: 'bank_transfer' }); });
   };
 
-  const submitPayout = () => {
+  // ---- Step 1: create payout ----
+  const selectedPayoutLine = lines.find((l) => Number(l.id) === Number(payout.settlement_line_id));
+  const selectedPayoutIsAgency = selectedPayoutLine && ['commission', 'advertising', 'agency_fee', 'admin_fee'].includes(selectedPayoutLine.line_type);
+  const selectedPayoutContactId = selectedPayoutLine
+    ? (parties.find((p) => Number(p.id) === Number(selectedPayoutLine.payee_transaction_party_id))?.contact_id || selectedPayoutLine.payee_contact_id)
+    : null;
+  const availablePayoutAccounts = partyBankAccounts.filter((a) => a.status === 'verified' && Number(a.contact_id) === Number(selectedPayoutContactId));
+
+  const createPayout = () => {
     const line = lines.find((l) => Number(l.id) === Number(payout.settlement_line_id));
     if (!line) { toast.error('Select an obligation to pay out'); return; }
-    const payload = { settlement_line_id: line.id, amount: payout.amount || remainingForLine(line), reference: payout.reference || undefined };
+    const amount = Number(payout.amount || remainingForLine(line));
+    if (!amount || amount <= 0) { toast.error('Enter a positive amount'); return; }
+    const payload = {
+      settlement_line_id: line.id, amount, reference: payout.reference || undefined,
+      proof_url: payout.proof_url || undefined, payout_method: 'manual_bank', source_payment_id: null,
+    };
     if (line.line_type === 'vendor_proceeds') { payload.payee_type = 'vendor'; payload.transaction_party_id = line.payee_transaction_party_id; }
     else if (['commission', 'advertising', 'agency_fee', 'admin_fee'].includes(line.line_type)) { payload.payee_type = 'agency'; }
     else if (line.line_type === 'buyer_refund') { payload.payee_type = 'third_party'; payload.transaction_party_id = line.payee_transaction_party_id; }
     else { payload.payee_type = 'third_party'; payload.contact_id = line.payee_contact_id || undefined; }
+
+    if (payload.payee_type === 'agency') {
+      const destinationId = salesFile?.profile?.agency_bank_account_id;
+      if (!destinationId) { toast.error('Configure the agency operating bank account on the sales profile before preparing this payout'); return; }
+      payload.destination_bank_account_id = destinationId;
+      payload.party_bank_account_id = null;
+    } else {
+      if (!payout.party_bank_account_id) { toast.error('Select a verified recipient bank account'); return; }
+      payload.party_bank_account_id = payout.party_bank_account_id;
+      payload.destination_bank_account_id = null;
+    }
+    if (!window.confirm(`Create a payout of ${money(amount)}? This is a financial action.`)) return;
     call(() => api.post(`/sales/settlements/${sid}/disbursements`, payload), 'Payout created')
-      .then((ok) => { if (ok) setPayout({ settlement_line_id: '', amount: '', reference: '' }); });
+      .then((res) => { if (res) setPayout({ settlement_line_id: '', amount: '', reference: '', proof_url: '', party_bank_account_id: '' }); });
   };
 
-  const payOut = (d) => {
-    // payDisbursement requires an existing cleared + trust-bank-reconciled
-    // outgoing SalePayment id to allocate — that reconciliation flow lives
-    // in the full Sales Property File (bank statement import + match).
-    const paymentId = window.prompt('Enter the cleared & reconciled outgoing payment ID to allocate to this payout (reconcile it in the full Sales Property File first):');
-    if (!paymentId) return;
-    call(() => api.post(`/sales/disbursements/${d.id}/pay`, { payment_id: Number(paymentId) }), 'Payout marked paid');
+  // ---- Step 2: record the outgoing payment for a created payout ----
+  const openRecordPayment = (d) => {
+    setRecordFor(d.id);
+    setRecordForm({
+      amount: d.amount, method: 'bank_transfer',
+      from_account_name: '', from_account_number: '',
+      to_account_name: d.bank_account_name || '', to_account_number: d.bank_account_number || '',
+      reference: d.reference || '', proof_url: d.proof_url || '',
+      value_date: new Date().toISOString().slice(0, 10),
+    });
+  };
+  const recordOutgoingPayment = (d) => {
+    if (settlement.status !== 'approved') { toast.error(`Outgoing payments cannot be recorded while the settlement is ${label(settlement.status)}. Submit, review and approve it first.`); return; }
+    const f = recordForm;
+    if (!f.amount || Number(f.amount) <= 0) { toast.error('Enter a positive amount'); return; }
+    if (!String(f.reference || '').trim()) { toast.error('A reference is required'); return; }
+    if (!window.confirm(`Record an outgoing payment of ${money(f.amount)}? This is a financial action.`)) return;
+    call(() => api.post(`/sales/settlements/${sid}/payments`, {
+      direction: 'outgoing', payment_kind: payoutKind(d), transaction_party_id: d.transaction_party_id || null,
+      payment_at: new Date().toISOString(), value_date: f.value_date, amount: f.amount, method: f.method,
+      from_account_name: f.from_account_name, from_account_number: f.from_account_number,
+      to_account_name: f.to_account_name, to_account_number: f.to_account_number,
+      reference: f.reference, proof_url: f.proof_url, status: 'pending',
+      idempotency_key: `payout-payment-${d.id}-${Date.now()}`,
+    }), 'Outgoing payment recorded').then((res) => {
+      if (!res) return;
+      const created = res.data?.data || res.data;
+      if (created?.id) setPayoutLinks((prev) => ({ ...prev, [d.id]: created.id }));
+      setRecordFor(null);
+    });
+  };
+
+  // ---- Step 3: clear the payment ----
+  const clearPaymentNow = (payment) => {
+    if (!window.confirm(`Clear payment ${payment.reference || `#${payment.id}`}? This is a financial action.`)) return;
+    call(() => api.post(`/sales/payments/${payment.id}/clear`, {}), 'Payment cleared');
+  };
+
+  // ---- Step 4: reconcile against the bank statement ----
+  const openReconcile = (payment) => {
+    setReconcileFor(payment.id);
+    setReconcileForm({ statement_url: payment.statement_url || '', bank_statement_line_id: payment.bank_statement_line_id || '', note: '' });
+  };
+  const reconcilePaymentNow = (payment) => {
+    const f = reconcileForm;
+    if (!String(f.statement_url || '').trim()) { toast.error('An uploaded bank statement document is required to reconcile'); return; }
+    if (!f.bank_statement_line_id) { toast.error('Enter the matched trust-bank statement line ID — import and match the statement in the full Sales Property File first if you do not have one yet'); return; }
+    if (!window.confirm(`Reconcile payment ${payment.reference || `#${payment.id}`} against the bank statement?`)) return;
+    call(() => api.post(`/sales/payments/${payment.id}/reconcile`, {
+      reconciliation_status: 'reconciled', statement_url: f.statement_url,
+      bank_statement_line_id: Number(f.bank_statement_line_id), note: f.note || undefined,
+    }), 'Payment reconciled').then((res) => { if (res) setReconcileFor(null); });
+  };
+
+  // ---- Step 5: pay the disbursement — GATED on an approved settlement and a
+  // cleared + reconciled outgoing payment. Never weaken this check. ----
+  const payDisbursementNow = (d, payment) => {
+    if (settlement.status !== 'approved') { toast.error(`This payout cannot be marked paid while the settlement is ${label(settlement.status)}. Submit, review and approve it first.`); return; }
+    if (!payment || payment.status !== 'cleared' || payment.reconciliation_status !== 'reconciled' || !payment.bank_statement_line_id) { toast.error('The outgoing payment must be cleared and reconciled to the bank statement before this payout can be paid'); return; }
+    if (!window.confirm(`Confirm ${money(d.amount)} was paid to ${partyName(d.transaction_party_id) || label(d.payee_type)}? This is a financial action.`)) return;
+    call(() => api.post(`/sales/disbursements/${d.id}/pay`, { payment_id: payment.id, proof_url: d.proof_url || undefined }), 'Payout marked paid')
+      .then((res) => { if (res) setPayoutLinks((prev) => { const next = { ...prev }; delete next[d.id]; return next; }); });
+  };
+
+  // ---- Optional parallel step: submit the transfer attempt ----
+  const submitPayoutTransfer = (d) => {
+    if (settlement.status !== 'approved') { toast.error('Submitting a payout transfer requires an approved settlement.'); return; }
+    const reference = d.reference || window.prompt('Reference for this transfer:');
+    if (!reference) return;
+    if (!window.confirm(`Submit the ${money(d.amount)} payout transfer?`)) return;
+    call(() => api.post(`/sales/disbursements/${d.id}/submit`, {
+      reference, proof_url: d.proof_url || undefined,
+      idempotency_key: `payout-${d.id}-attempt-${Number(d.attempt_count || 0) + 1}`,
+    }), d.status === 'failed' ? 'Payout resubmitted' : 'Payout submitted');
   };
 
   const cancelPayout = (d) => {
@@ -321,40 +479,116 @@ export default function DealSettlementWorkspace({ dealId }) {
 
       <div className="card" style={{ padding: 14 }}>
         <strong>Payouts</strong>
+        <p style={{ margin: '4px 0 10px', fontSize: 12, color: '#64748b' }}>
+          Guided flow: create the payout → record its outgoing payment → clear it → reconcile it to the bank statement → pay.
+          Paying always requires an approved settlement and a cleared, reconciled payment.
+        </p>
         {editableFees && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap', margin: '8px 0' }}>
-            <Field label="Obligation">
-              <Select
-                value={payout.settlement_line_id}
-                onChange={(e) => {
-                  const line = lines.find((l) => Number(l.id) === Number(e.target.value));
-                  setPayout({ ...payout, settlement_line_id: e.target.value, amount: line ? remainingForLine(line) : '' });
-                }}
-              >
-                <option value="">Select…</option>
-                {payoutLines.map((l) => <option key={l.id} value={l.id}>{label(l.line_type)} — {money(remainingForLine(l))} remaining</option>)}
-              </Select>
-            </Field>
-            <Field label="Amount"><Input type="number" value={payout.amount} onChange={(e) => setPayout({ ...payout, amount: e.target.value })} /></Field>
-            <Field label="Reference"><Input value={payout.reference} onChange={(e) => setPayout({ ...payout, reference: e.target.value })} /></Field>
-            <Button disabled={busy} onClick={submitPayout}>Create payout</Button>
+          <div className="card" style={{ padding: 10, margin: '8px 0', background: 'var(--surface-2, #f8fafc)' }}>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Step 1 · Create payout</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap' }}>
+              <Field label="Obligation">
+                <Select
+                  value={payout.settlement_line_id}
+                  onChange={(e) => {
+                    const line = lines.find((l) => Number(l.id) === Number(e.target.value));
+                    setPayout({ ...payout, settlement_line_id: e.target.value, amount: line ? remainingForLine(line) : '', party_bank_account_id: '' });
+                  }}
+                >
+                  <option value="">Select…</option>
+                  {payoutLines.map((l) => <option key={l.id} value={l.id}>{label(l.line_type)} — {money(remainingForLine(l))} remaining</option>)}
+                </Select>
+              </Field>
+              <Field label="Amount"><Input type="number" value={payout.amount} onChange={(e) => setPayout({ ...payout, amount: e.target.value })} /></Field>
+              <Field label="Reference"><Input value={payout.reference} onChange={(e) => setPayout({ ...payout, reference: e.target.value })} /></Field>
+              {selectedPayoutLine && !selectedPayoutIsAgency && (
+                <Field label="Recipient bank account">
+                  <Select value={payout.party_bank_account_id} onChange={(e) => setPayout({ ...payout, party_bank_account_id: e.target.value })}>
+                    <option value="">Select verified account…</option>
+                    {availablePayoutAccounts.map((a) => <option key={a.id} value={a.id}>{a.bank_name} · {a.account_name} · {a.masked_account_number || a.account_number}</option>)}
+                  </Select>
+                </Field>
+              )}
+              <Field label="Proof URL (optional)"><Input value={payout.proof_url} onChange={(e) => setPayout({ ...payout, proof_url: e.target.value })} /></Field>
+              <Button disabled={busy} onClick={createPayout}>Create payout</Button>
+            </div>
+            {selectedPayoutLine && selectedPayoutIsAgency && (
+              <p style={{ fontSize: 12, color: '#64748b', marginTop: 6 }}>
+                Pays to the agency operating account{salesFile?.profile?.agency_bank_account_id ? ` (#${salesFile.profile.agency_bank_account_id})` : ' — not configured on the sales profile yet'}.
+              </p>
+            )}
+            {selectedPayoutLine && !selectedPayoutIsAgency && !availablePayoutAccounts.length && (
+              <p style={{ fontSize: 12, color: '#b45309', marginTop: 6 }}>No verified bank account for this payee yet — add and verify one in the full Sales Property File.</p>
+            )}
           </div>
         )}
-        <table className="tbl"><tbody>
-          {disbursements.map((d) => (
-            <tr key={d.id}>
-              <td>{d.reference || `#${d.id}`}</td>
-              <td>{['vendor', 'third_party'].includes(d.payee_type) ? (partyName(d.transaction_party_id) || label(d.payee_type)) : label(d.payee_type)}</td>
-              <td style={{ textAlign: 'right' }}>{money(d.amount)}</td>
-              <td><Badge tone={STATUS_TONE[d.status] || 'grey'}>{label(d.status)}</Badge></td>
-              <td>
-                {settlement.status === 'approved' && !['paid', 'cancelled'].includes(d.status) && <Button size="sm" disabled={busy} onClick={() => payOut(d)}>Pay</Button>}
-                {editableFees && ['pending', 'prepared', 'failed'].includes(d.status) && <Button size="sm" variant="ghost" disabled={busy} onClick={() => cancelPayout(d)}>Cancel</Button>}
-              </td>
-            </tr>
-          ))}
-          {!disbursements.length && <tr><td colSpan={5} style={{ color: '#64748b', fontSize: 13 }}>No payouts yet.</td></tr>}
-        </tbody></table>
+        <table className="tbl">
+          <thead><tr><th>Payout</th><th>Payee</th><th style={{ textAlign: 'right' }}>Amount</th><th>Payout status</th><th>Payment status</th><th></th></tr></thead>
+          <tbody>
+          {disbursements.map((d) => {
+            const step = payoutStepFor(d);
+            const payment = linkedPaymentFor(d);
+            return (
+              <React.Fragment key={d.id}>
+                <tr>
+                  <td>{d.reference || `#${d.id}`}</td>
+                  <td>{['vendor', 'third_party'].includes(d.payee_type) ? (partyName(d.transaction_party_id) || label(d.payee_type)) : label(d.payee_type)}</td>
+                  <td style={{ textAlign: 'right' }}>{money(d.amount)}</td>
+                  <td><Badge tone={STATUS_TONE[d.status] || 'grey'}>{label(d.status)}</Badge></td>
+                  <td>
+                    {payment
+                      ? <Badge tone={STATUS_TONE[payment.reconciliation_status === 'reconciled' ? 'reconciled' : payment.status] || 'grey'}>{label(payment.status)}{payment.reconciliation_status === 'reconciled' ? ' · reconciled' : ''}</Badge>
+                      : <span style={{ color: '#94a3b8', fontSize: 12 }}>{step === 'record' ? 'No payment yet' : '—'}</span>}
+                  </td>
+                  <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {step === 'record' && <Button size="sm" disabled={busy || settlement.status !== 'approved'} onClick={() => openRecordPayment(d)}>Record payment</Button>}
+                    {step === 'clear' && <Button size="sm" disabled={busy} onClick={() => clearPaymentNow(payment)}>Clear payment</Button>}
+                    {step === 'reconcile' && <Button size="sm" disabled={busy} onClick={() => openReconcile(payment)}>Reconcile</Button>}
+                    {step === 'pay' && <Button size="sm" disabled={busy || settlement.status !== 'approved'} onClick={() => payDisbursementNow(d, payment)}>Pay</Button>}
+                    {settlement.status === 'approved' && ['pending', 'prepared', 'failed'].includes(d.status) && <Button size="sm" variant="ghost" disabled={busy} onClick={() => submitPayoutTransfer(d)}>Submit transfer</Button>}
+                    {editableFees && ['pending', 'prepared', 'failed'].includes(d.status) && <Button size="sm" variant="ghost" disabled={busy} onClick={() => cancelPayout(d)}>Cancel</Button>}
+                  </td>
+                </tr>
+                {recordFor === d.id && (
+                  <tr><td colSpan={6}>
+                    <div className="card" style={{ padding: 10, background: 'var(--surface-2, #f8fafc)', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end' }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, flexBasis: '100%' }}>Step 2 · Record the outgoing payment</div>
+                      <Field label="Amount"><Input type="number" value={recordForm.amount} onChange={(e) => setRecordForm({ ...recordForm, amount: e.target.value })} /></Field>
+                      <Field label="Method">
+                        <Select value={recordForm.method} onChange={(e) => setRecordForm({ ...recordForm, method: e.target.value })}>
+                          {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{label(m)}</option>)}
+                        </Select>
+                      </Field>
+                      <Field label="From account name"><Input value={recordForm.from_account_name} onChange={(e) => setRecordForm({ ...recordForm, from_account_name: e.target.value })} /></Field>
+                      <Field label="From account number"><Input value={recordForm.from_account_number} onChange={(e) => setRecordForm({ ...recordForm, from_account_number: e.target.value })} /></Field>
+                      <Field label="To account name"><Input value={recordForm.to_account_name} onChange={(e) => setRecordForm({ ...recordForm, to_account_name: e.target.value })} /></Field>
+                      <Field label="To account number"><Input value={recordForm.to_account_number} onChange={(e) => setRecordForm({ ...recordForm, to_account_number: e.target.value })} /></Field>
+                      <Field label="Reference"><Input value={recordForm.reference} onChange={(e) => setRecordForm({ ...recordForm, reference: e.target.value })} /></Field>
+                      <Field label="Value date"><Input type="date" value={recordForm.value_date} onChange={(e) => setRecordForm({ ...recordForm, value_date: e.target.value })} /></Field>
+                      <Field label="Proof URL (optional)"><Input value={recordForm.proof_url} onChange={(e) => setRecordForm({ ...recordForm, proof_url: e.target.value })} /></Field>
+                      <Button disabled={busy} onClick={() => recordOutgoingPayment(d)}>Record outgoing payment</Button>
+                      <Button variant="ghost" onClick={() => setRecordFor(null)}>Cancel</Button>
+                    </div>
+                  </td></tr>
+                )}
+                {payment && reconcileFor === payment.id && (
+                  <tr><td colSpan={6}>
+                    <div className="card" style={{ padding: 10, background: 'var(--surface-2, #f8fafc)', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end' }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, flexBasis: '100%' }}>Step 4 · Reconcile against the bank statement</div>
+                      <Field label="Bank statement document"><Input value={reconcileForm.statement_url} onChange={(e) => setReconcileForm({ ...reconcileForm, statement_url: e.target.value })} placeholder="/uploads/documents/…" /></Field>
+                      <Field label="Matched bank statement line ID"><Input type="number" value={reconcileForm.bank_statement_line_id} onChange={(e) => setReconcileForm({ ...reconcileForm, bank_statement_line_id: e.target.value })} placeholder="Import & match in the full Sales Property File first" /></Field>
+                      <Field label="Note (optional)"><Input value={reconcileForm.note} onChange={(e) => setReconcileForm({ ...reconcileForm, note: e.target.value })} /></Field>
+                      <Button disabled={busy} onClick={() => reconcilePaymentNow(payment)}>Reconcile</Button>
+                      <Button variant="ghost" onClick={() => setReconcileFor(null)}>Cancel</Button>
+                    </div>
+                  </td></tr>
+                )}
+              </React.Fragment>
+            );
+          })}
+          {!disbursements.length && <tr><td colSpan={6} style={{ color: '#64748b', fontSize: 13 }}>No payouts yet.</td></tr>}
+          </tbody>
+        </table>
       </div>
 
       <div className="card" style={{ padding: 14, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
