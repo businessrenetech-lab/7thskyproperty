@@ -5,6 +5,14 @@
 // across the five views. Ported (logic unchanged) from the retired
 // DealSettlementWorkspace.jsx so behaviour matches the proven /sales flow.
 
+// Client-side role gates — identical to SalesPropertyFile.jsx. The backend's
+// roleMiddleware is the real enforcement; these only hide buttons a role can't use.
+export const deskRoles = (user) => ({
+  canPrepare: ['super_admin', 'branch_admin', 'property_manager', 'sales_executive'].includes(user?.role),
+  canAccounts: ['super_admin', 'branch_admin', 'accounts'].includes(user?.role),
+  canAdmin: ['super_admin', 'branch_admin'].includes(user?.role),
+});
+
 export const money = (v) => 'BDT ' + Number(v || 0).toLocaleString();
 export const unwrap = (res) => res?.data?.data ?? res?.data ?? {};
 export const arr = (v) => (Array.isArray(v) ? v : []);
