@@ -26,16 +26,18 @@ async function overdueByTenancy({ tenancy_id = null } = {}) {
             SUM(i.balance) AS amount_due, MIN(i.due_date) AS oldest_due, COUNT(*) AS invoice_count
        FROM invoices i
       WHERE i.invoice_kind = 'client' AND i.tenancy_id IS NOT NULL
-        AND i.balance > 0 AND i.due_date IS NOT NULL AND i.due_date < :today
+        AND i.balance > 0 AND i.due_date IS NOT NULL
+        AND i.due_date > '1900-01-01' AND i.due_date < :today
         AND i.status NOT IN ('paid','cancelled','refunded','draft')
         ${tenancy_id ? 'AND i.tenancy_id = :tid' : ''}
       GROUP BY i.tenancy_id, i.property_id, i.branch_id`,
     { replacements: { today, tid: tenancy_id } }
   );
-  return rows.map((r) => ({
-    ...r, amount_due: Number(r.amount_due),
-    days_overdue: Math.floor((new Date(today) - new Date(r.oldest_due)) / 86400000),
-  }));
+  return rows.map((r) => {
+    const due = new Date(r.oldest_due);
+    const days = Number.isNaN(due.getTime()) ? 0 : Math.max(0, Math.floor((new Date(today) - due) / 86400000));
+    return { ...r, amount_due: Number(r.amount_due), days_overdue: days };
+  });
 }
 async function overdueForTenancy(tenancy_id) { return (await overdueByTenancy({ tenancy_id }))[0] || null; }
 

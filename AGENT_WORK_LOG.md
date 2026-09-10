@@ -4595,3 +4595,21 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Program status: Phase 0 ✓ · D1 ✓ · P1 Bulk Rent ✓ · P2 Bulk Owner Disbursement ✓ · P3 UI consistency ✓ · P4 Bulk
   Rent Reminders ✓. Remaining optional: browser-based deep UI pass (needs Chrome extension + user logins), Phase 5
   remaining fixes, D4b seed active tenant.
+
+### 2026-09-10 | Claude Code (Opus 4.8) | COMPLETED | PM Phase 5 — remaining fixes + e2e re-run
+- Committed+pushed all prior PM + shared-console work (commit 637378d).
+- FIX (real, from Phase 4 note): services/arrearsReminder.scheduler.overdueByTenancy treated a MySQL zero/blank
+  due_date as "overdue" with an unknowable age (null/NaN days). Added `AND i.due_date > '1900-01-01'` to the WHERE
+  (an undated debt is not overdue) + a JS guard (invalid date -> 0, never NaN). Verified: SSPC-TN-000002 now shows a
+  real 132d (was null); zero-dated invoice correctly excluded from the overdue SUM.
+- Re-ran scripts/e2ePmJourney.js: full lifecycle GREEN — enquiry->application->owner approval->tenancy SSPC-TN-000013
+  ->agreement 2/2 signed->rent invoice->staff payment->management fee income 12->13->owner held 20,900->owner payout
+  preview NOW returns folio+owner (D1 fix confirmed live)->statements->landlord portal->quick renewal.
+- The 3 residual "No active tenancy" findings are conclusively a TEST-LOGIN limitation, NOT a production bug:
+  resolveTenantContactId maps User->Client(portal_user_id)->contact->active tenancy; the seeded tenant1 login's contact
+  has only a CLOSED tenancy, and the journey's fresh tenant has no portal login. Production portal code is correct
+  (reads active_tenancy + guards; Phase 3 confirmed the friendly empty state). Did NOT mutate seed data to force-green.
+  D4b (a durable active-tenant portal login) remains an optional seed-script follow-up.
+- PROGRAM COMPLETE (headline): Phase 0 audit, D1 money fix, P1 Bulk Rent Collection, P2 Bulk Owner Disbursement,
+  P3 UI consistency, P4 Bulk Rent Reminders, P5 fixes + green e2e. Optional remaining: browser deep-UI pass (needs
+  Chrome extension + logins), D4b active-tenant seed.
