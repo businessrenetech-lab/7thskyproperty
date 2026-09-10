@@ -12,6 +12,7 @@ const REVIEW = ['super_admin', 'branch_admin', 'property_manager'];
 
 router.use(authMiddleware);
 router.get('/dashboard', roleMiddleware(READ), ctrl.dashboard);
+router.get('/accounting-overview', roleMiddleware(READ), ctrl.accountingOverview);
 router.get('/accounting-options', roleMiddleware(ACCOUNTS), ctrl.accountingOptions);
 router.post('/bank-accounts', roleMiddleware(ACCOUNTS), ctrl.createPhysicalBankAccount);
 router.get('/properties/:propertyId', roleMiddleware(READ), ctrl.getPropertyFile);

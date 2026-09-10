@@ -242,6 +242,58 @@ async function stageValidation(saleTransaction, settlement, action, transaction)
   return { ...snapshot, parties, schedule, profile, trust };
 }
 
+// Shared branch-wide scan of sale settlements (also used by the accounting
+// overview and work queue). Returns settlements hydrated with transaction /
+// payments / disbursements / lines, plus a property lookup for codes/titles.
+async function scanSettlements(req) {
+  const category = req.query.category;
+  const where = { listing_type: 'sale', ...branchScope(req), ...(category ? { category } : {}) };
+  const properties = await Property.findAll({ where, attributes: ['id', 'property_code', 'title', 'category', 'status', 'price'], raw: true });
+  const propertyIds = properties.map((p) => p.id);
+  const propertyById = new Map(properties.map((p) => [Number(p.id), p]));
+  if (!propertyIds.length) return { properties, propertyById, settlements: [] };
+  const settlements = await SaleSettlement.findAll({
+    where: { ...branchScope(req) },
+    include: [
+      { model: SaleTransaction, required: true, where: { property_id: { [Op.in]: propertyIds } } },
+      { model: SalePayment, as: 'payments' },
+      { model: SaleDisbursement, as: 'disbursements' },
+      { model: SaleSettlementLine, as: 'lines' },
+    ],
+  });
+  return { properties, propertyById, settlements };
+}
+
+// Portfolio finance across every sale — read-only aggregate for the Accounting
+// overview. Drills into each deal's Settlement Desk via property_id; no money
+// actions here. Readiness for `to_lock` is approximated from the calculations
+// (the desk's lock is authoritative).
+const ACCOUNTING_AGENCY_LINES = ['commission', 'advertising'];
+exports.accountingOverview = asyncHandler(async (req, res) => {
+  const { propertyById, settlements } = await scanSettlements(req);
+  const headline = { trust_cash_held: 0, buyer_receivable: 0, agency_fees_outstanding: 0, payables_outstanding: 0, completed_sales_value: 0, completed_sales_count: 0 };
+  const worklists = { awaiting_receipt: [], payouts_to_pay: [], to_approve: [], to_lock: [] };
+  for (const s of settlements) {
+    const lines = s.lines || []; const payments = s.payments || []; const disb = s.disbursements || [];
+    const calc = calculateSettlement(lines, payments, disb);
+    const tx = s.SaleTransaction; const prop = propertyById.get(Number(tx?.property_id)) || {};
+    const row = { deal_id: tx?.property_deal_id || null, property_id: tx?.property_id || null, property_code: prop.property_code || null, title: prop.title || null };
+    if (s.status === 'locked') { headline.completed_sales_value += calc.purchase_price; headline.completed_sales_count += 1; continue; }
+    headline.trust_cash_held += calc.funds_held;
+    headline.buyer_receivable += Math.max(0, calc.purchase_price - calc.receipts);
+    const paidMinor = (pred) => disb.filter((d) => d.status === 'paid').filter(pred).reduce((sum, d) => sum + toMinor(d.amount), 0);
+    const lineMinor = (pred) => lines.filter(pred).reduce((sum, l) => sum + toMinor(l.amount), 0);
+    headline.agency_fees_outstanding += fromMinor(Math.max(0, lineMinor((l) => ACCOUNTING_AGENCY_LINES.includes(l.line_type)) - paidMinor((d) => d.payee_type === 'agency')));
+    headline.payables_outstanding += fromMinor(Math.max(0, lineMinor((l) => l.line_type === 'vendor_proceeds' || l.line_type === 'buyer_refund') - paidMinor((d) => d.payee_type !== 'agency')));
+    if (calc.receipts < calc.purchase_price) worklists.awaiting_receipt.push({ ...row, expected: calc.purchase_price, received: calc.receipts });
+    if (s.status === 'approved' && disb.some((d) => !['paid', 'cancelled'].includes(d.status))) worklists.payouts_to_pay.push({ ...row, amount: fromMinor(disb.filter((d) => !['paid', 'cancelled'].includes(d.status)).reduce((sum, d) => sum + toMinor(d.amount), 0)) });
+    if (['submitted', 'reviewed'].includes(s.status)) worklists.to_approve.push({ ...row, status: s.status });
+    if (s.status === 'approved' && toMinor(calc.residual) === 0 && !calc.pending_disbursements && calc.receipts >= calc.purchase_price) worklists.to_lock.push(row);
+  }
+  ['trust_cash_held', 'buyer_receivable', 'completed_sales_value'].forEach((k) => { headline[k] = Math.round(headline[k] * 100) / 100; });
+  res.json({ data: { headline, worklists } });
+});
+
 exports.dashboard = asyncHandler(async (req, res) => {
   const category = req.query.category;
   if (category && !['residential', 'commercial', 'rural', 'business'].includes(category)) return res.status(400).json({ error: 'Invalid property category' });
