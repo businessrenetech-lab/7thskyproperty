@@ -207,6 +207,7 @@ mount('/api/property-risks', './routes/propertyRisk.routes');
 mount('/api/move-in-checklist', './routes/moveInChecklist.routes');
 mount('/api/public-party', './routes/publicParty.routes');
 mount('/api/deals', './routes/deal.routes');
+mount('/api/buyer-mandates', './routes/buyerMandate.routes');
 mount('/api/sales', './routes/sales.routes');
 mount('/api/sales-payments', './routes/salesPayment.routes');
 mount('/api/services', './routes/service.routes');
@@ -223,6 +224,7 @@ mount('/api/sign', './routes/sign.routes');
 mount('/api/intake', './routes/intake.routes');
 mount('/api/portal', './routes/portal.routes');
 mount('/api/public', './routes/public.routes');
+mount('/api/public-website', './routes/publicWebsite.routes');
 
 // ─── ADMIN SPA (optional, single-origin production) ─────────────────────────
 // When ADMIN_DIST points at the built admin-portal (Vite base '/admin/'), this
