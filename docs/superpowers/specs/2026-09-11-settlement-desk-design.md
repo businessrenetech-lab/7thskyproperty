@@ -243,7 +243,9 @@ three-staff acceptance test remain part of the overall Phase-2 gate, run later.
 **Deleted:**
 - `admin-portal/src/screens/sales/DealSettlementWorkspace.jsx` (after porting).
 
-**Backend:** none.
+**Backend:** one additive, read-only change — include `property_id` in the
+existing `salesBulkData` response so bulk rows can deep-link into the desk. No
+new endpoint, no money logic, no schema change.
 
 ## 12. Risks & non-goals
 
@@ -254,4 +256,5 @@ three-staff acceptance test remain part of the overall Phase-2 gate, run later.
   touches a 7,703-line file. The change is confined to the settlement section's
   render + its now-unused helpers; other sections are not restructured here.
 - **Non-goal:** no new endpoints, no schema change, no restructuring of the other
-  eight sections, no Accounting landing / work queues (sub-project 2).
+  eight sections, no Accounting landing / work queues (sub-project 2). The sole
+  backend touch is the additive `property_id` read field noted in §11.
