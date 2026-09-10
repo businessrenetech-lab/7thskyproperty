@@ -7,7 +7,7 @@ const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
 
 const FIELDS = ['property_id', 'deal_type', 'buyer_client_id', 'seller_contact_id', 'owner_contact_id', 'agreement_id',
-  'agreement_date', 'sale_price', 'commission_amount', 'commission_percent', 'expenses_total', 'status', 'settlement_date', 'assigned_to', 'notes'];
+  'agreement_date', 'sale_price', 'commission_amount', 'commission_percent', 'expenses_total', 'status', 'settlement_date', 'assigned_to', 'notes', 'contract_status'];
 
 const propInc = (category) => ({
   model: Property,
