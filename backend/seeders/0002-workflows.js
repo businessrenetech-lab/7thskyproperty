@@ -42,6 +42,25 @@ const DATA = {
     ],
     registers: ['Buyer Master Register', 'Buyer Requirement Form', 'Agreement & Engagement Register', 'Property Sourcing Tracker', 'Property Shortlist & Compare', 'Inspection Schedule', 'Document Verification Register', 'Professional Advice Tracker', 'Risk Assessment Register', 'Protected Introduction Register', 'Negotiation Tracker', 'Offer Approval Checklist', 'Transaction Coordination', 'Settlement & Registration', 'Fees & Commission Register', 'Project Register', 'Post Purchase Services'],
   },
+  // Seller-side sale SOP (10 stages) — surfaced on the sale property file.
+  // Migration 0107 is the source of truth for existing DBs; this keeps a fresh
+  // db:seed in parity.
+  properties_sale: {
+    template: 'Residential Sale SOP',
+    stages: [
+      { name: 'Enquiry & Consultation', checklist: ['Seller/property/source captured', 'Consultation recorded', 'Phase-1 quotation/agreement issued', 'Inspection scheduled'] },
+      { name: 'Inspection & Assessment', checklist: ['Condition report + photos', 'Preparation recommendations', 'Comparative market analysis (if applicable)'] },
+      { name: 'Documents & Risk', checklist: ['Deed / mutation / taxes / utilities verified', 'Succession/approvals as applicable', 'Seller indemnity', 'Minimum estimated value discussed', 'Risk decision recorded'] },
+      { name: 'Agreement & Phase-2 Approval', checklist: ['Scope, commission, exclusivity, dates', 'Phase-2 approved + payment schedule', 'Staff assigned'] },
+      { name: 'Preparation', checklist: ['Approved quote + supplier assignment', 'Work evidence + completion', 'Or explicit not-required decision'] },
+      { name: 'Marketing & Listing', checklist: ['Approved copy/media/pricing', 'Publish locations + campaign refs', 'Listing activation'] },
+      { name: 'Buyer Enquiries & Inspections', checklist: ['Routed enquiries + screening', 'Viewing calendar', 'Feedback + seller updates'] },
+      { name: 'Offers & Negotiation', checklist: ['Offer comparison', 'Written approval', 'Price-limit exception (if applicable)', 'Versioned counters'] },
+      { name: 'Agreement & Settlement', checklist: ['Contract/registration/payment/possession milestones', 'Fee collection', 'Payout evidence'] },
+      { name: 'Closure & Post-Sale', checklist: ['Handover pack', 'Closing statement', 'Feedback + archive', 'Follow-up + resolved exceptions'] },
+    ],
+    registers: [],
+  },
   property_care: {
     template: 'Property Care & Concierge (MAPS)',
     stages: [
