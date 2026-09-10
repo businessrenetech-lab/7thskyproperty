@@ -4,6 +4,7 @@ const Property = require('./Property');
 const Contact = require('./Contact');
 const Client = require('./Client');
 const Agreement = require('./Agreement');
+const User = require('./User');
 
 const PropertyDeal = sequelize.define('PropertyDeal', {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
@@ -40,6 +41,7 @@ PropertyDeal.belongsTo(Property, { foreignKey: 'property_id' });
 PropertyDeal.belongsTo(Client, { as: 'buyer', foreignKey: 'buyer_client_id' });
 PropertyDeal.belongsTo(Contact, { as: 'seller', foreignKey: 'seller_contact_id' });
 PropertyDeal.belongsTo(Contact, { as: 'owner', foreignKey: 'owner_contact_id' });
+PropertyDeal.belongsTo(User, { as: 'assignee', foreignKey: 'assigned_to' });
 // The deal's linked service agreement. Without this, deal.controller.getOne's
 // `include: [{ model: Agreement }]` throws SequelizeEagerLoadingError and the
 // whole deal drawer fails to load.

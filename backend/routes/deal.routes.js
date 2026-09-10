@@ -16,6 +16,7 @@ router.post('/', ctrl.create);
 router.get('/settlement/sales-bulk-data', settle.salesBulkData);
 router.get('/:id', ctrl.getOne);
 router.put('/:id', ctrl.update);
+router.post('/:id/transition', ctrl.transition);
 router.get('/:id/sales-picture', settle.salesPicture);
 
 // A deal's money is written by /api/sales/* only, read here via sales-picture.
