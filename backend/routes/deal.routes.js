@@ -14,6 +14,7 @@ router.post('/settlement/bulk', settle.bulkSettle);
 router.get('/:id', ctrl.getOne);
 router.put('/:id', ctrl.update);
 router.get('/:id/settlement', settle.getSettlement);
+router.get('/:id/sales-picture', settle.salesPicture);
 router.post('/:id/settlement/prepare', settle.prepare);
 router.post('/:id/settlement/approve', settle.approve);
 router.post('/:id/settlement/receive', settle.receive);

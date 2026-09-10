@@ -3,6 +3,7 @@ const PropertyDeal = require('../models/PropertyDeal');
 const DealDisbursement = require('../models/DealDisbursement');
 const DealEvent = require('../models/DealEvent');
 const svc = require('../services/dealSettlement.service');
+const dealSalesLink = require('../services/dealSalesLink.service');
 const { asyncHandler, branchScope, resolveBranchId, pick } = require('../utils/controllerHelpers');
 const { generateCode } = require('../utils/codeGenerator');
 
@@ -150,4 +151,11 @@ exports.bulkSettle = asyncHandler(async (req, res) => {
     results.push({ deal_id: id, status: 'settled' }); settled += 1;
   }
   res.json({ results, summary: { settled, skipped } });
+});
+
+// Read-only: a deal's money picture assembled from its linked /sales settlement.
+exports.salesPicture = asyncHandler(async (req, res) => {
+  const deal = await PropertyDeal.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!deal) return res.status(404).json({ error: 'Deal not found.' });
+  res.json({ data: await dealSalesLink.assemblePicture(deal) });
 });
