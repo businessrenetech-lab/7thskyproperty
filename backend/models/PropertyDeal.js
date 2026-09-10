@@ -23,6 +23,15 @@ const PropertyDeal = sequelize.define('PropertyDeal', {
   settlement_date: DataTypes.DATEONLY,
   assigned_to: DataTypes.INTEGER,
   notes: DataTypes.TEXT,
+  contract_status: { type: DataTypes.ENUM('none', 'drafted', 'sent', 'signed'), defaultValue: 'none' },
+  settlement_status: { type: DataTypes.ENUM('not_started', 'in_progress', 'settled'), defaultValue: 'not_started' },
+  payment_status: { type: DataTypes.ENUM('unpaid', 'partial', 'received'), defaultValue: 'unpaid' },
+  disbursement_status: { type: DataTypes.ENUM('none', 'pending', 'partial', 'disbursed'), defaultValue: 'none' },
+  expected_fee: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
+  expected_commission: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
+  deductions_total: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
+  settlement_approved_by: DataTypes.INTEGER,
+  settlement_approved_at: DataTypes.DATE,
   created_by: DataTypes.INTEGER,
 }, { tableName: 'property_deals', underscored: true });
 
