@@ -410,6 +410,7 @@ export const RESIDENTIAL_NAV = [
     key: 'money',
     label: 'Money',
     items: [
+      { to: '/residential/accounting', label: 'Accounting', icon: Landmark },
       { to: '/residential/settlements', label: 'Settlements (Bulk)', icon: HandCoins },
     ],
   },

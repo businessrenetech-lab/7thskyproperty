@@ -17,6 +17,7 @@ import PropertySellDashboard from './screens/PropertySellDashboard';
 import SalesEnquiries from './screens/SalesEnquiries';
 import SalesPropertyFile from './screens/sales/SalesPropertyFile';
 import SettlementDesk from './screens/sales/settlement-desk/SettlementDesk';
+import AccountingOverview from './screens/sales/AccountingOverview';
 import RentalProperties from './screens/RentalProperties';
 import PropertyWizard from './screens/PropertyWizard';
 import PropertyMgmtDashboard from './screens/PropertyMgmtDashboard';
@@ -28,6 +29,7 @@ import LandlordPortal from './screens/LandlordPortal';
 import TenantPortal from './screens/TenantPortal';
 import Renewals from './screens/Renewals';
 import Vacancies from './screens/Vacancies';
+import WebsiteManagement from './pages/WebsiteManagement';
 import DepositSettlements from './screens/DepositSettlements';
 import RentalReports from './screens/RentalReports';
 import Disbursements from './screens/Disbursements';
@@ -321,6 +323,9 @@ export default function App() {
               <Route path="/reports" element={PH('Reports', 'Operational and financial reports.')} />
               <Route path="/users" element={PH('Users & Roles', 'User management and RBAC matrix.')} />
               <Route path="/settings" element={PH('Settings', 'System configuration.')} />
+              <Route path="/website-management" element={<WebsiteManagement />} />
+              <Route path="/website" element={<Navigate to="/website-management" replace />} />
+              <Route path="/website/enquiries" element={<WebsiteManagement />} />
             </Route>
 
             {/* Water Tank Services — self-contained operations console with its OWN
@@ -915,6 +920,7 @@ export default function App() {
               <Route path="/residential/compliance" element={<Compliance />} />
               <Route path="/residential/workflows" element={<Projects />} />
               <Route path="/residential/settlements" element={<SalesBulkSettlement />} />
+              <Route path="/residential/accounting" element={<AccountingOverview />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />
