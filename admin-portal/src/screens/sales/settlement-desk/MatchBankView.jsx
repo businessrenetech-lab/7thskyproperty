@@ -9,6 +9,7 @@ import React, { useState } from 'react';
 import api from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 import { Button, Input, Field, Select, Badge } from '../../../ui/kit';
+import UploadButton from '../../../ui/UploadButton';
 import { money, deskRoles, STATUS_TONE } from './settlementMoney';
 
 const STMT_RE = /^\/uploads\/documents\/[a-z0-9._-]+$/i;
@@ -101,7 +102,7 @@ export default function MatchBankView({ picture, desk }) {
                         </Select>
                       </Field>
                       <Field label="Bank statement document" required>
-                        <Input value={f.statement_url} onChange={(e) => setForm(p, { statement_url: e.target.value })} placeholder="/uploads/documents/…" />
+                        <UploadButton value={f.statement_url} onChange={(url) => setForm(p, { statement_url: url })} folder="documents" label="Upload statement" />
                       </Field>
                       <Button disabled={!canAccounts || locked || !f.bank_statement_line_id || !STMT_RE.test(String(f.statement_url || ''))} onClick={() => match(p)}>Match</Button>
                     </div>
