@@ -519,7 +519,7 @@ export default function DealSettlementWorkspace({ dealId }) {
           Guided flow: create the payout → record its outgoing payment → clear it → reconcile it to the bank statement → pay.
           Paying always requires an approved settlement and a cleared, reconciled payment.
         </p>
-        {editableFees && canPrepare && (
+        {editableFees && canAccounts && (
           <div className="card" style={{ padding: 10, margin: '8px 0', background: 'var(--surface-2, #f8fafc)' }}>
             <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Step 1 · Create payout</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap' }}>
