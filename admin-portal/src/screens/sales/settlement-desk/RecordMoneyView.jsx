@@ -11,6 +11,7 @@ import React, { useState } from 'react';
 import api from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 import { Button, Input, Field, Select, Badge } from '../../../ui/kit';
+import UploadButton from '../../../ui/UploadButton';
 import {
   money, label, deskRoles, PROGRESS, PAYMENT_METHODS,
   remainingForLine, payeeDisplayName, payoutStepFor, makeLinkedPaymentFor,
@@ -176,8 +177,8 @@ export default function RecordMoneyView({ picture, desk, goView }) {
                   {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{label(m)}</option>)}
                 </Select>
               </Field>
-              <Field label="Proof URL (optional)">
-                <Input value={rcv.proof_url} onChange={(e) => setRcv({ ...rcv, proof_url: e.target.value })} placeholder="/uploads/documents/…" />
+              <Field label="Proof of payment (optional)">
+                <UploadButton value={rcv.proof_url} onChange={(url) => setRcv({ ...rcv, proof_url: url })} folder="documents" label="Upload proof" />
               </Field>
               <Button disabled={!canAccounts || locked || !rcv.reference.trim()} onClick={recordReceipt}>Record receipt</Button>
             </div>

@@ -104,7 +104,16 @@ export default function MatchBankView({ picture, desk }) {
                       <Field label="Bank statement document" required>
                         <UploadButton value={f.statement_url} onChange={(url) => setForm(p, { statement_url: url })} folder="documents" label="Upload statement" />
                       </Field>
-                      <Button disabled={!canAccounts || locked || !f.bank_statement_line_id || !STMT_RE.test(String(f.statement_url || ''))} onClick={() => match(p)}>Match</Button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <Button disabled={!canAccounts || locked || !f.bank_statement_line_id || !STMT_RE.test(String(f.statement_url || ''))} onClick={() => match(p)}>Match</Button>
+                        {canAccounts && !locked && (!f.bank_statement_line_id || !STMT_RE.test(String(f.statement_url || ''))) && (
+                          <span style={{ fontSize: 11.5, color: 'var(--muted, #64748b)' }}>
+                            {!f.bank_statement_line_id && !STMT_RE.test(String(f.statement_url || '')) ? 'Select the bank line and upload the statement'
+                              : !f.bank_statement_line_id ? 'Select the matching bank line'
+                                : 'Upload the bank statement'}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
