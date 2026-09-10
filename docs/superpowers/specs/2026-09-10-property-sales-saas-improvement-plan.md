@@ -1,6 +1,14 @@
 # Seventh Sky — Property Purchase & Sales SaaS: Research-Backed Improvement Plan
 
-**Date:** 2026-09-10 · **Status:** PLAN FOR REVIEW — no implementation yet
+> **⚠️ SUPERSEDED (2026-09-10).** A later current-source audit found this plan's premise wrong:
+> a stronger `/sales/*` settlement engine already exists (see `SalesPropertyFile.jsx`,
+> `salesSettlement.service.js`, `SalesTrustModels`). The owner-approved baseline is now
+> **`PROPERTY_SALES_SAAS_PHASED_PLAN.md`** and its reconciliation §14; Phase 0 is
+> **`docs/superpowers/specs/2026-09-10-phase0-baseline-sales-settlement.md`**. This document's
+> §6 Phase-1 ("build the `/deals` settlement workspace") is replaced by "repoint `/deals` onto
+> `/sales`." Kept for history; do not implement from it.
+
+**Date:** 2026-09-10 · **Status:** SUPERSEDED — see banner above
 **Scope:** `admin/residential/*` (Sell + Buy/Deals) and every connected module
 (agreements & signing, Property Management, accounting/folios, water-tank & AC
 services, contacts, communications, marketing).
