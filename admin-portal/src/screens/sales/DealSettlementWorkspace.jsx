@@ -24,6 +24,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { Button, Field, Input, Select, Spinner, Badge, EmptyState } from '../../ui/kit';
 
 const money = (v) => 'BDT ' + Number(v || 0).toLocaleString();
@@ -48,10 +49,13 @@ const AGENCY_LINE_TYPES = ['commission', 'advertising'];
 // (mirrors PAYOUT_LINE_TYPES in SalesPropertyFile.jsx).
 const PAYOUT_LINE_TYPES = ['buyer_refund', 'commission', 'agency_fee', 'advertising', 'admin_fee', 'vat_tax', 'legal_fee', 'registration_fee', 'lender_payoff', 'rates_adjustment', 'utility_adjustment', 'third_party', 'vendor_proceeds', 'rounding'];
 // Settlement lifecycle — mirrors backend/utils/salesSettlementCalculations.js TRANSITIONS.
+// `role` says which client-side role flag gates the button: submit/review are
+// accounts actions, approve is admin-only (mirrors SalesPropertyFile.jsx's
+// canAccounts/canAdmin split).
 const LIFECYCLE_ACTIONS = [
-  { key: 'submit', label: 'Submit', from: ['draft', 'returned'], done: 'Settlement submitted' },
-  { key: 'review', label: 'Mark reviewed', from: ['submitted'], done: 'Settlement reviewed' },
-  { key: 'approve', label: 'Approve', from: ['reviewed'], done: 'Settlement approved' },
+  { key: 'submit', label: 'Submit', from: ['draft', 'returned'], done: 'Settlement submitted', role: 'accounts' },
+  { key: 'review', label: 'Mark reviewed', from: ['submitted'], done: 'Settlement reviewed', role: 'accounts' },
+  { key: 'approve', label: 'Approve', from: ['reviewed'], done: 'Settlement approved', role: 'admin' },
 ];
 
 // Payment/payout badges from the read-model are always null (no such columns
@@ -76,6 +80,13 @@ function derivePayoutState(totals) {
 export default function DealSettlementWorkspace({ dealId }) {
   const toast = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  // Same three role flags as SalesPropertyFile.jsx (copied verbatim) — the
+  // backend's roleMiddleware already enforces these; this just keeps buttons
+  // the user's role can't use from rendering at all.
+  const canPrepare = ['super_admin', 'branch_admin', 'property_manager', 'sales_executive'].includes(user?.role);
+  const canAccounts = ['super_admin', 'branch_admin', 'accounts'].includes(user?.role);
+  const canAdmin = ['super_admin', 'branch_admin'].includes(user?.role);
   const [picture, setPicture] = useState(null);
   const [propertyId, setPropertyId] = useState(null);
   const [salesFile, setSalesFile] = useState(null);
@@ -185,7 +196,17 @@ export default function DealSettlementWorkspace({ dealId }) {
         <div><strong>Sales transaction</strong> · <Badge tone={STATUS_TONE[tx?.status] || 'grey'}>{label(tx?.status)}</Badge></div>
         <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>{picture.next_action?.label || 'No settlement statement has been opened yet.'}</p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Button disabled={busy} onClick={() => call(() => api.post(`/sales/transactions/${tx.id}/settlement`, {}), 'Settlement opened')}>Open settlement</Button>
+          {canPrepare && (
+            <Button
+              disabled={busy}
+              onClick={() => {
+                if (!window.confirm('Open the settlement statement for this transaction?')) return;
+                call(() => api.post(`/sales/transactions/${tx.id}/settlement`, {}), 'Settlement opened');
+              }}
+            >
+              Open settlement
+            </Button>
+          )}
           {propertyId && <Button variant="ghost" onClick={() => navigate(`/sales/property/${propertyId}`)}>Open property sales file</Button>}
         </div>
       </div>
@@ -261,6 +282,7 @@ export default function DealSettlementWorkspace({ dealId }) {
   const saveEditFee = () => {
     const reason = String(editing.edit_reason || '').trim();
     if (!reason) { toast.error('A reason is required to change an agreed fee — it is printed on the vendor invoice'); return; }
+    if (!window.confirm(`Change this agreed fee to ${money(editing.amount)}?`)) return;
     // Backend field is `edit_reason` (PATCH /settlement-lines/:id/fee), not `reason`.
     call(() => api.patch(`/sales/settlement-lines/${editing.id}/fee`, { amount: editing.amount, edit_reason: reason }), 'Fee updated')
       .then((ok) => { if (ok) setEditing(null); });
@@ -270,6 +292,7 @@ export default function DealSettlementWorkspace({ dealId }) {
     if (!rcv.transaction_party_id) { toast.error('Select the buyer'); return; }
     if (!rcv.amount || Number(rcv.amount) <= 0) { toast.error('Enter a positive amount'); return; }
     if (!rcv.reference.trim()) { toast.error('A reference is required'); return; }
+    if (!window.confirm(`Record a receipt of ${money(rcv.amount)}? This is a financial action.`)) return;
     call(() => api.post(`/sales/settlements/${sid}/payments`, {
       direction: 'incoming', payment_kind: 'buyer_receipt', status: 'cleared',
       amount: rcv.amount, reference: rcv.reference, method: rcv.method,
@@ -393,6 +416,7 @@ export default function DealSettlementWorkspace({ dealId }) {
   const cancelPayout = (d) => {
     const reason = window.prompt('Reason for cancelling this payout:');
     if (!reason || !reason.trim()) return;
+    if (!window.confirm(`Cancel payout ${d.reference || `#${d.id}`} for ${money(d.amount)}?`)) return;
     call(() => api.post(`/sales/disbursements/${d.id}/cancel`, { reason: reason.trim() }), 'Payout cancelled');
   };
 
@@ -437,12 +461,12 @@ export default function DealSettlementWorkspace({ dealId }) {
               <tr key={l.id}>
                 <td>{label(l.line_type)}</td>
                 <td style={{ textAlign: 'right' }}>{money(l.amount)}</td>
-                <td>{editableFees && <Button size="sm" variant="ghost" onClick={() => startEditFee(l)}>Edit</Button>}</td>
+                <td>{editableFees && canPrepare && <Button size="sm" variant="ghost" onClick={() => startEditFee(l)}>Edit</Button>}</td>
               </tr>
             ))}
           </tbody></table>
         )}
-        {editing && (
+        {editing && canPrepare && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'end', marginTop: 10, flexWrap: 'wrap' }}>
             <Field label="New amount"><Input type="number" value={editing.amount} onChange={(e) => setEditing({ ...editing, amount: e.target.value })} /></Field>
             <Field label="Reason (required)"><Input value={editing.edit_reason} onChange={(e) => setEditing({ ...editing, edit_reason: e.target.value })} /></Field>
@@ -450,32 +474,44 @@ export default function DealSettlementWorkspace({ dealId }) {
             <Button variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
           </div>
         )}
-        {editableFees && feeLines.length > 0 && (
+        {editableFees && canAccounts && feeLines.length > 0 && (
           <div style={{ marginTop: 10 }}>
-            <Button size="sm" variant="ghost" disabled={busy} onClick={() => call(() => api.post(`/sales/settlements/${sid}/vendor-invoice`, {}), 'Vendor invoice issued')}>Issue vendor invoice</Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => {
+                if (!window.confirm('Issue the vendor invoice for these agency fees?')) return;
+                call(() => api.post(`/sales/settlements/${sid}/vendor-invoice`, {}), 'Vendor invoice issued');
+              }}
+            >
+              Issue vendor invoice
+            </Button>
           </div>
         )}
       </div>
 
-      <div className="card" style={{ padding: 14 }}>
-        <strong>Receive buyer money</strong>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap', marginTop: 8 }}>
-          <Field label="Buyer">
-            <Select value={rcv.transaction_party_id} onChange={(e) => setRcv({ ...rcv, transaction_party_id: e.target.value })}>
-              <option value="">Select buyer…</option>
-              {buyerParties.map((p) => <option key={p.id} value={p.id}>{p.snapshot_name}</option>)}
-            </Select>
-          </Field>
-          <Field label="Amount"><Input type="number" value={rcv.amount} onChange={(e) => setRcv({ ...rcv, amount: e.target.value })} /></Field>
-          <Field label="Reference"><Input value={rcv.reference} onChange={(e) => setRcv({ ...rcv, reference: e.target.value })} /></Field>
-          <Field label="Method">
-            <Select value={rcv.method} onChange={(e) => setRcv({ ...rcv, method: e.target.value })}>
-              {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{label(m)}</option>)}
-            </Select>
-          </Field>
-          <Button disabled={busy || settlement.status === 'locked'} onClick={submitReceipt}>Record receipt</Button>
+      {canAccounts && (
+        <div className="card" style={{ padding: 14 }}>
+          <strong>Receive buyer money</strong>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap', marginTop: 8 }}>
+            <Field label="Buyer">
+              <Select value={rcv.transaction_party_id} onChange={(e) => setRcv({ ...rcv, transaction_party_id: e.target.value })}>
+                <option value="">Select buyer…</option>
+                {buyerParties.map((p) => <option key={p.id} value={p.id}>{p.snapshot_name}</option>)}
+              </Select>
+            </Field>
+            <Field label="Amount"><Input type="number" value={rcv.amount} onChange={(e) => setRcv({ ...rcv, amount: e.target.value })} /></Field>
+            <Field label="Reference"><Input value={rcv.reference} onChange={(e) => setRcv({ ...rcv, reference: e.target.value })} /></Field>
+            <Field label="Method">
+              <Select value={rcv.method} onChange={(e) => setRcv({ ...rcv, method: e.target.value })}>
+                {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{label(m)}</option>)}
+              </Select>
+            </Field>
+            <Button disabled={busy || settlement.status === 'locked'} onClick={submitReceipt}>Record receipt</Button>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="card" style={{ padding: 14 }}>
         <strong>Payouts</strong>
@@ -483,7 +519,7 @@ export default function DealSettlementWorkspace({ dealId }) {
           Guided flow: create the payout → record its outgoing payment → clear it → reconcile it to the bank statement → pay.
           Paying always requires an approved settlement and a cleared, reconciled payment.
         </p>
-        {editableFees && (
+        {editableFees && canPrepare && (
           <div className="card" style={{ padding: 10, margin: '8px 0', background: 'var(--surface-2, #f8fafc)' }}>
             <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Step 1 · Create payout</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap' }}>
@@ -541,12 +577,12 @@ export default function DealSettlementWorkspace({ dealId }) {
                       : <span style={{ color: '#94a3b8', fontSize: 12 }}>{step === 'record' ? 'No payment yet' : '—'}</span>}
                   </td>
                   <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {step === 'record' && <Button size="sm" disabled={busy || settlement.status !== 'approved'} onClick={() => openRecordPayment(d)}>Record payment</Button>}
-                    {step === 'clear' && <Button size="sm" disabled={busy} onClick={() => clearPaymentNow(payment)}>Clear payment</Button>}
-                    {step === 'reconcile' && <Button size="sm" disabled={busy} onClick={() => openReconcile(payment)}>Reconcile</Button>}
-                    {step === 'pay' && <Button size="sm" disabled={busy || settlement.status !== 'approved'} onClick={() => payDisbursementNow(d, payment)}>Pay</Button>}
-                    {settlement.status === 'approved' && ['pending', 'prepared', 'failed'].includes(d.status) && <Button size="sm" variant="ghost" disabled={busy} onClick={() => submitPayoutTransfer(d)}>Submit transfer</Button>}
-                    {editableFees && ['pending', 'prepared', 'failed'].includes(d.status) && <Button size="sm" variant="ghost" disabled={busy} onClick={() => cancelPayout(d)}>Cancel</Button>}
+                    {canAccounts && step === 'record' && <Button size="sm" disabled={busy || settlement.status !== 'approved'} onClick={() => openRecordPayment(d)}>Record payment</Button>}
+                    {canAccounts && step === 'clear' && <Button size="sm" disabled={busy} onClick={() => clearPaymentNow(payment)}>Clear payment</Button>}
+                    {canAccounts && step === 'reconcile' && <Button size="sm" disabled={busy} onClick={() => openReconcile(payment)}>Reconcile</Button>}
+                    {canAccounts && step === 'pay' && <Button size="sm" disabled={busy || settlement.status !== 'approved'} onClick={() => payDisbursementNow(d, payment)}>Pay</Button>}
+                    {canAccounts && settlement.status === 'approved' && ['pending', 'prepared', 'failed'].includes(d.status) && <Button size="sm" variant="ghost" disabled={busy} onClick={() => submitPayoutTransfer(d)}>Submit transfer</Button>}
+                    {canAccounts && editableFees && ['pending', 'prepared', 'failed'].includes(d.status) && <Button size="sm" variant="ghost" disabled={busy} onClick={() => cancelPayout(d)}>Cancel</Button>}
                   </td>
                 </tr>
                 {recordFor === d.id && (
@@ -593,10 +629,19 @@ export default function DealSettlementWorkspace({ dealId }) {
 
       <div className="card" style={{ padding: 14, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <strong style={{ marginRight: 8 }}>Settlement lifecycle</strong>
-        {LIFECYCLE_ACTIONS.filter((a) => a.from.includes(settlement.status)).map((a) => (
-          <Button key={a.key} disabled={busy} onClick={() => call(() => api.post(`/sales/settlements/${sid}/${a.key}`, {}), a.done)}>{a.label}</Button>
+        {LIFECYCLE_ACTIONS.filter((a) => a.from.includes(settlement.status) && (a.role === 'admin' ? canAdmin : canAccounts)).map((a) => (
+          <Button
+            key={a.key}
+            disabled={busy}
+            onClick={() => {
+              if (!window.confirm(`${a.label} this settlement statement?`)) return;
+              call(() => api.post(`/sales/settlements/${sid}/${a.key}`, {}), a.done);
+            }}
+          >
+            {a.label}
+          </Button>
         ))}
-        {!LIFECYCLE_ACTIONS.some((a) => a.from.includes(settlement.status)) && <span style={{ fontSize: 13, color: '#64748b' }}>No lifecycle action available while {label(settlement.status)}.</span>}
+        {!LIFECYCLE_ACTIONS.some((a) => a.from.includes(settlement.status) && (a.role === 'admin' ? canAdmin : canAccounts)) && <span style={{ fontSize: 13, color: '#64748b' }}>No lifecycle action available{LIFECYCLE_ACTIONS.some((a) => a.from.includes(settlement.status)) ? ' for your role' : ` while ${label(settlement.status)}`}.</span>}
       </div>
     </div>
   );
