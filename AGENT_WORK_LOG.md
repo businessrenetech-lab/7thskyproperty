@@ -4740,3 +4740,39 @@ used "the last line starting with `import`", which landed inside a multi-line
 - NOT wired into `npm test` (needs DB access for direct seeding + is slower) — run via `npm run test:full`. Fast harness + unit suite remain the `npm test` gate.
 - PRE-EXISTING BUG found (out of scope, NOT fixed): `GET /api/deals/:id` (deal.controller.js getOne) throws `SequelizeEagerLoadingError: Agreement is not associated to PropertyDeal!` — an eager-load include references an association that isn't defined on PropertyDeal. Unrelated to the settlement work; flagged for a separate fix. The harness reads deal status from the model directly to sidestep it.
 - Phase 1 now fully proven end-to-end incl. successful completion. Not merged; branch air-conditioning/phase-0-duplicate.
+
+### 2026-09-11 01:15 | Antigravity (Gemini 3.8 Flash) | STARTED | Build mock public website for 7th Sky Property Management (separate folder)
+- Request: Build a clean, minimalist, modern mock website for 7th Sky Property Management following requirements in `website_requirements.txt` and hero reference in `image.png`. Strictly keep in a separate folder, do not wire to existing apps, do not modify existing codebase, do not push to git.
+- Scope: Isolated `website-mock/` directory only.
+- Changes: None yet (creating implementation plan).
+- Verification: Read requirements, inspected hero image reference, checked repository status.
+- Handoff: Awaiting user approval on implementation plan before scaffolding and building the mock.
+
+### 2026-09-11 01:25 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Build mock public website for 7th Sky Property Management (separate folder)
+- Request: Build a clean, minimalist, modern mock website for 7th Sky Property Management following requirements in `website_requirements.txt` and hero reference in `image.png`. Strictly in a separate folder without altering active codebase or pushing to git.
+- Scope: `website-mock/` directory only.
+- Changes:
+  - Created standalone Vite + React 18 + Tailwind CSS application in `website-mock/`.
+  - Implemented 1:1 landing hero section faithful to `image.png` (white vertical panel wall texture backdrop, royal blue luxury lounge aesthetic, bold "The Property Experts." navy headline, and floating rounded pill search bar with purpose dropdown + location input + electric cyan search button).
+  - Built comprehensive Service Taxonomy with exact 10–15 word hover descriptions across all divisions per Section 3 of `website_requirements.txt` (Property Care & Concierge, NRB Dedicated Services, Leasing & Tenancy Management, Property Documentation Support, Removal & Relocation, Interior Design).
+  - Built Upstate-inspired property listings with full multimedia modal (Galleries, 4K Video/Drone tours, Floor Plans, Nearby Places connectivity, scheduled inspection bookings, and agent cards).
+  - Created interactive modals: Book an Appraisal, Book Inspection, Property Enquiry, and Client/Service Provider Login.
+  - Implemented standalone Node/Express mock REST server (`server.js` on port 5050) + client-side virtual mock API (`src/services/mockApi.js`), and documented all 10 endpoints in `ENDPOINTS.md`.
+- Verification:
+  - `npm run build` in `website-mock/` passed with 0 errors (Vite v5.4.21, 1485 modules built).
+  - `node testMockServer.js` executed 10 test requests against all REST endpoints with 10/10 PASS (200/201 OK).
+  - Verified git status shows zero changes outside `website-mock/` and `AGENT_WORK_LOG.md`. Zero git push.
+- Handoff: The website mock is self-contained in `website-mock/` and ready for presentation. To run frontend: `cd website-mock && npm run dev` (http://localhost:3050). To run mock API server: `cd website-mock && npm run server` (http://localhost:5050).
+
+
+
+### 2026-09-11 | Claude Code (Opus 4.8) | COMPLETED | Phase 2 sub-project 1 — Settlement Desk
+- Built the canonical five-view Settlement Desk (plan deliverables 2 & 3) per docs/superpowers/plans/2026-09-11-settlement-desk.md and spec 2026-09-11-settlement-desk-design.md. 8 tasks, all committed on air-conditioning/phase-0-duplicate.
+- New: admin-portal/src/screens/sales/settlement-desk/ (SettlementDesk shell + useSettlementDesk hook + settlementMoney pure helpers + AuditPanel + 5 views: Prepare/ReviewApprove/RecordMoney/MatchBank/Complete + settlement-desk.css). Route /…/property/:id/settlement under /residential and /sales; settlementDeskPath in paths.js. Zero new money endpoints — pure client over the Phase-1-proven /sales API.
+- Capture-once: Receive prefilled (buyer + remaining due); one-click Pay (status-aware: Prepare at draft → Pay out at approved → Match bank → Mark paid). Withdrawal/refund reshapes the same views + unwind entry.
+- Canonical: DealsBoard drawer + SalesBulkSettlement repointed to the desk; SalesPropertyFile settlement section trimmed to a summary + desk link (7,704 → 5,990 lines); DealSettlementWorkspace.jsx deleted.
+- Owner request mid-build: replaced the bank-statement "type the /uploads path" field with a minimalist upload button (new ui/UploadButton.jsx, POST /uploads?folder=documents). Saved as a standing preference in project memory [[upload-button-preference]] — always use an upload button for file fields, never a text path.
+- Also fixed a pre-existing bug that broke the deal drawer being repointed: PropertyDeal had agreement_id but no belongsTo(Agreement) → deal.controller.getOne 500'd. Added the association; GET /api/deals/:id now 200.
+- Backend: only additive read-only change = property_id on salesBulkData (for the bulk→desk deep-link).
+- Verification: admin-portal npm run build clean throughout; backend npm test 27/0 and npm run test:full 28/0 after changes; browser walkthrough (Playwright at :50001/admin) confirmed all five views + shell + summary + deal drawer against real data; mobile layout verified at 390px. 40% gate met (code-derived, same method): receipt 14→7, payout 20→10 (50% each).
+- NOT merged; no PR. Deferred to Phase 2 sub-project 2: workspace-routes restructure of the rest of SalesPropertyFile, Accounting landing page, role-based work queues (plan deliverables 1 & 4).
