@@ -5035,3 +5035,35 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Verified live end-to-end: created SSPC-BM-000001, added candidate (property 36 / SSPC-PR-000034), convert -> buy deal SSPC-DL-000032 (buy/lead/property 36) now on the Deals board Lead column; candidate shows 'converted · #32' with Convert/Remove hidden; mandate Engaged; duplicate candidate + re-convert both 409. Backend npm test 27/0 + test:full 28/0 unchanged (new tables, no money touch).
 - Deferred (later Phase 3): compare view, auto-suggested matches, scheduled viewings, versioned offers, SOP gates.
 - Not merged; no PR.
+
+### 2026-09-11 03:40 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Fix property detail white screen and wire website enquiry ingestion
+- Request: Fix http://localhost:3050/properties/SSPC-PR-000001 not loading / white screen; ensure website enquiries submit and are received in the admin panel.
+- Scope: `website-mock/src/pages/PropertyDetailPage.jsx`, `website-mock/src/services/api.js`, `website-mock/src/components/Modals.jsx`, `backend/controllers/publicWebsite.controller.js`, `backend/services/shortTermStay.service.js`, `backend/controllers/salesEnquiry.controller.js`.
+- Changes:
+  - Root Cause Fixed (White Screen): In `website-mock/src/pages/PropertyDetailPage.jsx`, guarded all array access methods (`Array.isArray(property.features) ? property.features : []`, `Array.isArray(property.nearbyPlaces) ? property.nearbyPlaces : []`, `Array.isArray(property.gallery) ? property.gallery : []`, `Array.isArray(property.shortStayData?.roomTypes) ? property.shortStayData.roomTypes : []`, `(property.price || 0).toLocaleString()`). In `backend/controllers/publicWebsite.controller.js`, `getPropertyDetails` and `getPublishedProperties` ensure `features` and `nearby_places` are always parsed into real JavaScript arrays even when stored as stringified JSON in MySQL.
+  - Root Cause Fixed (Enquiry Ingestion): In `backend/controllers/publicWebsite.controller.js` (`submitRentalEnquiry`, `submitSalesEnquiry`, `submitTenantApplication`), added flexible property resolver supporting both numeric database ID (`1`) and business property code (`SSPC-PR-000001`). In `backend/services/shortTermStay.service.js` (`createPublicEnquiry`), added `property_code` and string identifier resolution so short-stay reservations with property codes link cleanly.
+  - Admin Desks Integrated:
+    - Rental enquiries from public website land on `/admin/property-management/enquiries` (`SSPC-EQ-...`).
+    - Sales buyer enquiries from public website land on `/admin/residential/enquiry` (`SSPC-BEQ-...`).
+    - Short-stay reservations & inquiries land on `/admin/short-stay/enquiries` (`STB-...`).
+    - Rental applications land on `/admin/property-management/applications` (`SSPC-APP-...`).
+- Verification:
+  - Verified `http://localhost:3050/properties/SSPC-PR-000001` serves HTTP 200 without white screen.
+  - Executed automated test suite `scratch/verifyPropertyDetailPageAndEnquiries.js`:
+    - `GET /api/public-website/properties/SSPC-PR-000001` returns `features` (array), `nearby_places` (array), `price: 3500`, `price_display: "৳3,500 / night"`.
+    - Rental enquiry (`SSPC-EQ-000008`) submitted on `SSPC-PR-000001` verified in Admin Rental Desk.
+    - Sales enquiry (`SSPC-BEQ-000005`) submitted on `SSPC-PR-000001` verified in Admin Sales Desk.
+    - Short stay reservation (`STB-000005`) submitted on `SSPC-PR-000001` verified in Admin Short Stay Desk.
+  - Regression verified Property Management sync (`scratch/verifyPropertyManagementWebsiteSync.js` - 100% pass).
+  - Regression verified Short Stay price sync (`scratch/verifyPriceSyncAndEnquiries.js` - 100% pass).
+  - Production builds verified clean (`npm run build` in `website-mock` and `admin-portal`).
+  - Zero git commits or pushes performed.
+- Handoff: Property detail page and all public enquiry ingestion flows (rental, sales, short stay, tenancy applications) are 100% live, connected to their respective admin operational desks, and fully verified.
+
+### 2026-09-11 | Claude Code (Opus 4.8) | COMPLETED | Phase 3 sub-project 3 — versioned offers + written approvals
+- Built per docs/superpowers/plans/2026-09-11-offer-versions-approvals.md + spec. Committed on air-conditioning/phase-0-duplicate.
+- Backend: migration 0106 (sale_offer_versions + sale_offer_approvals) + inline SalesModels. appendOfferVersion snapshots the offer on submit (createOffer), counter/re-submit (updateOfferStatus, made transactional) and live edit (patchOffer). acceptOffer gated to require {approval:{approver_side,note}} of the latest version (super-admin override w/ override_reason), records a SaleOfferApproval linked to that version, then runs the unchanged accept->transaction/deal/parties flow. getPropertyFile offers include versions + approvals. Both e2e harnesses updated to pass an approval on accept.
+- Frontend: property-file Offers section gains a per-offer History (versions, newest-first, side badge/amount/deposit/date) + an approval line on accepted offers; Accept now opens an approval drawer (approving side + required note + super-admin override).
+- Verified live: an offer submit->counter->re-submit shows History (3) = v1 buyer/v2 seller/v3 buyer; the harness-accepted offer shows History (1) + '✓ Approved (seller)'; Accept opens the approval drawer; accept w/o approval 409; SaleOfferApproval rows written linked to the right version; backend npm test 27/0 + test:full 28/0.
+- Deferred (own follow-up): introductions / clause-22 (the unwired NonCircumventionRecord, to be adapted for sales).
+- SaleOffer thread unchanged for downstream (accept->transaction/settlement intact). Not merged; no PR.

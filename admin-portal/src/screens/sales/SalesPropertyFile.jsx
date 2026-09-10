@@ -1221,14 +1221,25 @@ export default function SalesPropertyFile({
       });
       return false;
     }
-    return perform(
-      () => api.post(`/sales/offers/${offer.id}/accept`, {}),
-      "Offer accepted and transaction started",
-      {
-        confirm: `Accept ${money(offer.amount || offer.offer_amount)}? This creates or updates the sale transaction.`,
-      },
-    );
+    // Acceptance requires a written approval of the current offer version.
+    return openDrawer("offer-accept", {
+      id: offer.id,
+      amount: offer.amount || offer.offer_amount,
+      approver_side: "seller",
+      note: "",
+      override: false,
+      override_reason: "",
+    });
   };
+  const submitAcceptApproval = (form) =>
+    perform(
+      () => api.post(`/sales/offers/${form.id}/accept`, {
+        approval: { approver_side: form.approver_side, note: form.note },
+        override: form.override || undefined,
+        override_reason: form.override ? form.override_reason : undefined,
+      }),
+      "Offer accepted and transaction started",
+    );
   const saveTransactionParty = () =>
     perform(
       () =>
@@ -2873,6 +2884,39 @@ export default function SalesPropertyFile({
                       <FileCheck2 size={13} /> Proof of funds
                     </a>
                   )}
+                  {array(offer.versions).length > 0 && (
+                    <details style={{ marginTop: 10 }}>
+                      <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+                        History ({array(offer.versions).length})
+                      </summary>
+                      <table className="tbl" style={{ marginTop: 6 }}>
+                        <tbody>
+                          {array(offer.versions)
+                            .slice()
+                            .sort((a, b) => b.version_no - a.version_no)
+                            .map((v) => (
+                              <tr key={v.id}>
+                                <td>v{v.version_no}</td>
+                                <td><Badge tone={v.side === "seller" ? "amber" : "blue"}>{v.side}</Badge></td>
+                                <td className="pm-num">{money(v.amount)}</td>
+                                <td className="cell-sub">dep {money(v.deposit_amount)}</td>
+                                <td className="cell-sub">{dateOnly(v.created_at)}</td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </details>
+                  )}
+                  {array(offer.approvals).length > 0 && (
+                    <div className="cell-sub" style={{ marginTop: 8 }}>
+                      {array(offer.approvals).map((a) => (
+                        <div key={a.id}>
+                          ✓ Approved ({a.approver_side}){a.note ? ` — ${a.note}` : ""}
+                          {a.override_reason ? ` · override: ${a.override_reason}` : ""}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -3967,6 +4011,62 @@ export default function SalesPropertyFile({
               onChange={(event) => set("reason", event.target.value)}
             />
           </Field>
+        </Drawer>
+      )}
+
+      {drawer === "offer-accept" && (
+        <Drawer
+          title={`Accept offer · ${money(form.amount)}`}
+          onClose={closeDrawer}
+          footer={
+            <DrawerActions
+              close={closeDrawer}
+              save={() => submitAcceptApproval(form)}
+              saving={saving}
+              label="Approve & accept"
+            />
+          }
+        >
+          <ErrorBox error={formError} />
+          <p className="cell-sub">
+            Accepting records a written approval of this offer version and starts
+            the sale transaction.
+          </p>
+          <Field label="Approving side">
+            <Select
+              value={form.approver_side || "seller"}
+              onChange={(event) => set("approver_side", event.target.value)}
+            >
+              <option value="seller">Seller</option>
+              <option value="buyer">Buyer</option>
+            </Select>
+          </Field>
+          <Field label="Approval note" required={!form.override}>
+            <Textarea
+              value={form.note || ""}
+              onChange={(event) => set("note", event.target.value)}
+              placeholder="e.g. Vendor agreed the counter on 2026-09-11"
+            />
+          </Field>
+          {canAdmin && (
+            <>
+              <Field label="Override (accept without a formal approval)">
+                <input
+                  type="checkbox"
+                  checked={!!form.override}
+                  onChange={(event) => set("override", event.target.checked)}
+                />
+              </Field>
+              {form.override && (
+                <Field label="Override reason" required>
+                  <Input
+                    value={form.override_reason || ""}
+                    onChange={(event) => set("override_reason", event.target.value)}
+                  />
+                </Field>
+              )}
+            </>
+          )}
         </Drawer>
       )}
 
