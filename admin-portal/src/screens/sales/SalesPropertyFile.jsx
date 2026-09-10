@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   Activity,
   AlertTriangle,
@@ -323,7 +323,11 @@ export default function SalesPropertyFile({
   const canAdmin = ["super_admin", "branch_admin"].includes(user?.role);
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [section, setSection] = useState("overview");
+  // The active section lives in the URL (?section=…) so deep-link, refresh and
+  // Back hold position. Unknown/missing falls back to overview.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawSection = searchParams.get("section");
+  const section = SECTIONS.some((s) => s.key === rawSection) ? rawSection : "overview";
   const [assessmentDirty, setAssessmentDirty] = useState(false);
   const [activityTab, setActivityTab] = useState("activity");
   const [drawer, setDrawer] = useState(null);
@@ -368,10 +372,14 @@ export default function SalesPropertyFile({
       ) {
         return false;
       }
-      setSection(nextSection);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("section", nextSection);
+        return next;
+      }, { replace: true });
       return true;
     },
-    [assessmentDirty, section],
+    [assessmentDirty, section, setSearchParams],
   );
 
   const load = useCallback(async () => {
