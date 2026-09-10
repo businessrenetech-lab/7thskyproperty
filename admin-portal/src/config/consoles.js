@@ -406,6 +406,13 @@ export const RESIDENTIAL_NAV = [
       { to: '/residential/workflows?vertical_key=properties', label: 'Checklists / Workflows', icon: Folder },
     ],
   },
+  {
+    key: 'money',
+    label: 'Money',
+    items: [
+      { to: '/residential/settlements', label: 'Settlements (Bulk)', icon: HandCoins },
+    ],
+  },
 ];
 
 export const residentialConsole = {

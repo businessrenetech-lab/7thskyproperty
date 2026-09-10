@@ -134,6 +134,7 @@ import LandlordBills from './screens/LandlordBills';
 import RentalReceipts from './screens/RentalReceipts';
 import BulkRentCollection from './screens/BulkRentCollection';
 import BulkOwnerDisbursement from './screens/BulkOwnerDisbursement';
+import SalesBulkSettlement from './screens/SalesBulkSettlement';
 import RentReminders from './screens/RentReminders';
 import Communication from './screens/Communication';
 import Portal from './screens/Portal';
@@ -910,6 +911,7 @@ export default function App() {
               {/* Shared screens, filtered by their own query string. */}
               <Route path="/residential/compliance" element={<Compliance />} />
               <Route path="/residential/workflows" element={<Projects />} />
+              <Route path="/residential/settlements" element={<SalesBulkSettlement />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />
