@@ -67,35 +67,38 @@ export default function RecordMoneyView({ picture, desk, goView }) {
     disbursements: picture.disbursements,
   };
 
-  // One-click "Pay out": create → record → clear, resuming from the row's step.
-  const startPayout = async (row) => {
-    const step = row.kind === 'line' ? 'create' : payoutStepFor(row.d, linkedPaymentFor);
-    if (!['create', 'record', 'clear'].includes(step)) return;
-    const payeeLabel = row.kind === 'line' ? payeeDisplayName(row.l, picture.parties) : (payeeDisplayName({ line_type: row.d.payee_type, payee_transaction_party_id: row.d.transaction_party_id }, picture.parties));
-    const amount = row.kind === 'line' ? remainingForLine(row.l, picture.disbursements) : row.d.amount;
-    if (!window.confirm(`Pay out ${money(amount)} to ${payeeLabel}?`)) return;
+  const approved = status === 'approved';
+  const draftLike = ['draft', 'returned'].includes(status);
 
+  // Prepare a payout (create the disbursement) — allowed only while draft/returned.
+  const preparePayout = async (line) => {
+    const built = buildDisbursementPayload(line, payoutDeps);
+    if (built.error) { setChainError({ rowKey: `l${line.id}`, message: built.error }); return; }
+    const amount = remainingForLine(line, picture.disbursements);
+    if (!window.confirm(`Prepare a ${money(amount)} payout to ${payeeDisplayName(line, picture.parties)}?`)) return;
+    desk.call(() => api.post(`/sales/settlements/${sid}/disbursements`, built.payload), 'Payout prepared');
+  };
+
+  // Pay a prepared payout — record the outgoing payment then clear it. Allowed
+  // only while approved (the server enforces this too). Resumes from the step.
+  const payPayout = async (d) => {
+    const step = payoutStepFor(d, linkedPaymentFor);
+    if (!['record', 'clear'].includes(step)) return;
+    if (!window.confirm(`Pay out ${money(d.amount)}?`)) return;
     setBusy(true); setChainError(null);
-    let disbursement = row.kind === 'disbursement' ? row.d : null;
-    let payment = row.kind === 'disbursement' ? linkedPaymentFor(row.d) : null;
+    let payment = linkedPaymentFor(d);
     let cur = step;
     try {
-      if (cur === 'create') {
-        const built = buildDisbursementPayload(row.l, payoutDeps);
-        if (built.error) { setChainError({ rowKey: row.id, message: built.error }); return; }
-        disbursement = unwrap(await api.post(`/sales/settlements/${sid}/disbursements`, built.payload));
-        cur = 'record';
-      }
       if (cur === 'record') {
-        payment = unwrap(await api.post(`/sales/settlements/${sid}/payments`, buildPaymentPayload(disbursement, picture.parties)));
-        setPayoutLinks((prev) => ({ ...prev, [disbursement.id]: payment.id }));
+        payment = unwrap(await api.post(`/sales/settlements/${sid}/payments`, buildPaymentPayload(d, picture.parties)));
+        setPayoutLinks((prev) => ({ ...prev, [d.id]: payment.id }));
         cur = 'clear';
       }
       if (cur === 'clear') {
         await api.post(`/sales/payments/${payment.id}/clear`, {});
       }
     } catch (e) {
-      setChainError({ rowKey: row.id, message: e.response?.data?.error || 'Payout step failed' });
+      setChainError({ rowKey: `d${d.id}`, message: e.response?.data?.error || 'Payout step failed' });
     } finally {
       setBusy(false);
       await desk.refetch();
@@ -112,28 +115,43 @@ export default function RecordMoneyView({ picture, desk, goView }) {
     desk.call(() => api.post(`/sales/disbursements/${d.id}/cancel`, { reason: reason.trim() }), 'Payout cancelled');
   };
 
-  // The primary button for a payable row, following its step.
+  // The primary button for a payable row. Prepare while draft/returned; pay
+  // while approved — never offer a step the settlement status forbids.
   const renderRow = (row) => {
     const d = row.d;
     const step = row.kind === 'line' ? 'create' : payoutStepFor(d, linkedPaymentFor);
     const payment = row.kind === 'disbursement' ? linkedPaymentFor(d) : null;
-    const [pLabel, pTone] = PROGRESS[step] || ['—', 'grey'];
+    const [pLabel, pTone] = row.kind === 'line' ? ['Not prepared', 'grey'] : (PROGRESS[step] || ['—', 'grey']);
     const amount = row.kind === 'line' ? remainingForLine(row.l, picture.disbursements) : d.amount;
-    const name = row.kind === 'line' ? payeeDisplayName(row.l, picture.parties) : (payeeDisplayName({ line_type: d.payee_type === 'agency' ? 'commission' : (d.payee_type === 'vendor' ? 'vendor_proceeds' : 'third_party'), payee_transaction_party_id: d.transaction_party_id }, picture.parties));
+    const name = row.kind === 'line'
+      ? payeeDisplayName(row.l, picture.parties)
+      : payeeDisplayName({ line_type: d.payee_type === 'agency' ? 'commission' : (d.payee_type === 'vendor' ? 'vendor_proceeds' : 'third_party'), payee_transaction_party_id: d.transaction_party_id }, picture.parties);
+
+    let action = null;
+    if (canAccounts && !locked) {
+      if (row.kind === 'line') {
+        if (draftLike) action = <Button size="sm" disabled={busy} onClick={() => preparePayout(row.l)}>Prepare payout</Button>;
+      } else if (['record', 'clear'].includes(step)) {
+        action = approved
+          ? <Button size="sm" disabled={busy} onClick={() => payPayout(d)}>Pay out</Button>
+          : <span className="cell-sub">Prepared — approve to pay</span>;
+      } else if (step === 'reconcile') {
+        action = <Button size="sm" variant="secondary" onClick={() => goView('match')}>Match bank</Button>;
+      } else if (step === 'pay') {
+        action = <Button size="sm" onClick={() => markPaid(d, payment)}>Mark paid</Button>;
+      } else if (step === 'paid') {
+        action = <span className="cell-sub">Paid</span>;
+      } else if (step === 'blocked') {
+        action = <Button size="sm" variant="ghost" onClick={() => cancelPayout(d)}>Cancel &amp; retry</Button>;
+      }
+    }
+
     return (
       <tr key={row.id}>
         <td>{name}</td>
         <td style={{ textAlign: 'right' }} className="pm-num">{money(amount)}</td>
         <td><Badge tone={pTone}>{pLabel}</Badge></td>
-        <td style={{ textAlign: 'right' }}>
-          {!canAccounts || locked ? null
-            : ['create', 'record', 'clear'].includes(step) ? <Button size="sm" disabled={busy} onClick={() => startPayout(row)}>Pay out</Button>
-            : step === 'reconcile' ? <Button size="sm" variant="secondary" onClick={() => goView('match')}>Match bank</Button>
-            : step === 'pay' ? <Button size="sm" onClick={() => markPaid(d, payment)}>Mark paid</Button>
-            : step === 'paid' ? <span className="cell-sub">Paid</span>
-            : step === 'blocked' ? <Button size="sm" variant="ghost" onClick={() => cancelPayout(d)}>Cancel &amp; retry</Button>
-            : null}
-        </td>
+        <td style={{ textAlign: 'right' }}>{action}</td>
       </tr>
     );
   };
@@ -186,7 +204,7 @@ export default function RecordMoneyView({ picture, desk, goView }) {
           <div className="st-notice st-notice-error" style={{ marginTop: 8 }}>{chainError.message}</div>
         )}
         <p className="cell-sub" style={{ marginTop: 8 }}>
-          “Pay out” records and clears the outgoing payment; then match it to the bank statement and mark it paid. Every step is server-gated.
+          Prepare payouts while the settlement is draft; once it is approved, “Pay out” records and clears each one, then match it to the bank statement and mark it paid. Every step is server-gated.
         </p>
       </div>
     </div>
