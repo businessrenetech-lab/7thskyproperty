@@ -4906,6 +4906,13 @@ used "the last line starting with `import`", which landed inside a multi-line
   - Zero git push operations performed (strict adherence to user instructions).
 - Handoff: All website forms and system operational desks are fully connected and operating seamlessly.
 
+### 2026-09-11 02:56 | Antigravity (Gemini 3.8 Flash) | STARTED | Short Stay Enquiries desk synchronization and Live Property Pricing from onboarding
+- Request: Ensure all short term enquiries from the website appear at http://localhost:3000/admin/short-stay/enquiries; ensure the price given at http://localhost:3000/admin/short-stay/properties/new is shown live at the website; create a new property from here, confirm it is live at the website with its price, and verify enquiries appear in the admin enquiries desk.
+- Scope: `backend/controllers/publicWebsite.controller.js`, `backend/controllers/shortTermStay.controller.js`, `backend/services/shortTermStay.service.js`, `website-mock/src/services/api.js`, `website-mock/src/pages/PropertyDetailPage.jsx`, `website-mock/src/pages/PropertiesPage.jsx`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Connecting short stay property rates and enquiries end-to-end.
+
 
 
 
@@ -4926,3 +4933,53 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Phase 2 sub-project 3 (URL-backing scope, owner chose "URL-backing only"): SalesPropertyFile's active section now lives in the URL (?section=), derived + validated against SECTIONS, openSection updates the param (replace:true) keeping its unsaved-assessment guard. Deep-link/refresh/back now hold position; the Work Queue offer_review ?section=offers link now works. One-file change; per-section file split intentionally NOT done (deferred as the maintainability-only, higher-risk half).
 - Verified live in browser; admin build clean throughout.
 - Not merged; branch air-conditioning/phase-0-duplicate.
+
+### 2026-09-11 03:10 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Short Stay Enquiries desk synchronization and Live Property Pricing from onboarding
+- Request: Ensure all short term enquiries from the website appear at http://localhost:3000/admin/short-stay/enquiries; ensure the price given at http://localhost:3000/admin/short-stay/properties/new is shown live at the website; create a new property from here, confirm it is live at the website with its price, and verify enquiries appear in the admin enquiries desk; ensure if price edit or any edits on admin panel reflect on the website too.
+- Scope: `backend/services/shortTermStay.service.js`, `backend/controllers/property.controller.js`, `backend/controllers/publicWebsite.controller.js`, `admin-portal/src/pages/WebsiteManagement.jsx`, `website-mock/src/services/api.js`, `website-mock/src/pages/PropertyDetailPage.jsx`.
+- Changes:
+  - Bidirectional Price and Profile Sync:
+    - In `backend/services/shortTermStay.service.js`, updated `updatePropertyProfile` to propagate `base_nightly_rate` to `Property.price`, `public_headline` to `Property.title`, `public_description` to `Property.description`, `bedrooms`, `bathrooms`, `amenities` to `Property.features`, and `is_website_listed` to `Property.is_published`.
+    - In `backend/controllers/property.controller.js`, updated canonical property `update` to automatically sync updates back to `ShortStayPropertyProfile` (`base_nightly_rate = price`, `public_headline = title`, `public_description = description`, `bedrooms`, `bathrooms`, `amenities`, `is_website_listed = is_published`).
+    - In `backend/controllers/publicWebsite.controller.js`, updated `togglePropertyWebsiteStatus` to accept `price` and `title` updates directly from Website Management, saving to both `Property` and `ShortStayPropertyProfile`.
+    - In `backend/controllers/publicWebsite.controller.js`, updated `getPropertyDetails` to resolve short-stay profiles and ensure exact nightly pricing (`price_display: "৳X,XXX / night"`) and profile attributes are output to the public API.
+  - Short Stay Enquiries Desk Integration:
+    - In `backend/services/shortTermStay.service.js`, updated `getEnquiries` to return unified listings including web reservations (`ShortStayBooking` and `ShortStayEnquiry`) with flexible branch matching (`Op.or: [{ branch_id }, { branch_id: null }]`).
+    - In `backend/controllers/publicWebsite.controller.js`, updated `submitRentalEnquiry` to mirror short-stay inquiries directly into the Short Stay desk.
+  - Admin Portal UI:
+    - In `admin-portal/src/pages/WebsiteManagement.jsx`, added inline Quick Price Editor with save action and responsive deep-edit links ("Live" and "Edit & Photos" routing to `/short-stay/properties/:id/edit`).
+  - Public Website Mock UI:
+    - In `website-mock/src/services/api.js`, standardized nightly rate formatting and field mapping.
+    - In `website-mock/src/pages/PropertyDetailPage.jsx`, enhanced short-stay detection to reliably render Booking.com style calendar and reservation widget.
+- Verification:
+  - Ran comprehensive automated verification test (`scratch/verifyPriceSyncAndEnquiries.js`):
+    - Admin authenticated successfully.
+    - Created short stay property: "The Royal Mirage Penthouse #3688" with rate ৳16,500.
+    - Verified property in live public website catalog & detail with exact price `৳16,500 / night`.
+    - Verified STR Profile edit (PUT `/api/short-stay/properties/:id`): Updated rate to ৳19,800, reflected immediately on website catalog & detail.
+    - Verified Website Management Quick Edit (PATCH `/api/public-website/admin/properties/:id/publish`): Updated price to ৳22,500, reflected immediately on website.
+    - Verified Canonical Property edit (PUT `/api/properties/:id`): Updated price to ৳24,000, reflected immediately on website.
+    - Submitted public booking reservation `STB-000002` (Guest Farhan #3688, total ৳73,850.00).
+    - Verified enquiry appeared in Admin Short Stay Enquiries desk (`GET /api/short-stay/enquiries`) with full guest details, booking code, dates, and value.
+  - `npm run build` in `admin-portal` passed cleanly (0 errors).
+  - `npm run build` in `website-mock` passed cleanly (0 errors).
+  - Zero git push operations performed.
+- Handoff: All short stay creations, price edits from any admin screen, and public reservations/enquiries are live, synchronized, and operational.
+
+### 2026-09-11 03:12 | Antigravity (Gemini 3.8 Flash) | STARTED | Property Management website sync (add/edit property to public site, enquiries & applications)
+- Request: Do the same for Property Management sections: add new property goes to public site, edit options, enquiries receive, applications receive from website (at http://localhost:3000/admin/property-management/enquiries and http://localhost:3000/admin/property-management/applications).
+- Scope: `backend/controllers/property.controller.js`, `backend/controllers/rentalEnquiry.controller.js` / tenancy application controllers, `backend/controllers/publicWebsite.controller.js`, `admin-portal/src/screens/RentalProperties.jsx`, `admin-portal/src/screens/RentalEnquiries.jsx`, `admin-portal/src/screens/TenantApplications.jsx`, `admin-portal/src/screens/PropertyWizard.jsx`, `website-mock/src/services/api.js`, `website-mock/src/pages/PropertyDetailPage.jsx`, `website-mock/src/pages/PropertiesPage.jsx`.
+- Changes: None yet.
+- Verification: Started researching current implementations.
+- Handoff: Investigating property creation, editing, enquiries, and applications pipelines.
+
+
+
+### 2026-09-11 | Claude Code (Opus 4.8) | COMPLETED | Phase 3 sub-project 1 — Deals Kanban pipeline
+- Built the real Board over PropertyDeal per docs/superpowers/plans/2026-09-11-deals-kanban-pipeline.md + spec 2026-09-11-deals-kanban-pipeline-design.md. Committed on air-conditioning/phase-0-duplicate.
+- Backend (no schema change, reuses DealEvent): POST /deals/:id/transition — allow-list (lead<->negotiation, lead/negotiation->cancelled w/ reason), 409 + pointer message otherwise (agreed/settlement/completed reached only via accept-offer / lock-settlement), writes a STAGE_CHANGED DealEvent. Added PropertyDeal.belongsTo(User, as:'assignee'), assignee include on the list, list page cap 100->1000.
+- Frontend: rebuilt DealsBoard — Board|List toggle over one filter bar (search/stage/assignee/overdue). Board = 6 status columns; cards show property/party/price/expected-fee/assignee/overdue-date + open the drawer + a Move-to-stage menu listing only legal targets. Native HTML5 drag/drop + the menu both call the transition endpoint, optimistic with revert-on-block; dragging disabled on agreed/settlement/completed. List keeps the existing table. deals-board.css scopes the layout (board scrolls in its own container, min-width:0 so it never widens the body).
+- Verified live: board renders by status; lead card menu offers only Negotiation+Cancelled; Move to Negotiation persists (Lead 1->0/Neg 0->1); ->agreed blocked 409; commercial/buy renders the board too (shared component). Backend npm test 27/0 + test:full 28/0 unchanged. Reset the moved test deal back to lead.
+- KNOWN (pre-existing, out of scope): at phone width the board itself is contained, but the global ConsoleShell (.wt-main/.wt-shell) still overflows horizontally — same admin-sidebar-doesn't-collapse issue flagged earlier; affects all pages, not the board.
+- Deferred (later Phase 3 sub-projects): Calendar view, saved-view presets, buyer mandates + shortlist, versioned offers/approvals + introductions, SOP stage-gates + deadlines/escalation.
+- Not merged; no PR.

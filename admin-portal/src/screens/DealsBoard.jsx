@@ -7,6 +7,7 @@ import { Plus, Building2 as BuildingIcon } from 'lucide-react';
 import { NewDealDrawer, NewPropertyDrawer } from './CrmForms';
 import { useNavigate } from 'react-router-dom';
 import { settlementDeskPath } from './sales/paths';
+import './deals-board.css';
 
 const money = (v) => (v == null ? '—' : 'BDT ' + Number(v).toLocaleString());
 const STAGES = ['lead', 'negotiation', 'agreed', 'settlement', 'completed', 'cancelled'];
@@ -148,7 +149,7 @@ export default function DealsBoard({ category, dealType, title, desc }) {
       {loading ? <div className="card-pad"><Spinner /></div> : view === 'list' ? (
         <div className="card"><DataTable columns={columns} rows={filtered} loading={loading} onRowClick={open} /></div>
       ) : (
-        <div className="deal-board" style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8 }}>
+        <div className="deal-board">
           {STAGES.map((stage) => {
             const colRows = filtered.filter((r) => r.status === stage);
             return (
@@ -158,7 +159,7 @@ export default function DealsBoard({ category, dealType, title, desc }) {
                 onDragOver={(e) => { e.preventDefault(); if (dragOver !== stage) setDragOver(stage); }}
                 onDragLeave={() => setDragOver((s) => (s === stage ? null : s))}
                 onDrop={(e) => { e.preventDefault(); setDragOver(null); const id = Number(e.dataTransfer.getData('text/plain')); const deal = rows.find((r) => r.id === id); if (deal) move(deal, stage); }}
-                style={{ flex: '0 0 280px', minWidth: 280, background: dragOver === stage ? 'var(--primary-50,#f0fdfa)' : 'var(--surface-2,#f8fafc)', borderRadius: 10, padding: 8, border: '1px solid var(--line,#e5e7eb)' }}
+                style={{ background: dragOver === stage ? 'var(--primary-50,#f0fdfa)' : 'var(--surface-2,#f8fafc)', borderRadius: 10, padding: 8, border: '1px solid var(--line,#e5e7eb)' }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 4px 8px' }}>
                   <strong style={{ fontSize: 13 }}>{STAGE_LABEL[stage]}</strong>

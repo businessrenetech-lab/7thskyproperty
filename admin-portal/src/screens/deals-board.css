@@ -1,0 +1,20 @@
+/* Deals Kanban board layout. The column row scrolls horizontally inside itself;
+   it must never widen the page body (which would give the whole app a sideways
+   scroll on narrow screens). */
+.deal-board {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  max-width: 100%;
+  min-width: 0; /* allow the scroll container to shrink below its content */
+}
+.deal-col { flex: 0 0 280px; min-width: 0; }
+
+.deal-card { transition: box-shadow .12s; }
+.deal-card[draggable="true"]:hover { box-shadow: 0 2px 10px rgba(0, 0, 0, .1); }
+
+@media (max-width: 640px) {
+  /* Slightly narrower columns so more than one peeks into view on a phone. */
+  .deal-col { flex-basis: 240px; }
+}
