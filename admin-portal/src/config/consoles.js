@@ -381,6 +381,7 @@ export const RESIDENTIAL_NAV = [
     label: 'Home',
     items: [
       { to: '/residential/sell', label: 'Sell Dashboard', icon: LayoutGrid, end: true },
+      { to: '/residential/work-queue', label: 'My Work Queue', icon: Inbox },
     ],
   },
   {
