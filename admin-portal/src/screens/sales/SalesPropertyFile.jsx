@@ -3118,7 +3118,7 @@ export default function SalesPropertyFile({
                     <Scale size={20} style={{ color: "var(--cyan)" }} />
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontWeight: 800, fontSize: 15, color: "var(--ink)" }}>Settlement &amp; Trust Control Hub</span>
+                        <span style={{ fontWeight: 800, fontSize: 15, color: "var(--ink)" }}>Settlement progress</span>
                         <Badge tone={settlement.status === 'locked' ? 'green' : settlement.status === 'approved' ? 'navy' : settlement.status === 'returned' ? 'bad' : 'amber'}>
                           {transactionCancelled ? "Cancelled" : settlement.status === "returned" ? "Returned" : title(settlement.status)}
                         </Badge>
@@ -3154,29 +3154,10 @@ export default function SalesPropertyFile({
                         {SETTLEMENT_NEXT[settlement.status].label}
                       </Button>
                     )}
-                    {!transactionCancelled &&
-                      canAccounts &&
-                      ["submitted", "reviewed", "approved"].includes(settlement.status) && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => openDrawer("return", { reason: "" })}
-                      >
-                        Return to draft
-                      </Button>
-                    )}
-                    {!transactionCancelled &&
-                      canPrepare &&
-                      zeroFunds &&
-                      ["draft", "returned"].includes(settlement.status) && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => openDrawer("cancel-transaction", { reason: "" })}
-                      >
-                        Cancel — offer withdrawn
-                      </Button>
-                    )}
+                    {/* Reconciling is the one secondary worth a button of its
+                        own — it clears real work. Returning, rebalancing and
+                        cancelling are rare, so they sit under More and stop
+                        competing with the stage's primary action. */}
                     {canAccounts && unreconciledPaymentCount > 0 && (
                       <Button
                         size="sm"
@@ -3185,44 +3166,59 @@ export default function SalesPropertyFile({
                         onClick={quickReconcileAll}
                         title="Auto-reconcile all cleared trust receipts"
                       >
-                        Quick Reconcile All ({unreconciledPaymentCount})
+                        Reconcile ({unreconciledPaymentCount})
                       </Button>
                     )}
-                    {canPrepare && ["draft", "returned"].includes(settlement.status) && (
-                      <Button size="sm" variant="secondary" icon={RotateCcw} onClick={rebalanceSettlement}>
-                        1-Click Rebalance
-                      </Button>
+                    {!transactionCancelled && (canAccounts || canPrepare) && (
+                      <details className="row-more">
+                        <summary>More</summary>
+                        <div className="row-more-menu">
+                          {canPrepare && ["draft", "returned"].includes(settlement.status) && (
+                            <button type="button" onClick={rebalanceSettlement}>
+                              Rebalance statement
+                            </button>
+                          )}
+                          {canAccounts && ["submitted", "reviewed", "approved"].includes(settlement.status) && (
+                            <button type="button" onClick={() => openDrawer("return", { reason: "" })}>
+                              Return to draft
+                            </button>
+                          )}
+                          {canPrepare && zeroFunds && ["draft", "returned"].includes(settlement.status) && (
+                            <button type="button" onClick={() => openDrawer("cancel-transaction", { reason: "" })}>
+                              Cancel — offer withdrawn
+                            </button>
+                          )}
+                        </div>
+                      </details>
                     )}
                   </div>
                 </div>
 
-                {/* Stepper Progress Steps */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
+                {/* Progress is context, not the main event — one quiet line
+                    instead of five boxes competing with the actions above. */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 12 }}>
                   {SETTLEMENT_STAGES.map(([stKey, stLabel], idx) => {
+                    const currentIdx = SETTLEMENT_STAGES.findIndex(([k]) => k === settlement.status);
                     const isCurrent = settlement.status === stKey;
-                    const isPast = SETTLEMENT_STAGES.findIndex(([k]) => k === settlement.status) > idx;
+                    const isPast = currentIdx > idx;
                     return (
-                      <div key={stKey} style={{
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        background: isCurrent ? "var(--cyan-weak)" : isPast ? "#f0fdf4" : "var(--surface-3)",
-                        border: isCurrent ? "1.5px solid var(--cyan)" : isPast ? "1px solid #bbf7d0" : "1px solid var(--line-soft)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6
-                      }}>
-                        <div style={{
-                          width: 20, height: 20, borderRadius: "50%",
-                          background: isCurrent ? "var(--cyan)" : isPast ? "#16a34a" : "#cbd5e1",
-                          color: "#ffffff", fontSize: 11, fontWeight: 800,
-                          display: "grid", placeItems: "center"
-                        }}>
-                          {isPast ? "✓" : idx + 1}
-                        </div>
-                        <div style={{ fontSize: 11.5, fontWeight: isCurrent ? 800 : 600, color: isCurrent ? "var(--navy)" : isPast ? "#15803d" : "var(--muted)" }}>
+                      <React.Fragment key={stKey}>
+                        {idx > 0 && (
+                          <span aria-hidden="true" style={{ color: "var(--line)" }}>›</span>
+                        )}
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            fontWeight: isCurrent ? 800 : 600,
+                            color: isCurrent ? "var(--navy)" : isPast ? "#15803d" : "var(--muted)",
+                          }}
+                        >
+                          {isPast && <span aria-hidden="true">✓</span>}
                           {stLabel}
-                        </div>
-                      </div>
+                        </span>
+                      </React.Fragment>
                     );
                   })}
                 </div>
