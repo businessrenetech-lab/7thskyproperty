@@ -2989,12 +2989,12 @@ export default function SalesPropertyFile({
                           : undefined
                       }
                     >
-                      {key === "allocated"
-                        ? withdrawalStale
-                          ? `${money(Math.abs(withdrawalDrift))} ${withdrawalDrift > 0 ? "more than" : "less than"} cleared funds`
-                          : "matches cleared funds"
-                        : key === "vendor"
-                          ? `${money(vendorPaid)} paid · ${money(Math.max(0, vendorRemaining))} to pay`
+                      {/* Only caption a figure when it says something the
+                          number itself doesn't — silence is the default. */}
+                      {key === "allocated" && withdrawalStale
+                        ? `off by ${money(Math.abs(withdrawalDrift))}`
+                        : key === "vendor" && minor(vendorRemaining) > 0
+                          ? `${money(Math.max(0, vendorRemaining))} to pay`
                           : key === "received" && pendingReceipts > 0
                             ? `+ ${money(pendingReceipts)} pending`
                             : key === "paid" && refunded > 0
@@ -3026,11 +3026,8 @@ export default function SalesPropertyFile({
                   >
                     {money(residual)}
                   </strong>
-                  <small>
-                    {balanced
-                      ? "Balanced — every taka is accounted for"
-                      : `Out of balance by ${money(Math.abs(residual))}`}
-                  </small>
+                  {/* Don't restate the figure that is already on screen. */}
+                  <small>{balanced ? "Balanced" : " "}</small>
                 </button>
               </div>
 
@@ -3052,16 +3049,13 @@ export default function SalesPropertyFile({
               {withdrawalStale && (
                 <div className="st-notice">
                   <AlertTriangle size={15} />
+                  {/* The allocation tile already shows the drift — say what to
+                      do about it, not the whole derivation again. */}
                   <span>
-                    The statement allocates {money(withdrawalAllocated)} (owner
-                    credit {money(vendorProceeds)} + refund due{" "}
-                    {money(refundsDue)}
-                    {deductions > 0 ? ` + fees ${money(deductions)}` : ""}) but
-                    the buyer's cleared funds are {money(received)} — off by{" "}
-                    {money(Math.abs(withdrawalDrift))}.
+                    Allocation is off by {money(Math.abs(withdrawalDrift))}.
                     {minor(refunded) >= minor(refundsDue) && minor(withdrawalDrift) > 0
-                      ? ` The buyer has already been refunded ${money(refunded)}, so re-prepare with an owner forfeit of ${money(Math.max(0, received - refunded))} to balance.`
-                      : " Re-run Prepare withdrawal to recalculate from today's cleared funds."}
+                      ? ` Re-prepare with an owner forfeit of ${money(Math.max(0, received - refunded))} to balance.`
+                      : " Re-run Prepare withdrawal."}
                   </span>
                   {canPrepare &&
                     ["draft", "returned"].includes(settlement.status) && (
@@ -3276,7 +3270,7 @@ export default function SalesPropertyFile({
                     }}>
                       <ShieldCheck size={14} style={{ flexShrink: 0, color: "#2563eb" }} />
                       <span>
-                        Separation of duties note: You {next === "review" ? "prepared this settlement" : "already acted on this settlement"}, so this step requires a different user (or super-admin override with reason).
+                        Needs a different user — you already acted on this settlement.
                       </span>
                     </div>
                   ) : null;
