@@ -23,7 +23,8 @@ import { useSvcNav,
 const money = (v) => bdt(Number(v || 0));
 const pct = (v) => `${Math.round(Number(v || 0))}%`;
 
-const TABS = ['Overview', 'Lifecycle', 'Timeline', 'Work Orders', 'Billing', 'Documents', 'Closure'];
+// Timeline folded into Overview (recent activity) rather than its own tab.
+const TABS = ['Overview', 'Lifecycle', 'Work Orders', 'Billing', 'Documents', 'Closure'];
 
 export default function ProjectDetail() {
   const { code } = useParams();
@@ -140,9 +141,8 @@ export default function ProjectDetail() {
       </div>
 
       <div style={{ marginTop: 16 }}>
-        {tab === 'Overview' && <Overview d={d} nav={nav} />}
+        {tab === 'Overview' && <><Overview d={d} nav={nav} /><div style={{ marginTop: 16 }}><Timeline p={p} /></div></>}
         {tab === 'Lifecycle' && <Lifecycle stage={stage} stages={stages} busy={busy} onSet={setStage} project={p} />}
-        {tab === 'Timeline' && <Timeline p={p} />}
         {tab === 'Work Orders' && <WorkOrders rows={related.workOrders} nav={nav} />}
         {tab === 'Billing' && <Billing d={d} reload={load} />}
         {tab === 'Documents' && <Documents d={d} nav={nav} />}

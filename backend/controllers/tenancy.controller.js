@@ -310,3 +310,233 @@ exports.globalInvoices = asyncHandler(async (req, res) => {
   req.body.period_label = period;
   return exports.bulkRaiseInvoices(req, res);
 });
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Bulk Rent Collection (Phase 1). A single "Collect Rent" run for the whole
+ * portfolio: see every active tenancy's due for a month (arrears-aware), then
+ * record many payments in one pass. Money flows ONLY through the existing
+ * raise-invoice + recordPayment endpoints (called internally with the caller's
+ * auth), so the owner-fee cascade, folio allocation and receipts behave exactly
+ * as a single payment does — no parallel money path.
+ * ──────────────────────────────────────────────────────────────────────────── */
+const monthKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+// GET /api/tenancies/collect-rent-data?month=YYYY-MM&owner_id=&property_id=&status=&q=
+exports.collectRentData = asyncHandler(async (req, res) => {
+  const month = req.query.month || monthKey();
+  const where = { ...branchScope(req), status: 'active' };
+  if (req.query.owner_id) where.owner_contact_id = Number(req.query.owner_id);
+  if (req.query.property_id) where.property_id = Number(req.query.property_id);
+  const tenancies = await Tenancy.findAll({ where, include: [propInc, ownerInc, tenantInc], order: [['id', 'ASC']] });
+
+  const q = String(req.query.q || '').trim().toLowerCase();
+  const statusFilter = String(req.query.status || '').toLowerCase(); // due | partial | paid | not_raised
+
+  const rows = [];
+  for (const t of tenancies) {
+    const j = t.toJSON();
+    const rent = Number(t.monthly_rent || 0);
+    const service = Number(t.service_charge || 0);
+    const monthCharge = rent + service;
+
+    const [[led]] = await sequelize.query(
+      'SELECT id, invoice_id, rent_due, rent_received, status FROM rental_ledger WHERE property_id = :pid AND period_label = :m LIMIT 1',
+      { replacements: { pid: t.property_id || 0, m: month } },
+    );
+    const raised = !!led;
+    const monthDue = raised ? Number(led.rent_due || 0) : monthCharge;
+    const monthReceived = raised ? Number(led.rent_received || 0) : 0;
+    const monthOutstanding = Math.max(0, monthDue - monthReceived);
+    let status = 'due';
+    if (raised) status = monthReceived >= monthDue ? 'paid' : (monthReceived > 0 ? 'partial' : 'due');
+
+    const [[arr]] = await sequelize.query(
+      'SELECT COALESCE(SUM(rent_due - rent_received),0) AS arrears FROM rental_ledger WHERE property_id = :pid AND period_label < :m AND status IN ("due","partial","overdue","arrears")',
+      { replacements: { pid: t.property_id || 0, m: month } },
+    );
+    const arrears = Number(arr?.arrears || 0);
+
+    const prop = j.Property || {};
+    const row = {
+      tenancy_id: t.id, tenancy_code: t.tenancy_code,
+      tenant_name: j.tenant?.full_name || '—', tenant_phone: j.tenant?.primary_phone || '',
+      property_id: t.property_id, property_code: prop.property_code, property_title: prop.title,
+      unit: prop.area || prop.address || '', owner_contact_id: t.owner_contact_id, owner_name: j.owner?.full_name || '—',
+      monthly_rent: rent, service_charge: service, month_charge: monthCharge,
+      month_invoice_id: raised ? led.invoice_id : null, raised,
+      month_outstanding: monthOutstanding, month_received: monthReceived,
+      arrears, status,
+      // What we suggest collecting: this month's outstanding (operator can bump to add arrears).
+      suggested_amount: monthOutstanding || monthCharge,
+      rent_due_day: t.rent_due_day || 1,
+    };
+    if (statusFilter && status !== statusFilter) continue;
+    if (q && ![row.tenant_name, row.tenant_phone, row.property_title, row.property_code, row.unit, row.tenancy_code, row.owner_name]
+      .some((v) => String(v || '').toLowerCase().includes(q))) continue;
+    rows.push(row);
+  }
+
+  const summary = {
+    tenancies: rows.length,
+    due_count: rows.filter((r) => r.status !== 'paid').length,
+    total_due: rows.reduce((s, r) => s + r.month_outstanding, 0),
+    total_arrears: rows.reduce((s, r) => s + r.arrears, 0),
+  };
+  res.json({ month, data: rows, summary });
+});
+
+// POST /api/tenancies/collect-rent  { month, entries: [{ tenancy_id, amount, method, paid_at, reference, notes }] }
+exports.collectRent = asyncHandler(async (req, res) => {
+  const month = req.body.month || monthKey();
+  const entries = Array.isArray(req.body.entries) ? req.body.entries : [];
+  if (!entries.length) return res.status(400).json({ error: 'No entries to collect.' });
+
+  const base = `http://127.0.0.1:${process.env.PORT || 50001}`;
+  const auth = req.headers.authorization;
+  const branch = req.headers['x-branch-id'] || String(resolveBranchId(req) || '');
+  const H = { 'Content-Type': 'application/json', ...(auth ? { Authorization: auth } : {}), ...(branch ? { 'X-Branch-Id': branch } : {}) };
+  const call = async (method, path, body) => {
+    const r = await fetch(base + path, { method, headers: H, body: body ? JSON.stringify(body) : undefined });
+    let data = {}; try { data = await r.json(); } catch { /* non-json */ }
+    return { status: r.status, ok: r.ok, data };
+  };
+
+  const results = [];
+  let paid = 0; let skipped = 0; let failed = 0; let collected = 0;
+
+  for (const e of entries) {
+    const amount = Number(e.amount || 0);
+    const out = { tenancy_id: e.tenancy_id, amount };
+    try {
+      if (!e.tenancy_id || amount <= 0) { out.status = 'skipped'; out.reason = 'no amount'; skipped += 1; results.push(out); continue; }
+      const t = await Tenancy.findOne({ where: { id: e.tenancy_id, ...branchScope(req) } });
+      if (!t) { out.status = 'failed'; out.error = 'tenancy not found'; failed += 1; results.push(out); continue; }
+
+      // Locate (or raise) the month's rent invoice via the rental-ledger key (property_id, period).
+      let led = (await sequelize.query(
+        'SELECT id, invoice_id FROM rental_ledger WHERE property_id = :pid AND period_label = :m LIMIT 1',
+        { replacements: { pid: t.property_id || 0, m: month } },
+      ))[0][0];
+      let invoiceId = led && led.invoice_id;
+      if (!invoiceId) {
+        const raised = await call('POST', `/api/tenancies/${t.id}/raise-invoice`, { period_label: month });
+        if (raised.ok) {
+          invoiceId = raised.data && raised.data.data && raised.data.data.invoice && raised.data.data.invoice.id;
+        } else if (raised.status === 409) {
+          led = (await sequelize.query(
+            'SELECT id, invoice_id FROM rental_ledger WHERE property_id = :pid AND period_label = :m LIMIT 1',
+            { replacements: { pid: t.property_id || 0, m: month } },
+          ))[0][0];
+          invoiceId = led && led.invoice_id;
+        }
+        if (!invoiceId) { out.status = 'failed'; out.error = (raised.data && raised.data.error) || `could not raise invoice (${raised.status})`; failed += 1; results.push(out); continue; }
+      }
+
+      const pay = await call('POST', `/api/invoices/${invoiceId}/payments`, {
+        amount, method: e.method || 'cash', reference: e.reference || null, paid_at: e.paid_at || undefined, notes: e.notes || `Bulk rent collection ${month}`,
+      });
+      if (pay.ok) {
+        paid += 1; collected += amount;
+        out.status = 'paid'; out.invoice_id = invoiceId;
+        const p = pay.data && pay.data.data;
+        out.payment_code = (p && p.payment && p.payment.payment_code) || (p && p.payment_code) || null;
+      } else {
+        out.status = 'failed'; out.error = (pay.data && pay.data.error) || `payment failed (${pay.status})`; failed += 1;
+      }
+    } catch (err) {
+      out.status = 'failed'; out.error = err.message; failed += 1;
+    }
+    results.push(out);
+  }
+
+  res.json({ month, results, summary: { paid, skipped, failed, total_collected: collected } });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Bulk Rent Reminders (PM Phase 4). List every overdue tenancy and send staged
+ * arrears reminders in one pass. Reuses services/arrearsReminder.scheduler
+ * (overdueByTenancy + remindTenancy), so the escalation buckets, email/logging
+ * and reminder-stage advance behave exactly as the daily scheduler and the
+ * single "send reminder now" button. Reminders touch NO money.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+// GET /api/tenancies/overdue-reminders?owner_id=&min_days=
+exports.overdueReminders = asyncHandler(async (req, res) => {
+  const { overdueByTenancy } = require('../services/arrearsReminder.scheduler');
+  const scope = branchScope(req);
+  let overdue = await overdueByTenancy();
+  if (scope.branch_id) overdue = overdue.filter((r) => Number(r.branch_id) === Number(scope.branch_id));
+  const minDays = Number(req.query.min_days || 0);
+  if (minDays > 0) overdue = overdue.filter((r) => r.days_overdue >= minDays);
+
+  // Enrich with tenant + property + last reminder in as few queries as possible.
+  const tenancyIds = overdue.map((r) => r.tenancy_id);
+  const propertyIds = [...new Set(overdue.map((r) => r.property_id).filter(Boolean))];
+  const tenancies = tenancyIds.length
+    ? await Tenancy.findAll({ where: { id: { [Op.in]: tenancyIds } }, include: [propInc, ownerInc, tenantInc] })
+    : [];
+  const byId = new Map(tenancies.map((t) => [t.id, t.toJSON()]));
+
+  // Last arrears reminder per property (subject marker), one grouped query.
+  let lastByProp = {};
+  if (propertyIds.length) {
+    const [lr] = await sequelize.query(
+      `SELECT entity_id AS property_id, MAX(created_at) AS last_at
+         FROM communications
+        WHERE entity_type = 'property' AND subject LIKE '%arrears-reminder%' AND entity_id IN (:pids)
+        GROUP BY entity_id`,
+      { replacements: { pids: propertyIds } },
+    );
+    lastByProp = lr.reduce((a, r) => { a[r.property_id] = r.last_at; return a; }, {});
+  }
+
+  let ownerFilter = req.query.owner_id ? Number(req.query.owner_id) : null;
+  const rows = [];
+  for (const r of overdue) {
+    const t = byId.get(r.tenancy_id) || {};
+    if (ownerFilter && Number(t.owner_contact_id) !== ownerFilter) continue;
+    const prop = t.Property || {};
+    rows.push({
+      tenancy_id: r.tenancy_id, tenancy_code: t.tenancy_code,
+      tenant_name: t.tenant?.full_name || '—', tenant_email: t.tenant?.email || '', has_email: !!t.tenant?.email,
+      property_id: r.property_id, property_title: prop.title, property_code: prop.property_code, unit: prop.area || prop.address || '',
+      owner_contact_id: t.owner_contact_id, owner_name: t.owner?.full_name || '—',
+      amount_due: r.amount_due, days_overdue: r.days_overdue, oldest_due: r.oldest_due, invoice_count: Number(r.invoice_count || 0),
+      last_reminder_at: lastByProp[r.property_id] || null,
+    });
+  }
+  rows.sort((a, b) => b.days_overdue - a.days_overdue);
+  const summary = {
+    overdue: rows.length,
+    total_overdue: rows.reduce((s, r) => s + Number(r.amount_due || 0), 0),
+    no_email: rows.filter((r) => !r.has_email).length,
+  };
+  res.json({ data: rows, summary });
+});
+
+// POST /api/tenancies/send-reminders  { tenancy_ids?: [], force?: bool }
+exports.sendReminders = asyncHandler(async (req, res) => {
+  const { overdueByTenancy, remindTenancy } = require('../services/arrearsReminder.scheduler');
+  const scope = branchScope(req);
+  const force = req.body.force === true;
+  const wanted = Array.isArray(req.body.tenancy_ids) ? req.body.tenancy_ids.map(Number) : null;
+
+  let overdue = await overdueByTenancy();
+  if (scope.branch_id) overdue = overdue.filter((r) => Number(r.branch_id) === Number(scope.branch_id));
+  if (wanted && wanted.length) overdue = overdue.filter((r) => wanted.includes(Number(r.tenancy_id)));
+  if (!overdue.length) return res.json({ results: [], summary: { sent: 0, skipped: 0, no_email: 0, failed: 0 } });
+
+  const results = [];
+  let sent = 0; let skipped = 0; let noEmail = 0; let failed = 0;
+  for (const row of overdue) {
+    const out = { tenancy_id: row.tenancy_id, days_overdue: row.days_overdue, amount_due: row.amount_due };
+    try {
+      const r = await remindTenancy(row, { force, user_id: req.user?.id || null });
+      if (r.skipped) { out.status = 'skipped'; out.reason = 'already reminded this stage'; skipped += 1; }
+      else if (r.emailed) { out.status = 'sent'; sent += 1; }
+      else { out.status = 'logged'; out.reason = 'no email on file — logged only'; noEmail += 1; }
+    } catch (err) { out.status = 'failed'; out.error = err.message; failed += 1; }
+    results.push(out);
+  }
+  res.json({ results, summary: { sent, skipped, no_email: noEmail, failed } });
+});

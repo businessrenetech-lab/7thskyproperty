@@ -4421,3 +4421,177 @@ used "the last line starting with `import`", which landed inside a multi-line
   invoice PCCI; incident with damage fields (pre_existing/cost/responsibility); property asset + due/warranty summary;
   access declaration + entry visit + concierge summary; utility request + summary; water_tank / PWS / Removal all
   404-gated on the three PCC modules. admin build passes (npm run build). Backend :50001.
+
+### 2026-09-08 | Claude Code (Opus 4.8) | COMPLETED | Directory-loaded client/ref pickers + cascade (all lines, shared screens)
+- Removed the last free-text id boxes across the shared operations screens: no more typing a client code /
+  work-order code / project id — everything is picked from the directory and related refs prefill. Frontend only;
+  the client detail endpoint already returns each client's dossier (projects/work_orders/quotations), so no backend
+  changes. Spec: docs/superpowers/specs/2026-09-08-directory-pickers-design.md.
+- SHARED building blocks (common.jsx, inherited by every service line): ClientLookupField (already added earlier) now
+  shows a chip when a client code OR name is present (handles edit of older records); NEW useClientDossier(clientCode)
+  hook (GET /wt-clients/:code -> { projects, work_orders, quotations } as {code,label} lists); NEW RefPicker (searchable
+  single-select fed either a static options list from the dossier or an async fetchOptions; auto-selects when exactly
+  one option; disabled with a hint until its client prerequisite is chosen).
+- Cascade rule (approved): client-first — dependent pickers disabled until a client is chosen, then scoped to that
+  client and auto-selected when only one exists; changing the client clears the stale WO/project.
+- Screens converted (all shared, so WT / AC / Doc-Verification / Removal / Property Care all get it): Beneficiary,
+  Verification and Loan registers (client_code text -> ClientLookupField); Concierge visit drawer (work_order_code text
+  -> RefPicker from the client's dossier WOs); ServiceReports (client_name text -> ClientLookupField; work_order_code
+  text -> RefPicker from dossier); AssessmentForm (client_name text -> ClientLookupField; project_id text -> RefPicker
+  from dossier). The 5 Property Care/Removal drawers converted in the previous step already use ClientLookupField.
+- Left untouched (already load from the directory via working <select>): New Project (assessment/quotation selects),
+  Create Invoice (client picker + project select), Project detail (WO select), client/provider portals.
+- VERIFIED: admin build passes; dossier cascade confirmed against the running backend — client PCC-C0001 returns its
+  WO (PCCW-0001), project (PCC-P0001) and quotation (PCCQ-0001), each auto-selecting as the single option. No free-text
+  client_code/work_order_code/project_id inputs remain in the shared screens (grep-clean).
+
+### 2026-09-08 | Claude Code (Opus 4.8) | COMPLETED | Detail-dashboard IA cleanup (Client / Project detail) — shared, all lines
+- Goal: the per-record detail screens felt "confusing / not organised". Audited all three shared detail screens
+  against the tidyfactor-styler redesign quality bar. Spec: docs/superpowers/specs/2026-09-08-detail-dashboards-redesign.md.
+- FINDING: the disorganisation was concentrated in ClientDashboard (9 overlapping tabs). ProjectDetail and
+  WorkOrderDetail were already well-structured on the shared wt-scope design system, so I scoped the change to where
+  it was actually needed rather than churn working screens (tidyfactor rule: scope creep is a failure).
+- ClientDashboard: consolidated 9 tabs -> 5 (Overview · Journey · Service & Jobs · Financials · Documents) by
+  regrouping the EXISTING panels — no data/route/handler changes. Journey now also carries the activity timeline;
+  Service & Jobs merges service history + AMC/warranty + complaints; Financials merges account + billing + the
+  statement report. Counts badges updated. Fewer, non-overlapping top-level choices.
+- ProjectDetail: folded the standalone Timeline tab into Overview (recent-activity panel) — 7 tabs -> 6.
+- WorkOrderDetail: audited; already a clean cockpit (header + next-action, progress, status strip, left rail of
+  Work Order/Client/Money cards, body of Provider/Scope/Verification/Reports/Comments). Left as-is (meets the bar).
+- Deliberately did NOT build the proposed shared DashHeader/Section/KpiStrip primitives or a broad restyle: the three
+  screens already share a coherent design system (wt-kpigrid/wt-pkpis/StatCards, wt-card+wt-sec-title, wt-statusstrip,
+  wt-gates), so new primitives would be a large refactor for marginal gain. Flagged to the user as an optional deeper pass.
+- VERIFIED: admin build passes. Pure JSX/IA changes; behaviour parity (every action/field/drawer preserved). Because
+  these are shared components, the change applies to every service line.
+
+### 2026-09-08 | Claude Code (Opus 4.8) | STARTED | PM end-to-end program — Phase 0 audit (first pass)
+- Approved plan (spec docs/superpowers/specs/2026-09-08-property-management-program.md): 6 phases; start with Phase 0
+  audit; Bulk Rent Collection = global run with month+filters; walkthrough via API journey harness (minted role tokens).
+  Reference model read: EstateManager client/src/pages/bulk-payment.tsx (owner -> leases -> common-month picker ->
+  per-lease editable amount/date/receipt).
+- Phase 0 first-pass findings (backend :50001, gateway/UI :3005):
+  - All three role logins OK (admin=super_admin, buyer1=owner, tenant1=tenant).
+  - Admin PM reads OK: action-center, dashboard-metrics, properties(11), tenancies(11), tenant-applications(5),
+    rental-assessments(6), owner-statements(10), disbursements/owner-balances(5), income(9), vacancy-notices(6),
+    deposit-settlements(6), rental-reports/overview, invoices(25), work-orders(6).
+  - Landlord portal reads OK (portfolio/statements/approvals/documents/messages). Tenant portal reads OK at the REAL
+    paths /api/tenant/{me,tenancy,invoices,receipts,work-orders,documents,renewal-offer,messages}.
+  - CONFIRMED GAPS (validate Phases 1-2): no bulk rent collection endpoint; owner disbursement is one-owner only
+    (owner/:id/preview + payOwner) with no batch run.
+  - Money path: POST /api/invoices/:id/payments records a rent payment (201). The owner management-fee cascade is
+    real (PmIncomeEntry management_fee entries exist for property 6, owner folio SSPC-LF-*). NOTE to verify in a deeper
+    pass: whether every tenancy's property has an owner folio + fee config so the fee always posts (property 10 test
+    left owner held unchanged — likely no owner/fee config on that property, to confirm).
+  - Left a small AUDIT-TEST payment (৳100) on an unpaid tenancy-10 invoice during money-path verification (dev data).
+- Next: deepen the write-journey audit (application -> owner approval -> agreement sign -> tenancy -> rent -> tenant
+  portal payment -> statement -> disbursement) OR proceed to Phase 1 (Bulk Rent Collection) design. Awaiting user.
+
+### 2026-09-08 | Claude Code (Opus 4.8) | COMPLETED | PM Phase 0 audit — full write-journey + defect list
+- Built a reusable PM end-to-end harness backend/scripts/e2ePmJourney.js (manager+tenant+landlord via minted
+  tokens) and drove the whole lifecycle. Full defect list: docs/superpowers/specs/2026-09-08-pm-phase0-defects.md.
+- VERIFIED working end-to-end: enquiry -> application -> owner-approval -> approve -> convert to tenancy (SSPC-TN-)
+  -> send agreement -> BOTH signers sign (2/2) -> activate -> rent invoice -> staff payment -> management fee booked
+  as PmIncomeEntry income -> owner held balance (BDT 20,900) -> owner statements -> landlord portal -> quick renewal.
+- DEFECTS:
+  - D1 (MONEY-CRITICAL): findBestLandlordFolio(owner, null) only matches a portfolio folio (property_id null) and by
+    contact_id; every landlord folio here is per-property (owner_contact_id). So owner-level payout preview/pay returns
+    payable 0 / "no folio" despite ownerBalances showing the held balance. Owner-level disbursement is effectively
+    broken; only property-scoped works. Phase 2 bulk disbursement must aggregate per-folio; fix the helper + reconcile
+    contact_id vs owner_contact_id.
+  - D2/D3 (STRUCTURAL, planned): no bulk rent collection run; no bulk owner disbursement run.
+  - D4 (UX/DATA): seeded tenant1 has a CLOSED tenancy -> tenant portal payment-proof/work-order/vacancy return raw
+    400 "No active tenancy" (correct guard, but no seeded active-tenant login to test self-service, and the portal
+    should show a friendly empty state). The 3 "no active tenancy" errors in the run were this, not code bugs.
+- Not defects: earlier /api/tenant/home|payments 404s were wrong guessed paths (real ones work); renewals/receipts
+  are nested by design.
+- Recommend: fix D1 first (small, money-critical), then Phase 1 (Bulk Rent Collection), then Phase 2 (bulk disbursement
+  on the D1 fix). D4 empty-state + a seeded active tenant fold into Phase 3 + the seed.
+
+### 2026-09-08 | Claude Code (Opus 4.8) | COMPLETED | Fix D1 — owner payout folio lookup (money-critical)
+- services/folio.service.findBestLandlordFolio: now matches the owner by EITHER owner_contact_id OR contact_id, and
+  when no property is given falls back (portfolio folio -> else the owner's highest-balance per-property landlord folio)
+  so owner-level preview/pay find the held balance instead of returning null. Property-scoped lookup unchanged (runs
+  first). Fixes owner-level disbursement preview/pay; foundation for Phase 2 bulk disbursement.
+- VERIFIED: preview owner 1 (no property) now returns folio SSPC-LF-000006, payable 20900 (was folio null / payable 0),
+  matching owner-balances. Backend restarted on :50001 (prior instance was killed by a low-memory sweep).
+
+### 2026-09-08 | Claude Code (Opus 4.8) | COMPLETED | PM Phase 1 — Bulk Rent Collection (global run)
+- Backend (controllers/tenancy.controller.js + routes/tenancy.routes.js, declared before /:id):
+  - GET /api/tenancies/collect-rent-data?month=&owner_id=&property_id=&status=&q= — one arrears-aware row per active
+    tenancy (tenant/property/owner, monthly charge, this-month outstanding via rental_ledger(property,period), prior
+    arrears, status due/partial/paid, suggested amount) + summary {tenancies, due_count, total_due, total_arrears}.
+  - POST /api/tenancies/collect-rent { month, entries:[{tenancy_id, amount, method, paid_at, reference, notes}] } —
+    for each entry finds/raises the month's rent invoice then records the payment by calling the app's OWN
+    /api/tenancies/:id/raise-invoice + /api/invoices/:id/payments endpoints internally with the caller's auth. Money
+    flows only through the existing engine (owner-fee cascade, folio allocation, receipts) — no parallel money path.
+    Returns per-entry {paid|skipped|failed, payment_code|error} + summary {paid, skipped, failed, total_collected}.
+- Frontend: screens/BulkRentCollection.jsx (month picker + owner/status/search filters, KPI strip, select-all,
+  "amount = this month" / "amount = month + arrears" helpers, per-row editable amount/method/receipt, running selected
+  total, inline per-row result after the run). Route /property-management/collect-rent + Finance nav item
+  "Collect Rent (Bulk)" + breadcrumb. admin build passes.
+- VERIFIED via API: collect-rent-data returned 5 tenancies (3 due, total_due 53,500, arrears 107,900); collect-rent
+  recorded 2 payments in one run (SSPC-PY-000026/027), 0 failed. (Owner-fee income didn't move for those two because
+  those properties lack owner-fee config — the same data gap noted in Phase 0 D4, not a bulk-endpoint bug; the run
+  used recordPayment.)
+- NEXT: Phase 2 — Bulk Owner Disbursement run (built on the D1 fix; aggregate per landlord folio).
+
+### 2026-09-10 | Claude Code (Opus 4.8) | COMPLETED | PM Phase 2 — Bulk Owner Disbursement (per-folio run)
+- Backend (controllers/disbursement.controller.js + routes/disbursement.routes.js, declared before /owner/:ownerId):
+  - GET /api/disbursements/bulk-owner-data?owner_id=&min= — one row per landlord folio with a POSITIVE held balance
+    (folio, owner, property, payable=current_balance, bank snapshot from property_owner_profiles) + summary
+    {folios, owners, total_payable}.
+  - POST /api/disbursements/bulk-owner { entries:[{folio_id, owner_contact_id, property_id, amount?, method?, reference?, notes?}] }
+    — each entry calls the app's OWN POST /api/disbursements/owner internally with the caller's auth (defaults amount
+    to full held), so payOwner's over-balance guard + owner_payout folio credit + OwnerDisbursement record all fire
+    identically. Per-entry {paid|skipped|failed, disbursement_code|error} + summary {paid, skipped, failed, total_disbursed}.
+    No parallel money path.
+- Frontend: screens/BulkOwnerDisbursement.jsx (owner + min-amount filters, KPI strip, select-all, "amount = full
+  balance", per-row owner/property/held/editable-payout/method/reference with bank-on-file subline, inline per-row
+  result). Route /property-management/disburse-owners + Finance nav "Pay Owners (Bulk)" + breadcrumb. admin build passes.
+- VERIFIED end-to-end: seeded 5,000 rent on tenancy 12 (prop 9, owner 1) -> owner folio held 4,750 (250 = 5% mgmt fee
+  auto-deducted, confirming the owner-fee cascade works on folio-configured properties); bulk-owner-data showed the
+  folio payable 4,750; bulk payout of 1,000 -> OwnerDisbursement SSPC-OD-000007 net 1,000, folio 4,750 -> 3,750 EXACTLY;
+  over-balance entry correctly rejected ("Amount exceeds the owner's held balance (3,750)").
+- This also resolves the Phase 1 "no income" ambiguity: it was unconfigured properties, not a bug.
+- Uses the D1 findBestLandlordFolio fix (per-property folio lookup) as its foundation.
+- Program status: Phase 0 audit ✓, D1 fix ✓, Phase 1 Bulk Rent ✓, Phase 2 Bulk Owner Disbursement ✓. Remaining:
+  Phase 3 (UI/UX from audit), Phase 4 (features), Phase 5 (fix remaining), + D4 (seed active tenant + portal empty state).
+
+### 2026-09-10 | Claude Code (Opus 4.8) | COMPLETED | PM Phase 3 — UI/UX consistency pass (scoped, honest)
+- Scope chosen by user: code-level consistency pass (Phase 0 ran via API harness so produced no rendered-UI defect
+  list). Two honest findings up front:
+  - D4 "raw error toasts" is NOT a real UI defect: TenantPortal.jsx already guards no-active-tenancy with a friendly
+    EmptyState (line ~39) and never reaches the pay/WO/vacancy actions in that state. The 400s were an API-harness
+    artefact (direct endpoint calls bypass the UI guard). No change needed.
+  - The two new bulk screens use ui/kit like the existing PM screens AND /property-management/* is wrapped by
+    PmScopeLayout (.pm-scope + pm-design.css base-kit elevation), so they auto-inherit the PM look — already consistent.
+- Real gap fixed (workflow discoverability): the bulk runs were only reachable from the nav. Added contextual entry
+  points where operators actually work: PropertyMgmtDashboard header now has "Collect rent" (-> /collect-rent) and
+  "Pay owners" (-> /disburse-owners) buttons alongside Bulk invoices/Disbursements/Receive payment; the
+  Disbursements & Payouts screen header gained a "Bulk pay owners" action.
+- admin build passes. No backend/data changes.
+- Program status: Phase 0 ✓ · D1 ✓ · Phase 1 (Bulk Rent) ✓ · Phase 2 (Bulk Owner Disbursement) ✓ · Phase 3 (UI
+  consistency) ✓. Remaining optional: Phase 4 features, Phase 5 remaining fixes, D4b seed active tenant. A deeper
+  rendered-UI pass needs browser access with the user logged into each role (I cannot type passwords).
+
+### 2026-09-10 | Claude Code (Opus 4.8) | COMPLETED | PM Phase 4 — Bulk Rent Reminders
+- Completes the rental arc: remind (P4) -> collect (P1) -> disburse (P2). Reminders touch NO money.
+- Backend (controllers/tenancy.controller.js + routes/tenancy.routes.js, before /:id):
+  - GET /api/tenancies/overdue-reminders?owner_id=&min_days= — every overdue tenancy from the existing
+    arrearsReminder.scheduler.overdueByTenancy(), branch-filtered, enriched with tenant/email/property/days-overdue/
+    amount/last-reminder-at + summary {overdue, total_overdue, no_email}.
+  - POST /api/tenancies/send-reminders { tenancy_ids?, force? } — reuses arrearsReminder.remindTenancy (staged 3/7/15/
+    30/60-day buckets, emails or logs, advances reminder stage on any open ArrearsAction). Per-tenancy
+    {sent|logged|skipped|failed} + summary. force bypasses the per-bucket idempotency (re-send).
+- Frontend: screens/RentReminders.jsx at /property-management/rent-reminders (Finance nav "Rent Reminders (Bulk)"),
+  same design as the other bulk screens: owner + min-days filters, KPI strip (overdue/total/no-email/selected),
+  select-all, per-row tenant/property/days(toned)/amount/last-reminder, "Force re-send" toggle, "Send N reminders"
+  with inline per-row results. Added a "Remind first" cross-link on the Bulk Rent Collection header.
+- VERIFIED via API: overdue-reminders listed 5 tenancies (total 331,900, 0 no-email); forced send to 2 -> both sent,
+  0 failed; last_reminder_at advanced to today. admin build passes.
+- KNOWN pre-existing data quirk (not this feature): one tenancy shows null days_overdue because its oldest overdue
+  invoice has a MySQL zero/blank due_date -> the scheduler service's days calc yields null. Reminder still sends. Worth
+  a later data cleanup / a guard in overdueByTenancy; out of Phase 4 scope.
+- Program status: Phase 0 ✓ · D1 ✓ · P1 Bulk Rent ✓ · P2 Bulk Owner Disbursement ✓ · P3 UI consistency ✓ · P4 Bulk
+  Rent Reminders ✓. Remaining optional: browser-based deep UI pass (needs Chrome extension + user logins), Phase 5
+  remaining fixes, D4b seed active tenant.

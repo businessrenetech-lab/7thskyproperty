@@ -78,9 +78,30 @@ async function findTenantFolioForTenancy(tenancyId, opts = {}) {
 
 async function findBestLandlordFolio(ownerContactId, propertyId, opts = {}) {
   if (!ownerContactId) return null;
-  const byProperty = propertyId ? await Folio.findOne({ where: { folio_type: 'landlord', contact_id: ownerContactId, property_id: propertyId }, transaction: opts.transaction }) : null;
-  if (byProperty) return byProperty;
-  return Folio.findOne({ where: { folio_type: 'landlord', contact_id: ownerContactId, property_id: null }, transaction: opts.transaction });
+  // Match the owner by EITHER column: ownerBalances lists folios by owner_contact_id,
+  // and older rows may only carry contact_id — query both so preview/pay and the
+  // balances list can never disagree about which folio an owner owns.
+  const ownerMatch = { [Op.or]: [{ owner_contact_id: ownerContactId }, { contact_id: ownerContactId }] };
+
+  // 1) Exact property folio when a property is given.
+  if (propertyId) {
+    const byProperty = await Folio.findOne({ where: { folio_type: 'landlord', property_id: propertyId, ...ownerMatch }, transaction: opts.transaction });
+    if (byProperty) return byProperty;
+  }
+  // 2) A portfolio-level folio (property_id NULL), if one exists.
+  const portfolio = await Folio.findOne({ where: { folio_type: 'landlord', property_id: null, ...ownerMatch }, transaction: opts.transaction });
+  if (portfolio) return portfolio;
+  // 3) Fallback: this system uses one landlord folio PER PROPERTY, so an owner with a
+  //    held balance has it on a per-property folio. With no property given, return the
+  //    owner's landlord folio carrying the largest balance so owner-level preview/pay
+  //    finds real money instead of null. (When an owner's balance is genuinely split
+  //    across several property folios, pay each folio — the bulk disbursement run does
+  //    exactly that, per-folio; this single-folio pick is the best-effort owner-level view.)
+  return Folio.findOne({
+    where: { folio_type: 'landlord', ...ownerMatch },
+    order: [['current_balance', 'DESC']],
+    transaction: opts.transaction,
+  });
 }
 
 function bucketField(bucket) {

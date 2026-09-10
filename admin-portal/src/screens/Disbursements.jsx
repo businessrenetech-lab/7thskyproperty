@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Wallet, TrendingUp, Send, RefreshCw, Building2, ArrowDownToLine, Banknote } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Wallet, TrendingUp, Send, RefreshCw, Building2, ArrowDownToLine, Banknote, Layers } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { PageHead, DataTable, StatusBadge, Spinner, Badge, Button, Field, Input, Select, Textarea, Drawer, KV } from '../ui/kit';
@@ -15,9 +16,11 @@ const TABS = [
 
 export default function Disbursements() {
   const [tab, setTab] = useState('owner');
+  const nav = useNavigate();
   return (
     <>
-      <PageHead title="Disbursements & Payouts" desc="Pay owners their net held balance, track supplier payouts and tenant refunds, and see Seventh Sky's earned income." />
+      <PageHead title="Disbursements & Payouts" desc="Pay owners their net held balance, track supplier payouts and tenant refunds, and see Seventh Sky's earned income."
+        actions={<Button icon={Layers} onClick={() => nav('/property-management/disburse-owners')}>Bulk pay owners</Button>} />
       <div className="tabs">
         {TABS.map((t) => { const Icon = t.icon; return <button key={t.key} className={`tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}><Icon size={13} style={{ marginRight: 6, verticalAlign: 'middle' }} />{t.label}</button>; })}
       </div>

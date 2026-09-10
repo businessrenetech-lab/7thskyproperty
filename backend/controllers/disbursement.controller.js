@@ -319,3 +319,91 @@ exports.listIncome = asyncHandler(async (req, res) => {
   const total_income = Object.values(by_category).reduce((a, b) => a + b, 0);
   res.json({ data: rows, pagination: { page, limit, total: count, pages: Math.ceil(count / limit) }, by_category, total_income });
 });
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Bulk Owner Disbursement (PM Phase 2). Aggregate held balances PER landlord
+ * folio (the same way ownerBalances lists them), let the operator select which
+ * to pay, then run each through the existing payOwner path (called internally
+ * with the caller's auth). Every payout records its OwnerDisbursement +
+ * owner_payout folio credit + before/after balance exactly as a single payout
+ * does — no parallel money path.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+// GET /api/disbursements/bulk-owner-data?owner_id=&min=
+exports.bulkOwnerData = asyncHandler(async (req, res) => {
+  const scope = branchScope(req);
+  const bw = scope.branch_id ? ' AND f.branch_id = :bid' : '';
+  const min = num(req.query.min);
+  const [rows] = await sequelize.query(
+    `SELECT f.id AS folio_id, f.folio_code, f.property_id, f.owner_contact_id, f.current_balance,
+            c.full_name AS owner_name, c.primary_phone,
+            p.title AS property_title, p.property_code,
+            po.bank_name, po.bank_account_name, po.bank_account_number, po.preferred_payment,
+            po.bkash_number, po.nagad_number
+       FROM folios f
+       LEFT JOIN contacts c ON c.id = f.owner_contact_id
+       LEFT JOIN properties p ON p.id = f.property_id
+       LEFT JOIN property_owner_profiles po ON po.property_id = f.property_id
+      WHERE f.folio_type = 'landlord' AND f.current_balance > 0${bw}
+      ORDER BY f.current_balance DESC`,
+    { replacements: { bid: scope.branch_id } },
+  );
+  let data = rows.map((r) => ({
+    folio_id: r.folio_id, folio_code: r.folio_code, property_id: r.property_id, owner_contact_id: r.owner_contact_id,
+    owner_name: r.owner_name, primary_phone: r.primary_phone, property_title: r.property_title, property_code: r.property_code,
+    payable: num(r.current_balance),
+    bank: (r.bank_name || r.bank_account_number || r.bkash_number || r.nagad_number) ? {
+      bank_name: r.bank_name, bank_account_name: r.bank_account_name, bank_account_number: r.bank_account_number,
+      preferred_payment: r.preferred_payment, bkash_number: r.bkash_number, nagad_number: r.nagad_number,
+    } : null,
+  }));
+  if (req.query.owner_id) data = data.filter((r) => Number(r.owner_contact_id) === Number(req.query.owner_id));
+  if (min > 0) data = data.filter((r) => r.payable >= min);
+  const owners = new Set(data.map((r) => r.owner_contact_id));
+  res.json({ data, summary: { folios: data.length, owners: owners.size, total_payable: data.reduce((s, r) => s + r.payable, 0) } });
+});
+
+// POST /api/disbursements/bulk-owner  { entries: [{ folio_id, owner_contact_id, property_id, amount?, method?, reference?, notes? }] }
+exports.bulkPayOwners = asyncHandler(async (req, res) => {
+  const entries = Array.isArray(req.body.entries) ? req.body.entries : [];
+  if (!entries.length) return res.status(400).json({ error: 'No owners to pay.' });
+
+  const base = `http://127.0.0.1:${process.env.PORT || 50001}`;
+  const auth = req.headers.authorization;
+  const branch = req.headers['x-branch-id'] || String(resolveBranchId(req) || '');
+  const H = { 'Content-Type': 'application/json', ...(auth ? { Authorization: auth } : {}), ...(branch ? { 'X-Branch-Id': branch } : {}) };
+  const call = async (path, body) => {
+    const r = await fetch(base + path, { method: 'POST', headers: H, body: JSON.stringify(body) });
+    let data = {}; try { data = await r.json(); } catch { /* non-json */ }
+    return { status: r.status, ok: r.ok, data };
+  };
+
+  const results = [];
+  let paid = 0; let skipped = 0; let failed = 0; let disbursed = 0;
+
+  for (const e of entries) {
+    const amount = e.amount != null ? num(e.amount) : null;
+    const out = { folio_id: e.folio_id, owner_contact_id: e.owner_contact_id, amount };
+    try {
+      if (!e.owner_contact_id) { out.status = 'skipped'; out.reason = 'no owner'; skipped += 1; results.push(out); continue; }
+      if (amount != null && amount <= 0) { out.status = 'skipped'; out.reason = 'zero amount'; skipped += 1; results.push(out); continue; }
+      // payOwner enforces the over-balance guard, posts owner_payout and records the OwnerDisbursement.
+      const pay = await call('/api/disbursements/owner', {
+        owner_contact_id: e.owner_contact_id, property_id: e.property_id || null,
+        ...(amount != null ? { amount } : {}), method: e.method || null, reference: e.reference || null, notes: e.notes || 'Bulk owner disbursement',
+      });
+      if (pay.ok) {
+        const d = pay.data && pay.data.data;
+        paid += 1; disbursed += num(d && d.net_amount) || (amount || 0);
+        out.status = 'paid'; out.disbursement_code = (d && d.disbursement_code) || null; out.net_amount = d && d.net_amount;
+      } else {
+        out.status = 'failed'; out.error = (pay.data && pay.data.error) || `payout failed (${pay.status})`; failed += 1;
+      }
+    } catch (err) {
+      out.status = 'failed'; out.error = err.message; failed += 1;
+    }
+    results.push(out);
+  }
+
+  res.json({ results, summary: { paid, skipped, failed, total_disbursed: disbursed } });
+});

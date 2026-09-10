@@ -40,7 +40,10 @@ import { useSvcNav,
  * history, documents, AMC, complaints and the closure checklist.
  */
 
-const TABS = ['Overview', 'Journey', 'Service History', 'Account', 'Transactions', 'AMC & Warranty', 'Complaints', 'Documents', 'Timeline'];
+// Five clear groups instead of nine overlapping tabs: Overview (profile + closure),
+// Journey (SOP gates + activity timeline), Service & Jobs (requests/assessments/WOs +
+// AMC/warranty + complaints), Financials (account + billing + statement), Documents.
+const TABS = ['Overview', 'Journey', 'Service & Jobs', 'Financials', 'Documents'];
 const initials = (n) => String(n || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 const pct = (v) => (v == null ? '—' : `${v}%`);
 
@@ -318,9 +321,8 @@ export default function ClientDashboard() {
   };
 
   const counts = {
-    'Service History': d.work_orders.length || undefined,
-    Complaints: d.complaints.filter((x) => !['resolved', 'closed'].includes(String(x.status || '').toLowerCase())).length || undefined,
-    Documents: (d.quotations.length + d.reports.length) || undefined,
+    'Service & Jobs': d.work_orders.length || undefined,
+    Documents: ((d.agreements || []).length + d.reports.length) || undefined,
   };
 
   return (
@@ -485,8 +487,8 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      {/* ═══ SERVICE HISTORY ═══ */}
-      {tab === 'Service History' && (
+      {/* ═══ SERVICE & JOBS — service history ═══ */}
+      {tab === 'Service & Jobs' && (
         <>
           {[['Service Requests', d.requests, [['code', 'ID'], ['specific_service', 'Service'], ['request_date', 'Requested'], ['status', 'Status']], '/water-tank/service-requests'],
             ['Site Assessments', d.assessments, [['code', 'ID'], ['provider', 'Provider'], ['assessed_date', 'Date'], ['status', 'Status']], '/water-tank/site-assessments'],
@@ -519,12 +521,12 @@ export default function ClientDashboard() {
 
       {/* Their own way in: seeing their quotations, invoices and receipts, and
           accepting a quotation themselves rather than telling someone to. */}
-      {tab === 'Account' && c?.id && (
+      {tab === 'Financials' && c?.id && (
         <PortalLinkCard partyType="client" partyId={c.id} partyName={c.name} />
       )}
 
-      {/* ═══ ACCOUNT ═══ */}
-      {tab === 'Account' && (
+      {/* ═══ FINANCIALS — account summary + billing ═══ */}
+      {tab === 'Financials' && (
         <>
           <div className="wt-kpigrid">
             <Stat icon={Wallet} label="Lifetime Value" value={bdt(a.lifetime_value)} sub="total invoiced" />
@@ -567,7 +569,7 @@ export default function ClientDashboard() {
           that produces the register-wide one — filtered to them. A dashboard
           total that disagreed with the report the client is emailed would be
           worse than no dashboard at all, and two implementations guarantee it. */}
-      {tab === 'Transactions' && (
+      {tab === 'Financials' && (
         <>
           <ReportView
             kind="client-payments"
@@ -587,8 +589,8 @@ export default function ClientDashboard() {
         </>
       )}
 
-      {/* ═══ AMC & WARRANTY ═══ */}
-      {tab === 'AMC & Warranty' && (
+      {/* ═══ SERVICE & JOBS — AMC & warranty ═══ */}
+      {tab === 'Service & Jobs' && (
         <div className="wt-detail-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
           <div className="wt-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="wt-panel-head"><div className="wt-sec-title">AMC Management (Sec. 10)</div>
@@ -628,8 +630,8 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      {/* ═══ COMPLAINTS ═══ */}
-      {tab === 'Complaints' && (
+      {/* ═══ SERVICE & JOBS — complaints ═══ */}
+      {tab === 'Service & Jobs' && (
         <>
           <div className="wt-note">Sec. 11 — every complaint must be logged in the CRM, acknowledged within <strong>1 business day</strong>, investigated and resolved promptly.</div>
           <div className="wt-card wt-tblcard">
@@ -737,9 +739,10 @@ export default function ClientDashboard() {
         </>
       )}
 
-      {/* ═══ TIMELINE ═══ */}
-      {tab === 'Timeline' && (
+      {/* ═══ JOURNEY — activity timeline (below the phase gates) ═══ */}
+      {tab === 'Journey' && (
         <div className="wt-card" style={{ padding: 22 }}>
+          <div className="wt-sec-title" style={{ marginBottom: 12 }}>Activity timeline</div>
           {(d.events.length || d.comms.length) ? (
             <div className="wt-timeline">
               {[...d.events.map((e) => ({ t: e.title, dd: e.detail, at: e.occurred_at, who: e.actor, kind: e.event_type })),

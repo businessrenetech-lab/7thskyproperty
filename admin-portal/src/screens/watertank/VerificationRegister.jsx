@@ -3,7 +3,7 @@ import { Search, RefreshCw, Plus, ShieldCheck, Pencil, Trash2, AlertTriangle } f
 import api from '../../services/api';
 import {
   WtHead, Pill, Loading, EmptyState, WtDrawer,
-  dateFmt, toast, errText, svcLabel,
+  dateFmt, toast, errText, svcLabel, ClientLookupField,
 } from './common';
 
 /*
@@ -125,7 +125,7 @@ const Field = ({ label, children }) => (
 function VerifyDrawer({ row, ref_, onClose, onSaved }) {
   const isNew = !row.id;
   const [f, setF] = useState({
-    client_code: row.client_code || '', check_type: row.check_type || (ref_.check_types || [])[0] || 'Deed Verification',
+    client_code: row.client_code || '', client_name: row.client_name || '', check_type: row.check_type || (ref_.check_types || [])[0] || 'Deed Verification',
     authority: row.authority || '', reference_no: row.reference_no || '', status: row.status || 'Pending',
     risk_level: row.risk_level || 'Clear', finding: row.finding || '', recommended_action: row.recommended_action || '', notes: row.notes || '',
   });
@@ -149,7 +149,7 @@ function VerifyDrawer({ row, ref_, onClose, onSaved }) {
       footer={<button className="wt-btn" disabled={busy} onClick={save}>{busy ? 'Saving…' : (isNew ? 'Create' : 'Save changes')}</button>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {isNew && (
-          <Field label="Client code *"><input className="wt-input" value={f.client_code} onChange={(e) => set('client_code', e.target.value)} placeholder="e.g. PDV-C0001" /></Field>
+          <Field label="Client *"><ClientLookupField value={f.client_code} picked={f.client_name} autoFocus onPick={(c) => setF((s) => ({ ...s, client_code: c ? c.code : '', client_name: c ? c.name : '' }))} /></Field>
         )}
         <Field label="Check type">
           <select className="wt-input" value={f.check_type} onChange={(e) => set('check_type', e.target.value)}>

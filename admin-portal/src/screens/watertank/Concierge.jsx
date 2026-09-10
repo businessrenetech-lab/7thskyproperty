@@ -3,7 +3,7 @@ import { RefreshCw, Plus, Pencil, Trash2, Search, KeyRound, DoorOpen, Check, X }
 import api from '../../services/api';
 import {
   WtHead, Pill, Loading, EmptyState, WtDrawer,
-  toast, errText, svcLabel,
+  toast, errText, svcLabel, ClientLookupField, RefPicker, useClientDossier,
 } from './common';
 
 /*
@@ -149,7 +149,7 @@ const Chk = ({ label, checked, onChange }) => (
 function DeclarationDrawer({ row, ref_, onClose, onSaved }) {
   const isNew = !row.id;
   const [f, setF] = useState({
-    client_code: row.client_code || '', key_access_method: row.key_access_method || '', alarm_managed: !!row.alarm_managed,
+    client_code: row.client_code || '', client_name: row.client_name || '', key_access_method: row.key_access_method || '', alarm_managed: !!row.alarm_managed,
     alarm_notes: row.alarm_notes || '', pets: row.pets || '', vulnerable_persons: row.vulnerable_persons || '',
     known_hazards: row.known_hazards || '', restricted_areas: row.restricted_areas || '',
     valuables_secured: !!row.valuables_secured, client_authorisation: !!row.client_authorisation,
@@ -170,7 +170,7 @@ function DeclarationDrawer({ row, ref_, onClose, onSaved }) {
     <WtDrawer title={isNew ? 'New access declaration' : `Declaration ${row.code}`} onClose={onClose}
       footer={<button className="wt-btn" disabled={busy} onClick={save}>{busy ? 'Saving…' : (isNew ? 'Add' : 'Save changes')}</button>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {isNew && <Field label="Client code *"><input className="wt-input" value={f.client_code} onChange={(e) => set('client_code', e.target.value)} placeholder="e.g. PCC-C0001" /></Field>}
+        {isNew && <Field label="Client *"><ClientLookupField value={f.client_code} picked={f.client_name} autoFocus onPick={(c) => setF((s) => ({ ...s, client_code: c ? c.code : '', client_name: c ? c.name : '' }))} /></Field>}
         <div style={{ display: 'flex', gap: 10 }}>
           <Field label="Access method"><select className="wt-input" value={f.key_access_method} onChange={(e) => set('key_access_method', e.target.value)}><option value="">—</option>{(ref_.access_methods || []).map((m) => <option key={m} value={m}>{m}</option>)}</select></Field>
           <Field label="Declaration date"><input className="wt-input" type="date" value={f.declaration_date || ''} onChange={(e) => set('declaration_date', e.target.value)} /></Field>
@@ -196,7 +196,7 @@ function DeclarationDrawer({ row, ref_, onClose, onSaved }) {
 function VisitDrawer({ row, ref_, onClose, onSaved }) {
   const isNew = !row.id;
   const [f, setF] = useState({
-    client_code: row.client_code || '', work_order_code: row.work_order_code || '', visit_type: row.visit_type || 'Entry',
+    client_code: row.client_code || '', client_name: row.client_name || '', work_order_code: row.work_order_code || '', visit_type: row.visit_type || 'Entry',
     visit_date: row.visit_date || '', access_method: row.access_method || '', condition: row.condition || '',
     meter_readings: row.meter_readings || '', security_check: !!row.security_check, doors_locked: !!row.doors_locked,
     alarm_activated: !!row.alarm_activated, keys_returned: !!row.keys_returned, issues: row.issues || '',
@@ -204,8 +204,9 @@ function VisitDrawer({ row, ref_, onClose, onSaved }) {
   });
   const [busy, setBusy] = useState(false);
   const set = (k, v) => setF((c) => ({ ...c, [k]: v }));
+  const dossier = useClientDossier(f.client_code);
   const save = async () => {
-    if (isNew && !f.client_code.trim()) { toast.err('Client code is required'); return; }
+    if (isNew && !f.client_code.trim()) { toast.err('Please select a client'); return; }
     setBusy(true);
     try {
       if (isNew) await api.post('/wt-concierge/visits', f); else await api.patch(`/wt-concierge/visits/${row.id}`, f);
@@ -217,13 +218,13 @@ function VisitDrawer({ row, ref_, onClose, onSaved }) {
     <WtDrawer title={isNew ? 'New property visit' : `Visit ${row.code}`} onClose={onClose}
       footer={<button className="wt-btn" disabled={busy} onClick={save}>{busy ? 'Saving…' : (isNew ? 'Add' : 'Save changes')}</button>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {isNew && <Field label="Client code *"><input className="wt-input" value={f.client_code} onChange={(e) => set('client_code', e.target.value)} placeholder="e.g. PCC-C0001" /></Field>}
+        {isNew && <Field label="Client *"><ClientLookupField value={f.client_code} picked={f.client_name} autoFocus onPick={(c) => setF((s) => ({ ...s, client_code: c ? c.code : '', client_name: c ? c.name : '', work_order_code: '' }))} /></Field>}
         <div style={{ display: 'flex', gap: 10 }}>
           <Field label="Visit type"><select className="wt-input" value={f.visit_type} onChange={(e) => set('visit_type', e.target.value)}>{(ref_.visit_types || ['Entry', 'Exit']).map((t) => <option key={t} value={t}>{t}</option>)}</select></Field>
           <Field label="Visit date"><input className="wt-input" type="date" value={f.visit_date || ''} onChange={(e) => set('visit_date', e.target.value)} /></Field>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <Field label="Work order"><input className="wt-input" value={f.work_order_code} onChange={(e) => set('work_order_code', e.target.value)} placeholder="e.g. PCCW-0001" /></Field>
+          <Field label="Work order"><RefPicker value={f.work_order_code} options={dossier.work_orders} disabled={!f.client_code} disabledHint="Pick a client first" placeholder="Search this client’s work orders…" onPick={(o) => set('work_order_code', o ? o.code : '')} /></Field>
           <Field label="Access method"><input className="wt-input" value={f.access_method} onChange={(e) => set('access_method', e.target.value)} /></Field>
         </div>
         <Field label="Condition on entry / area secured on exit"><input className="wt-input" value={f.condition} onChange={(e) => set('condition', e.target.value)} /></Field>

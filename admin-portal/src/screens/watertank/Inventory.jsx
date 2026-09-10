@@ -3,7 +3,7 @@ import { RefreshCw, Plus, Pencil, Trash2, Search, Boxes, AlertTriangle } from 'l
 import api from '../../services/api';
 import {
   WtHead, Pill, Loading, EmptyState, WtDrawer,
-  toast, errText, svcLabel,
+  toast, errText, svcLabel, ClientLookupField,
 } from './common';
 
 /*
@@ -120,7 +120,7 @@ const Field = ({ label, children }) => (
 function ItemDrawer({ row, ref_, onClose, onSaved }) {
   const isNew = !row.id;
   const [f, setF] = useState({
-    client_code: row.client_code || '', room: row.room || '', item: row.item || '', qty: row.qty || 1,
+    client_code: row.client_code || '', client_name: row.client_name || '', room: row.room || '', item: row.item || '', qty: row.qty || 1,
     fragile: !!row.fragile, high_value: !!row.high_value, condition_note: row.condition_note || '',
     status: row.status || 'Listed', work_order_code: row.work_order_code || '',
   });
@@ -142,7 +142,7 @@ function ItemDrawer({ row, ref_, onClose, onSaved }) {
     <WtDrawer title={isNew ? 'New inventory item' : `Item ${row.id}`} onClose={onClose}
       footer={<button className="wt-btn" disabled={busy} onClick={save}>{busy ? 'Saving…' : (isNew ? 'Add' : 'Save changes')}</button>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {isNew && <Field label="Client code *"><input className="wt-input" value={f.client_code} onChange={(e) => set('client_code', e.target.value)} placeholder="e.g. RRS-C0001" /></Field>}
+        {isNew && <Field label="Client *"><ClientLookupField value={f.client_code} picked={f.client_name} autoFocus onPick={(c) => setF((s) => ({ ...s, client_code: c ? c.code : '', client_name: c ? c.name : '' }))} /></Field>}
         <div style={{ display: 'flex', gap: 10 }}>
           <Field label="Room"><select className="wt-input" value={f.room} onChange={(e) => set('room', e.target.value)}><option value="">—</option>{(ref_.rooms || []).map((r) => <option key={r} value={r}>{r}</option>)}</select></Field>
           <Field label="Qty"><input className="wt-input" type="number" min="1" value={f.qty} onChange={(e) => set('qty', e.target.value)} /></Field>

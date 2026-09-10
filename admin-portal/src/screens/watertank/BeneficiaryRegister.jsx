@@ -3,7 +3,7 @@ import { Search, RefreshCw, Plus, Users, Pencil, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 import {
   WtHead, Pill, Loading, EmptyState, WtDrawer,
-  toast, errText, svcLabel,
+  toast, errText, svcLabel, ClientLookupField,
 } from './common';
 
 /*
@@ -138,7 +138,7 @@ const Field = ({ label, children }) => (
 function BenDrawer({ row, ref_, onClose, onSaved }) {
   const isNew = !row.id;
   const [f, setF] = useState({
-    client_code: row.client_code || '', beneficiary_name: row.beneficiary_name || '', relationship: row.relationship || '',
+    client_code: row.client_code || '', client_name: row.client_name || '', beneficiary_name: row.beneficiary_name || '', relationship: row.relationship || '',
     nid_passport: row.nid_passport || '', contact: row.contact || '', share_percent: row.share_percent || '',
     entitlement: row.entitlement || '', status: row.status || 'Identified', notes: row.notes || '',
   });
@@ -162,7 +162,7 @@ function BenDrawer({ row, ref_, onClose, onSaved }) {
     <WtDrawer title={isNew ? 'New beneficiary' : `Beneficiary ${row.code}`} onClose={onClose}
       footer={<button className="wt-btn" disabled={busy} onClick={save}>{busy ? 'Saving…' : (isNew ? 'Add beneficiary' : 'Save changes')}</button>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {isNew && <Field label="Client code *"><input className="wt-input" value={f.client_code} onChange={(e) => set('client_code', e.target.value)} placeholder="e.g. PWS-C0001" /></Field>}
+        {isNew && <Field label="Client *"><ClientLookupField value={f.client_code} picked={f.client_name} autoFocus onPick={(c) => setF((s) => ({ ...s, client_code: c ? c.code : '', client_name: c ? c.name : '' }))} /></Field>}
         <Field label="Beneficiary name *"><input className="wt-input" value={f.beneficiary_name} onChange={(e) => set('beneficiary_name', e.target.value)} /></Field>
         <div style={{ display: 'flex', gap: 10 }}>
           <Field label="Relationship">

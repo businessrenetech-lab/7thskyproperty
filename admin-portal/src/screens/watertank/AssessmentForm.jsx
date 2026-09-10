@@ -5,7 +5,7 @@ import {
   Droplets, Wrench, Camera, PenLine, Save, Loader2, AlertTriangle,
 } from 'lucide-react';
 import api from '../../services/api';
-import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, parseJson, svcEquip, svcAssess } from './common';
+import { useSvcNav, WtHead, DatePicker, Loading, EmptyState, bdt, toast, errText, parseJson, svcEquip, svcAssess, ClientLookupField, RefPicker, useClientDossier } from './common';
 import WtPhotoGrid from './PhotoUpload';
 
 /*
@@ -45,7 +45,7 @@ export default function AssessmentForm() {
   const [newCheck, setNewCheck] = useState('');
 
   const [f, setF] = useState({
-    client_name: '', project_id: '', provider: '', assessor: '',
+    client_name: '', client_code: '', project_id: '', provider: '', assessor: '',
     assessed_date: new Date().toISOString().slice(0, 10), status: 'Scheduled',
     attendees: '', weather: '', duration_minutes: '',
     tank_type: '', tank_capacity: '', tank_material: '', tank_location: '',
@@ -60,6 +60,7 @@ export default function AssessmentForm() {
     client_present: false, signed_off_by: '', signed_off_date: '',
   });
   const set = (k, v) => { setF((s) => ({ ...s, [k]: v })); setDirty(true); };
+  const dossier = useClientDossier(f.client_code);
 
   useEffect(() => { api.get('/wt-ops/assessment-reference').then((r) => setRef(r.data)).catch(() => setRef(null)); }, []);
 
@@ -70,7 +71,7 @@ export default function AssessmentForm() {
       .then(({ data }) => {
         setRec(data);
         setF({
-          client_name: data.client_name || '', project_id: data.project_id || '',
+          client_name: data.client_name || '', client_code: data.client_code || '', project_id: data.project_id || '',
           provider: data.provider || '', assessor: data.assessor || '',
           assessed_date: data.assessed_date || '', status: data.status || 'Scheduled',
           attendees: data.attendees || '', weather: data.weather || '',
@@ -243,9 +244,12 @@ export default function AssessmentForm() {
                 <p>Who attended, when, and under what conditions. This is the header of the assessment report.</p></div>
               <div className="wt-grid2">
                 <div className="wt-field"><label>Client *</label>
-                  <input className="wt-input" autoFocus value={f.client_name} onChange={(e) => set('client_name', e.target.value)} /></div>
-                <div className="wt-field"><label>Project ID</label>
-                  <input className="wt-input" value={f.project_id} onChange={(e) => set('project_id', e.target.value)} /></div>
+                  <ClientLookupField value={f.client_code} picked={f.client_name} autoFocus
+                    onPick={(c) => { setF((s) => ({ ...s, client_code: c ? c.code : '', client_name: c ? c.name : '', project_id: '' })); setDirty(true); }} /></div>
+                <div className="wt-field"><label>Project</label>
+                  <RefPicker value={f.project_id} options={dossier.projects} disabled={!f.client_code}
+                    disabledHint="Pick a client first" placeholder="Search this client’s projects…"
+                    onPick={(o) => set('project_id', o ? o.code : '')} /></div>
               </div>
               <div className="wt-grid3">
                 <div className="wt-field"><label>Provider</label>

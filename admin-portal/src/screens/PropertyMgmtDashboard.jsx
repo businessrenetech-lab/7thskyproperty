@@ -390,7 +390,8 @@ export default function PropertyMgmtDashboard() {
         </div>
         <div className="pm-head-actions">
           <button className="pm-btn" onClick={() => setShowBulkDrawer(true)}><KeyRound size={15} /> Bulk invoices</button>
-          <button className="pm-btn" onClick={() => nav('/property-management/disbursements')}><CreditCard size={15} /> Disbursements</button>
+          <button className="pm-btn" onClick={() => nav('/property-management/collect-rent')}><Wallet size={15} /> Collect rent</button>
+          <button className="pm-btn" onClick={() => nav('/property-management/disburse-owners')}><CreditCard size={15} /> Pay owners</button>
           <button className="pm-btn primary" onClick={() => { setShowPaymentDrawer(true); setSelectedTenancy(null); }}><Wallet size={15} /> Receive payment</button>
         </div>
       </div>

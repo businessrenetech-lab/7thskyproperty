@@ -132,6 +132,9 @@ import AccountCategories from './screens/AccountCategories';
 import GlobalInvoicing from './screens/GlobalInvoicing';
 import LandlordBills from './screens/LandlordBills';
 import RentalReceipts from './screens/RentalReceipts';
+import BulkRentCollection from './screens/BulkRentCollection';
+import BulkOwnerDisbursement from './screens/BulkOwnerDisbursement';
+import RentReminders from './screens/RentReminders';
 import Portal from './screens/Portal';
 import SignPage from './screens/SignPage';
 import IntakePage from './screens/IntakePage';
@@ -874,6 +877,9 @@ export default function App() {
               <Route path="/property-management/workflows" element={<Projects />} />
               <Route path="/property-management/invoices" element={<Invoices />} />
               <Route path="/property-management/receipts" element={<RentalReceipts />} />
+              <Route path="/property-management/collect-rent" element={<BulkRentCollection />} />
+              <Route path="/property-management/disburse-owners" element={<BulkOwnerDisbursement />} />
+              <Route path="/property-management/rent-reminders" element={<RentReminders />} />
               <Route path="/property-management/folios" element={<Folios />} />
               <Route path="/property-management/landlord-bills" element={<LandlordBills />} />
               <Route path="/property-management/agreements" element={<RprmAgreements />} />

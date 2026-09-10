@@ -3,7 +3,7 @@ import { RefreshCw, Plus, Pencil, Trash2, Search, Plug, Check, X } from 'lucide-
 import api from '../../services/api';
 import {
   WtHead, Pill, Loading, EmptyState, WtDrawer,
-  toast, errText, svcLabel, money,
+  toast, errText, svcLabel, money, ClientLookupField,
 } from './common';
 
 /*
@@ -115,7 +115,7 @@ const Field = ({ label, children }) => (
 function UtilityDrawer({ row, ref_, onClose, onSaved }) {
   const isNew = !row.id;
   const [f, setF] = useState({
-    client_code: row.client_code || '', utility_type: row.utility_type || '', service_request: row.service_request || '',
+    client_code: row.client_code || '', client_name: row.client_name || '', utility_type: row.utility_type || '', service_request: row.service_request || '',
     provider: row.provider || '', account_ref: row.account_ref || '', request_date: row.request_date || '',
     required_date: row.required_date || '', amount: row.amount || '', client_approval: !!row.client_approval,
     completion_date: row.completion_date || '', status: row.status || 'Requested', notes: row.notes || '',
@@ -136,7 +136,7 @@ function UtilityDrawer({ row, ref_, onClose, onSaved }) {
     <WtDrawer title={isNew ? 'New utility request' : `Request ${row.code}`} onClose={onClose}
       footer={<button className="wt-btn" disabled={busy} onClick={save}>{busy ? 'Saving…' : (isNew ? 'Add' : 'Save changes')}</button>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {isNew && <Field label="Client code *"><input className="wt-input" value={f.client_code} onChange={(e) => set('client_code', e.target.value)} placeholder="e.g. PCC-C0001" /></Field>}
+        {isNew && <Field label="Client *"><ClientLookupField value={f.client_code} picked={f.client_name} autoFocus onPick={(c) => setF((s) => ({ ...s, client_code: c ? c.code : '', client_name: c ? c.name : '' }))} /></Field>}
         <div style={{ display: 'flex', gap: 10 }}>
           <Field label="Utility type *"><select className="wt-input" value={f.utility_type} onChange={(e) => set('utility_type', e.target.value)}><option value="">—</option>{(ref_.utility_types || []).map((t) => <option key={t} value={t}>{t}</option>)}</select></Field>
           <Field label="Request type"><select className="wt-input" value={f.service_request} onChange={(e) => set('service_request', e.target.value)}><option value="">—</option>{(ref_.request_types || []).map((t) => <option key={t} value={t}>{t}</option>)}</select></Field>

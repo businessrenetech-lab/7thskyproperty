@@ -8,6 +8,9 @@ router.use(authMiddleware, roleMiddleware(ROLES));
 
 // Owner
 router.get('/owner-balances', ctrl.ownerBalances);
+// Bulk owner disbursement (Phase 2) — declared before /owner/:ownerId so they aren't read as an id.
+router.get('/bulk-owner-data', ctrl.bulkOwnerData);
+router.post('/bulk-owner', ctrl.bulkPayOwners);
 router.get('/owner/:ownerId/preview', ctrl.previewOwner);
 router.post('/owner', ctrl.payOwner);
 router.get('/owner', ctrl.listOwnerDisbursements);

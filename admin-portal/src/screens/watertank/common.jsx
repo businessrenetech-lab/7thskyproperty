@@ -423,6 +423,192 @@ export const svcAssetRegister = () => !!svcProfile().asset_register;
 export const svcConcierge = () => !!svcProfile().concierge;
 /** Whether the active console has Utility Coordination (Property Care & Concierge). */
 export const svcUtilityCoordination = () => !!svcProfile().utility_coordination;
+
+/**
+ * ClientLookupField — pick an existing client by searching name / phone / email /
+ * code instead of typing a client code. Debounced against GET /wt-clients/lookup,
+ * which is already scoped to the active service line by the X-Service-Line header,
+ * so only this line's clients are offered.
+ *
+ * Controlled: `value` is the selected client_code, `picked` its display name.
+ * onPick(client|null) — client is { code, name, mobile, email, service_address };
+ * null clears the selection so the search box returns.
+ */
+export function ClientLookupField({ value, picked, onPick, placeholder, autoFocus }) {
+  const [q, setQ] = useState('');
+  const [rows, setRows] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const boxRef = useRef(null);
+
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) { setRows([]); setLoading(false); return undefined; }
+    setLoading(true);
+    const t = setTimeout(() => {
+      api.get('/wt-clients/lookup', { params: { q: term } })
+        .then((r) => setRows((r.data && r.data.water_tank) || []))
+        .catch(() => setRows([]))
+        .finally(() => setLoading(false));
+    }, 220);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  useEffect(() => {
+    const onDoc = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, []);
+
+  const chip = [value, picked].filter(Boolean).join(' · ');
+  if (chip) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span className="wt-pill sm">{chip}</span>
+        <button type="button" className="wt-btn ghost sm" onClick={() => onPick(null)}>Change</button>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={boxRef} style={{ position: 'relative' }}>
+      <div style={{ position: 'relative' }}>
+        <Search size={15} style={{ position: 'absolute', left: 10, top: 10, color: 'var(--wt-muted)' }} />
+        <input className="wt-input" style={{ paddingLeft: 32 }} autoFocus={autoFocus}
+          placeholder={placeholder || 'Search client by name, phone, email or code…'}
+          value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} />
+      </div>
+      {open && q.trim().length >= 2 && (
+        <div className="wt-lookup" style={{ position: 'absolute', zIndex: 40, top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', border: '1px solid var(--wt-line)', borderRadius: 9, padding: 6, boxShadow: '0 8px 24px rgba(0,0,0,.10)' }}>
+          {loading && <div className="muted" style={{ padding: 10, fontSize: 12.5 }}>Looking…</div>}
+          {!loading && rows.length === 0 && <div className="muted" style={{ padding: 10, fontSize: 12.5 }}>No client matches “{q.trim()}”. Create the client first, then attach this record.</div>}
+          {!loading && rows.map((c) => (
+            <button type="button" key={c.code} className="wt-lookup-item" onClick={() => { onPick(c); setOpen(false); setQ(''); }}>
+              <span className="av">{String(c.name || '?').slice(0, 1).toUpperCase()}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span className="nm">{c.name} <span className="muted" style={{ fontWeight: 500 }}>· {c.code}</span></span>
+                <span className="mt">{[c.mobile, c.email].filter(Boolean).join(' · ') || c.service_address || ''}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * useClientDossier(clientCode) — load a client's related records once so dependent
+ * pickers (project / work order / quotation) can cascade off the chosen client
+ * instead of anyone typing an id. Reads GET /wt-clients/:code (already line-scoped)
+ * and returns { projects, work_orders, quotations, loading }, each a list of
+ * { code, label } (label = code + a little context). Empty until a client is set.
+ */
+export function useClientDossier(clientCode) {
+  const [data, setData] = useState({ projects: [], work_orders: [], quotations: [], loading: false });
+  useEffect(() => {
+    if (!clientCode) { setData({ projects: [], work_orders: [], quotations: [], loading: false }); return undefined; }
+    let alive = true;
+    setData((d) => ({ ...d, loading: true }));
+    api.get(`/wt-clients/${encodeURIComponent(clientCode)}`)
+      .then((r) => {
+        if (!alive) return;
+        const d = r.data || {};
+        const opt = (code, extra) => ({ code, label: [code, extra].filter(Boolean).join(' · ') });
+        setData({
+          projects: (d.projects || []).map((p) => opt(p.code, p.name)),
+          work_orders: (d.work_orders || []).map((w) => opt(w.code, w.status || w.category || w.scope_summary)),
+          quotations: (d.quotations || []).map((q) => opt(q.code, q.decision)),
+          loading: false,
+        });
+      })
+      .catch(() => { if (alive) setData({ projects: [], work_orders: [], quotations: [], loading: false }); });
+    return () => { alive = false; };
+  }, [clientCode]);
+  return data;
+}
+
+/**
+ * RefPicker — a searchable single-select for a record reference (project / work
+ * order / quotation), fed EITHER a static `options` list (cascaded from a client's
+ * dossier) OR an async `fetchOptions(term)` for a standalone directory search.
+ * Auto-selects when exactly one static option exists; shows a muted hint while a
+ * prerequisite (a client) is missing; renders each option's `label`.
+ * Controlled: `value` is the selected code; onPick(option|null).
+ */
+export function RefPicker({ value, options, fetchOptions, onPick, disabled, disabledHint, placeholder, autoSelectSingle = true }) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const [remote, setRemote] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const boxRef = useRef(null);
+  const isRemote = typeof fetchOptions === 'function';
+
+  useEffect(() => {
+    if (!isRemote || disabled) return undefined;
+    const term = q.trim();
+    if (!term) { setRemote([]); setLoading(false); return undefined; }
+    setLoading(true);
+    const t = setTimeout(() => {
+      Promise.resolve(fetchOptions(term))
+        .then((rows) => setRemote(rows || []))
+        .catch(() => setRemote([]))
+        .finally(() => setLoading(false));
+    }, 220);
+    return () => clearTimeout(t);
+  }, [q, isRemote, disabled, fetchOptions]);
+
+  useEffect(() => {
+    if (!isRemote && autoSelectSingle && !value && !disabled && Array.isArray(options) && options.length === 1) {
+      onPick(options[0]);
+    }
+  }, [isRemote, autoSelectSingle, value, disabled, options, onPick]);
+
+  useEffect(() => {
+    const onDoc = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, []);
+
+  if (value) {
+    const picked = !isRemote && (options || []).find((o) => o.code === value);
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span className="wt-pill sm">{picked ? picked.label : value}</span>
+        <button type="button" className="wt-btn ghost sm" onClick={() => onPick(null)}>Change</button>
+      </div>
+    );
+  }
+
+  if (disabled) {
+    return <div className="wt-input" style={{ color: 'var(--wt-muted)', background: '#f8fafc' }}>{disabledHint || 'Pick a client first'}</div>;
+  }
+
+  const list = isRemote
+    ? remote
+    : (options || []).filter((o) => !q.trim() || String(o.label).toLowerCase().includes(q.trim().toLowerCase()));
+
+  return (
+    <div ref={boxRef} style={{ position: 'relative' }}>
+      <div style={{ position: 'relative' }}>
+        <Search size={15} style={{ position: 'absolute', left: 10, top: 10, color: 'var(--wt-muted)' }} />
+        <input className="wt-input" style={{ paddingLeft: 32 }} placeholder={placeholder || 'Search…'}
+          value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} />
+      </div>
+      {open && (
+        <div className="wt-lookup" style={{ position: 'absolute', zIndex: 40, top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', border: '1px solid var(--wt-line)', borderRadius: 9, padding: 6, boxShadow: '0 8px 24px rgba(0,0,0,.10)', maxHeight: 260, overflowY: 'auto' }}>
+          {loading && <div className="muted" style={{ padding: 10, fontSize: 12.5 }}>Looking…</div>}
+          {!loading && list.length === 0 && <div className="muted" style={{ padding: 10, fontSize: 12.5 }}>{isRemote ? (q.trim() ? 'No match.' : 'Type to search…') : 'Nothing to choose for this client yet.'}</div>}
+          {!loading && list.map((o) => (
+            <button type="button" key={o.code} className="wt-lookup-item" onClick={() => { onPick(o); setOpen(false); setQ(''); }}>
+              <span style={{ flex: 1, minWidth: 0 }}><span className="nm">{o.label}</span>{o.sub ? <span className="mt">{o.sub}</span> : null}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 /** The active console's catalogue vertical (water_tank_csa / air_conditioning_csa). */
 const BASE_TO_VERTICAL = {
   '/air-conditioning': 'air_conditioning_csa',

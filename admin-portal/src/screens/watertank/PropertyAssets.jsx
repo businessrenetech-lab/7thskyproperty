@@ -3,7 +3,7 @@ import { RefreshCw, Plus, Pencil, Trash2, Search, Wrench, AlertTriangle } from '
 import api from '../../services/api';
 import {
   WtHead, Pill, Loading, EmptyState, WtDrawer,
-  toast, errText, svcLabel,
+  toast, errText, svcLabel, ClientLookupField,
 } from './common';
 
 /*
@@ -121,7 +121,7 @@ const Field = ({ label, children }) => (
 function AssetDrawer({ row, ref_, onClose, onSaved }) {
   const isNew = !row.id;
   const [f, setF] = useState({
-    client_code: row.client_code || '', area: row.area || '', category: row.category || '',
+    client_code: row.client_code || '', client_name: row.client_name || '', area: row.area || '', category: row.category || '',
     brand_model: row.brand_model || '', serial_no: row.serial_no || '', condition: row.condition || '',
     last_service_date: row.last_service_date || '', next_service_due: row.next_service_due || '', warranty_expiry: row.warranty_expiry || '',
     responsible_tech: row.responsible_tech || '', maintenance_requirement: row.maintenance_requirement || '',
@@ -145,7 +145,7 @@ function AssetDrawer({ row, ref_, onClose, onSaved }) {
     <WtDrawer title={isNew ? 'New asset' : `Asset ${row.code || row.id}`} onClose={onClose}
       footer={<button className="wt-btn" disabled={busy} onClick={save}>{busy ? 'Saving…' : (isNew ? 'Add' : 'Save changes')}</button>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {isNew && <Field label="Client code *"><input className="wt-input" value={f.client_code} onChange={(e) => set('client_code', e.target.value)} placeholder="e.g. PCC-C0001" /></Field>}
+        {isNew && <Field label="Client *"><ClientLookupField value={f.client_code} picked={f.client_name} autoFocus onPick={(c) => setF((s) => ({ ...s, client_code: c ? c.code : '', client_name: c ? c.name : '' }))} /></Field>}
         <Field label="Asset / area *"><input className="wt-input" value={f.area} onChange={(e) => set('area', e.target.value)} placeholder="e.g. Rooftop AC unit, Front garden" /></Field>
         <div style={{ display: 'flex', gap: 10 }}>
           <Field label="Category"><select className="wt-input" value={f.category} onChange={(e) => set('category', e.target.value)}><option value="">—</option>{(ref_.categories || []).map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>

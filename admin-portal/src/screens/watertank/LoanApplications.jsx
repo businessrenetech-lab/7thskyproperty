@@ -3,7 +3,7 @@ import { Search, RefreshCw, Plus, Landmark, X, Pencil, Trash2 } from 'lucide-rea
 import api from '../../services/api';
 import {
   WtHead, Pill, Loading, EmptyState, WtDrawer,
-  dateFmt, bdt, toast, errText, svcLabel,
+  dateFmt, bdt, toast, errText, svcLabel, ClientLookupField,
 } from './common';
 
 /*
@@ -128,7 +128,7 @@ const Field = ({ label, children }) => (
 function LoanDrawer({ row, ref_, onClose, onSaved }) {
   const isNew = !row.id;
   const [f, setF] = useState({
-    client_code: row.client_code || '', lender: row.lender || '', relationship_manager: row.relationship_manager || '',
+    client_code: row.client_code || '', client_name: row.client_name || '', lender: row.lender || '', relationship_manager: row.relationship_manager || '',
     loan_type: row.loan_type || '', purpose: row.purpose || '', loan_amount: row.loan_amount || '',
     approved_amount: row.approved_amount || '', interest_rate: row.interest_rate || '',
     application_date: row.application_date || '', decision_date: row.decision_date || '',
@@ -158,8 +158,8 @@ function LoanDrawer({ row, ref_, onClose, onSaved }) {
       footer={<button className="wt-btn" disabled={busy} onClick={save}>{busy ? 'Saving…' : (isNew ? 'Create' : 'Save changes')}</button>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {isNew && (
-          <Field label="Client code *">
-            <input className="wt-input" value={f.client_code} onChange={(e) => set('client_code', e.target.value)} placeholder="e.g. RLFS-C0001" />
+          <Field label="Client *">
+            <ClientLookupField value={f.client_code} picked={f.client_name} autoFocus onPick={(c) => setF((s) => ({ ...s, client_code: c ? c.code : '', client_name: c ? c.name : '' }))} />
           </Field>
         )}
         <Field label="Lender / Bank">

@@ -20,6 +20,9 @@ import { useSvcNav,
   errText,
   svcReports,
   svcDoc,
+  ClientLookupField,
+  RefPicker,
+  useClientDossier,
 } from './common';
 
 /*
@@ -41,6 +44,7 @@ function ReportDrawer({ record, providers, onClose, onSaved }) {
     work_order_code: record?.work_order_code || '',
     project_id: record?.project_id || '',
     client_name: record?.client_name || '',
+    client_code: record?.client_code || '',
     provider_id: record?.provider_id || '',
     provider_name: record?.provider_name || '',
     submitted_date: record?.submitted_date || new Date().toISOString().slice(0, 10),
@@ -53,7 +57,7 @@ function ReportDrawer({ record, providers, onClose, onSaved }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
-
+  const dossier = useClientDossier(f.client_code);
 
   const go = async () => {
     if (!f.report_type) { setErr('Choose a report type.'); return; }
@@ -88,8 +92,13 @@ function ReportDrawer({ record, providers, onClose, onSaved }) {
           <option value="">Select…</option>{providers.map((p) => <option key={p.id} value={p.id}>{p.business_name}</option>)}
         </select></div>
       <div className="wt-grid3">
-        <div className="wt-field"><label>Client</label><input className="wt-input" value={f.client_name} onChange={(e) => set('client_name', e.target.value)} /></div>
-        <div className="wt-field"><label>Work order</label><input className="wt-input" value={f.work_order_code} onChange={(e) => set('work_order_code', e.target.value)} /></div>
+        <div className="wt-field"><label>Client</label>
+          <ClientLookupField value={f.client_code} picked={f.client_name}
+            onPick={(c) => setF((s) => ({ ...s, client_code: c ? c.code : '', client_name: c ? c.name : '', work_order_code: '' }))} /></div>
+        <div className="wt-field"><label>Work order</label>
+          <RefPicker value={f.work_order_code} options={dossier.work_orders} disabled={!f.client_code}
+            disabledHint="Pick a client first" placeholder="Search this client’s work orders…"
+            onPick={(o) => set('work_order_code', o ? o.code : '')} /></div>
         <div className="wt-field"><label>Submitted</label><input className="wt-input" type="date" value={f.submitted_date || ''} onChange={(e) => set('submitted_date', e.target.value)} /></div>
       </div>
       <div className="wt-field"><label>Summary</label>

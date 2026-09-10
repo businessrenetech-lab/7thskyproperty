@@ -10,6 +10,12 @@ router.get('/', ctrl.list);
 router.post('/', ctrl.create);
 router.get('/global-invoices', ctrl.globalInvoices);
 router.post('/global-invoices', ctrl.globalInvoices);
+// Bulk Rent Collection (Phase 1) — declared before /:id so they aren't read as an id.
+router.get('/collect-rent-data', ctrl.collectRentData);
+router.post('/collect-rent', ctrl.collectRent);
+// Bulk Rent Reminders (Phase 4) — also before /:id.
+router.get('/overdue-reminders', ctrl.overdueReminders);
+router.post('/send-reminders', ctrl.sendReminders);
 router.get('/:id', ctrl.getOne);
 router.put('/:id', ctrl.update);
 router.post('/:id/start-agreement', ctrl.startAgreement);
