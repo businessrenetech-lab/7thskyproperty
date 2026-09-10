@@ -170,7 +170,7 @@ export default function RecordMoneyView({ picture, desk, goView }) {
 
       {/* Pay */}
       <div className="pm-card card-pad">
-        <h3 style={{ marginTop: 0 }}>Pay money out</h3>
+        <h3 style={{ marginTop: 0 }}>{picture.settlement.settlement_type === 'withdrawal' ? 'Refund money out' : 'Pay money out'}</h3>
         {status !== 'approved' && (
           <p className="cell-sub">Payouts can be prepared now, but money only leaves the trust account after the settlement is approved.</p>
         )}

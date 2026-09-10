@@ -74,6 +74,42 @@ export function derivePayoutState(totals) {
   return 'none';
 }
 
+// Which view owns each compliance/withdrawal blocker, so a Resolve link jumps
+// to the right place. Anything unmapped falls through to 'complete'.
+export const BLOCKER_VIEW = {
+  pending_payments: 'record', outgoing_obligations_unpaid: 'record', pending_disbursements: 'record',
+  unallocated_outgoing_payments: 'record', settlement_residual_nonzero: 'record',
+  unreconciled_payments: 'match', posting_required: 'match',
+  invalid_settlement_schedule: 'prepare', invalid_disbursement_allocations: 'prepare',
+  agency_agreement_not_signed: 'review',
+};
+
+// Human labels for the blocker keys the backend returns.
+export const BLOCKER_LABEL = {
+  compliance_not_clear: 'Property compliance is not cleared',
+  assessment_not_clear: 'Assessment is not complete',
+  agency_agreement_not_signed: 'The agency agreement is not signed',
+  party_kyc_not_verified: "A party's KYC is not verified",
+  active_buyer_required: 'An active buyer party is required',
+  active_vendor_required: 'An active vendor party is required',
+  pending_payments: 'A payment is still pending',
+  unreconciled_payments: "A cleared payment isn't matched to the bank",
+  pending_disbursements: 'A payout is still pending',
+  outgoing_obligations_unpaid: 'An obligation is still unpaid',
+  settlement_residual_nonzero: "The settlement doesn't balance to zero",
+  invalid_settlement_schedule: 'The settlement schedule is invalid',
+  unallocated_outgoing_payments: 'An outgoing payment is unallocated',
+  invalid_disbursement_allocations: 'A payout allocation is invalid',
+  posting_required: 'A cleared payment needs its ledger posting',
+  trust_ledger_missing: 'The trust ledger is missing',
+  trust_accounts_nonzero: 'A trust account balance is not zero',
+  completed_trust_balance_nonzero: 'Completed trust balance is not zero',
+  completed_beneficiary_balance_nonzero: 'Completed beneficiary balance is not zero',
+  sale_profile_missing: 'The sale profile is missing',
+  accepted_transaction_missing: 'No accepted transaction',
+  settlement_missing: 'No settlement created yet',
+};
+
 // The four headline badges from the desk picture (Contract / Settlement / Money due / Payouts).
 export const deskBadges = (picture) => ({
   contract: picture.settlement?.contract_status || picture.contract_status || 'none',

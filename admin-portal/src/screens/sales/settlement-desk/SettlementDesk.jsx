@@ -9,7 +9,7 @@ import React from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { PageHead, Button, Badge, Spinner } from '../../../ui/kit';
 import { useSettlementDesk } from './useSettlementDesk';
-import { deskBadges, STATUS_TONE, label } from './settlementMoney';
+import { deskBadges, STATUS_TONE, label, BLOCKER_VIEW } from './settlementMoney';
 import AuditPanel from './AuditPanel';
 import PrepareView from './PrepareView';
 import ReviewApproveView from './ReviewApproveView';
@@ -25,15 +25,6 @@ const VIEWS = [
   { key: 'match', label: 'Match bank', C: MatchBankView },
   { key: 'complete', label: 'Complete', C: CompleteView },
 ];
-
-// Which view owns each compliance blocker, so a Resolve link jumps to the right
-// place. Anything unmapped falls through to Complete.
-const BLOCKER_VIEW = {
-  pending_payments: 'record', outgoing_obligations_unpaid: 'record', pending_disbursements: 'record',
-  unallocated_outgoing_payments: 'record', settlement_residual_nonzero: 'record',
-  unreconciled_payments: 'match', posting_required: 'match',
-  invalid_settlement_schedule: 'prepare', invalid_disbursement_allocations: 'prepare',
-};
 
 // Maps the property-file next_action string to a { label, view?, action? }.
 function nextActionSpec(nextAction) {
