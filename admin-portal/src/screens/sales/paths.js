@@ -21,6 +21,9 @@ export const salesBase = (category) => CONSOLE_CATEGORIES[category] || '/sales';
 /** The property file for one listing. */
 export const propertyFilePath = (category, id) => `${salesBase(category)}/property/${id}`;
 
+/** The five-view settlement desk for one property's settlement. */
+export const settlementDeskPath = (category, id) => `${salesBase(category)}/property/${id}/settlement`;
+
 /** The listing wizard: new when given no id, editing when given one. */
 export const propertyWizardPath = (category, id, query = '') => {
   const base = `${salesBase(category)}/properties/new${id ? `/${id}` : ''}`;

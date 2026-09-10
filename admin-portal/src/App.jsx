@@ -16,6 +16,7 @@ import DealsBoard from './screens/DealsBoard';
 import PropertySellDashboard from './screens/PropertySellDashboard';
 import SalesEnquiries from './screens/SalesEnquiries';
 import SalesPropertyFile from './screens/sales/SalesPropertyFile';
+import SettlementDesk from './screens/sales/settlement-desk/SettlementDesk';
 import RentalProperties from './screens/RentalProperties';
 import PropertyWizard from './screens/PropertyWizard';
 import PropertyMgmtDashboard from './screens/PropertyMgmtDashboard';
@@ -249,6 +250,7 @@ export default function App() {
                   below. Commercial and Rural still render these same three
                   components here, with a different `category` prop. */}
               <Route path="/sales/property/:id" element={<SalesPropertyFile />} />
+              <Route path="/sales/property/:id/settlement" element={<SettlementDesk />} />
               <Route path="/sales/properties/new" element={<PropertyWizard />} />
               <Route path="/sales/properties/new/:id" element={<PropertyWizard />} />
               {/* Property Management moved to its own console — see the route
@@ -906,6 +908,7 @@ export default function App() {
               <Route path="/residential/enquiry" element={<SalesEnquiries category="residential" title="Residential · Buyer Enquiries" desc="Every buyer who enquired on a residential sale property." />} />
               {/* The deep workspace behind a listing, and the listing wizard. */}
               <Route path="/residential/property/:id" element={<SalesPropertyFile />} />
+              <Route path="/residential/property/:id/settlement" element={<SettlementDesk />} />
               <Route path="/residential/properties/new" element={<PropertyWizard />} />
               <Route path="/residential/properties/new/:id" element={<PropertyWizard />} />
               {/* Shared screens, filtered by their own query string. */}
