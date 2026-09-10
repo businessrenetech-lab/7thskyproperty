@@ -123,3 +123,31 @@ exports.settle = asyncHandler(async (req, res) => {
   await svc.logEvent(deal.id, deal.branch_id, 'settled', { actor: req.user?.id });
   res.json({ data: deal });
 });
+
+exports.bulkData = asyncHandler(async (req, res) => {
+  const where = { ...branchScope(req), settlement_status: ['not_started', 'in_progress'] };
+  if (req.query.deal_type) where.deal_type = req.query.deal_type;
+  const deals = await PropertyDeal.findAll({ where, order: [['id', 'ASC']], limit: 500 });
+  const rows = [];
+  for (const d of deals) {
+    const m = await svc.computeDealMoney(d);
+    rows.push({ deal_id: d.id, deal_code: d.deal_code, deal_type: d.deal_type, expected: m.expected.total, received: m.received, remaining: m.remaining, net_held: m.net_held, statuses: m.statuses, next_action: m.next_action });
+  }
+  res.json({ data: rows, summary: { deals: rows.length, awaiting: rows.filter((r) => r.statuses.payment !== 'received').length, ready_to_settle: rows.filter((r) => r.statuses.payment === 'received').length } });
+});
+
+exports.bulkSettle = asyncHandler(async (req, res) => {
+  const ids = Array.isArray(req.body.deal_ids) ? req.body.deal_ids.map(Number) : [];
+  if (!ids.length) return res.status(400).json({ error: 'No deals selected.' });
+  const results = []; let settled = 0; let skipped = 0;
+  for (const id of ids) {
+    const deal = await PropertyDeal.findOne({ where: { id, ...branchScope(req) } });
+    if (!deal) { results.push({ deal_id: id, status: 'failed', error: 'not found' }); continue; }
+    const m = await svc.computeDealMoney(deal);
+    if (m.statuses.payment !== 'received') { results.push({ deal_id: id, status: 'skipped', reason: 'not fully received' }); skipped += 1; continue; }
+    await deal.update({ settlement_status: 'settled', settlement_date: deal.settlement_date || new Date() });
+    await svc.logEvent(deal.id, deal.branch_id, 'settled', { detail: 'bulk', actor: req.user?.id });
+    results.push({ deal_id: id, status: 'settled' }); settled += 1;
+  }
+  res.json({ results, summary: { settled, skipped } });
+});

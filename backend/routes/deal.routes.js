@@ -9,6 +9,8 @@ router.use(authMiddleware, roleMiddleware(ROLES));
 
 router.get('/', ctrl.list);
 router.post('/', ctrl.create);
+router.get('/settlement/bulk-data', settle.bulkData);
+router.post('/settlement/bulk', settle.bulkSettle);
 router.get('/:id', ctrl.getOne);
 router.put('/:id', ctrl.update);
 router.get('/:id/settlement', settle.getSettlement);
