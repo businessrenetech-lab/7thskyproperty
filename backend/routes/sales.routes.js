@@ -86,6 +86,9 @@ router.post('/disbursements/:id/submit', roleMiddleware(ACCOUNTS), ctrl.submitDi
 router.post('/disbursements/:id/fail', roleMiddleware(ACCOUNTS), ctrl.failDisbursement);
 router.post('/disbursements/:id/sync', roleMiddleware(ACCOUNTS), ctrl.syncDisbursement);
 router.post('/disbursements/:id/pay', roleMiddleware(ACCOUNTS), ctrl.payDisbursement);
+// One action for "the money went out" — resolves the payment itself instead of
+// making staff choose between allocating an existing one and recording a new one.
+router.post('/disbursements/:id/pay-out', roleMiddleware(ACCOUNTS), ctrl.payOutDisbursement);
 router.post('/disbursements/:id/cancel', roleMiddleware(ACCOUNTS), ctrl.cancelDisbursement);
 router.post('/settlements/:id/submit', roleMiddleware(PREPARE), ctrl.settlementAction('submit'));
 // Review/return are the accounts check — but super_admin and branch_admin must be

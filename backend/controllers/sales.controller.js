@@ -1749,3 +1749,82 @@ exports.errorHandler = (err, req, res, next) => { // eslint-disable-line no-unus
   if (err.name === 'SequelizeUniqueConstraintError') return res.status(409).json({ error: 'Duplicate reference or code' });
   res.status(err.status || 500).json({ error: err.message || 'Sales operation failed' });
 };
+
+/* POST /sales/disbursements/:id/pay-out — ONE action for "the money went out".
+   Staff used to choose between "Allocate payment" (link a payment row that
+   already exists) and "Record bank payment" (make one) — a database question
+   dressed up as a business decision. This resolves the payment itself: it
+   reuses the payout's own payment, else adopts an unallocated outgoing payment
+   that matches the payee and amount, else creates one — then clears it against
+   available funds and links it. The bank match stays a separate, explicit step
+   because it needs real evidence; only after it can the payout be marked paid. */
+exports.payOutDisbursement = asyncHandler(async (req, res) => {
+  const body = pick(req.body, ['reference', 'proof_url', 'payment_at', 'value_date', 'from_account_name', 'from_account_number']);
+  const result = await sequelize.transaction(async (transaction) => {
+    const disbursement = await SaleDisbursement.findOne({ where: { id: req.params.id, ...branchScope(req) }, transaction, lock: transaction.LOCK.UPDATE });
+    if (!disbursement) fail(404, 'Payout not found');
+    if (disbursement.status === 'paid') fail(409, 'This payout is already paid');
+    if (['cancelled'].includes(disbursement.status)) fail(409, 'This payout was cancelled');
+    const settlement = await SaleSettlement.findOne({ where: { id: disbursement.settlement_id, branch_id: disbursement.branch_id }, transaction, lock: transaction.LOCK.UPDATE });
+    if (!settlement) fail(404, 'Settlement not found');
+    if (settlement.status === 'locked') fail(409, 'Locked settlements are immutable');
+    if (settlement.status !== 'approved') fail(409, 'Approve the settlement before paying out');
+
+    const payeeParty = disbursement.transaction_party_id
+      ? await SaleTransactionParty.findOne({ where: { id: disbursement.transaction_party_id, transaction_id: settlement.transaction_id, branch_id: settlement.branch_id }, transaction })
+      : null;
+    if (disbursement.transaction_party_id && !payeeParty) fail(409, 'Payout payee no longer exists in this transaction');
+    const kind = payeeParty?.party_type === 'buyer' ? 'buyer_refund'
+      : disbursement.payee_type === 'vendor' ? 'vendor_payout'
+        : disbursement.payee_type === 'agency' ? 'agency_fee' : 'third_party';
+
+    // Which outgoing payments are already spoken for by another payout?
+    const allocated = await SaleDisbursement.findAll({ where: { settlement_id: settlement.id, branch_id: settlement.branch_id, payment_id: { [Op.ne]: null }, id: { [Op.ne]: disbursement.id } }, attributes: ['payment_id'], transaction, raw: true });
+    const taken = new Set(allocated.map((row) => Number(row.payment_id)));
+
+    let payment = disbursement.payment_id
+      ? await SalePayment.findOne({ where: { id: disbursement.payment_id, settlement_id: settlement.id, branch_id: settlement.branch_id }, transaction, lock: transaction.LOCK.UPDATE })
+      : null;
+    if (!payment) {
+      const candidates = await SalePayment.findAll({ where: { settlement_id: settlement.id, branch_id: settlement.branch_id, direction: 'outgoing', status: ['pending', 'cleared'] }, transaction, lock: transaction.LOCK.UPDATE });
+      payment = candidates.find((row) => !taken.has(Number(row.id))
+        && toMinor(row.amount) === toMinor(disbursement.amount)
+        && Number(row.transaction_party_id || 0) === Number(disbursement.transaction_party_id || 0)) || null;
+    }
+    if (payment && taken.has(Number(payment.id))) fail(409, 'That payment is already allocated to another payout');
+
+    const created = !payment;
+    if (!payment) {
+      payment = await SalePayment.create({
+        branch_id: settlement.branch_id, settlement_id: settlement.id, direction: 'outgoing', payment_kind: kind,
+        transaction_party_id: kind === 'agency_fee' ? null : disbursement.transaction_party_id || null,
+        reference: String(body.reference || disbursement.reference || `PAYOUT-${disbursement.id}`).slice(0, 80),
+        amount: disbursement.amount, method: 'bank_transfer', status: 'pending',
+        payment_at: body.payment_at || new Date(), value_date: body.value_date || new Date().toISOString().slice(0, 10),
+        from_account_name: body.from_account_name || null, from_account_number: body.from_account_number || null,
+        to_account_name: disbursement.bank_account_name || null, to_account_number: disbursement.bank_account_number || null,
+        proof_url: body.proof_url || disbursement.proof_url || null,
+        counterparty_name: kind === 'third_party' ? (disbursement.payee_name || payeeParty?.full_name || null) : null,
+        counterparty_phone: kind === 'third_party' ? (disbursement.payee_phone || payeeParty?.phone || null) : null,
+        reconciliation_status: 'unreconciled', idempotency_key: `payout:${disbursement.id}`,
+        created_by: req.user.id,
+      }, { transaction });
+    }
+
+    // Same funds guard clearPayment applies: never clear more than the trust
+    // account actually holds once other reserved outgoings are counted.
+    if (payment.status === 'pending') {
+      const all = excludeReversalPairs(await SalePayment.findAll({ where: { settlement_id: settlement.id, branch_id: settlement.branch_id }, transaction, raw: true }));
+      const clearedIncoming = all.filter((item) => item.direction === 'incoming' && item.status === 'cleared').reduce((sum, item) => sum + toMinor(item.amount), 0);
+      const otherReserved = all.filter((item) => Number(item.id) !== Number(payment.id) && item.direction === 'outgoing' && ['pending', 'cleared'].includes(item.status)).reduce((sum, item) => sum + toMinor(item.amount), 0);
+      if (toMinor(payment.amount) > clearedIncoming - otherReserved) fail(409, 'Not enough cleared funds are held to pay this out');
+      await payment.update({ status: 'cleared', payment_at: payment.payment_at || new Date(), reconciliation_status: 'unreconciled', reconciled_by: null, reconciled_at: null }, { transaction });
+    }
+
+    await disbursement.update({ status: 'submitted', payment_id: payment.id, proof_url: body.proof_url || disbursement.proof_url, failure_code: null, failure_reason: null }, { transaction });
+    const saleTransaction = await SaleTransaction.findOne({ where: { id: settlement.transaction_id, branch_id: settlement.branch_id }, transaction });
+    await recordEvent({ branchId: settlement.branch_id, propertyId: saleTransaction?.property_id, entityType: 'sale_disbursement', entityId: disbursement.id, eventType: 'DISBURSEMENT_PAYMENT_ALLOCATED', actorId: req.user.id, newValue: { payment_id: payment.id, payment_created: created, status: disbursement.status }, ipAddress: ip(req), transaction });
+    return { disbursement, payment, payment_created: created };
+  });
+  res.json({ data: result, next: 'match_bank', message: result.payment_created ? 'Payment recorded and cleared — match it to the bank statement to finish.' : 'Existing payment allocated — match it to the bank statement to finish.' });
+});
