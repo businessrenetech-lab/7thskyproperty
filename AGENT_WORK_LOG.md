@@ -4716,3 +4716,18 @@ used "the last line starting with `import`", which landed inside a multi-line
 - No screen or API path now writes a deal's money outside the /sales engine.
 - Remaining Phase 1: item 15 (end-to-end harness through /sales + wire npm test — next); item 13 (agreed service-fee drafting) BLOCKED on the Phase-4 RPPS/RPSS catalogue — no per-deal agreed-services store exists (sale_profiles carries only commission + marketing_budget); building an interim deal_service_lines table would pre-build a slice of Phase 4. Surfacing as an owner decision rather than building throwaway scaffolding.
 - Not merged; branch air-conditioning/phase-0-duplicate. dist/ rebuild to be committed once after item 15.
+
+### 2026-09-11 | Claude Code (Opus 4.8) | COMPLETED | Phase 1 item 15 — end-to-end money-path harness + npm test
+- Added `backend/scripts/e2eDealSalesSettlement.js` and wired `npm test` = `node scripts/testSalesSettlementCalculations.js && node scripts/e2eDealSalesSettlement.js` (replacing the `echo ... exit 1` placeholder — the plan's Release-foundation item).
+- The e2e builds an isolated sale on fresh fixtures (contacts → sale property owned by vendor → profile w/ 5% commission → offer → accept → deal+transaction) and drives the REAL /sales money path over HTTP. 27 assertions, all green:
+  - createSettlement auto-drafts the obligation schedule: one purchase_price = price, commission = 5%, vendor_proceeds = price − commission, payable debits sum to price; statement totals corroborate.
+  - deal `GET /deals/:id/sales-picture` links deal → settlement and reports drafted fees.
+  - `GET /deals/settlement/sales-bulk-data` lists the settlement honestly (draft → ready:false).
+  - buyer receipt records through `POST /sales/settlements/:id/payments`.
+  - createDisbursement full validated API path (verified recipient bank → obligation guard): a payout over its obligation line is refused (409 "Payout exceeds …"), an exact-obligation payout is prepared (201). This is the "guard's full API path was never exercised" gap from the settlement-status doc, now exercised. (Recipient-bank verification is a separate-duty action one test user cannot self-approve over HTTP, so the row is flipped to verified as fixture setup.)
+  - lock refused on a draft settlement (409).
+  - all retired /deals money endpoints (items 12 + 14) return 404.
+- Reversal-pair netting (the status doc's other explicit ask) is covered by the existing server-free unit suite testSalesSettlementCalculations.js, which npm test runs first (PASS) — not duplicated.
+- Deliberately NOT covered: a successful lock-to-'sold' completion. Reaching `locked` needs a fixture clearing ~15 compliance blockers (verified KYC + docs, signed agency agreement, 7 accounting accounts, zeroed trust ledger, reconciled+posted payments, one paid disbursement per line). No seed builds that; it is its own step. The *coverage* over-allocation guard (fa59eeb) only trips once money is already paid out, so it likewise needs the full flow — it stays covered by that commit's live-data verification, noted in the harness header.
+- Verified: `cd backend && npm test` → 'sales settlement calculations: PASS' then '27 PASS / 0 FAIL', exit 0.
+- Phase 1 status now: items 1–12, 14, 15 done; item 13 (agreed service-fee drafting) deferred to Phase 4 (owner decision — no per-deal agreed-services store exists pre-catalogue). Not merged; branch air-conditioning/phase-0-duplicate.
