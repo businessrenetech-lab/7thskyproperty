@@ -50,6 +50,23 @@ const SaleOfferParty = define('SaleOfferParty', 'sale_offer_parties', {
   contact_id: DataTypes.INTEGER, client_id: DataTypes.INTEGER, ownership_percent: DataTypes.DECIMAL(6, 2), is_primary: DataTypes.BOOLEAN,
 });
 
+// Immutable snapshot of an offer at each submit/counter — the negotiation history.
+const SaleOfferVersion = define('SaleOfferVersion', 'sale_offer_versions', {
+  id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true }, branch_id: { type: DataTypes.INTEGER, allowNull: false },
+  offer_id: DataTypes.INTEGER, version_no: DataTypes.INTEGER, side: DataTypes.ENUM('buyer', 'seller'),
+  amount: money(), deposit_amount: money(), finance_status: DataTypes.STRING(40), conditions: jsonField('conditions', []),
+  expiry_date: DataTypes.DATEONLY, proposed_completion_date: DataTypes.DATEONLY, notes: DataTypes.TEXT,
+  parties_snapshot: jsonField('parties_snapshot', []), created_by: DataTypes.INTEGER,
+}, { updatedAt: false });
+
+// The written approval of the version being accepted (gates acceptOffer).
+const SaleOfferApproval = define('SaleOfferApproval', 'sale_offer_approvals', {
+  id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true }, branch_id: { type: DataTypes.INTEGER, allowNull: false },
+  offer_id: DataTypes.INTEGER, offer_version_id: DataTypes.INTEGER, approver_side: DataTypes.ENUM('buyer', 'seller'),
+  decision: DataTypes.ENUM('approved', 'rejected'), note: DataTypes.TEXT, override_reason: DataTypes.TEXT,
+  approved_by: DataTypes.INTEGER, approved_at: DataTypes.DATE,
+});
+
 const SaleTransaction = define('SaleTransaction', 'sale_transactions', {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true }, branch_id: { type: DataTypes.INTEGER, allowNull: false }, property_id: DataTypes.INTEGER,
   property_deal_id: DataTypes.INTEGER, accepted_offer_id: DataTypes.INTEGER, status: DataTypes.ENUM('active', 'settlement', 'completed', 'cancelled'), created_by: DataTypes.INTEGER,
@@ -134,6 +151,8 @@ SaleParty.belongsTo(Property, { foreignKey: 'property_id' }); SaleParty.belongsT
 SaleParty.belongsTo(SaleParty, { as: 'replacement', foreignKey: 'replaced_by_party_id' });
 SaleOffer.belongsTo(Property, { foreignKey: 'property_id' }); SaleOffer.hasMany(SaleOfferParty, { as: 'buyers', foreignKey: 'offer_id' });
 SaleOfferParty.belongsTo(SaleOffer, { foreignKey: 'offer_id' }); SaleOfferParty.belongsTo(Contact, { foreignKey: 'contact_id' }); SaleOfferParty.belongsTo(Client, { foreignKey: 'client_id' });
+SaleOffer.hasMany(SaleOfferVersion, { as: 'versions', foreignKey: 'offer_id' }); SaleOfferVersion.belongsTo(SaleOffer, { foreignKey: 'offer_id' });
+SaleOffer.hasMany(SaleOfferApproval, { as: 'approvals', foreignKey: 'offer_id' }); SaleOfferApproval.belongsTo(SaleOfferVersion, { as: 'version', foreignKey: 'offer_version_id' });
 SaleTransaction.belongsTo(Property, { foreignKey: 'property_id' }); SaleTransaction.belongsTo(PropertyDeal, { foreignKey: 'property_deal_id' }); SaleTransaction.belongsTo(SaleOffer, { as: 'acceptedOffer', foreignKey: 'accepted_offer_id' });
 SaleTransaction.hasMany(SaleTransactionParty, { as: 'parties', foreignKey: 'transaction_id' }); SaleTransactionParty.belongsTo(SaleTransaction, { foreignKey: 'transaction_id' });
 SaleTransactionParty.belongsTo(Contact, { foreignKey: 'contact_id' }); SaleTransactionParty.belongsTo(Client, { foreignKey: 'client_id' });
@@ -165,4 +184,4 @@ SaleVendorInvoice.belongsTo(Contact, { as: 'vendorContact', foreignKey: 'vendor_
 SaleVendorInvoice.belongsTo(Property, { as: 'property', foreignKey: 'property_id' });
 SaleSettlement.hasMany(SaleVendorInvoice, { as: 'vendorInvoices', foreignKey: 'settlement_id' });
 
-module.exports = { SaleProfile, SaleParty, SaleOffer, SaleOfferParty, SaleTransaction, SaleTransactionParty, SaleSettlement, SaleSettlementLine, SalePayment, SaleDisbursement, SaleSettlementApproval, SaleEvent, SaleVendorInvoice };
+module.exports = { SaleProfile, SaleParty, SaleOffer, SaleOfferParty, SaleOfferVersion, SaleOfferApproval, SaleTransaction, SaleTransactionParty, SaleSettlement, SaleSettlementLine, SalePayment, SaleDisbursement, SaleSettlementApproval, SaleEvent, SaleVendorInvoice };
