@@ -42,6 +42,7 @@ exports.salesBulkData = asyncHandler(async (req, res) => {
     rows.push({
       deal_id: deal.id,
       deal_code: deal.deal_code,
+      property_id: deal.property_id, // lets the bulk screen deep-link into the desk
       settlement_id: settlement.id,
       settlement_code: settlement.settlement_code,
       status: settlement.status,

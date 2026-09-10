@@ -9,13 +9,16 @@
 // intact. It never writes money by a shortcut; a row that cannot lock comes
 // back skipped with the server's reason.
 import React, { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Play, RefreshCw } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { PageHead, Button, Spinner, Badge } from '../ui/kit';
+import { settlementDeskPath } from './sales/paths';
 
 export default function SalesBulkSettlement() {
   const toast = useToast();
+  const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -108,6 +111,7 @@ export default function SalesBulkSettlement() {
                 <th>Status</th>
                 <th>Readiness</th>
                 <th>Result</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -134,6 +138,7 @@ export default function SalesBulkSettlement() {
                           : <span style={{ fontSize: 12, color: '#64748b' }}>needs approval</span>}
                     </td>
                     <td>{x ? <Badge tone={x.status === 'settled' ? 'green' : 'amber'} title={x.reason || ''}>{x.status}</Badge> : ''}</td>
+                    <td>{r.property_id ? <Button size="sm" variant="ghost" onClick={() => navigate(settlementDeskPath('residential', r.property_id) + '?view=complete')}>Open desk</Button> : null}</td>
                   </tr>
                 );
               })}
