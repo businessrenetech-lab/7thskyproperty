@@ -35,6 +35,7 @@ module.exports = [
   ['/api/tenant-applications', './tenantApplication.routes'],
   ['/api/rental-assessments', './rentalAssessment.routes'],
   ['/api/rental-enquiries', './rentalEnquiry.routes'],
+  ['/api/communications', './communications.routes'],
   ['/api/sales-enquiries', './salesEnquiry.routes'],
   ['/api/public', './publicSales.routes'],
   ['/api/property-management', './propertyManagement.routes'],

@@ -249,6 +249,13 @@ export const PROPERTY_MGMT_NAV = [
     ],
   },
   {
+    key: 'communication',
+    label: 'Communication',
+    items: [
+      { to: '/property-management/inbox', label: 'Inbox', icon: Inbox },
+    ],
+  },
+  {
     key: 'rentals',
     label: 'Rentals',
     items: [
@@ -277,6 +284,8 @@ export const PROPERTY_MGMT_NAV = [
     label: 'Money In',
     items: [
       { to: '/property-management/invoices?kind=client', label: 'Tenant Invoices', icon: Receipt, roles: PM_FINANCE_ROLES },
+      { to: '/property-management/collect-rent', label: 'Collect Rent (Bulk)', icon: Banknote, roles: PM_FINANCE_ROLES },
+      { to: '/property-management/rent-reminders', label: 'Rent Reminders (Bulk)', icon: AlertCircle, roles: PM_FINANCE_ROLES },
       { to: '/property-management/receipts', label: 'Rental Receipts', icon: Banknote, roles: PM_FINANCE_ROLES },
       { to: '/property-management/folios', label: 'Folios', icon: BookOpen, roles: PM_FINANCE_ROLES },
       { to: '/property-management/arrears', label: 'Arrears Actions', icon: AlertCircle, roles: PM_FINANCE_ROLES },
@@ -289,6 +298,7 @@ export const PROPERTY_MGMT_NAV = [
     items: [
       { to: '/property-management/statements', label: 'Owner Statements', icon: Landmark, roles: PM_FINANCE_ROLES },
       { to: '/property-management/disbursements', label: 'Disbursement & Payouts', icon: HandCoins, roles: PM_FINANCE_ROLES },
+      { to: '/property-management/disburse-owners', label: 'Pay Owners (Bulk)', icon: HandCoins, roles: PM_FINANCE_ROLES },
       { to: '/property-management/landlord-bills', label: 'Landlord Bills', icon: Receipt, roles: PM_FINANCE_ROLES },
       { to: '/property-management/settlements', label: 'Deposit Settlements', icon: Shield, roles: PM_FINANCE_ROLES },
       { to: '/property-management/expense-approvals', label: 'Expense Approvals', icon: ClipboardCheck, roles: PM_FINANCE_ROLES },

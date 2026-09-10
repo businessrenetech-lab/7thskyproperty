@@ -107,9 +107,6 @@ const NAV = [
   { to: '/invoices', label: 'Tenant Invoices', icon: Receipt },
   { to: '/landlord-bills', label: 'Landlord Bills', icon: Wrench },
   { to: '/rental-receipts', label: 'Rental Receipts', icon: FileText },
-  { to: '/property-management/collect-rent', label: 'Collect Rent (Bulk)', icon: Wallet },
-  { to: '/property-management/disburse-owners', label: 'Pay Owners (Bulk)', icon: Wallet },
-  { to: '/property-management/rent-reminders', label: 'Rent Reminders (Bulk)', icon: Bell },
   { to: '/folios', label: 'Folios', icon: BookOpen },
   { to: '/account-categories', label: 'Account Categories', icon: Tags },
   { to: '/payments', label: 'Payments', icon: Wallet },
@@ -121,7 +118,7 @@ const NAV = [
 
 const TITLES = {
   '/dashboard': 'Dashboard', '/residential/buy': 'Residential · Buy', '/residential/sell': 'Residential · Sell',
-  '/property-management': 'Property Management', '/property-management/rentals': 'Rentals', '/property-management/global-invoicing': 'Global Tenant Invoicing', '/property-management/collect-rent': 'Bulk Rent Collection', '/property-management/disburse-owners': 'Bulk Owner Disbursement', '/property-management/rent-reminders': 'Bulk Rent Reminders',
+  '/property-management': 'Property Management', '/property-management/rentals': 'Rentals', '/property-management/global-invoicing': 'Global Tenant Invoicing', '/property-management/collect-rent': 'Bulk Rent Collection', '/property-management/disburse-owners': 'Bulk Owner Disbursement', '/property-management/rent-reminders': 'Bulk Rent Reminders', '/property-management/inbox': 'Communication — Inbox',
   '/property-management/applications': 'Tenant Applications', '/property-management/enquiries': 'Rental Enquiries', '/property-management/assessments': 'Rental Assessments', '/property-management/statements': 'Owner Statements', '/property-management/renewals': 'Renewals', '/property-management/vacancies': 'Vacancy Notices', '/property-management/settlements': 'Deposit Settlements', '/property-management/disbursements': 'Disbursements & Payouts', '/property-management/utilities': 'Utilities & Bills', '/property-management/tenant-requests': 'Tenant Requests', '/property-management/arrears': 'Arrears Actions', '/property-management/marketing': 'Rental Marketing', '/property-management/expense-approvals': 'Expense Approvals', '/property-management/risks': 'Risk Register', '/property-management/reports': 'Rental Reports',
   '/short-term-stay': 'Short Term Stay',
   '/commercial/buy': 'Commercial · Buy', '/commercial/sell': 'Commercial · Sell', '/services': 'Service Catalog', '/services/lines': 'Service Lines',

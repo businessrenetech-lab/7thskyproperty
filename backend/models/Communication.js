@@ -25,6 +25,9 @@ const Communication = sequelize.define('Communication', {
   occurred_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   follow_up_at: DataTypes.DATE,
   user_id: DataTypes.INTEGER,
+  // Inbox (0102): unread tracking + drafts.
+  read_at: DataTypes.DATE,
+  is_draft: { type: DataTypes.BOOLEAN, defaultValue: false },
 }, {
   tableName: 'communications',
   underscored: true,

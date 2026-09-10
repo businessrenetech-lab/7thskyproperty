@@ -4622,3 +4622,31 @@ used "the last line starting with `import`", which landed inside a multi-line
   /api/tenant/me returns the active tenancy; payment-proof 201, work-order 201, vacancy-notice 201 — all green. Conclusively
   confirms the Phase 5 residual findings were a closed-tenancy test login, not production bugs.
 - Memory updated (property-mgmt-command-center) with both tenant test logins + the bulk-run endpoints.
+
+### 2026-09-10 | Claude Code (Opus 4.8) | COMPLETED | PM Communication → unified Inbox
+- New "Communication" group + Inbox in the PM console sidebar (config/consoles.js PROPERTY_MGMT_NAV) at
+  /property-management/inbox. An admin unified inbox over the EXISTING communications store + rental_enquiries —
+  no parallel message system.
+- Migration 0102: additive read_at + is_draft on communications (status ENUM has no 'draft'; unread needed a real
+  column). Communication model updated.
+- Backend controllers/communications.controller.js + routes (mounted in server.js AND manifest.js), roles
+  super_admin/branch_admin/property_manager/sales_executive/accounts:
+  - GET /inbox — merges rental_enquiries (as lead conversations) + communications grouped by computed key
+    (enquiry:<id> / property:<id> / contact:<id>); title/subtitle/channel/snippet/last_at + unread/needs_reply/draft
+    flags + KPI summary; filters source/channel/status/property/search.
+  - GET /thread?key= — full ordered history (+ the enquiry seeded as the first inbound msg) + context; opening marks
+    inbound read.
+  - POST /reply — email really sends via existing sendEmail (verified: emailed a test address); sms logged behind a
+    seam; note logged; writes an outbound communications row on the same entity, clears unread, bumps a new enquiry
+    new->contacted.
+  - POST / compose (optionally draft) · PATCH /:id (edit/send draft, mark read) · DELETE /:id (discard draft) ·
+    POST /read (mark thread read).
+- Frontend screens/Communication.jsx — two-pane inbox (left: KPI chips Unread/Needs reply/Drafts, search + source
+  filter, conversation list with needs-reply dot / source+channel chips / unread bold; right: threaded bubbles
+  inbound-left/outbound-right + composer with channel selector Email/SMS/Note + Send, and a Compose-new panel with
+  Save-draft). Built on ui/kit + pm-scope.
+- FIX: relocated the Phase 1/2/4 bulk items (Collect Rent / Rent Reminders / Pay Owners) from the GLOBAL Layout nav
+  into the correct PM console sidebar (Money In / Money Out groups) — they were only reachable via dashboard buttons
+  before.
+- VERIFIED via API: inbox 11 conversations (7 unread, needs_reply), thread open, email reply (emailed) + note reply,
+  draft create/filter/delete, needs-reply/unread clear on reply. admin build passes.
