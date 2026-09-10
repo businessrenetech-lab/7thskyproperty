@@ -505,6 +505,13 @@ service, the SOP-gate approach and the branded-document pipeline are all designe
 to be copied with the vertical key, nav and accent colour swapped. Do that rather
 than inventing a second pattern.
 
+### 2026-09-10 16:03 | OpenCode (GPT-5.6) | STARTED | Residential sales end-to-end improvement plan
+- Request: Research the current `/admin/residential/sell` experience and the supplied purchase/sale SOPs, spreadsheets, and agreements; draft a phase-by-phase plan for a market-leading end-to-end property purchase and sales SaaS covering deals, contracts, settlement money in/out and disbursement, accounting, contacts, pipeline, marketing, email/SMS, navigation, property dashboards, and modern UI/UX.
+- Scope: Read-only analysis of `admin-portal/`, relevant `backend/` sales, signing, property, contact, accounting, communication, and marketing subsystems, plus six source documents under `C:\Users\ADMIN\Downloads\Sale\Sale`; planning artifact only, with no product-code implementation.
+- Changes: None yet.
+- Verification: Read `AGENT_WORK_LOG.md`, inspected `git status --short --branch`, reviewed `ARCHITECTURE.md`, and confirmed the six source documents are present.
+- Handoff: Preserve the inherited untracked `Seventh Sky - Short Term Stay.html` and all concurrent work. The plan will explicitly favor reuse of signing/KYC, folio/accounting, communications, and the proven register/detail/edit workflow instead of parallel systems.
+
 ### 2026-08-10 00:29 | OpenCode (GPT-5.6) | STARTED | Dynamic Water Tank provider onboarding and commercial agreements
 - Request: Professionally redesign the Water Tank providers area; move onboarding to dedicated step-by-step routes; implement hybrid staff/provider onboarding; make the full 63-clause Provider Master Agreement plus agreed rates canonical; support draft/edit/review/two-party signing; and automatically calculate provider work-order fees and payouts from signed terms.
 - Scope: Water Tank provider models/migration/controllers/routes, provider agreement renderer and signing completion automation, work-order fee provenance, admin provider directory/detail/onboarding/agreement screens and Water Tank navigation/styles. Existing uncommitted Water Tank and unrelated concurrent changes will be preserved.
@@ -4650,3 +4657,43 @@ used "the last line starting with `import`", which landed inside a multi-line
   before.
 - VERIFIED via API: inbox 11 conversations (7 unread, needs_reply), thread open, email reply (emailed) + note reply,
   draft create/filter/delete, needs-reply/unread clear on reply. admin build passes.
+
+### 2026-09-10 | OpenCode (GPT-5.6) | STARTED | Residential sales platform benchmark continuation
+- Request: Continue the research-only benchmark of leading real-estate sales, transaction, CRM, closing, accounting, and deal-workspace platforms, then provide evidence-based recommendations for a Bangladesh-focused property sales SaaS.
+- Scope: Official vendor and credible public-source research, capability/UX synthesis, table-stakes versus differentiators, and Bangladesh keep/adapt/avoid guidance. No product-code changes.
+- Changes: AGENT_WORK_LOG.md only for mandatory coordination.
+- Verification: Re-read the prior residential-sales STARTED entry and current worktree status; inherited untracked Seventh Sky - Short Term Stay.html and concurrent project changes will remain untouched.
+
+### 2026-09-10 16:11 | OpenCode (GPT-5.6) | STARTED | Read-only sale and purchase source synthesis
+- Request: Analyze the six supplied sale/purchase DOCX and XLSX files and synthesize lifecycle, controls, data, documents, money, agreements, notifications, exceptions, compliance, differences, and simplifications without modifying project files.
+- Scope: Read-only Office Open XML analysis of `C:\Users\ADMIN\Downloads\Sale\Sale`; temporary extraction artifacts only under the approved opencode temp directory.
+- Changes: None to project/source files; mandatory coordination log entry only.
+- Verification: Read the complete shared log, inspected `git status --short --branch`, and confirmed the exact six-file source set.
+- Handoff: The existing residential-sales planning and benchmark entries overlap contextually but do not block this independent document-only synthesis.
+
+### 2026-09-10 16:11 | OpenCode (GPT-5.6) | COMPLETED | Read-only sale and purchase source synthesis
+- Request: Analyze all six supplied sale/purchase DOCX and XLSX files and return a concise, complete, privacy-safe synthesis with source citations and control-preserving simplifications.
+- Scope: Two SOP DOCX files, two service-agreement DOCX files, and two workflow XLSX files under `C:\Users\ADMIN\Downloads\Sale\Sale`.
+- Changes: No application/project source files changed. Created only a temporary read-only OOXML extraction script and normalized text extracts under `C:\Users\ADMIN\AppData\Local\Temp\opencode`.
+- Verification: Parsed DOCX/XLSX ZIP/XML directly; preserved DOCX paragraph/table order and XLSX worksheet/cell coordinates; reviewed all four documents and all 28 worksheets; cross-checked money, approvals, notifications, lifecycle, evidence, and exception terminology; final `git status` showed only the pre-existing modified log and untracked Short Term Stay HTML.
+- Handoff: Source governance defects remain: conflicting purchase workbook versions, blank effective/approval dates, agreement footer/entity inconsistencies, divergent lifecycle taxonomies, and under-specified client-money/disbursement controls. No private sample-party data is included in the synthesis.
+
+### 2026-09-10 | OpenCode (GPT-5.6) | COMPLETED | Residential sales platform benchmark continuation
+- Request: Complete the evidence-based 2026 benchmark and recommendations for a Bangladesh-focused end-to-end property sales SaaS.
+- Research completed: Compared official current material for Lone Wolf Transact, dotloop, SkySlope, BoldTrail BackOffice, Propertybase's current Lone Wolf redirect/successor context, Follow Up Boss, Lofty, Salesforce Real Estate, Qualia Connect, Open To Close, and ListedKit. Verified Bangladesh's integrated land portal, mutation, land development tax, and land-record/map service context.
+- Decisions: Recommend a property/deal workspace joining CRM, checklist-driven transactions, document/e-sign workflow, settlement subledger, communications, portals, and human-reviewed AI extraction. Adapt rather than copy US-specific MLS, licensed forms, title/escrow, NAR, and state-compliance features. Treat government portals as externally evidenced steps until supported APIs exist, and do not represent ordinary e-signature as completing legal conveyance without Bangladesh counsel confirmation.
+- Changes: AGENT_WORK_LOG.md only; no product code or inherited files modified.
+- Verification: Directly retrieved official vendor and Bangladesh government pages on 2026-09-10. Google Search remained unavailable with 403 PERMISSION_DENIED / SUBSCRIPTION_REQUIRED; unsupported claims were excluded or labeled as recommendations. Final benchmark and source links delivered in chat.
+- Remaining work: Product implementation remains intentionally out of scope. Legal counsel and regulated banking/payment partners must validate final deed execution, registration, client-money custody, KYC/AML, tax, and disbursement controls before launch.
+
+### 2026-09-10 | Claude Code (Opus 4.8) | PLAN (no implementation) | Property Purchase & Sales SaaS improvement plan
+- Read all 6 docs in Downloads/Sale (Purchase SOP 8-stage, Sale SOP 10-stage, 26-sheet purchase workflow, 14-stage
+  sale checklist, + purchase/sale service agreements V0.2). Audited existing sales stack (PropertyDeal flat 6-status
+  model, DealsBoard kanban, SalesEnquiries, sales assessment, salesPayment+SSLCommerz, agreements/eSign, PM folio/
+  payout engine, PM comms inbox, WT/AC consoles). Web-researched pipeline + brokerage-settlement SaaS patterns.
+- Owner decisions: Bangladesh regime (trust accounting advisory only), brokerage-service model (fee+commission).
+- Deliverable: docs/superpowers/specs/2026-09-10-property-sales-saas-improvement-plan.md — findings (V/R/? tagged),
+  problems+impact, end-to-end buy/sell stage-gated workflows, guided settlement/disbursement money-simplification
+  (the stated main objective), nav (Overview/Properties/Purchases/Sales/Pipeline/Contacts/Contracts/Accounting/
+  Comms/Marketing/Services/Tasks/Reports/Settings), retain/improve/connect/add table, 3-phase roadmap, success
+  criteria, open questions. NO CODE CHANGES. Awaiting user review before writing-plans.
