@@ -11,7 +11,8 @@
     "db:migrate:status": "sequelize-cli db:migrate:status",
     "db:seed": "sequelize-cli db:seed:all",
     "db:seed:undo": "sequelize-cli db:seed:undo:all",
-    "test": "node scripts/testSalesSettlementCalculations.js && node scripts/e2eDealSalesSettlement.js"
+    "test": "node scripts/testSalesSettlementCalculations.js && node scripts/e2eDealSalesSettlement.js",
+    "test:full": "node scripts/e2eDealSalesSettlementFull.js"
   },
   "keywords": [],
   "author": "",
