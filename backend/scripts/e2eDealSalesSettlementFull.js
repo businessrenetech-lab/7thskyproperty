@@ -124,7 +124,7 @@ async function reconcile(sid, paymentId, signedAmount, ref) {
   const offerId = offer.body?.data?.id;
   if (!ok(!!offerId, 'offer submitted', offer.body?.data?.offer_code)) return finish();
 
-  const accept = await req('POST', `/api/sales/offers/${offerId}/accept`, { body: {} });
+  const accept = await req('POST', `/api/sales/offers/${offerId}/accept`, { body: { approval: { approver_side: 'seller', note: 'e2e approval' } } });
   const dealId = accept.body?.deal?.id; const txId = accept.body?.transaction?.id;
   if (!ok(!!dealId && !!txId, 'offer accepted → deal + transaction', `deal ${accept.body?.deal?.deal_code} / tx ${txId}`)) return finish();
 

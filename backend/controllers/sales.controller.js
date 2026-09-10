@@ -15,7 +15,7 @@ const Client = require('../models/Client');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, pick } = require('../utils/controllerHelpers');
 const {
-  SaleProfile, SaleParty, SaleOffer, SaleOfferParty, SaleTransaction, SaleTransactionParty,
+  SaleProfile, SaleParty, SaleOffer, SaleOfferParty, SaleOfferVersion, SaleOfferApproval, SaleTransaction, SaleTransactionParty,
   SaleSettlement, SaleSettlementLine, SalePayment, SaleDisbursement, SaleSettlementApproval, SaleEvent, SaleVendorInvoice,
 } = require('../models/SalesModels');
 const { SaleAssessment } = require('../models/SalesAssessmentModels');
@@ -443,7 +443,7 @@ exports.getPropertyFile = asyncHandler(async (req, res) => {
   const [profile, parties, offers, activeTransaction, transactionHistory, assessmentSummary] = await Promise.all([
     SaleProfile.findOne({ where: { property_id: property.id, branch_id: property.branch_id } }),
     SaleParty.findAll({ where: { property_id: property.id, branch_id: property.branch_id }, include: [{ model: Contact }], order: [['created_at', 'ASC']] }),
-    SaleOffer.findAll({ where: { property_id: property.id, branch_id: property.branch_id }, include: [{ model: SaleOfferParty, as: 'buyers', include: [Contact, Client] }], order: [['created_at', 'DESC']] }),
+    SaleOffer.findAll({ where: { property_id: property.id, branch_id: property.branch_id }, include: [{ model: SaleOfferParty, as: 'buyers', include: [Contact, Client] }, { model: SaleOfferVersion, as: 'versions' }, { model: SaleOfferApproval, as: 'approvals', include: [{ model: SaleOfferVersion, as: 'version' }] }], order: [['created_at', 'DESC']] }),
     SaleTransaction.findOne({ where: { property_id: property.id, branch_id: property.branch_id, status: { [Op.in]: ['active', 'settlement', 'completed'] } }, include: [{ model: SaleTransactionParty, as: 'parties' }], order: [['created_at', 'DESC']] }),
     SaleTransaction.findAll({ where: { property_id: property.id, branch_id: property.branch_id }, include: [{ model: SaleTransactionParty, as: 'parties' }, { model: SaleOffer, as: 'acceptedOffer' }], order: [['created_at', 'DESC']] }),
     SaleAssessment.findOne({ where: { property_id: property.id, branch_id: property.branch_id }, attributes: ['id', 'status', 'inspector_name', 'occupancy_status', 'overall_score', 'marketability_score', 'blockers', 'assessment_date', 'approved_at', 'updated_at'] }),
@@ -597,6 +597,22 @@ exports.patchPropertyParty = asyncHandler(async (req, res) => {
   res.json({ data: party });
 });
 
+// Snapshot an offer's current figures + parties as an immutable version. Called
+// on each submit/counter so the negotiation history is preserved; the SaleOffer
+// thread keeps its current figures for the accept→transaction flow.
+async function appendOfferVersion(offer, side, actorId, transaction) {
+  const parties = await SaleOfferParty.findAll({ where: { offer_id: offer.id, branch_id: offer.branch_id }, transaction, raw: true });
+  const last = await SaleOfferVersion.max('version_no', { where: { offer_id: offer.id }, transaction });
+  return SaleOfferVersion.create({
+    branch_id: offer.branch_id, offer_id: offer.id, version_no: (Number(last) || 0) + 1, side,
+    amount: offer.amount, deposit_amount: offer.deposit_amount, finance_status: offer.finance_status,
+    conditions: offer.conditions, expiry_date: offer.expiry_date, proposed_completion_date: offer.proposed_completion_date,
+    notes: offer.notes,
+    parties_snapshot: parties.map((p) => ({ contact_id: p.contact_id, client_id: p.client_id, ownership_percent: p.ownership_percent, is_primary: p.is_primary })),
+    created_by: actorId,
+  }, { transaction });
+}
+
 exports.createOffer = asyncHandler(async (req, res) => {
   const property = await propertyForRequest(req, req.params.propertyId);
   if (['sold'].includes(property.status)) return res.status(409).json({ error: 'Offers cannot be created for a sold property' });
@@ -613,6 +629,7 @@ exports.createOffer = asyncHandler(async (req, res) => {
     const initialStatus = req.body.status === 'submitted' ? 'submitted' : 'draft';
     const row = await SaleOffer.create({ ...data, branch_id: property.branch_id, property_id: property.id, offer_code: await generateCode(SaleOffer, 'offer_code', 'SSPC-OF-'), source: 'staff', status: initialStatus, submitted_at: initialStatus === 'submitted' ? new Date() : null, created_by: req.user.id, updated_by: req.user.id }, { transaction });
     await SaleOfferParty.bulkCreate(buyers.map((buyer) => ({ ...buyer, branch_id: property.branch_id, offer_id: row.id })), { transaction });
+    if (initialStatus === 'submitted') await appendOfferVersion(row, 'buyer', req.user.id, transaction);
     await recordEvent({ branchId: property.branch_id, propertyId: property.id, entityType: 'sale_offer', entityId: row.id, eventType: 'OFFER_CREATED', actorId: req.user.id, newValue: { ...plain(row), buyers }, ipAddress: ip(req), transaction });
     return row;
   });
@@ -641,6 +658,9 @@ exports.patchOffer = asyncHandler(async (req, res) => {
       await SaleOfferParty.destroy({ where: { offer_id: offer.id, branch_id: offer.branch_id }, transaction });
       await SaleOfferParty.bulkCreate(buyers.map((buyer) => ({ ...buyer, branch_id: offer.branch_id, offer_id: offer.id })), { transaction });
     }
+    // An edit to a live offer is a new version on the current side (buyer unless
+    // the caller says it is the seller amending).
+    if (['submitted', 'countered'].includes(offer.status)) await appendOfferVersion(offer, req.body.side === 'seller' ? 'seller' : 'buyer', req.user.id, transaction);
   });
   await recordEvent({ branchId: offer.branch_id, propertyId: offer.property_id, entityType: 'sale_offer', entityId: offer.id, eventType: 'OFFER_UPDATED', actorId: req.user.id, oldValue, newValue: plain(offer), ipAddress: ip(req) });
   res.json({ data: offer });
@@ -655,19 +675,30 @@ exports.updateOfferStatus = asyncHandler(async (req, res) => {
   if (!offer) return res.status(404).json({ error: 'Offer not found' });
   if (!(allowed[offer.status] || []).includes(target)) return res.status(409).json({ error: `Cannot move offer from ${offer.status} to ${target}` });
   const old = offer.status;
-  await offer.update({ status: target, status_reason: body.reason || null, submitted_at: target === 'submitted' ? new Date() : offer.submitted_at, updated_by: req.user.id });
-  await recordEvent({ branchId: offer.branch_id, propertyId: offer.property_id, entityType: 'sale_offer', entityId: offer.id, eventType: 'STATUS_CHANGED', actorId: req.user.id, oldValue: { status: old }, newValue: { status: target }, reason: body.reason, ipAddress: ip(req) });
+  await sequelize.transaction(async (transaction) => {
+    await offer.update({ status: target, status_reason: body.reason || null, submitted_at: target === 'submitted' ? new Date() : offer.submitted_at, updated_by: req.user.id }, { transaction });
+    // A counter (seller) or a buyer re-submit is a new negotiation version.
+    if (old === 'submitted' && target === 'countered') await appendOfferVersion(offer, 'seller', req.user.id, transaction);
+    if (old === 'countered' && target === 'submitted') await appendOfferVersion(offer, 'buyer', req.user.id, transaction);
+    await recordEvent({ branchId: offer.branch_id, propertyId: offer.property_id, entityType: 'sale_offer', entityId: offer.id, eventType: 'STATUS_CHANGED', actorId: req.user.id, oldValue: { status: old }, newValue: { status: target }, reason: body.reason, ipAddress: ip(req), transaction });
+  });
   res.json({ data: offer });
 });
 
 exports.acceptOffer = asyncHandler(async (req, res) => {
   const body = pick(req.body, ['reason']);
+  const approval = req.body.approval || {};
+  const isOverride = req.user?.role === 'super_admin' && req.body.override && String(req.body.override_reason || '').trim();
   const result = await sequelize.transaction(async (transaction) => {
     const offer = await SaleOffer.findOne({ where: { id: req.params.id, ...branchScope(req) }, include: [{ model: SaleOfferParty, as: 'buyers', include: [Contact] }], transaction, lock: transaction.LOCK.UPDATE });
     if (!offer) fail(404, 'Offer not found');
     if (!['submitted', 'countered'].includes(offer.status)) fail(409, 'Only submitted or countered offers can be accepted');
     if (toMinor(offer.amount) <= 0) fail(409, 'Offer amount must be positive before acceptance');
     if (offer.expiry_date && new Date(`${offer.expiry_date}T23:59:59`) < new Date()) fail(409, 'Expired offers cannot be accepted');
+    // Written-approval gate: acceptance requires a recorded approval of the
+    // version being accepted, unless a super-admin overrides with a reason.
+    if (approval.decision === 'rejected') fail(400, 'A rejected offer cannot be accepted.');
+    if (!String(approval.note || '').trim() && !isOverride) fail(409, 'A written approval of this offer version is required to accept it.');
     const property = await Property.findOne({ where: { id: offer.property_id, branch_id: offer.branch_id, listing_type: 'sale' }, transaction, lock: transaction.LOCK.UPDATE });
     if (!property) fail(404, 'Sale property not found');
     if (!['available', 'reserved', 'draft'].includes(property.status)) fail(409, `A ${property.status} property cannot accept an offer`);
@@ -716,6 +747,17 @@ exports.acceptOffer = asyncHandler(async (req, res) => {
     await SaleTransactionParty.bulkCreate(snapshots.map((snapshot) => ({ branch_id: property.branch_id, transaction_id: saleTransaction.id, party_type: snapshot.party_type, contact_id: snapshot.contact_id, client_id: snapshot.client_id, snapshot_name: snapshot.contact?.full_name || 'Unknown', snapshot_phone: snapshot.contact?.primary_phone, snapshot_email: snapshot.contact?.email, ownership_percent: snapshot.ownership_percent, is_primary: snapshot.is_primary, status: 'active', created_by: req.user.id })), { transaction });
     await offer.update({ status: 'accepted', accepted_at: new Date(), updated_by: req.user.id }, { transaction });
     await property.update({ status: 'reserved' }, { transaction });
+    // Record the written approval of the version being accepted. If no version
+    // exists yet (offer never went through submit), snapshot one first.
+    let latest = await SaleOfferVersion.findOne({ where: { offer_id: offer.id }, order: [['version_no', 'DESC']], transaction });
+    if (!latest) latest = await appendOfferVersion(offer, 'buyer', req.user.id, transaction);
+    await SaleOfferApproval.create({
+      branch_id: offer.branch_id, offer_id: offer.id, offer_version_id: latest.id,
+      approver_side: ['buyer', 'seller'].includes(approval.approver_side) ? approval.approver_side : 'seller',
+      decision: 'approved', note: String(approval.note || '').trim() || null,
+      override_reason: isOverride ? String(req.body.override_reason).trim() : null,
+      approved_by: req.user.id, approved_at: new Date(),
+    }, { transaction });
     await recordEvent({ branchId: property.branch_id, propertyId: property.id, entityType: 'sale_transaction', entityId: saleTransaction.id, eventType: 'OFFER_ACCEPTED', actorId: req.user.id, oldValue: null, newValue: { offer_id: offer.id, deal_id: deal.id }, reason: body.reason, ipAddress: ip(req), transaction });
     return { offer, deal, transaction: saleTransaction };
   });
