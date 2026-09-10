@@ -2,8 +2,8 @@
 module.exports = {
   up: async (q, S) => {
     const ts = {
-      createdAt: { type: S.DATE, allowNull: false, defaultValue: S.literal('CURRENT_TIMESTAMP') },
-      updatedAt: { type: S.DATE, allowNull: false, defaultValue: S.literal('CURRENT_TIMESTAMP') },
+      created_at: { type: S.DATE, allowNull: false, defaultValue: S.literal('CURRENT_TIMESTAMP') },
+      updated_at: { type: S.DATE, allowNull: false, defaultValue: S.literal('CURRENT_TIMESTAMP') },
     };
     const dealCols = {
       contract_status: { type: S.ENUM('none', 'drafted', 'sent', 'signed'), allowNull: false, defaultValue: 'none' },
@@ -45,7 +45,7 @@ module.exports = {
         event_type: { type: S.STRING(60), allowNull: false },
         detail: S.TEXT, amount: S.DECIMAL(15, 2),
         actor_user_id: S.INTEGER, occurred_at: { type: S.DATE, allowNull: false, defaultValue: S.literal('CURRENT_TIMESTAMP') },
-        createdAt: { type: S.DATE, allowNull: false, defaultValue: S.literal('CURRENT_TIMESTAMP') },
+        created_at: { type: S.DATE, allowNull: false, defaultValue: S.literal('CURRENT_TIMESTAMP') },
       });
       await q.addIndex('deal_events', ['deal_id'], { name: 'deal_events_deal' }).catch(() => {});
     }
