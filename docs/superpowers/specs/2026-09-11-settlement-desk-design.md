@@ -202,9 +202,22 @@ reading the money-tab drawer flow in `SalesPropertyFile.jsx`):**
   confirm (2). **= 20 actions.**
 
 **Targets (desk, ≥40% fewer):** receipt **≤ 8** (from 14), payout **≤ 12** (from
-20). Task 8 records the desk's confirmed counts and the % reduction here; the
-sub-project is not "done" until both meet target. Wall-clock timing and the
-three-staff acceptance test remain part of the overall Phase-2 gate, run later.
+20).
+
+**Result (desk, confirmed 2026-09-11 — same counting method, prepared case):**
+- *Record a buyer receipt:* Open Settlement Desk (1) → Record tab (1) → reference
+  (1) [payer + amount prefilled] → Record receipt (1) → Match tab (1) → Upload
+  statement (1) [candidate bank line defaulted to the exact match] → Match (1).
+  **= 7 actions — 50% fewer than 14. ✅ (target ≤ 8).**
+- *Pay a payout:* Open Settlement Desk (1) → Record tab (1) → Pay out (1) +
+  confirm (1) [chains record→clear] → Match tab (1) → Upload statement (1) →
+  Match (1) → Record tab (1) → Mark paid (1) + confirm (1). **= 10 actions —
+  50% fewer than 20. ✅ (target ≤ 12).**
+
+Both routine tasks clear the ≥40% gate (50% each), and no known payee / property
+/ amount is re-typed (all prefilled from the settlement lines, parties and
+agency quote). Wall-clock timing and the three-staff acceptance test remain part
+of the overall Phase-2 gate, run later.
 
 ## 10. Testing & verification
 

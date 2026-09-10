@@ -97,6 +97,7 @@ export default function SettlementDesk() {
         </div>
       )}
 
+      {/* Desktop: a quiet tab row. Phone width: a stage selector (CSS swaps them). */}
       <nav className="desk-stepper" role="tablist">
         {VIEWS.map((v) => (
           <button key={v.key} role="tab" aria-selected={view === v.key} className={view === v.key ? 'on' : ''} onClick={() => goView(v.key)}>
@@ -104,6 +105,9 @@ export default function SettlementDesk() {
           </button>
         ))}
       </nav>
+      <select className="desk-stage-select" value={view} onChange={(e) => goView(e.target.value)} aria-label="Settlement stage">
+        {VIEWS.map((v) => <option key={v.key} value={v.key}>{viewLabel(v)}</option>)}
+      </select>
 
       <div className="desk-view">
         <Active picture={picture} desk={desk} goView={goView} />

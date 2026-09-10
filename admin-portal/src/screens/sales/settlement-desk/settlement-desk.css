@@ -22,3 +22,31 @@
 .desk-view .tbl { width: 100%; }
 
 .audit-panel summary { list-style: revert; }
+
+/* The stage selector is desktop-hidden; the tab row is the desktop control. */
+.desk-stage-select { display: none; }
+
+/* ── Phone width ── stage selector replaces the tab row, the next-action sticks
+   to the bottom, forms and their fields go full width, and any table scrolls
+   inside its own box so the page never scrolls sideways. */
+@media (max-width: 640px) {
+  .settlement-desk { padding-inline: 4px; }
+  .desk-stepper { display: none; }
+  .desk-stage-select {
+    display: block; width: 100%; padding: 10px 12px; font: inherit; font-weight: 600;
+    border: 1px solid var(--line, #e5e7eb); border-radius: 8px; background: var(--surface, #fff);
+  }
+  .desk-badges .card { flex: 1 1 40%; min-width: 0; }
+  /* Sticky next-action bar. */
+  .desk-nextaction {
+    position: sticky; bottom: 0; z-index: 5;
+    border: 1px solid var(--line, #e5e7eb);
+    box-shadow: 0 -4px 12px rgba(0,0,0,.06);
+  }
+  /* Forms stack and fill the width; fields no longer sit side by side. */
+  .desk-view [style*="flex-wrap"] { gap: 10px !important; }
+  .desk-view .field, .desk-view label { width: 100%; }
+  .desk-view input, .desk-view select, .desk-view textarea { width: 100%; box-sizing: border-box; }
+  /* Tables scroll within their card, not the page. */
+  .desk-view .tbl { display: block; overflow-x: auto; white-space: nowrap; }
+}
