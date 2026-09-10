@@ -183,21 +183,27 @@ navigation between screens/tabs/drawers. Counts are for a *prepared* case (parti
 profile, approved settlement already in place), starting from the property/deal
 landing, for the two routine tasks.
 
-**Baseline (current `SalesPropertyFile` settlement flow — to be confirmed exactly
-during implementation by counting against the running app):**
-- *Record a buyer receipt:* open property file → Settlement section → Money tab →
-  open Record-payment drawer → set direction, kind, party, amount, reference,
-  account (≈6 fields) → save → post/clear → open reconcile → pick bank line →
-  confirm. **Estimated ~16–18 actions.**
-- *Pay a payout:* Settlement → Money → verify/select recipient account → open
-  prepare-disbursement drawer (payee, line, account, amount ≈4 fields) → save →
-  allocate/record outgoing payment → clear → reconcile → mark paid.
-  **Estimated ~18–20 actions.**
+**Counting method.** Action counts are **code-derived** from the UI structure —
+each button/drawer open, each required field the user must fill, each save/confirm
+click, and each section/tab/row navigation, for a *prepared* case (parties,
+profile and an approved settlement already in place). The desk's "after" counts
+(Task 8) are derived the exact same way, so the comparison is apples-to-apples.
 
-**Targets (desk):** each ≤ 60% of its confirmed baseline (i.e. ≥40% fewer). The
-implementation plan's final task records the confirmed before/after counts for
-both tasks in the plan report and this spec's acceptance section; the sub-project
-is not "done" until both show ≥40% reduction. Wall-clock timing and the
+**Baseline (current `SalesPropertyFile` settlement flow, confirmed 2026-09-11 by
+reading the money-tab drawer flow in `SalesPropertyFile.jsx`):**
+- *Record a buyer receipt:* property file (1) → Settlement section (1) → "Add
+  receipt" drawer (1) → amount (1) + reference (1) → Save (1) → locate pending
+  payment + Clear + confirm (3) → Reconcile drawer (1) → bank line (1) +
+  statement URL (1) → Save (1). **= 14 actions.**
+- *Pay a payout:* property file (1) → Settlement section (1) → prepare-payout
+  drawer (1) → line + account + amount (3) → Save (1) → record outgoing payment:
+  drawer (1) + amount + reference (2) + Save (1) → Clear + confirm (2) →
+  Reconcile drawer (1) + bank line + statement URL (2) + Save (1) → Mark paid +
+  confirm (2). **= 20 actions.**
+
+**Targets (desk, ≥40% fewer):** receipt **≤ 8** (from 14), payout **≤ 12** (from
+20). Task 8 records the desk's confirmed counts and the % reduction here; the
+sub-project is not "done" until both meet target. Wall-clock timing and the
 three-staff acceptance test remain part of the overall Phase-2 gate, run later.
 
 ## 10. Testing & verification
