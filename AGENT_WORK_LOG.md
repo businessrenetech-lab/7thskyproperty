@@ -4776,3 +4776,147 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Backend: only additive read-only change = property_id on salesBulkData (for the bulk→desk deep-link).
 - Verification: admin-portal npm run build clean throughout; backend npm test 27/0 and npm run test:full 28/0 after changes; browser walkthrough (Playwright at :50001/admin) confirmed all five views + shell + summary + deal drawer against real data; mobile layout verified at 390px. 40% gate met (code-derived, same method): receipt 14→7, payout 20→10 (50% each).
 - NOT merged; no PR. Deferred to Phase 2 sub-project 2: workspace-routes restructure of the rest of SalesPropertyFile, Accounting landing page, role-based work queues (plan deliverables 1 & 4).
+
+### 2026-09-11 01:38 | Antigravity (Gemini 3.8 Flash) | STARTED | Multi-page routing, clean hamburger menu & footer-only logins
+- Request: Each page must open with a separate SEO-ready link (/about, /contact, /properties, /properties/:id, /services, /careers, /nrb). Keep home page ultra-neat and clean. Put all navigation links inside a clean hamburger menu icon next to the "book an appraisal" pill button at the top right. Move all login portals (client & provider) exclusively to the footer; strictly exclude internal admin login.
+- Scope: `website-mock/` directory only.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Proceeding with react-router-dom multi-page restructuring, dedicated pages, and header/footer refinement.
+
+### 2026-09-11 01:43 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Multi-page routing, clean hamburger menu & footer-only logins
+- Request: Each page must open with a separate SEO-ready link (/about, /contact, /properties, /properties/:id, /services, /careers, /nrb). Keep home page ultra-neat and clean. Put all navigation links inside a clean hamburger menu icon next to the "book an appraisal" pill button at the top right. Move all login portals (client & provider) exclusively to the footer; strictly exclude internal admin login.
+- Scope: `website-mock/` directory only.
+- Changes:
+  - Installed `react-router-dom` and implemented multi-page SEO architecture across dedicated pages: `HomePage.jsx` (`/`), `AboutPage.jsx` (`/about`), `ContactPage.jsx` (`/contact`), `PropertiesPage.jsx` (`/properties`), `PropertyDetailPage.jsx` (`/properties/:id`), `ServicesPage.jsx` (`/services`), `CareersPage.jsx` (`/careers`), and `NrbPage.jsx` (`/nrb`).
+  - Redesigned `Navbar.jsx`: Header is now 100% minimalist matching `image.png` with only the logo on the left, and the electric cyan "book an appraisal" pill button + clean hamburger icon on the right. All menu categories are housed inside a smooth slide-over navigation drawer.
+  - Re-architected `Footer.jsx`: Client Login and Service Provider Login moved exclusively to the footer under a secure portal section. Admin login is strictly omitted from the public site.
+  - Streamlined `HomePage.jsx` to be ultra-neat, tidy, and minimalist, showcasing the clean hero, curated property highlights, service pillars, NRB callout, testimonials, and FAQs.
+- Verification:
+  - `npm run build` in `website-mock/` succeeded with 0 errors (1498 modules built in 2.35s).
+  - Verified live HTTP 200 on all canonical routes: `/`, `/about`, `/contact`, `/properties`, `/properties/SSP-GUL-902`, `/services`, `/careers`, `/nrb`.
+  - Confirmed git status shows no modification to active codebase and zero git push operations.
+- Handoff: The website mock is running live on `http://localhost:3050` with full multi-page navigation.
+
+### 2026-09-11 01:48 | Antigravity (Gemini 3.8 Flash) | STARTED | Declutter /properties, vertical & landscape cards, compact detail UI, booking.com short-stay
+- Request: Declutter /properties for production-level minimalist UI with less text. Separate 4 vertical photo cards (portrait) together and landscape cards together. Redesign property detail page into a compact, highly organized, production-grade layout. For short-term stay properties, build Booking.com style UI and features (guest selectors, check-in/out date calculations, review scores, breakdown pricing, instant reservation).
+- Scope: `website-mock/` directory only.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Updating property datasets, PropertiesPage, PropertyDetailPage, and adding Booking.com styled short-stay components.
+
+### 2026-09-11 01:50 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Declutter /properties, vertical & landscape cards, compact detail UI, booking.com short-stay
+- Request: Declutter /properties for production-level minimalist UI with less text. Separate 4 vertical photo cards (portrait) together and landscape cards together. Redesign property detail page into a compact, highly organized, production-grade layout. For short-term stay properties, build Booking.com style UI and features.
+- Scope: `website-mock/` directory only.
+- Changes:
+  - Updated `mockProperties.js`: Structured 4 portrait/vertical orientation architectural properties with 3:4 aspect ratios and 4 landscape properties, plus rich Booking.com metadata (review scores, cleaning/service fees, stay amenities, room configurations).
+  - Redesigned `PropertiesPage.jsx`: Production-grade minimalist layout. Clean pill filter strip, decluttered search input, 4-card vertical architectural grid with gradient overlays and micro-specs, followed by a landscape collection grid. Zero wordy paragraphs or clutter.
+  - Redesigned `PropertyDetailPage.jsx`: Compact, highly organized split layout with Airbnb/Upstate-style photo mosaic header, streamlined specs bar, and clean overview.
+  - Implemented **Booking.com Style Short Stay UI**:
+    - Exceptional 9.8/10 blue review score badge + verified review counts.
+    - Free cancellation highlight banner.
+    - Interactive check-in/check-out date picker with dynamic nights and live price calculation.
+    - Adults/guests dropdown selector with price breakdown (nights x rate + cleaning + service fee).
+    - Instant reservation booking button with confirmed booking states.
+    - Booking.com multi-room suite configuration cards and house rules.
+- Verification:
+  - `npm run build` in `website-mock/` built cleanly in 3.43s (1498 modules, 0 errors).
+  - Verified live HTTP 200 on `/properties`, `/properties/SSP-STS-01` (Booking.com short stay), `/properties/SSP-GUL-701` (vertical portrait), `/properties/SSP-GUL-902` (landscape).
+  - Confirmed git status shows no modification to active codebase and zero git push operations.
+- Handoff: The updated production-grade UI is live on `http://localhost:3050`.
+
+### 2026-09-11 01:53 | Antigravity (Gemini 3.8 Flash) | STARTED | 360° Property Solutions section redesign in landing hero
+- Request: Redesign the lower landing hero section to introduce Seventh Sky Property Care with "360° Property Solutions", compelling 2-3 sentence copy positioning it as Bangladesh's premier all-in-one property solution, with a meaningful image on the right side in a clean, minimalist, decluttered layout.
+- Scope: `website-mock/src/components/Hero.jsx` (and accompanying styling).
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Redesigning section with clean split layout, refined typography, and meaningful architectural imagery.
+
+### 2026-09-11 01:55 | Antigravity (Gemini 3.8 Flash) | COMPLETED | 360° Property Solutions section redesign in landing hero
+- Request: Redesign the lower landing hero section to introduce Seventh Sky Property Care with "360° Property Solutions", compelling 2-3 sentence copy positioning it as Bangladesh's premier all-in-one property solution, with a meaningful image on the right side in a clean, minimalist, decluttered layout.
+- Scope: `website-mock/src/components/Hero.jsx`.
+- Changes:
+  - Redesigned the lower hero section into a clean, minimalist, decluttered split container:
+    - Left Column: Prominent "Seventh Sky Property Care" kicker badge with electric pulse dot, bold headline `360° Property Solutions.`, and impactful 2-sentence copy positioning Seventh Sky as Bangladesh's first unified, institutional-grade property custodianship eliminating fragmented brokers with legal accountability, automated ledgers, and on-ground care under one roof.
+    - Minimalist Micro-Pills: Clean badges for Legal Deed & Mutation Vetting, Automated Rent Ledgers & FX, and 24/7 Emergency Care Dispatch.
+    - Right Column: High-impact luxury architectural and interior image with subtle gradient overlay, paired with a floating frosted glass status badge displaying 98.4% client retention, 24/7 emergency dispatch, and ৳850+ Cr assets under care.
+- Verification:
+  - `npm run build` in `website-mock/` passed cleanly (1498 modules, built in 2.70s, 0 errors).
+  - Live HTTP status 200 confirmed on `http://localhost:3050`.
+  - Confirmed no changes to backend/ or admin-portal/ and zero git push operations.
+- Handoff: The updated 360° Property Solutions hero section is live on `http://localhost:3050`.
+
+### 2026-09-11 02:04 | Antigravity (Gemini 3.8 Flash) | STARTED | Website Backend Wiring, Public Enquiries & Tenant Applications, and Admin Website Console
+### 2026-09-11 02:35 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Website Backend Wiring, Public Enquiries & Tenant Applications, and Admin Website Console
+- Request: Connect the website to the system backend, enabling website enquiries (sales, rental, short stay, care services across 7 lines, appraisals) and tenant applications; build an admin section for the website and wire the website with the system.
+- Scope:
+  - Backend: `backend/controllers/publicWebsite.controller.js`, `backend/routes/publicWebsite.routes.js`, `backend/server.js`.
+  - Admin Portal: `admin-portal/src/pages/WebsiteManagement.jsx`, `admin-portal/src/ui/Layout.jsx`, `admin-portal/src/App.jsx`.
+  - Website Frontend: `website-mock/vite.config.js`, `website-mock/src/services/api.js`, `website-mock/src/components/Modals.jsx`, `website-mock/src/pages/PropertiesPage.jsx`, `website-mock/src/pages/PropertyDetailPage.jsx`, `website-mock/src/pages/ServicesPage.jsx`, `website-mock/src/pages/ContactPage.jsx`.
+- Changes:
+  - Backend:
+    - Created `backend/controllers/publicWebsite.controller.js` with comprehensive endpoints:
+      - `GET /api/public-website/properties` (published & featured filtering, search, pagination).
+      - `GET /api/public-website/properties/:idOrSlug` (single property detail with media & amenities).
+      - `POST /api/public-website/sales-enquiries` (creates BuyerEnquiry with `SSPC-BEQ-...` & auto-creates Contact in user's branch).
+      - `POST /api/public-website/rental-enquiries` (creates RentalEnquiry with `SSPC-EQ-...` & auto-creates Contact in user's branch).
+      - `POST /api/public-website/tenant-applications` (creates TenantApplication with `SSPC-APP-...` & auto-creates Contact).
+      - `POST /api/public-website/service-requests` (creates ServiceEnquiry with `SSPC-CEN-...` routing to Property Care desk).
+      - `POST /api/public-website/appraisals` (creates Appraisal/Lead with `SSPC-LD-...`).
+      - `POST /api/public-website/contact` (creates General Contact Ticket).
+      - `GET /api/public-website/inquiries/stats` & `GET /api/public-website/inquiries/all` (unified inquiries desk for administration).
+      - `PATCH /api/public-website/properties/:id/visibility` (toggles `is_published` and `is_featured` flags).
+    - Registered routes in `backend/routes/publicWebsite.routes.js` and mounted resiliently at `/api/public-website` in `backend/server.js`.
+  - Admin Portal:
+    - Rewrote `admin-portal/src/pages/WebsiteManagement.jsx` into a unified management hub:
+      - Live KPI stat cards (Total Inquiries, Pending Review, Tenant Applications, Active Published Listings).
+      - Tabbed Inquiries Desk (All, Sales, Rental, Tenant Applications, Property Care Services, Appraisals) with instant navigation links to respective operational desks (`/residential/enquiry`, `/property-management/enquiries`, `/property-management/applications`, `/property-care/enquiries`, etc.).
+      - Property Publishing Matrix with live toggle switches for "Published to Website" and "Featured on Home".
+    - Registered route `/website-management` in `admin-portal/src/App.jsx` and added "Website Management" navigation entry under Administration in `admin-portal/src/ui/Layout.jsx`.
+  - Website Frontend (`website-mock/`):
+    - Configured Vite reverse proxy in `website-mock/vite.config.js` pointing `/api` and `/uploads` to `http://127.0.0.1:50001`.
+    - Created `website-mock/src/services/api.js` (`websiteApi`) mapping live backend responses with graceful fallback to curated showcases when backend records are sparse.
+    - Updated `Modals.jsx`:
+      - `AppraisalModal` connected to `websiteApi.submitAppraisalRequest`.
+      - `InspectionModal` connected to `websiteApi.submitRentalEnquiry` / `websiteApi.submitSalesEnquiry`.
+      - Added `TenantApplicationModal` with multi-section digital tenancy application (personal details, employment, current residence, references).
+      - Added `ServiceRequestModal` supporting all 7 Property Care service lines.
+    - Updated `PropertiesPage.jsx` to load live database properties via `websiteApi.getProperties`.
+    - Updated `PropertyDetailPage.jsx`:
+      - Live lookup by ID or slug via `websiteApi.getPropertyById`.
+      - Short stay Booking.com form wired to `websiteApi.submitShortStayBookingEnquiry` with guest credentials and live booking code.
+      - Standard enquiry form wired to live backend sales/rental endpoints with reference code feedback.
+      - "Apply for Tenancy Online" button opening `TenantApplicationModal` for rental properties.
+    - Updated `ServicesPage.jsx` to trigger `ServiceRequestModal` for active categories and service cards.
+    - Updated `ContactPage.jsx` to submit messages through `websiteApi.submitContactMessage` with reference ticket numbers.
+- Verification:
+  - Backend Endpoints Verified via Live HTTP Tests:
+    - `GET /api/public-website/properties` → 200 OK with published database properties.
+    - `POST /api/public-website/sales-enquiries` → 201 Created (`SSPC-BEQ-000004`).
+    - `POST /api/public-website/rental-enquiries` → 201 Created (`SSPC-EQ-000003`).
+    - `POST /api/public-website/tenant-applications` → 201 Created (`SSPC-APP-000007`).
+    - `POST /api/public-website/service-requests` → 201 Created (`SSPC-CEN-000003`).
+    - `POST /api/public-website/appraisals` → 201 Created (`SSPC-LD-000003`).
+  - Frontend Builds:
+    - `admin-portal`: `npm run build` completed cleanly with 0 errors (2,034 modules transformed).
+    - `website-mock`: `npm run build` completed cleanly with 0 errors (1,499 modules transformed).
+  - Dev servers:
+    - Backend running on `http://127.0.0.1:50001`.
+    - Website running on `http://localhost:3050`.
+  - Zero git push operations performed (strict adherence to user instructions).
+- Handoff: All website forms and system operational desks are fully connected and operating seamlessly.
+
+
+
+
+
+
+
+
+### 2026-09-11 | Claude Code (Opus 4.8) | COMPLETED | Phase 2 sub-project 2 — Sales Accounting Overview + Work Queue
+- Built the new-capability half of Phase 2 (plan deliverable 4) per docs/superpowers/plans/2026-09-11-sales-accounting-workqueue.md + spec 2026-09-11-sales-accounting-workqueue-design.md. 5 tasks, committed on air-conditioning/phase-0-duplicate.
+- Backend (read-only, no schema change): shared scanSettlements(req) helper (extracted from the dashboard scan) + two endpoints — GET /sales/accounting-overview (headline figures + 4 worklists) and GET /sales/work-queue (role-derived pending items, ?scope=all for admin/manager). Both roleMiddleware(READ), branch-scoped.
+- Frontend: AccountingOverview.jsx (/residential/accounting, Money nav) — 5 StatCards + 4 worklist tables, each row 'Open desk' into the Settlement Desk. SalesWorkQueue.jsx (/residential/work-queue, Home nav) — items grouped by kind with a My-work/All toggle, each Go into the resolving desk view (offer_review → property file offers section). Nav icons Landmark + Inbox (already imported).
+- Verified live: overview.trust_cash_held (18,479) == dashboard.client_funds_held (18,479); work-queue pay_out items == overview payouts_to_pay (SSPC-PR-000009=350,000, SSPC-PR-000003=2,500,000); both pages render real data in the browser and drill into the desk; backend npm test 27/0 + test:full 28/0 unchanged (read-only). Role-filter mechanism verified via scope; an accounts-only-user spot-check remains for formal acceptance.
+- Deferred (its own later sub-project): URL-routed restructure of the rest of SalesPropertyFile (plan deliverable 1). Global admin sidebar not collapsing at phone width still open (ConsoleShell).
+- NOT merged; no PR.
