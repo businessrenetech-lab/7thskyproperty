@@ -76,3 +76,50 @@ exports.receive = asyncHandler(async (req, res) => {
   const money = await svc.computeDealMoney(deal);
   res.status(201).json({ data: { money }, message: `Recorded ${amount.toLocaleString()} received.` });
 });
+
+const crypto = require('crypto');
+const hashOf = (deal, b) => crypto.createHash('sha1').update(`${deal.id}|${b.payee_type}|${b.payee_contact_id || b.payee_name || ''}|${num(b.amount)}|${b.reference || ''}`).digest('hex').slice(0, 40);
+
+exports.createDisbursement = asyncHandler(async (req, res) => {
+  const deal = await findDeal(req);
+  if (!deal) return res.status(404).json({ error: 'Deal not found.' });
+  const b = req.body || {};
+  if (num(b.amount) <= 0) return res.status(400).json({ error: 'Amount must be greater than zero.' });
+  const source_hash = hashOf(deal, b);
+  const dup = await DealDisbursement.findOne({ where: { deal_id: deal.id, source_hash, status: ['draft', 'approved', 'paid'] } });
+  if (dup) return res.status(409).json({ error: `Duplicate disbursement — ${dup.disbursement_code} already exists for the same payee/amount/reference.` });
+  const row = await DealDisbursement.create({
+    branch_id: deal.branch_id, disbursement_code: await generateCode(DealDisbursement, 'disbursement_code', 'SSPC-DD-'),
+    deal_id: deal.id, ...pick(b, ['payee_type', 'payee_contact_id', 'payee_name', 'description', 'amount', 'method', 'reference']),
+    status: 'draft', source_hash, created_by: req.user?.id || null,
+  });
+  if (deal.disbursement_status === 'none') await deal.update({ disbursement_status: 'pending' });
+  await svc.logEvent(deal.id, deal.branch_id, 'disbursement_created', { amount: num(b.amount), detail: { code: row.disbursement_code, payee: b.payee_name || b.payee_type }, actor: req.user?.id });
+  res.status(201).json({ data: row });
+});
+
+exports.payDisbursement = asyncHandler(async (req, res) => {
+  if (!isApprover(req)) return res.status(403).json({ error: 'Only a branch admin or super admin can pay a disbursement.' });
+  const deal = await findDeal(req);
+  if (!deal) return res.status(404).json({ error: 'Deal not found.' });
+  if (!deal.settlement_approved_at) return res.status(400).json({ error: 'Settlement must be approved before any disbursement is paid.' });
+  const row = await DealDisbursement.findOne({ where: { id: req.params.did, deal_id: deal.id } });
+  if (!row) return res.status(404).json({ error: 'Disbursement not found.' });
+  if (row.status === 'paid') return res.status(409).json({ error: 'Already paid.' });
+  const money = await svc.computeDealMoney(deal);
+  if (num(row.amount) > money.net_held + 0.001) return res.status(400).json({ error: `Amount exceeds money held for this deal (${money.net_held.toLocaleString()}).` });
+  await row.update({ status: 'paid', approved_by: req.user?.id || null, approved_at: new Date(), paid_at: new Date() });
+  await svc.recomputeStatuses(deal);
+  await svc.logEvent(deal.id, deal.branch_id, 'disbursement_paid', { amount: num(row.amount), detail: { code: row.disbursement_code }, actor: req.user?.id });
+  res.json({ data: row });
+});
+
+exports.settle = asyncHandler(async (req, res) => {
+  const deal = await findDeal(req);
+  if (!deal) return res.status(404).json({ error: 'Deal not found.' });
+  const money = await svc.computeDealMoney(deal);
+  if (money.statuses.payment !== 'received') return res.status(400).json({ error: 'Cannot settle — money not fully received.' });
+  await deal.update({ settlement_status: 'settled', settlement_date: deal.settlement_date || new Date() });
+  await svc.logEvent(deal.id, deal.branch_id, 'settled', { actor: req.user?.id });
+  res.json({ data: deal });
+});

@@ -15,5 +15,8 @@ router.get('/:id/settlement', settle.getSettlement);
 router.post('/:id/settlement/prepare', settle.prepare);
 router.post('/:id/settlement/approve', settle.approve);
 router.post('/:id/settlement/receive', settle.receive);
+router.post('/:id/disbursements', settle.createDisbursement);
+router.post('/:id/disbursements/:did/pay', settle.payDisbursement);
+router.post('/:id/settle', settle.settle);
 
 module.exports = router;
