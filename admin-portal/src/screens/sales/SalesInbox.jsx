@@ -74,6 +74,11 @@ export default function SalesInbox() {
       setReply(''); setSubject(''); openThread(active); load();
     } catch (e) { toast.error(e.response?.data?.error || 'Could not send'); }
   };
+  const sequenceAction = async (action) => {
+    const id = thread?.context?.enquiry?.id; if (!id) return;
+    try { await api.post(`/sales/enquiries/${id}/sequence/${action}`); toast.success(`Sequence ${action}`); openThread(active); }
+    catch (e) { toast.error(e.response?.data?.error || 'Could not update the sequence'); }
+  };
   const addParticipant = async () => {
     if (!newPart.contact_id) return;
     try { await api.post(`/sales/inbox/${encodeURIComponent(active)}/participants`, newPart); setNewPart({ contact_id: null, role: 'buyer' }); openThread(active); load(); }
@@ -123,6 +128,27 @@ export default function SalesInbox() {
                   <Combo endpoint="/users" labelFn={(u) => u.name || u.email} value={null} onChange={(v) => assign(v)} placeholder="Assignee…" />
                 </div>
               </div>
+
+              {/* Attribution + follow-up sequence (sales enquiries only) */}
+              {thread.context?.kind === 'sales_enquiry' && (() => {
+                const enq = thread.context.enquiry || {};
+                const seqStatus = enq.sequence_status;
+                const seqTone = { active: 'green', paused: 'amber', completed: 'blue', stopped: 'grey' }[seqStatus] || 'grey';
+                return (
+                  <div style={{ margin: '8px 0 0', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {enq.utm_source && <Badge tone="grey">Source: {enq.utm_source}</Badge>}
+                    {enq.utm_campaign && <Badge tone="grey">Campaign: {enq.utm_campaign}</Badge>}
+                    {seqStatus ? (
+                      <>
+                        <Badge tone={seqTone}>Sequence: {seqStatus}</Badge>
+                        {seqStatus === 'active' && <Button size="sm" variant="ghost" onClick={() => sequenceAction('pause')}>Pause</Button>}
+                        {seqStatus === 'paused' && <Button size="sm" variant="ghost" onClick={() => sequenceAction('resume')}>Resume</Button>}
+                        {(seqStatus === 'active' || seqStatus === 'paused') && <Button size="sm" variant="ghost" onClick={() => sequenceAction('stop')}>Stop</Button>}
+                      </>
+                    ) : <span style={{ fontSize: 12, color: 'var(--muted)' }}>No follow-up sequence</span>}
+                  </div>
+                );
+              })()}
 
               {/* Participants */}
               <div style={{ margin: '10px 0', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
