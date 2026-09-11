@@ -17,6 +17,12 @@ const NonCircumventionRecord = sequelize.define('NonCircumventionRecord', {
   monitoring_notes: DataTypes.TEXT,
   status: { type: DataTypes.ENUM('pending', 'active', 'breached', 'closed'), defaultValue: 'active' },
   created_by: DataTypes.INTEGER,
+  // Sales use: 'sale' rows are seller/buyer introductions; 'rental' rows are the
+  // original owner/tenant records. deal_id links a PropertyDeal; introduced_by
+  // is the staff user who owns the introduction.
+  context: { type: DataTypes.STRING(20), defaultValue: 'sale' },
+  deal_id: DataTypes.INTEGER,
+  introduced_by: DataTypes.INTEGER,
 }, { tableName: 'non_circumvention_records', underscored: true });
 
 module.exports = NonCircumventionRecord;
