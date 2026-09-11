@@ -26,13 +26,24 @@ async function onCompleted(envelope, { transaction } = {}) {
   const signer = await EnvelopeSigner.findOne({ where: { envelope_id: envelope.id }, order: [['signer_order', 'ASC']], transaction });
   const label = terms.doc_no ? `${terms.doc_no} agreement fee` : 'Agreement fee';
 
+  // generateCode scans MAX(invoice_code); calling it per row inside ONE
+  // uncommitted transaction returns the same code each time (the prior insert
+  // isn't visible yet) → unique violation. Get the base once, then increment the
+  // numeric suffix locally for the batch.
+  const baseCode = await generateCode(PropertyInvoice, 'invoice_code', 'SSPC-IN-');
+  const m = String(baseCode).match(/^(.*?)(\d+)$/);
+  const codePrefix = m ? m[1] : 'SSPC-IN-';
+  const codeWidth = m ? m[2].length : 6;
+  const baseNum = m ? parseInt(m[2], 10) : 1;
+  const codeFor = (i) => `${codePrefix}${String(baseNum + i).padStart(codeWidth, '0')}`;
+
   const invoices = [];
   for (let i = 0; i < stages.length; i++) {
     const s = stages[i] || {};
     const amount = num(s.amount);
     const inv = await PropertyInvoice.create({
       branch_id: envelope.branch_id,
-      invoice_code: await generateCode(PropertyInvoice, 'invoice_code', 'SSPC-IN-'),
+      invoice_code: codeFor(i),
       invoice_kind: 'client', invoice_type: 'agreement_fee',
       agreement_envelope_id: envelope.id,
       contact_id: signer?.contact_id || null, property_id: envelope.related_id || null,
