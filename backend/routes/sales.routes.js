@@ -3,6 +3,7 @@ const router = express.Router();
 const ctrl = require('../controllers/sales.controller');
 const assessmentCtrl = require('../controllers/salesAssessment.controller');
 const sopCtrl = require('../controllers/salesSop.controller');
+const svcCtrl = require('../controllers/salesServices.controller');
 const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
 
 const READ = ['super_admin', 'branch_admin', 'property_manager', 'sales_executive', 'accounts'];
@@ -17,6 +18,7 @@ router.get('/accounting-overview', roleMiddleware(READ), ctrl.accountingOverview
 router.get('/work-queue', roleMiddleware(READ), ctrl.workQueue);
 router.get('/properties/:propertyId/sop', roleMiddleware(READ), sopCtrl.getSop);
 router.post('/properties/:propertyId/sop', roleMiddleware(PREPARE), sopCtrl.ensureSop);
+router.get('/properties/:propertyId/services', roleMiddleware(READ), svcCtrl.propertyServices);
 router.get('/accounting-options', roleMiddleware(ACCOUNTS), ctrl.accountingOptions);
 router.post('/bank-accounts', roleMiddleware(ACCOUNTS), ctrl.createPhysicalBankAccount);
 router.get('/properties/:propertyId', roleMiddleware(READ), ctrl.getPropertyFile);
