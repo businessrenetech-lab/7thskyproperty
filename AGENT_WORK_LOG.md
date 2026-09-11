@@ -5206,3 +5206,64 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Frontend: new SalesReports.jsx (/residential/reports, 'Reports' Home nav, BarChart3) — from/to + category filters, 7 cards, Download PDF via bundled html2pdf.js (AdminReportsHub pattern). Property-file Services section gained a 'Marketing & other expenses' sub-panel (list + inline add form → POST, Remove → DELETE) and Expenses + Margin tiles on the commitments strip.
 - Verified: /residential/reports renders all blocks for the default 90-day range (pipeline 6 stages, conversion 66 created/82% agreed/33% completed, settlement forecast, fees totals) with 0 console errors + PDF button; property-3 Services — add expense ৳12,345 → row renders + Expenses/Margin tiles update (12345/−12345) → Remove → back to 0 (QA expense deleted, no residue). npm test 7+5+27 + test:full 28/0; git diff shows only additive files + salesServices +10/−3.
 - Deferred (Phase 6 B/C): lead routing + source/campaign attribution + follow-up sequences; buyer/seller portal; investment-history report. Not merged; no PR.
+
+### 2026-09-12 01:52 | Antigravity (Gemini 3.8 Flash) | STARTED | Refine Residential Sales Reports UI to sleek minimalist SaaS design
+- Request: Improve UI at /admin/residential/reports (/residential/reports in admin-portal) with a minimalist, sleek design, premium UI components, avoiding cliché AI-designed tropes, delivering an organised, professional SaaS reporting UI without altering existing data or report structures.
+- Scope: `admin-portal/src/screens/sales/SalesReports.jsx` (and any necessary styling/components).
+- Changes: None yet.
+- Verification: Not run yet (starting research and implementation plan).
+- Handoff: Redesign UI to high-end SaaS standards (Linear/Stripe-inspired, pm-scope tokens, sleek KPI tiles, refined typography, crisp tabular metrics, clean table design, preserved html2pdf export).
+
+### 2026-09-12 01:56 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Refine Residential Sales Reports UI to sleek minimalist SaaS design
+- Request: Redesign /admin/residential/reports UI with a minimalist, sleek, professional SaaS reporting look, using premium components and avoiding generic AI design patterns, while strictly keeping existing data and reports.
+- Scope: `admin-portal/src/screens/sales/SalesReports.jsx`, `admin-portal/dist/*`.
+- Changes: Overhauled `SalesReports.jsx` into a high-end SaaS dashboard. Integrated Seventh Sky `.pm-scope` tokens, tabular typography (`font-variant-numeric: tabular-nums`), sleek Period presets (`30D`, `90D`, `YTD`, `12M`), unified date range picker, category dropdown, and polished Refresh/PDF actions. Added visual pipeline stage distribution bar + micro-badges, clean KPI conversion tiles with completion progress bars, formatted settlement forecast table, overdue receivables table with "All Clear" check, fees variance with green/red tags, pinned financial `SummaryStrip` for fees and expenses, and SLA metrics with assignee workload avatars. Preserved `html2pdf.js` export. Rebuilt `admin-portal/dist/`.
+- Verification: Ran `npm run build` in `admin-portal/` (passed: 2047 modules transformed, 0 errors, compiled in 8.61s). Verified backend serves `/admin/residential/reports` with HTTP 200 text/html. Reviewed git diff to confirm all 7 report blocks and calculations remain intact.
+### 2026-09-12 01:58 | Antigravity (Gemini 3.8 Flash) | STARTED | Add sleek tabbed navigation to Residential Sales Reports
+- Request: Reorganize reports view to eliminate long vertical scrolling by introducing sleek, UX-friendly tabs (`Overview`, `Pipeline & Deals`, `Settlement & Credit`, `Fees & Margins`, `Team & SLA`, `All Reports`).
+- Scope: `admin-portal/src/screens/sales/SalesReports.jsx`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Implement modern segmented tab bar with badges, focused sub-views, executive overview dashboard, and preserve all existing data and PDF export capabilities.
+
+### 2026-09-12 02:03 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Add sleek tabbed navigation to Residential Sales Reports
+- Request: Reorganize reports view to eliminate long vertical scrolling by introducing sleek, UX-friendly tabs and an executive overview cockpit.
+- Scope: `admin-portal/src/screens/sales/SalesReports.jsx`, `admin-portal/dist/*`.
+- Changes: Added sleek horizontal tab navigation bar with 6 focused sub-views: `Overview`, `Pipeline & Deals`, `Settlement & Credit`, `Fees & Margins`, `Team & SLA`, and `All Reports`. Designed a high-density, no-scroll Executive Overview cockpit displaying 6 top-line KPIs (Active Pipeline, Conversion %, Forecast Value, Overdue status, Collected Fees, SLA Compliance) and 2-column interactive summary modules with deep-links to specific tabs. Preserved all 8 reports, lead attribution cards, filters, and dynamic PDF export by active tab or full dossier. Rebuilt `admin-portal/dist/`.
+- Verification: `npm run build` in `admin-portal/` succeeded (2047 modules transformed, built in 10.23s). Verified HTTP 200 on `http://localhost:50001/admin/residential/reports`. Tested tab state switching and data bindings.
+- Handoff: Tabbed navigation is live in `admin-portal/dist/` and served at `http://localhost:50001/admin/residential/reports`.
+
+### 2026-09-12 02:10 | Antigravity (Gemini 3.8 Flash) | STARTED | Improve Residential Sales Dashboard UI & separate Properties page
+- Request: On http://localhost:50001/admin/residential/sell:
+  1. Improve dashboard UI with sleek, minimalist, professional SaaS look.
+  2. Add "Properties" sidebar menu under Selling.
+  3. Show the properties table in the dedicated Properties page; do not show it in the dashboard.
+  4. Remove "New Listing" from sidebar menu.
+- Scope: `admin-portal/src/config/consoles.js`, `admin-portal/src/App.jsx`, `admin-portal/src/screens/PropertySellDashboard.jsx`, `admin-portal/src/screens/sales/SalesProperties.jsx`, `admin-portal/src/screens/sales/paths.js`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Separate properties table into dedicated `SalesProperties.jsx`, wire route and sidebar nav, and redesign `PropertySellDashboard.jsx` into an executive cockpit.
+
+### 2026-09-12 02:12 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Improve Residential Sales Dashboard UI & separate Properties page
+- Request: Overhaul `/residential/sell` dashboard UI to a sleek, minimalist, high-density SaaS command center, remove the large properties table from the dashboard, create a dedicated "Properties" page under the sidebar "Selling" group (`/residential/properties`), and remove "New Listing" from the sidebar navigation.
+- Scope: `admin-portal/src/config/consoles.js`, `admin-portal/src/App.jsx`, `admin-portal/src/screens/PropertySellDashboard.jsx`, `admin-portal/src/screens/sales/SalesProperties.jsx`, `admin-portal/src/screens/sales/paths.js`, `admin-portal/dist/*`.
+- Changes:
+  1. `admin-portal/src/config/consoles.js`: Updated `RESIDENTIAL_NAV` under `selling` to remove "New Listing" and add `{ to: '/residential/properties', label: 'Properties', icon: Building2 }`. Imported `Building2` from `lucide-react`.
+  2. `admin-portal/src/screens/sales/paths.js`: Added `salesPropertiesPath` helper.
+  3. `admin-portal/src/screens/sales/SalesProperties.jsx`: Created dedicated property register with 6 lifecycle tabs (`All`, `Listed & Live`, `Under Offer`, `Settled`, `Drafts`, `Withdrawn`) with counts, search filtering, KPI summary strip (total, live listings, under offer, settled, portfolio active value, escrow funds held), and high-density DataTable with action buttons (Edit, View File) and "New Sale Listing" button in header.
+  4. `admin-portal/src/App.jsx`: Mounted `<Route path="/residential/properties" element={<SalesProperties category="residential" ... />} />`.
+  5. `admin-portal/src/screens/PropertySellDashboard.jsx`: Removed the embedded 50-row property table. Redesigned the dashboard into a minimalist, high-density executive cockpit featuring 6 compact KPI tiles with deep-links, an "Operational Attention Required" alert strip for pending offers/settlement approvals, a 4-stage visual pipeline funnel and segmented distribution bar, a 3-column operational work center (Current Sales in Settlement, Recent Buyer Enquiries with quick profile links, Scheduled Viewings with calendar links), and a quick portfolio navigation footer strip.
+- Verification:
+  - Ran `npm run build` in `admin-portal/` (2049 modules transformed, 0 errors, compiled in 10.66s).
+  - Verified backend serves both `/admin/residential/sell` and `/admin/residential/properties` with HTTP 200 `text/html`.
+- Handoff: Production bundle rebuilt and active in `dist/`. All changes live at `http://localhost:50001/admin/residential/sell` and `http://localhost:50001/admin/residential/properties`.
+
+### 2026-09-12 | Claude Code (Opus 4.8) | COMPLETED | Phase 6 sub-project B — Lead routing, attribution & follow-up sequences
+- Committed on air-conditioning/phase-0-duplicate. One slice over SalesEnquiry; additive. The provider seam (communication.service), the sales inbox controller, and settlement/signing/billing engines are only called, never changed (0-line diffs).
+- Migration 0115: sales_enquiries += utm_source/medium/campaign (first-touch, write-once), routing_rule_id, sequence_id, sequence_status ENUM(active/paused/completed/stopped), sequence_enrolled_at; new tables lead_routing_rules (branch, priority, match_category/area/source wildcards, assign_to | assign_pool JSON, default_sequence_id, active) and lead_sequences (steps JSON = [{day_offset business-days, channel, template_id}]). Models LeadRoutingRule/LeadSequence + SalesEnquiry fields.
+- Routing (services/leadRouting.service): routeEnquiry walks active rules by priority, first match wins → assign_to or least-recently-assigned pool member; no rule → global round-robin over active sales_executives (fallback branch_admin). Never overrides an explicitly-supplied officer. Wired into all three intake points (salesEnquiry create, publicSales, publicWebsite) via shared routeAndEnrol, which also enrols the rule's default_sequence_id.
+- Attribution: UTM captured first-touch on create (staff whitelist + public mappers). A lead_attribution block added to /api/sales/reports (leads by source/campaign, created/converted/rate) + a card on the (user-reworked) Reports page.
+- Sequences (services/leadSequence.scheduler, mirrors arrearsReminder): daily setInterval + startLeadSequenceScheduler registered in server.js. runLeadSequences sends each due step (addBusinessDays(enrolled_at, day_offset) ≤ today) once — idempotent via a Communication subject marker [SEQ:<seqId>:<idx>], through communication.service (suppression honoured), auto-completing past viewing_scheduled or when all steps sent. Thin leadAutomation.controller = rules/sequences CRUD (ADMIN) + per-enquiry enroll/pause/resume/stop (PREPARE), sub-routes of /api/sales (no new mount).
+- Frontend: new LeadAutomation admin screen (/residential/lead-automation, 'Lead Automation' Home nav) — Routing rules + Sequences panels with a step editor over MessageTemplate; SalesInbox thread shows source/campaign badges + a sequence-status chip with pause/resume/stop.
+- Verified: new unit suite scripts/testLeadAutomation.js (12 PASS — rule match, pool round-robin, no-override; step sends once + idempotent re-run; stage-advance stops; do-not-email suppressed) wired into npm test (now 7+5+12+27) + test:full 28/0. Live QA (fresh server): public enquiry source=qa_test → assigned officer 1 via rule + enrolled + utm facebook/spring_sale captured; runLeadSequences sent day-0 once (delivery 'sent'), re-run 0, auto-completed; Lead Automation screen renders both tabs, 0 console errors. All QA data (enquiry, contact/client, rule, sequence, comms) deleted. Non-regression: communication.service / sales inbox / settlement-signing-billing / rental enquiry all 0-line diffs.
+- Deferred (Phase 6 C + later): buyer/seller portal; multi-touch attribution path/history; lead scoring; A/B sequences; inbound-reply auto-pause; WhatsApp; cross-branch routing. Not merged; no PR.
