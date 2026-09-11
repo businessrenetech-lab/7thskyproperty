@@ -373,6 +373,23 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
       }
     }
 
+    // Sales service agreement signed (RPPS/RPSS) → draft agency-fee invoices from
+    // the signed payment schedule + flag the engagement. Idempotent + best-effort:
+    // a failure here must never roll back a completed signature.
+    if (['sale_purchase_agreement', 'sale_sale_agreement'].includes(envelope.related_type)) {
+      try {
+        const salesBilling = require('./salesAgreementCompletion.service');
+        const { invoices } = await salesBilling.onCompleted(envelope, { transaction: tx });
+        if (invoices.length && envelope.related_id) {
+          await logPropertyEvent(envelope.related_id, envelope.branch_id,
+            `Sales agreement signed — ${envelope.envelope_code}`,
+            `${invoices.length} draft fee invoice(s) raised from the signed ${terms.doc_no || 'agreement'}.`);
+        }
+      } catch (e) {
+        console.warn('[sales-agreement] billing on sign:', e.message);
+      }
+    }
+
     // Customer agreement signed → raise the work order (SOP-01 Sec. 7 Step 6 into
     // Sec. 8 Step 7). Suffix-matched so every service line's customer agreement
     // (water_tank_*, air_conditioning_*, …) triggers it. Idempotent inside the service.
