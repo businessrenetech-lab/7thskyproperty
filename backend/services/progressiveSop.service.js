@@ -19,6 +19,7 @@
  */
 const ProjectStage = require('../models/ProjectStage');
 const Project = require('../models/Project');
+const { addBusinessDays, businessDaysBetween } = require('../utils/businessDays');
 
 // stage_key → phase. Keys are the slugs from seed_leasing_workflow.js.
 const STAGE_PHASE = {
@@ -90,12 +91,14 @@ const SALE_HINTS = {
   settlement: 'unlocks when an offer is accepted',
   closure: 'unlocks when the settlement completes',
 };
+// Per-phase SLA in BUSINESS DAYS, measured from when a stage becomes in_progress.
+const SALE_PHASE_SLA = { engagement: 3, marketing: 7, offer: 3, settlement: 14, closure: 7 };
 
 // Vertical-keyed registry. Leasing preserved verbatim; sale added. A vertical
 // with NO entry here has no phase gating (initialStatusFor returns null).
 const REGISTRY = {
-  leasing: { stagePhase: STAGE_PHASE, eventUnlocks: EVENT_UNLOCKS, hints: PHASE_UNLOCK_HINT, activeAtStart: ['property'], ownerPhase: 'owner', fallbackPhase: 'ongoing' },
-  properties_sale: { stagePhase: SALE_STAGE_PHASE, eventUnlocks: SALE_EVENT_UNLOCKS, hints: SALE_HINTS, activeAtStart: ['engagement'], ownerPhase: null, fallbackPhase: 'engagement' },
+  leasing: { stagePhase: STAGE_PHASE, eventUnlocks: EVENT_UNLOCKS, hints: PHASE_UNLOCK_HINT, activeAtStart: ['property'], ownerPhase: 'owner', fallbackPhase: 'ongoing', phaseSla: null },
+  properties_sale: { stagePhase: SALE_STAGE_PHASE, eventUnlocks: SALE_EVENT_UNLOCKS, hints: SALE_HINTS, activeAtStart: ['engagement'], ownerPhase: null, fallbackPhase: 'engagement', phaseSla: SALE_PHASE_SLA },
 };
 
 const phaseOf = (stageKey, vertical = 'leasing') => {
@@ -106,6 +109,37 @@ const hintFor = (phase, vertical = 'leasing') => {
   const reg = REGISTRY[vertical] || REGISTRY.leasing;
   return reg.hints[phase] || 'unlocks later in the lifecycle';
 };
+
+// Business-day SLA for a stage's phase, or null when the vertical has no SLAs.
+const slaBusinessDaysFor = (stageKey, vertical = 'leasing') => {
+  const reg = REGISTRY[vertical];
+  if (!reg || !reg.phaseSla) return null;
+  return reg.phaseSla[phaseOf(stageKey, vertical)] ?? null;
+};
+
+// Stamp a DATEONLY due_date on a stage that just became active — only when it
+// has none yet and its phase has an SLA. Mutates in memory; the caller persists.
+function applyStageDueDate(stage, vertical, today = new Date()) {
+  if (stage.due_date) return;
+  const sla = slaBusinessDaysFor(stage.stage_key, vertical);
+  if (sla == null) return;
+  stage.due_date = addBusinessDays(today, sla).toISOString().slice(0, 10);
+}
+
+// Pure, compute-on-read deadline status for a stage.
+// tier ∈ on_track | due_soon | overdue | escalated. Inactive stages (no due_date
+// or done/skipped/blocked) never show a deadline tier.
+function stageDeadline(stage, today = new Date()) {
+  const inactive = !stage.due_date || ['done', 'skipped', 'blocked'].includes(stage.status);
+  if (inactive) return { due_date: stage.due_date || null, days_overdue: 0, deadline_tier: 'on_track' };
+  const d = businessDaysBetween(today, new Date(stage.due_date + 'T00:00:00'));
+  const days_overdue = Math.max(0, -d);
+  const sla = slaBusinessDaysFor(stage.stage_key, 'properties_sale') || 0;
+  const deadline_tier = d >= 2 ? 'on_track'
+    : d >= 0 ? 'due_soon'
+    : (sla && days_overdue >= sla ? 'escalated' : 'overdue');
+  return { due_date: stage.due_date, days_overdue, deadline_tier };
+}
 
 /**
  * Initial status for a stage when the project is created.
@@ -150,11 +184,12 @@ async function unlockForEvent(propertyId, event, opts = {}) {
     const firstPending = (await ProjectStage.findAll({ where: { project_id: project.id }, order: [['sort_order', 'ASC']], transaction: tx }))
       .find((s) => s.status === 'pending');
     if (firstPending) {
-      await firstPending.update({ status: 'in_progress' }, { transaction: tx });
+      applyStageDueDate(firstPending, vertical);
+      await firstPending.update({ status: 'in_progress', due_date: firstPending.due_date }, { transaction: tx });
       await project.update({ current_stage_key: firstPending.stage_key }, { transaction: tx });
     }
   }
   return { unlocked };
 }
 
-module.exports = { STAGE_PHASE, EVENT_UNLOCKS, PHASE_UNLOCK_HINT, phaseOf, hintFor, initialStatusFor, unlockForEvent, REGISTRY };
+module.exports = { STAGE_PHASE, EVENT_UNLOCKS, PHASE_UNLOCK_HINT, phaseOf, hintFor, initialStatusFor, unlockForEvent, REGISTRY, slaBusinessDaysFor, applyStageDueDate, stageDeadline };
