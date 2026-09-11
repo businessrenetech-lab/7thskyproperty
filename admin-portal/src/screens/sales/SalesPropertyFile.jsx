@@ -202,6 +202,7 @@ const SECTIONS = [
   { key: "settlement", label: "Settlement", icon: Scale },
   { key: "onboarding", label: "Onboarding", icon: ClipboardCheck },
   { key: "workflow", label: "Workflow", icon: ClipboardCheck },
+  { key: "introductions", label: "Introductions", icon: ShieldCheck },
   { key: "documents", label: "Documents", icon: FileText },
   { key: "activity", label: "Activity / Audit", icon: Activity },
 ];
@@ -401,6 +402,43 @@ export default function SalesPropertyFile({
   useEffect(() => {
     if (section === "workflow" && sop === undefined) loadSop();
   }, [section, sop, loadSop]);
+
+  // Introductions (clause 22). undefined = not loaded.
+  const [intros, setIntros] = useState(undefined);
+  const loadIntros = useCallback(async () => {
+    if (!propertyId) return;
+    try {
+      const { data } = await api.get(`/sales/introductions?property_id=${propertyId}`);
+      setIntros(data.data || []);
+    } catch {
+      setIntros([]);
+    }
+  }, [propertyId]);
+  useEffect(() => {
+    if (section === "introductions" && intros === undefined) loadIntros();
+  }, [section, intros, loadIntros]);
+  const saveIntroduction = async (f) => {
+    if (!f.buyer_contact_id || !f.introduction_date) {
+      setFormError("Pick a buyer and an introduction date");
+      return;
+    }
+    try {
+      await api.post(`/sales/introductions`, { property_id: propertyId, ...f });
+      setDrawer(null);
+      toast.success("Introduction recorded");
+      loadIntros();
+    } catch (e) {
+      setFormError(e.response?.data?.error || "Could not save the introduction");
+    }
+  };
+  const setIntroStatus = async (id, status) => {
+    try {
+      await api.put(`/sales/introductions/${id}`, { status });
+      loadIntros();
+    } catch (e) {
+      toast.error(e.response?.data?.error || "Update failed");
+    }
+  };
 
   const openSection = useCallback(
     (nextSection) => {
@@ -3303,6 +3341,87 @@ export default function SalesPropertyFile({
         </div>
       )}
 
+      {section === "introductions" && (
+        <Panel
+          icon={ShieldCheck}
+          heading="Protected introductions"
+          sub="Clause 22 — non-circumvention: who the agency introduced to this property"
+          action={
+            canPrepare ? (
+              <Button
+                size="sm"
+                onClick={() =>
+                  openDrawer("introduction", {
+                    buyer_contact_id: null,
+                    seller_contact_id: null,
+                    introduction_date: "",
+                    protection_basis: "Clause 22 — 12-month non-circumvention",
+                    direct_communication_allowed: false,
+                    breach_risk: "medium",
+                    monitoring_notes: "",
+                  })
+                }
+              >
+                Add introduction
+              </Button>
+            ) : null
+          }
+        >
+          {intros === undefined ? (
+            <Spinner />
+          ) : intros.length === 0 ? (
+            <p className="cell-sub">No introductions recorded for this property.</p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>Buyer</th>
+                    <th>Seller</th>
+                    <th>Introduced</th>
+                    <th>Protection</th>
+                    <th>Risk</th>
+                    <th>Status</th>
+                    {canPrepare && <th></th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {intros.map((r) => (
+                    <tr key={r.id}>
+                      <td>{r.buyer?.full_name || "—"}</td>
+                      <td>{r.seller?.full_name || "—"}</td>
+                      <td>{r.introduction_date}</td>
+                      <td>
+                        {r.protection_until}{" "}
+                        <Badge tone={r.expired ? "red" : "green"}>
+                          {r.expired ? "Expired" : `Protected · ${r.days_remaining}d`}
+                        </Badge>
+                      </td>
+                      <td>{r.breach_risk}</td>
+                      <td><StatusBadge status={r.status} /></td>
+                      {canPrepare && (
+                        <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                          {r.status === "active" && (
+                            <Button size="sm" variant="ghost" onClick={() => setIntroStatus(r.id, "breached")}>
+                              Mark breached
+                            </Button>
+                          )}
+                          {r.status !== "closed" && (
+                            <Button size="sm" variant="ghost" onClick={() => setIntroStatus(r.id, "closed")}>
+                              Close
+                            </Button>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Panel>
+      )}
+
       {section === "documents" && (
         <Panel
           icon={FileText}
@@ -4243,6 +4362,79 @@ export default function SalesPropertyFile({
               )}
             </>
           )}
+        </Drawer>
+      )}
+
+      {drawer === "introduction" && (
+        <Drawer
+          title="Record a protected introduction"
+          onClose={closeDrawer}
+          footer={
+            <DrawerActions
+              close={closeDrawer}
+              save={() => saveIntroduction(form)}
+              saving={saving}
+              label="Save introduction"
+            />
+          }
+        >
+          <ErrorBox error={formError} />
+          <Field label="Buyer (introduced)">
+            <Combo
+              endpoint="/contacts"
+              labelFn={(c) => `${c.full_name}${c.primary_phone ? " · " + c.primary_phone : ""}`}
+              value={form.buyer_contact_id}
+              onChange={(v) => set("buyer_contact_id", v)}
+              placeholder="Search a contact…"
+            />
+          </Field>
+          <Field label="Seller / vendor (optional)">
+            <Combo
+              endpoint="/contacts"
+              labelFn={(c) => `${c.full_name}${c.primary_phone ? " · " + c.primary_phone : ""}`}
+              value={form.seller_contact_id}
+              onChange={(v) => set("seller_contact_id", v)}
+              placeholder="Search a contact…"
+            />
+          </Field>
+          <Field label="Introduction date">
+            <Input
+              type="date"
+              value={form.introduction_date || ""}
+              onChange={(event) => set("introduction_date", event.target.value)}
+            />
+          </Field>
+          <Field label="Protection basis">
+            <Input
+              value={form.protection_basis || ""}
+              onChange={(event) => set("protection_basis", event.target.value)}
+            />
+          </Field>
+          <Field label="Direct contact allowed?">
+            <Select
+              value={form.direct_communication_allowed ? "yes" : "no"}
+              onChange={(event) => set("direct_communication_allowed", event.target.value === "yes")}
+            >
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+            </Select>
+          </Field>
+          <Field label="Breach risk">
+            <Select
+              value={form.breach_risk || "medium"}
+              onChange={(event) => set("breach_risk", event.target.value)}
+            >
+              {["low", "medium", "high"].map((v) => (
+                <option value={v} key={v}>{title(v)}</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Notes">
+            <Textarea
+              value={form.monitoring_notes || ""}
+              onChange={(event) => set("monitoring_notes", event.target.value)}
+            />
+          </Field>
         </Drawer>
       )}
 
