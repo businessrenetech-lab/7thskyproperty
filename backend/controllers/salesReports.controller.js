@@ -145,5 +145,18 @@ exports.report = asyncHandler(async (req, res) => {
   const expenses_total = Math.round([...expByProp.values()].reduce((s, v) => s + v.total, 0));
   const expensesBlock = { rows: expenseRows, totals: { expenses: expenses_total, collected: fees.totals.collected, margin: Math.round(fees.totals.collected - expenses_total) } };
 
-  res.json({ range: { from, to }, pipeline, conversion, settlement_forecast, overdue_receivables, fees, sla, workload, expenses: expensesBlock });
+  // ── lead attribution (first-touch UTM, created in range) ──
+  const attrMap = new Map();
+  for (const e of enquiries) {
+    if (!inRange(e.created_at || e.createdAt)) continue;
+    const src = e.utm_source || '(none)'; const camp = e.utm_campaign || '(none)';
+    const k = `${src}|||${camp}`;
+    const c = attrMap.get(k) || { source: src, campaign: camp, created: 0, converted: 0 };
+    c.created += 1; if (e.stage === 'converted') c.converted += 1; attrMap.set(k, c);
+  }
+  const lead_attribution = [...attrMap.values()]
+    .map((r) => ({ ...r, rate: r.created ? Math.round((r.converted / r.created) * 100) : 0 }))
+    .sort((a, b) => b.created - a.created);
+
+  res.json({ range: { from, to }, pipeline, conversion, settlement_forecast, overdue_receivables, fees, sla, workload, expenses: expensesBlock, lead_attribution });
 });
