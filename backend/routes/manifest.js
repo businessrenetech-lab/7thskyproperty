@@ -11,6 +11,7 @@ module.exports = [
   ['/api/settings', './settings.routes'],
   ['/api/notifications', './notification.routes'],
   ['/api/saved-views', './savedView.routes'],
+  ['/api/message-templates', './messageTemplate.routes'],
   ['/api/branches', './branch.routes'],
   ['/api/automation', './automation.routes'],
   ['/api/dashboard', './dashboard.routes'],
