@@ -205,6 +205,12 @@ const SECTIONS = [
   { key: "documents", label: "Documents", icon: FileText },
   { key: "activity", label: "Activity / Audit", icon: Activity },
 ];
+// SOP deadline tier → [Badge tone, label]. on_track shows no badge.
+const SOP_TIER = {
+  due_soon: ["amber", "Due soon"],
+  overdue: ["red", "Overdue"],
+  escalated: ["red", "Escalated"],
+};
 
 function Panel({ icon: Icon, heading, sub, action, children }) {
   return (
@@ -1055,6 +1061,7 @@ export default function SalesPropertyFile({
         property.status ||
         "draft";
   const blockers = array(detail.blockers, state.blockers);
+  const sopOverdue = (sop?.stages || []).filter((s) => ["overdue", "escalated"].includes(s.deadline_tier)).length;
   const nextAction = detail.next_action || state.next_action;
   const nextActionLabel =
     typeof nextAction === "string" && nextAction.startsWith("clear:")
@@ -2295,7 +2302,7 @@ export default function SalesPropertyFile({
 
       {/* One bar, not two — the blockers count and the next action were saying
           related things in separate stripes and doubled the noise. */}
-      {section !== "settlement" && (nextAction || blockers.length > 0) && (
+      {section !== "settlement" && (nextAction || blockers.length > 0 || sopOverdue > 0) && (
         <div
           style={{
             display: "flex",
@@ -2332,6 +2339,21 @@ export default function SalesPropertyFile({
             >
               <AlertTriangle size={14} /> {blockers.length} blocker
               {blockers.length === 1 ? "" : "s"}
+            </button>
+          )}
+          {sopOverdue > 0 && (
+            <button
+              type="button"
+              className="pm-pill"
+              style={{
+                borderColor: "var(--warn)",
+                background: "var(--warn-bg)",
+                color: "var(--warn)",
+                fontWeight: 750,
+              }}
+              onClick={() => openSection("workflow")}
+            >
+              <AlertTriangle size={14} /> {sopOverdue} SOP overdue
             </button>
           )}
           {nextAction?.section && (
@@ -3182,6 +3204,7 @@ export default function SalesPropertyFile({
             (sop.stages || []).map((stage) => {
               const locked = stage.status === "blocked";
               const readOnly = ["done", "blocked"].includes(stage.status);
+              const tier = SOP_TIER[stage.deadline_tier];
               return (
               <div key={stage.id} style={{ opacity: locked ? 0.55 : 1 }}>
               <Panel
@@ -3214,6 +3237,16 @@ export default function SalesPropertyFile({
                   )
                 }
               >
+                {stage.due_date && !["blocked", "done"].includes(stage.status) && (
+                  <div className="cell-sub" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+                    Due {stage.due_date}
+                    {tier && (
+                      <Badge tone={tier[0]}>
+                        {tier[1]}{stage.days_overdue ? ` · ${stage.days_overdue}d` : ""}
+                      </Badge>
+                    )}
+                  </div>
+                )}
                 {(stage.checklist || []).length === 0 ? (
                   <p className="cell-sub">No checklist for this stage.</p>
                 ) : (

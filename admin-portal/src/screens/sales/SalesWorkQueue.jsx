@@ -18,8 +18,9 @@ const KIND = {
   prepare: ['Prepare', 'prepare'], submit: ['Submit for review', 'review'], review: ['Review', 'review'],
   approve: ['Approve', 'review'], record_receipt: ['Record receipt', 'record'], match_bank: ['Match bank', 'match'],
   pay_out: ['Pay out', 'record'], lock: ['Lock & complete', 'complete'], offer_review: ['Offer review', null],
+  sop_overdue: ['Overdue SOP', null],
 };
-const ORDER = ['prepare', 'submit', 'review', 'approve', 'record_receipt', 'match_bank', 'pay_out', 'lock', 'offer_review'];
+const ORDER = ['prepare', 'submit', 'review', 'approve', 'record_receipt', 'match_bank', 'pay_out', 'lock', 'offer_review', 'sop_overdue'];
 
 export default function SalesWorkQueue() {
   const navigate = useNavigate();
@@ -40,6 +41,7 @@ export default function SalesWorkQueue() {
 
   const go = (it) => {
     if (it.kind === 'offer_review') return navigate(`${settlementDeskPath('residential', it.property_id).replace('/settlement', '')}?section=offers`);
+    if (it.kind === 'sop_overdue') return navigate(`${settlementDeskPath('residential', it.property_id).replace('/settlement', '')}?section=workflow`);
     const view = KIND[it.kind]?.[1] || 'prepare';
     navigate(`${settlementDeskPath('residential', it.property_id)}?view=${view}`);
   };
