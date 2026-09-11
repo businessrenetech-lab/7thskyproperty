@@ -12,6 +12,7 @@ import { PageHead, Spinner, Button, Badge } from '../../ui/kit';
 import { Combo } from '../../ui/pickers';
 
 const sel = { border: '1px solid var(--line)', borderRadius: 8, padding: '7px 10px', font: 'inherit', width: '100%' };
+const DELIVERY_TONE = { sent: 'green', simulated: 'grey', failed: 'red', suppressed: 'amber', pending: 'grey' };
 
 export default function SalesInbox() {
   const toast = useToast();
@@ -25,6 +26,8 @@ export default function SalesInbox() {
   const [visibility, setVisibility] = useState('client');
   const [channel, setChannel] = useState('email');
   const [newPart, setNewPart] = useState({ contact_id: null, role: 'buyer' });
+  const [templates, setTemplates] = useState([]);
+  const [subject, setSubject] = useState('');
 
   const q = params.get('q') || ''; const status = params.get('status') || ''; const mine = params.get('mine') === '1';
   const setParam = (k, v) => setParams((p) => { const n = new URLSearchParams(p); if (v) n.set(k, v); else n.delete(k); return n; }, { replace: true });
@@ -50,12 +53,25 @@ export default function SalesInbox() {
     } catch { toast.error('Failed to open the conversation'); }
   }, [toast]);
 
+  // Templates for the current channel (refetched when channel changes).
+  useEffect(() => {
+    api.get(`/message-templates?scope=sales&channel=${channel}`).then((r) => setTemplates(r.data.data || [])).catch(() => setTemplates([]));
+  }, [channel]);
+  const renderTpl = (str) => {
+    const ctx = { contact_name: thread?.context?.name || '', property: thread?.context?.property?.title || '', property_code: thread?.context?.property?.property_code || '', agent: 'Seventh Sky' };
+    return String(str || '').replace(/\{\{(\w+)\}\}/g, (_, k) => (ctx[k] != null ? ctx[k] : ''));
+  };
+  const applyTemplate = (id) => {
+    const t = templates.find((x) => String(x.id) === String(id)); if (!t) return;
+    setReply(renderTpl(t.body)); if (t.subject) setSubject(renderTpl(t.subject));
+  };
+
   const sendReply = async () => {
     if (!reply.trim()) return;
     try {
-      const r = await api.post('/sales/inbox/reply', { key: active, channel, body: reply, visibility });
-      toast.success(r.data.delivery === 'emailed' ? 'Emailed' : r.data.delivery === 'internal' ? 'Internal note saved' : `Saved (${r.data.delivery})`);
-      setReply(''); openThread(active); load();
+      const r = await api.post('/sales/inbox/reply', { key: active, channel, subject, body: reply, visibility });
+      toast.success(`Delivery: ${r.data.delivery}`);
+      setReply(''); setSubject(''); openThread(active); load();
     } catch (e) { toast.error(e.response?.data?.error || 'Could not send'); }
   };
   const addParticipant = async () => {
@@ -122,9 +138,12 @@ export default function SalesInbox() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '42vh', overflowY: 'auto', padding: '8px 0' }}>
                 {thread.messages.map((m, i) => (
                   <div key={i} style={{ alignSelf: m.direction === 'outbound' ? 'flex-end' : 'flex-start', maxWidth: '80%', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px', background: m.direction === 'outbound' ? 'var(--primary-50,#eff6ff)' : 'var(--card,#fff)', opacity: m.visibility === 'internal' ? 0.85 : 1 }}>
-                    <div style={{ fontSize: 11, color: 'var(--muted)', display: 'flex', gap: 6 }}>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', display: 'flex', gap: 6, alignItems: 'center' }}>
                       <span>{m.channel} · {m.direction}</span>
                       {m.visibility === 'internal' && <Badge tone="grey">Internal</Badge>}
+                      {m.delivery_status && m.delivery_status !== 'logged' && (
+                        <Badge tone={DELIVERY_TONE[m.delivery_status] || 'grey'} title={m.delivery_error || ''}>{m.delivery_status}</Badge>
+                      )}
                     </div>
                     {m.subject && <div style={{ fontWeight: 600, fontSize: 13 }}>{m.subject}</div>}
                     <div style={{ fontSize: 13, whiteSpace: 'pre-wrap' }}>{m.body}</div>
@@ -134,10 +153,12 @@ export default function SalesInbox() {
 
               {/* Reply composer */}
               <div style={{ borderTop: '1px solid var(--line)', paddingTop: 10, marginTop: 8 }}>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                   <select value={visibility} onChange={(e) => setVisibility(e.target.value)} style={{ ...sel, width: 'auto' }}><option value="client">Client</option><option value="internal">Internal note</option></select>
                   <select value={channel} onChange={(e) => setChannel(e.target.value)} style={{ ...sel, width: 'auto' }} disabled={visibility === 'internal'}><option value="email">Email</option><option value="note">Note</option><option value="sms">SMS</option></select>
+                  <select value="" onChange={(e) => applyTemplate(e.target.value)} style={{ ...sel, width: 'auto' }}><option value="">Insert template…</option>{templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
                 </div>
+                {channel === 'email' && visibility === 'client' && <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject" style={{ ...sel, marginBottom: 6 }} />}
                 <textarea value={reply} onChange={(e) => setReply(e.target.value)} placeholder={visibility === 'internal' ? 'Internal note (not sent to the client)…' : 'Reply to the client…'} style={{ ...sel, minHeight: 70 }} />
                 <div style={{ textAlign: 'right', marginTop: 6 }}><Button icon={Send} onClick={sendReply}>{visibility === 'internal' ? 'Save note' : 'Send'}</Button></div>
               </div>
