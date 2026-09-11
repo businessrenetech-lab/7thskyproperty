@@ -43,6 +43,7 @@ const PropertyInvoice = sequelize.define('PropertyInvoice', {
   uploaded_invoice_url: DataTypes.STRING,
   source_bill_id: DataTypes.INTEGER,
   source_receipt_id: DataTypes.INTEGER,
+  agreement_envelope_id: DataTypes.INTEGER, // signing envelope that drafted this fee invoice (once-only key)
   created_by: DataTypes.INTEGER,
 }, { tableName: 'invoices', underscored: true });
 
