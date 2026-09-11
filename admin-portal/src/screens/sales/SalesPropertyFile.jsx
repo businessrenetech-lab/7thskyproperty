@@ -468,6 +468,34 @@ export default function SalesPropertyFile({
     }
   };
 
+  // Per-property expenses (marketing/advertising/etc.) — inline add form.
+  const emptyExpense = { category: "marketing", amount: "", spent_on: "", description: "" };
+  const [expenseForm, setExpenseForm] = useState(emptyExpense);
+  const [savingExpense, setSavingExpense] = useState(false);
+  const addExpense = async () => {
+    if (!expenseForm.amount) { toast.error("Enter an amount"); return; }
+    setSavingExpense(true);
+    try {
+      await api.post(`/sales/properties/${propertyId}/expenses`, expenseForm);
+      setExpenseForm(emptyExpense);
+      toast.success("Expense recorded");
+      loadServices();
+    } catch (e) {
+      toast.error(e.response?.data?.error || "Could not record the expense");
+    } finally {
+      setSavingExpense(false);
+    }
+  };
+  const removeExpense = async (id) => {
+    try {
+      await api.delete(`/sales/expenses/${id}`);
+      toast.success("Expense removed");
+      loadServices();
+    } catch (e) {
+      toast.error(e.response?.data?.error || "Could not remove the expense");
+    }
+  };
+
   const openSection = useCallback(
     (nextSection) => {
       if (
@@ -3382,6 +3410,8 @@ export default function SalesPropertyFile({
                     ["Paid", services.commitments?.totals?.paid],
                     ["Outstanding", services.commitments?.totals?.outstanding],
                     ["Work committed", services.commitments?.totals?.work_order_committed],
+                    ["Expenses", services.commitments?.totals?.expenses],
+                    ["Margin", services.commitments?.totals?.margin],
                   ].map(([label, val]) => (
                     <div key={label} style={{ flex: "1 1 140px", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px" }}>
                       <div className="cell-sub">{label}</div>
@@ -3419,6 +3449,59 @@ export default function SalesPropertyFile({
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+              </Panel>
+              <Panel
+                icon={Receipt}
+                heading="Marketing & other expenses"
+                sub="Direct costs spent on this property — marketing, advertising, staging and more"
+              >
+                {(services.expenses || []).length === 0 ? (
+                  <p className="cell-sub">No expenses recorded for this property.</p>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table className="tbl">
+                      <thead><tr><th>Date</th><th>Category</th><th>Description</th><th style={{ textAlign: "right" }}>Amount</th>{canPrepare && <th></th>}</tr></thead>
+                      <tbody>
+                        {services.expenses.map((e) => (
+                          <tr key={e.id}>
+                            <td>{e.spent_on || "—"}</td>
+                            <td style={{ textTransform: "capitalize" }}>{e.category}</td>
+                            <td>{e.description || "—"}</td>
+                            <td style={{ textAlign: "right" }}>{money(e.amount || 0)}</td>
+                            {canPrepare && (
+                              <td style={{ textAlign: "right" }}>
+                                <Button size="sm" variant="ghost" icon={Trash2} onClick={() => removeExpense(e.id)}>Remove</Button>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {canPrepare && (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end", marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
+                    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                      Category
+                      <select value={expenseForm.category} onChange={(ev) => setExpenseForm((f) => ({ ...f, category: ev.target.value }))} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "7px 10px", font: "inherit" }}>
+                        {["marketing", "advertising", "staging", "photography", "other"].map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                      Amount
+                      <input type="number" value={expenseForm.amount} onChange={(ev) => setExpenseForm((f) => ({ ...f, amount: ev.target.value }))} placeholder="0" style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "7px 10px", font: "inherit", width: 120 }} />
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+                      Spent on
+                      <input type="date" value={expenseForm.spent_on} onChange={(ev) => setExpenseForm((f) => ({ ...f, spent_on: ev.target.value }))} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "7px 10px", font: "inherit" }} />
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, flex: "1 1 180px" }}>
+                      Description
+                      <input value={expenseForm.description} onChange={(ev) => setExpenseForm((f) => ({ ...f, description: ev.target.value }))} placeholder="e.g. Facebook campaign" style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "7px 10px", font: "inherit" }} />
+                    </label>
+                    <Button size="sm" onClick={addExpense} disabled={savingExpense}>Add expense</Button>
                   </div>
                 )}
               </Panel>
