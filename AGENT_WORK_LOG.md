@@ -5190,3 +5190,11 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Frontend: SalesInbox composer gains an 'Insert template…' picker (fills subject/body with {{placeholders}} rendered from the thread context) + Subject field; each outbound message shows a delivery chip.
 - Verified: template CRUD; email→sent, internal→logged, sms→sent, do_not_email→suppressed; thread carries delivery_status; browser — template fills rendered body/subject, client email reply shows green 'sent' chip, property thread w/o recipient logs. npm test 7+5+27 + test:full 28/0. Provider service + rental inbox + campaign sender untouched.
 - Deferred: email template BUILDER (rich/visual — user-noted later scope), inbound replies, retries/scheduling, delivery webhooks, WhatsApp. Next: Phase-5 sub-project C (service coordination). Not merged; no PR.
+
+### 2026-09-12 | Claude Code (Opus 4.8) | COMPLETED | Phase 5 sub-project C — Sales service coordination (PHASE 5 COMPLETE)
+- Committed on air-conditioning/phase-0-duplicate. Reuse-only over the existing WorkOrder engine; no schema, no engine change.
+- Backend: salesServices.controller.propertyServices — GET /api/sales/properties/:propertyId/services (added beside the SOP route in sales.routes) aggregates the property's general WorkOrders (code/title/provider_name via id-map/status/dates/amount/before+after evidence counts) + financial commitments (fee invoices + totals invoiced/paid/outstanding/work_order_committed). Read-only.
+- Frontend: property-file 'Services' section — commitments strip + work-orders table + an 'Add work order' drawer reusing POST /api/work-orders with property_id prefilled.
+- Verified: property 62 before → 0 WOs; POST /work-orders → SSPC-WO-000008 appears with amount 5000 + committed total 5000; browser shows the commitments strip + table row. npm test 7+5+27 + test:full 28/0. WorkOrder engine/controller/model untouched (empty diff); settlement/invoicing/Services console unchanged.
+- Deferred (non-goals): provider portal / provider-side progress capture, work-order approval/assignment from the sales file, WT/Care work orders (client/project-keyed), engine changes.
+- PHASE 5 (Communications & service coordination) fully complete: A sales inbox, B templates/delivery/SMS/suppression, C service coordination. Not merged; no PR.
