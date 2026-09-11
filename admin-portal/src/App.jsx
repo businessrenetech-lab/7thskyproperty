@@ -22,6 +22,7 @@ import SalesWorkQueue from './screens/sales/SalesWorkQueue';
 import BuyerMandates from './screens/sales/BuyerMandates';
 import BuyerMandateDetail from './screens/sales/BuyerMandateDetail';
 import SalesIntroductions from './screens/sales/SalesIntroductions';
+import SalesCalendar from './screens/sales/SalesCalendar';
 import RentalProperties from './screens/RentalProperties';
 import PropertyWizard from './screens/PropertyWizard';
 import PropertyMgmtDashboard from './screens/PropertyMgmtDashboard';
@@ -929,6 +930,7 @@ export default function App() {
               <Route path="/residential/mandates" element={<BuyerMandates />} />
               <Route path="/residential/mandates/:id" element={<BuyerMandateDetail />} />
               <Route path="/residential/introductions" element={<SalesIntroductions />} />
+              <Route path="/residential/calendar" element={<SalesCalendar />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />

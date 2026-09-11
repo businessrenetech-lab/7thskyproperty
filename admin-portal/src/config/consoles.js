@@ -382,6 +382,7 @@ export const RESIDENTIAL_NAV = [
     items: [
       { to: '/residential/sell', label: 'Sell Dashboard', icon: LayoutGrid, end: true },
       { to: '/residential/work-queue', label: 'My Work Queue', icon: Inbox },
+      { to: '/residential/calendar', label: 'Calendar', icon: CalendarDays },
     ],
   },
   {
