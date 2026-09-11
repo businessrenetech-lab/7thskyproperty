@@ -5,6 +5,7 @@
 // list / create → SigningEnvelope + EnvelopeSigner + SignatureField (existing
 // eSign flow). Purchase signs with the Buyer, Sale with the Seller.
 const crypto = require('crypto');
+const { Op } = require('sequelize');
 const { asyncHandler, branchScope, resolveBranchId } = require('../utils/controllerHelpers');
 const rpps = require('../services/rppsAgreement.service');
 const rpss = require('../services/rpssAgreement.service');
@@ -18,6 +19,55 @@ const KIND = {
   sale: { svc: rpss, build: 'buildRpssAgreement', related_type: 'sale_sale_agreement', signer: 'seller', party: 'Seller', code: 'RPSS' },
 };
 const K = (req) => KIND[req.params.kind] || null;
+
+// ── Contracts hub (sub-project B): buckets over the sales agreement envelopes ──
+const SALE_RELATED = ['sale_purchase_agreement', 'sale_sale_agreement'];
+const kindOf = (rt) => (rt === 'sale_sale_agreement' ? 'sale' : 'purchase');
+const DAY = 86400000;
+
+exports.contracts = asyncHandler(async (req, res) => {
+  const where = { ...branchScope(req), related_type: { [Op.in]: SALE_RELATED } };
+  if (req.query.kind === 'purchase') where.related_type = 'sale_purchase_agreement';
+  if (req.query.kind === 'sale') where.related_type = 'sale_sale_agreement';
+  if (req.query.search) where[Op.or] = [{ title: { [Op.like]: `%${req.query.search}%` } }, { envelope_code: { [Op.like]: `%${req.query.search}%` } }];
+  const rows = await SigningEnvelope.findAll({ where, include: [{ model: EnvelopeSigner, as: 'signers', attributes: ['id', 'name', 'email', 'role', 'status'] }], order: [['created_at', 'DESC']] });
+  const now = Date.now();
+  const buckets = { awaiting_signature: [], expiring_soon: [], expired: [], completed: [], declined_voided: [] };
+  for (const e of rows) {
+    const s = (e.signers || [])[0] || {};
+    const days = e.expires_at ? Math.ceil((new Date(e.expires_at).getTime() - now) / DAY) : null;
+    const item = {
+      id: e.id, envelope_code: e.envelope_code, kind: kindOf(e.related_type), title: e.title,
+      party_name: s.name || null, party_email: s.email || null, status: e.status,
+      sent_at: e.sent_at, expires_at: e.expires_at, completed_at: e.completed_at,
+      days_to_expiry: days, signer_status: s.status || null, voided_reason: e.voided_reason || null,
+      final_pdf_url: e.final_pdf_url || null, certificate_url: e.certificate_url || null,
+    };
+    const open = ['sent', 'viewed', 'partially_signed'].includes(e.status);
+    if (e.status === 'completed') buckets.completed.push(item);
+    else if (['declined', 'voided'].includes(e.status)) buckets.declined_voided.push(item);
+    else if (open && days != null && days < 0) buckets.expired.push(item);
+    else if (open && days != null && days <= 7) buckets.expiring_soon.push(item);
+    else buckets.awaiting_signature.push(item);
+  }
+  const counts = Object.fromEntries(Object.entries(buckets).map(([k, v]) => [k, v.length]));
+  res.json({ buckets, counts });
+});
+
+exports.createVariation = asyncHandler(async (req, res) => {
+  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req), related_type: { [Op.in]: SALE_RELATED } } });
+  if (!env) return res.status(404).json({ error: 'Agreement not found.' });
+  if (!['draft', 'pending_approval', 'sent', 'viewed', 'partially_signed'].includes(env.status)) return res.status(409).json({ error: `A ${env.status} agreement cannot be varied; only open agreements can be superseded.` });
+  await env.update({ status: 'voided', voided_reason: `Superseded by variation (${env.envelope_code})` });
+  const t = env.terms || {};
+  const prefill = {
+    services: t.selected_services || [],
+    pricing_input: { selected: (t.agreed_lines || []).map((l) => ({ code: l.code, agreed_price: l.agreed_price })), discount: 0, vat_percent: 0 },
+    schedule_b: t.schedule_b || {},
+    supersedes: env.envelope_code,
+  };
+  res.json({ kind: kindOf(env.related_type), prefill });
+});
 
 exports.getCatalog = asyncHandler(async (req, res) => {
   const k = K(req); if (!k) return res.status(404).json({ error: 'Unknown agreement kind' });

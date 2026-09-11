@@ -5,6 +5,10 @@ const ctrl = require('../controllers/salesAgreement.controller');
 
 router.use(authMiddleware);
 
+// Contracts hub — declared BEFORE /:kind so "contracts" is not read as a kind.
+router.get('/contracts', ctrl.contracts);
+router.post('/contracts/:id/variation', ctrl.createVariation);
+
 // kind = purchase | sale
 router.get('/:kind/catalog', ctrl.getCatalog);
 router.get('/:kind/meta', ctrl.getMeta);
