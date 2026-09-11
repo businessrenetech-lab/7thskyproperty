@@ -210,6 +210,7 @@ mount('/api/move-in-checklist', './routes/moveInChecklist.routes');
 mount('/api/public-party', './routes/publicParty.routes');
 mount('/api/deals', './routes/deal.routes');
 mount('/api/buyer-mandates', './routes/buyerMandate.routes');
+mount('/api/sales/inbox', './routes/salesInbox.routes'); // before /api/sales so the prefix wins
 mount('/api/sales/introductions', './routes/salesIntroduction.routes'); // before /api/sales so the prefix wins
 mount('/api/sales/calendar', './routes/salesCalendar.routes'); // before /api/sales so the prefix wins
 mount('/api/sales', './routes/sales.routes');

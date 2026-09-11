@@ -101,6 +101,7 @@ module.exports = [
   ['/api/public-party', './publicParty.routes'],
   ['/api/deals', './deal.routes'],
   ['/api/buyer-mandates', './buyerMandate.routes'],
+  ['/api/sales/inbox', './salesInbox.routes'], // before /api/sales so the prefix wins
   ['/api/sales/introductions', './salesIntroduction.routes'], // before /api/sales so the prefix wins
   ['/api/sales/calendar', './salesCalendar.routes'], // before /api/sales so the prefix wins
   ['/api/sales', './sales.routes'],
