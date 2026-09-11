@@ -5174,3 +5174,11 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Verified: relationships for contact 1 → 4 properties + 18 agreements; duplicate match on shared phone; authorised rep add/save persists on reload; npm test 7+5+27 + test:full 28/0.
 - Deferred (non-goals): duplicate merge, preferences editing, cross-branch dedup, access control.
 - PHASE 4 (Residential Contracts) fully complete: A RPPS/RPSS builders, B Contracts hub, C signing→billing, D Contacts relationships. Not merged; no PR.
+
+### 2026-09-11 | Claude Code (Opus 4.8) | COMPLETED | Phase 5 sub-project A — Sales inbox (conversations, participants, visibility, assignment)
+- Committed on air-conditioning/phase-0-duplicate. A dedicated residential-sales inbox over the shared Communication model; the rental communications controller is NOT touched.
+- Migration 0112: comm_participants table (thread_key + contact/user + role) + additive visibility ENUM('internal','client') default client + assigned_to on communications. CommParticipant model + Communication fields.
+- Backend: salesInbox.controller (self-contained saleKey/resolveSaleKey/writeOutbound for sales_enquiry/property/deal keys) at /api/sales/inbox (mounted before /api/sales in server.js + manifest.js): inbox (SalesEnquiry-seeded + sales-keyed comms, enriched with participants + assignee, filters status/channel/q/assigned_to/mine), thread, reply/compose honouring visibility (internal = logged, never emailed), participants add/list/remove, per-thread assign. (SalesEnquiry status field is 'stage'.)
+- Frontend: SalesInbox.jsx (/residential/inbox, Home nav) two-pane — conversation list (badges + filters) + thread (per-message visibility badges, participants strip, assignee Combo, Client/Internal reply composer).
+- Verified: 16 conversations; add 2 participants; internal reply delivery=internal (no email) + client email reply delivery=emailed; assign→user 1 + ?mine=1 returns it; UI posts an internal note (0 console errors); rental inbox still 200 and its controller untouched (empty diff); npm test 7+5+27 + test:full 28/0.
+- Deferred (Phase 5 B/C): message templates, persisted delivery status, SMS provider + inbound/retries/suppression; service-request/provider-progress/financial linking. Not merged; no PR.
