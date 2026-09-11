@@ -5,6 +5,7 @@
 // preview / agreements) and the existing eSign flow. Adapted from
 // RprmAgreements.jsx, leaner for the sales endpoints.
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Plus, Copy, Eye } from 'lucide-react';
 import api from '../../services/api';
 import { Spinner } from '../../ui/kit';
@@ -35,7 +36,9 @@ const emptyState = () => ({
 export default function SalesAgreementScreen({ kind }) {
   const km = KIND_META[kind];
   const toast = useToast();
-  const [mode, setMode] = useState('list');
+  const location = useLocation();
+  const prefill = location.state?.prefill || null;
+  const [mode, setMode] = useState(prefill ? 'build' : 'list');
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,7 +49,7 @@ export default function SalesAgreementScreen({ kind }) {
   }, [km.base]);
   useEffect(() => { load(); }, [load]);
 
-  if (mode === 'build') return <Builder kind={kind} onDone={() => { setMode('list'); load(); }} onCancel={() => setMode('list')} />;
+  if (mode === 'build') return <Builder kind={kind} prefill={prefill} onDone={() => { setMode('list'); load(); }} onCancel={() => setMode('list')} />;
 
   const chip = (s) => ({ completed: 'good', active: 'good', sent: 'warn', viewed: 'info', partially_signed: 'warn', declined: 'bad', voided: 'grey', draft: 'grey' }[s] || 'grey');
 
@@ -91,11 +94,20 @@ async function copyLink(a, toast) {
   } catch { toast.error('Could not fetch link'); }
 }
 
-function Builder({ kind, onDone, onCancel }) {
+function Builder({ kind, prefill, onDone, onCancel }) {
   const km = KIND_META[kind];
   const toast = useToast();
   const [step, setStep] = useState(0);
-  const [d, setD] = useState(emptyState);
+  const [d, setD] = useState(() => {
+    const base = emptyState();
+    if (!prefill) return base;
+    return {
+      ...base,
+      services: prefill.services || base.services,
+      schedule_b: { ...base.schedule_b, ...(prefill.schedule_b || {}), special_requirements: [(prefill.schedule_b || {}).special_requirements, prefill.supersedes ? `Variation of ${prefill.supersedes}` : ''].filter(Boolean).join(' — ') },
+      pricing_input: { ...base.pricing_input, ...(prefill.pricing_input || {}), selected: (prefill.pricing_input || {}).selected || [] },
+    };
+  });
   const [catalog, setCatalog] = useState([]);
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);

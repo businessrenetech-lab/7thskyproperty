@@ -57,8 +57,13 @@ exports.contracts = asyncHandler(async (req, res) => {
 exports.createVariation = asyncHandler(async (req, res) => {
   const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req), related_type: { [Op.in]: SALE_RELATED } } });
   if (!env) return res.status(404).json({ error: 'Agreement not found.' });
-  if (!['draft', 'pending_approval', 'sent', 'viewed', 'partially_signed'].includes(env.status)) return res.status(409).json({ error: `A ${env.status} agreement cannot be varied; only open agreements can be superseded.` });
-  await env.update({ status: 'voided', voided_reason: `Superseded by variation (${env.envelope_code})` });
+  // A completed agreement can't be casually superseded (would need a tracked
+  // supersedes chain — deferred). An OPEN agreement is voided as it's replaced.
+  // A terminal declined/voided one needs no void — just start fresh from its terms.
+  if (env.status === 'completed') return res.status(409).json({ error: 'A completed agreement cannot be varied here; issue a new agreement instead.' });
+  if (['draft', 'pending_approval', 'sent', 'viewed', 'partially_signed'].includes(env.status)) {
+    await env.update({ status: 'voided', voided_reason: `Superseded by variation (${env.envelope_code})` });
+  }
   const t = env.terms || {};
   const prefill = {
     services: t.selected_services || [],

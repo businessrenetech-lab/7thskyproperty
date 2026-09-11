@@ -25,6 +25,7 @@ import SalesIntroductions from './screens/sales/SalesIntroductions';
 import SalesCalendar from './screens/sales/SalesCalendar';
 import PurchaseAgreements from './screens/sales/PurchaseAgreements';
 import SaleAgreements from './screens/sales/SaleAgreements';
+import SalesContracts from './screens/sales/SalesContracts';
 import RentalProperties from './screens/RentalProperties';
 import PropertyWizard from './screens/PropertyWizard';
 import PropertyMgmtDashboard from './screens/PropertyMgmtDashboard';
@@ -935,6 +936,7 @@ export default function App() {
               <Route path="/residential/calendar" element={<SalesCalendar />} />
               <Route path="/residential/agreements/purchase" element={<PurchaseAgreements />} />
               <Route path="/residential/agreements/sale" element={<SaleAgreements />} />
+              <Route path="/residential/contracts" element={<SalesContracts />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />
