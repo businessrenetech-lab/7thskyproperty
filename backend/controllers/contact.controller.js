@@ -17,6 +17,7 @@ const CONTACT_FIELDS = [
   'national_id', 'passport_no', 'tin', 'trade_licence_no', 'company_reg_no',
   'date_of_birth', 'gender', 'nationality', 'is_nrb', 'nrb_country',
   'source', 'source_detail', 'assigned_to', 'tags', 'notes', 'status', 'authorisations',
+  'do_not_email', 'do_not_sms',
 ];
 
 function deriveFullName(body) {

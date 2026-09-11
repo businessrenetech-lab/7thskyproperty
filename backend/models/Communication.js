@@ -30,6 +30,10 @@ const Communication = sequelize.define('Communication', {
   is_draft: { type: DataTypes.BOOLEAN, defaultValue: false },
   visibility: { type: DataTypes.ENUM('internal', 'client'), defaultValue: 'client' },
   assigned_to: DataTypes.INTEGER,
+  delivery_status: DataTypes.ENUM('pending', 'sent', 'simulated', 'failed', 'suppressed', 'logged'),
+  provider_message_id: DataTypes.STRING,
+  delivery_error: DataTypes.STRING,
+  sent_at: DataTypes.DATE,
 }, {
   tableName: 'communications',
   underscored: true,
