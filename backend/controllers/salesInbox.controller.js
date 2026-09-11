@@ -28,14 +28,54 @@ async function resolveSaleKey(key, scope) {
   if (type === 'deal') return { type, id, where: { entity_type: 'sale_deal', entity_id: id } };
   return { type: 'comm', id, where: { id } };
 }
-function recipientOf(r) {
-  if (r.type === 'sales_enquiry') return { email: r.enquiry?.email, phone: r.enquiry?.phone, name: r.enquiry?.enquirer_name };
-  if (r.type === 'property') return { email: null, phone: null, name: r.property?.title };
-  return {};
+async function recipientOf(r) {
+  if (r.type === 'sales_enquiry') {
+    const e = r.enquiry;
+    let contact = null;
+    if (e?.contact_id) contact = await Contact.findByPk(e.contact_id).catch(() => null);
+    return { email: e?.email, phone: e?.phone, name: e?.enquirer_name, suppress_email: !!contact?.do_not_email, suppress_sms: !!contact?.do_not_sms };
+  }
+  if (r.type === 'property') return { email: null, phone: null, name: r.property?.title, suppress_email: false, suppress_sms: false };
+  return { suppress_email: false, suppress_sms: false };
+}
+
+// Fill {{token}} placeholders from a context object (unknown tokens → blank).
+function renderTemplate(str, ctx) {
+  return String(str || '').replace(/\{\{(\w+)\}\}/g, (_, k) => (ctx && ctx[k] != null ? String(ctx[k]) : ''));
+}
+
+// Dispatch via the right provider and persist the delivery result onto the row.
+async function dispatchAndRecord(row, { channel, to, subject, body, visibility, suppressed }) {
+  const upd = { sent_at: new Date() };
+  if (visibility === 'internal') { upd.delivery_status = 'logged'; upd.sent_at = null; }
+  else if (suppressed) { upd.delivery_status = 'suppressed'; upd.sent_at = null; }
+  else if (channel === 'email') {
+    if (!to.email) { upd.delivery_status = 'logged'; upd.sent_at = null; }
+    else {
+      try {
+        const { sendEmail } = require('../services/communication.service');
+        const res = await sendEmail(to.email, subject || 'Seventh Sky Residential Property Services', `<p>${String(body).replace(/\n/g, '<br>')}</p>`);
+        if (res && res.success) { upd.delivery_status = res.simulated ? 'simulated' : 'sent'; upd.provider_message_id = res.message || null; }
+        else { upd.delivery_status = 'failed'; upd.delivery_error = (res && res.error) || 'send failed'; }
+      } catch (e) { upd.delivery_status = 'failed'; upd.delivery_error = e.message; }
+    }
+  } else if (channel === 'sms') {
+    if (!to.phone) { upd.delivery_status = 'logged'; upd.sent_at = null; }
+    else {
+      try {
+        const { sendSMS } = require('../services/communication.service');
+        const res = await sendSMS(to.phone, String(body));
+        if (res && res.success) { upd.delivery_status = res.simulated ? 'simulated' : 'sent'; upd.provider_message_id = res.response ? (res.response.message_id || JSON.stringify(res.response)).slice(0, 250) : null; }
+        else { upd.delivery_status = 'failed'; upd.delivery_error = (res && res.error) || 'sms failed'; }
+      } catch (e) { upd.delivery_status = 'failed'; upd.delivery_error = e.message; }
+    }
+  } else { upd.delivery_status = 'logged'; upd.sent_at = null; }
+  await row.update(upd);
+  return upd.delivery_status;
 }
 async function writeOutbound(req, r, { channel, subject, body, is_draft = false, visibility = 'client' }) {
   const branch_id = resolveBranchId(req);
-  const base = { branch_id, channel: channel || 'note', direction: 'outbound', subject: subject || null, body: body || null, user_id: req.user?.id || null, status: 'done', occurred_at: new Date(), is_draft: !!is_draft, visibility };
+  const base = { branch_id, channel: channel || 'note', direction: 'outbound', subject: subject || null, body: body || null, user_id: req.user?.id || null, status: 'done', occurred_at: new Date(), is_draft: !!is_draft, visibility, delivery_status: 'pending' };
   if (r.type === 'sales_enquiry') return Communication.create({ ...base, entity_type: 'sales_enquiry', entity_id: r.id, property_id: r.enquiry?.property_id || null });
   if (r.type === 'property') return Communication.create({ ...base, entity_type: 'property', entity_id: r.id, property_id: r.id });
   if (r.type === 'deal') return Communication.create({ ...base, entity_type: 'sale_deal', entity_id: r.id });
@@ -82,7 +122,7 @@ exports.thread = asyncHandler(async (req, res) => {
   const scope = branchScope(req);
   const r = await resolveSaleKey(req.query.key, scope);
   const rows = await Communication.findAll({ where: { ...scope, ...r.where }, order: [['occurred_at', 'ASC']], raw: true });
-  const messages = rows.map((c) => ({ id: c.id, channel: c.channel, direction: c.direction, subject: c.subject, body: c.body, at: c.occurred_at, is_draft: !!c.is_draft, read_at: c.read_at, visibility: c.visibility || 'client', assigned_to: c.assigned_to || null }));
+  const messages = rows.map((c) => ({ id: c.id, channel: c.channel, direction: c.direction, subject: c.subject, body: c.body, at: c.occurred_at, is_draft: !!c.is_draft, read_at: c.read_at, visibility: c.visibility || 'client', assigned_to: c.assigned_to || null, delivery_status: c.delivery_status || null, provider_message_id: c.provider_message_id || null, delivery_error: c.delivery_error || null, sent_at: c.sent_at || null }));
   let context = {};
   if (r.type === 'sales_enquiry' && r.enquiry) {
     const e = r.enquiry.toJSON();
@@ -102,20 +142,11 @@ exports.reply = asyncHandler(async (req, res) => {
   const { key, channel = 'email', subject, body, visibility = 'client' } = req.body || {};
   if (!body) return res.status(400).json({ error: 'Message body is required.' });
   const r = await resolveSaleKey(key, scope);
-  const to = recipientOf(r);
-
-  let delivery = 'logged';
-  if (visibility === 'internal') {
-    delivery = 'internal'; // internal notes are never dispatched
-  } else if (channel === 'email') {
-    if (!to.email) return res.status(400).json({ error: 'No email address on file for this conversation — reply by note or add an email first.' });
-    try { const { sendEmail } = require('../services/communication.service'); await sendEmail(to.email, subject || 'Reply from Seventh Sky Residential Property Services', `<p>${String(body).replace(/\n/g, '<br>')}</p>`); delivery = 'emailed'; }
-    catch { delivery = 'email_failed'; }
-  } else if (channel === 'sms') {
-    delivery = to.phone ? 'sms_logged' : 'logged';
-  }
+  const to = await recipientOf(r);
+  const suppressed = visibility === 'client' && (channel === 'email' ? to.suppress_email : channel === 'sms' ? to.suppress_sms : false);
 
   const row = await writeOutbound(req, r, { channel, subject, body, visibility });
+  const delivery = await dispatchAndRecord(row, { channel, to, subject, body, visibility, suppressed });
   await Communication.update({ read_at: new Date() }, { where: { ...scope, ...r.where, direction: 'inbound', read_at: null } }).catch(() => {});
   if (r.type === 'sales_enquiry' && r.enquiry && r.enquiry.stage === 'new') await r.enquiry.update({ stage: 'contacted' }).catch(() => {});
   res.status(201).json({ data: row, delivery });
@@ -126,15 +157,14 @@ exports.compose = asyncHandler(async (req, res) => {
   const { key, channel = 'email', subject, body, is_draft = false, visibility = 'client' } = req.body || {};
   if (!body && !is_draft) return res.status(400).json({ error: 'Message body is required.' });
   const r = await resolveSaleKey(key, scope);
-  const to = recipientOf(r);
-  let delivery = 'draft';
-  if (!is_draft && visibility === 'internal') delivery = 'internal';
-  else if (!is_draft && channel === 'email') {
-    if (!to.email) return res.status(400).json({ error: 'No recipient email — add one or save as draft.' });
-    try { const { sendEmail } = require('../services/communication.service'); await sendEmail(to.email, subject || 'Seventh Sky Residential Property Services', `<p>${String(body).replace(/\n/g, '<br>')}</p>`); delivery = 'emailed'; }
-    catch { delivery = 'email_failed'; }
-  } else if (!is_draft) delivery = channel === 'sms' ? 'sms_logged' : 'logged';
+  const to = await recipientOf(r);
   const row = await writeOutbound(req, r, { channel, subject, body, is_draft, visibility });
+  let delivery = 'pending';
+  if (is_draft) { await row.update({ delivery_status: 'pending' }); delivery = 'draft'; }
+  else {
+    const suppressed = visibility === 'client' && (channel === 'email' ? to.suppress_email : channel === 'sms' ? to.suppress_sms : false);
+    delivery = await dispatchAndRecord(row, { channel, to, subject, body, visibility, suppressed });
+  }
   res.status(201).json({ data: row, delivery });
 });
 
