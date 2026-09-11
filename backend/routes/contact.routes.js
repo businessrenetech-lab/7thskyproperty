@@ -11,6 +11,8 @@ router.use(roleMiddleware(CRM_ROLES));
 
 router.get('/', ctrl.list);
 router.post('/', ctrl.create);
+router.get('/:id/relationships', ctrl.relationships);
+router.get('/:id/duplicates', ctrl.duplicates);
 router.get('/:id', ctrl.getOne);
 router.put('/:id', ctrl.update);
 router.delete('/:id', ctrl.remove);
