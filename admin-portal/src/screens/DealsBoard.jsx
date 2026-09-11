@@ -7,6 +7,7 @@ import { Plus, Building2 as BuildingIcon } from 'lucide-react';
 import { NewDealDrawer, NewPropertyDrawer } from './CrmForms';
 import { useNavigate } from 'react-router-dom';
 import { settlementDeskPath } from './sales/paths';
+import SavedViews from './sales/SavedViews';
 import './deals-board.css';
 
 const money = (v) => (v == null ? '—' : 'BDT ' + Number(v).toLocaleString());
@@ -139,6 +140,7 @@ export default function DealsBoard({ category, dealType, title, desc }) {
           <Select value={fStage} onChange={(e) => setFStage(e.target.value)}><option value="">All stages</option>{STAGES.map((s) => <option key={s} value={s}>{STAGE_LABEL[s]}</option>)}</Select>
           <Select value={fAssignee} onChange={(e) => setFAssignee(e.target.value)}><option value="">All assignees</option>{assignees.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select>
           <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}><input type="checkbox" checked={overdue} onChange={(e) => setOverdue(e.target.checked)} /> Overdue</label>
+          <SavedViews scope="deals" current={{ search, view, fStage, fAssignee, overdue }} onApply={(p) => { setSearch(p.search || ''); setView(p.view || 'board'); setFStage(p.fStage || ''); setFAssignee(p.fAssignee || ''); setOverdue(!!p.overdue); }} />
           <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
             <Button size="sm" variant={view === 'board' ? 'primary' : 'ghost'} icon={LayoutGrid} onClick={() => setView('board')}>Board</Button>
             <Button size="sm" variant={view === 'list' ? 'primary' : 'ghost'} icon={ListIcon} onClick={() => setView('list')}>List</Button>

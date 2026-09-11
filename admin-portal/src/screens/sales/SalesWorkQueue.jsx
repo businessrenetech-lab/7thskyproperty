@@ -11,6 +11,7 @@ import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { PageHead, Button, Spinner, Badge } from '../../ui/kit';
 import { settlementDeskPath } from './paths';
+import SavedViews from './SavedViews';
 
 const money = (v) => 'BDT ' + Number(v || 0).toLocaleString();
 // kind -> [group label, desk view]. offer_review routes to the property file offers section.
@@ -54,6 +55,7 @@ export default function SalesWorkQueue() {
     <>
       <PageHead title="My Work Queue" desc="Everything waiting on you across the sales pipeline." actions={<>
         {isManager && <Button variant="ghost" size="sm" onClick={() => setScope(scope === 'all' ? 'mine' : 'all')}>{scope === 'all' ? 'Show my work' : 'Show all'}</Button>}
+        <SavedViews scope="work-queue" current={{ scope }} onApply={(p) => setScope(p.scope || 'mine')} />
         <Button variant="ghost" icon={RefreshCw} onClick={load}>Refresh</Button>
       </>} />
       {groups.length === 0 ? <div className="pm-card card-pad">You&apos;re all caught up. 🎉</div> : groups.map(([k, rows]) => (
