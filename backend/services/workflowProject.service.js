@@ -7,6 +7,7 @@ const sequelize = require('../config/db.config');
 const Project = require('../models/Project');
 const ProjectStage = require('../models/ProjectStage');
 const { generateCode } = require('../utils/codeGenerator');
+const { initialStatusFor } = require('./progressiveSop.service');
 
 async function createProjectFromTemplate(meta, transaction) {
   const p = await Project.create({
@@ -34,11 +35,18 @@ async function createProjectFromTemplate(meta, transaction) {
     );
     let stages = [];
     try { stages = tpl[0] ? (typeof tpl[0].stages === 'string' ? JSON.parse(tpl[0].stages) : tpl[0].stages) : []; } catch { stages = []; }
+    // Per-vertical progressive gating (null = no gating: keep first-active default).
+    const gate = (key) => initialStatusFor(key, { vertical: meta.vertical_key });
+    const gatedFirst = stages.findIndex((s) => gate(s.key) !== 'blocked'); // -1 if all null
     for (let i = 0; i < stages.length; i++) {
       const s = stages[i];
+      const g = gate(s.key);
+      const status = g === null
+        ? (i === 0 ? 'in_progress' : 'pending')    // no registry: unchanged
+        : (i === gatedFirst ? 'in_progress' : g);  // gated: first active in_progress, rest pending/blocked
       await ProjectStage.create({
         project_id: p.id, stage_key: s.key, stage_name: s.name, sort_order: s.order ?? i + 1,
-        status: i === 0 ? 'in_progress' : 'pending',
+        status,
         checklist: (s.checklist || []).map((c) => ({
           label: c.label,
           required: !!c.required,
@@ -54,7 +62,9 @@ async function createProjectFromTemplate(meta, transaction) {
         required_documents: s.required_docs || [],
       }, { transaction });
     }
-    if (stages[0]) await p.update({ current_stage_key: stages[0].key }, { transaction });
+    // current_stage_key = first active stage (gated → first non-blocked; else first).
+    const currentKey = gatedFirst >= 0 ? stages[gatedFirst]?.key : stages[0]?.key;
+    if (currentKey) await p.update({ current_stage_key: currentKey }, { transaction });
   }
   return p;
 }
