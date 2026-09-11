@@ -384,6 +384,7 @@ export const RESIDENTIAL_NAV = [
       { to: '/residential/work-queue', label: 'My Work Queue', icon: Inbox },
       { to: '/residential/inbox', label: 'Sales Inbox', icon: Inbox },
       { to: '/residential/calendar', label: 'Calendar', icon: CalendarDays },
+      { to: '/residential/reports', label: 'Reports', icon: BarChart3 },
     ],
   },
   {
