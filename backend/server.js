@@ -107,6 +107,7 @@ mount('/api/auth', './routes/auth.routes');
 mount('/api/rbac', './routes/rbac.routes');
 mount('/api/settings', './routes/settings.routes');
 mount('/api/notifications', './routes/notification.routes');
+mount('/api/saved-views', './routes/savedView.routes');
 mount('/api/branches', './routes/branch.routes');
 mount('/api/automation', './routes/automation.routes');
 mount('/api/dashboard', './routes/dashboard.routes');

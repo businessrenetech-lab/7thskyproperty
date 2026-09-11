@@ -10,6 +10,7 @@ module.exports = [
   ['/api/rbac', './rbac.routes'],
   ['/api/settings', './settings.routes'],
   ['/api/notifications', './notification.routes'],
+  ['/api/saved-views', './savedView.routes'],
   ['/api/branches', './branch.routes'],
   ['/api/automation', './automation.routes'],
   ['/api/dashboard', './dashboard.routes'],
