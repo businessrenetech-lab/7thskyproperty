@@ -7,7 +7,7 @@ const sequelize = require('../config/db.config');
 const Project = require('../models/Project');
 const ProjectStage = require('../models/ProjectStage');
 const { generateCode } = require('../utils/codeGenerator');
-const { initialStatusFor } = require('./progressiveSop.service');
+const { initialStatusFor, applyStageDueDate } = require('./progressiveSop.service');
 
 async function createProjectFromTemplate(meta, transaction) {
   const p = await Project.create({
@@ -44,9 +44,12 @@ async function createProjectFromTemplate(meta, transaction) {
       const status = g === null
         ? (i === 0 ? 'in_progress' : 'pending')    // no registry: unchanged
         : (i === gatedFirst ? 'in_progress' : g);  // gated: first active in_progress, rest pending/blocked
+      // Stamp a deadline on the first active stage (sale SLAs; null for others).
+      let due_date = null;
+      if (status === 'in_progress') { const tmp = { stage_key: s.key, due_date: null }; applyStageDueDate(tmp, meta.vertical_key); due_date = tmp.due_date; }
       await ProjectStage.create({
         project_id: p.id, stage_key: s.key, stage_name: s.name, sort_order: s.order ?? i + 1,
-        status,
+        status, due_date,
         checklist: (s.checklist || []).map((c) => ({
           label: c.label,
           required: !!c.required,

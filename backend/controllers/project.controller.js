@@ -98,7 +98,11 @@ exports.updateStage = asyncHandler(async (req, res) => {
     // until their lifecycle event fires (progressive SOP).
     const next = stages.find((s) => s.status !== 'done' && s.status !== 'skipped' && s.status !== 'blocked');
     if (next) {
-      if (next.status === 'pending') await next.update({ status: 'in_progress' });
+      if (next.status === 'pending') {
+        const { applyStageDueDate } = require('../services/progressiveSop.service');
+        applyStageDueDate(next, p.vertical_key);
+        await next.update({ status: 'in_progress', due_date: next.due_date });
+      }
       await p.update({ current_stage_key: next.stage_key });
     } else {
       // No unlocked stage left to work on right now. Only mark the whole project
