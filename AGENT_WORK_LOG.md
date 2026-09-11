@@ -5110,3 +5110,11 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Verified live: GET null → POST creates 10-stage project → POST again no dup; PATCH stage done advances next; Workflow tab renders stages/checklists/evidence on property 43. Backend npm test 27/0 + test:full 28/0 (additive, engine untouched); the create refactor returns identical JSON.
 - Deferred (layers 2–3): progressive lifecycle-event unlock; business-day deadlines + overdue/escalation. Also deferred: buyer-side SOP surfacing (reuses 'properties').
 - Not merged; no PR.
+
+### 2026-09-11 | Claude Code (Opus 4.8) | COMPLETED | Phase 3 sub-project 4 (layer 2) — Sales SOP progressive lifecycle unlock
+- Generalized progressiveSop.service to a vertical-keyed REGISTRY (leasing preserved verbatim via default vertical='leasing'; properties_sale added). Committed on air-conditioning/phase-0-duplicate.
+- Backend: sale phase map (engagement/marketing/offer/settlement/closure) + event map; phaseOf/hintFor/initialStatusFor/unlockForEvent take a vertical (default leasing → all rental callers unchanged); initialStatusFor returns null for unregistered verticals (no gating). createProjectFromTemplate seeds sale SOP engagement-active/rest-blocked; WT/AC/generic unchanged. Both project + salesSop hydrate carry per-vertical locked/unlock_hint. Four non-fatal hooks: createOffer/updateOfferStatus (submitted→sale_offer_received), acceptOffer (sale_offer_accepted), settlementAction lock non-withdrawal (sale_settlement_locked), approveAssessment (sale_assessment_approved).
+- Frontend: property-file Workflow section greys blocked stages (opacity .55) with '🔒 unlocks when …' and disables their checkbox/Evidence.
+- Verified: on property 45 SOP each event unblocks exactly its phase (assessment→3, offer→1, accept→1, lock→1) and repeat→0 (idempotent); GET /sop blocked stages carry locked+hint; browser property 47 shows engagement actionable + 6 later stages greyed with hints; npm test 27/0 + test:full 28/0 (harnesses exercise the accept + lock HTTP hooks). Rental non-regression: default-vertical unlockForEvent(property 3,'tenancy_created') still unblocked a leasing lease-phase stage.
+- Deferred (layer 3): business-day deadlines + overdue/escalation. Also deferred: listing/other fuzzy events, buyer-side SOP.
+- Not merged; no PR.
