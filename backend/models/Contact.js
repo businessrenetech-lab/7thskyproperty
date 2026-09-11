@@ -46,6 +46,7 @@ const Contact = sequelize.define('Contact', {
   source_detail: DataTypes.STRING,
   assigned_to: DataTypes.INTEGER,
   tags: { type: DataTypes.JSON, defaultValue: [] },
+  authorisations: { type: DataTypes.JSON, defaultValue: [] }, // [{name,relationship,phone,email,note}] — who may act for this contact
   notes: DataTypes.TEXT,
   status: { type: DataTypes.ENUM('active', 'inactive', 'blacklisted'), defaultValue: 'active' },
   is_client: { type: DataTypes.BOOLEAN, defaultValue: false },

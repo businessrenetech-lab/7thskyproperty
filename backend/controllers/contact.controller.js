@@ -16,7 +16,7 @@ const CONTACT_FIELDS = [
   'address_line1', 'address_line2', 'area', 'city', 'district', 'postal_code', 'country',
   'national_id', 'passport_no', 'tin', 'trade_licence_no', 'company_reg_no',
   'date_of_birth', 'gender', 'nationality', 'is_nrb', 'nrb_country',
-  'source', 'source_detail', 'assigned_to', 'tags', 'notes', 'status',
+  'source', 'source_detail', 'assigned_to', 'tags', 'notes', 'status', 'authorisations',
 ];
 
 function deriveFullName(body) {
