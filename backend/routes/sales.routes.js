@@ -5,6 +5,7 @@ const assessmentCtrl = require('../controllers/salesAssessment.controller');
 const sopCtrl = require('../controllers/salesSop.controller');
 const svcCtrl = require('../controllers/salesServices.controller');
 const reportsCtrl = require('../controllers/salesReports.controller');
+const autoCtrl = require('../controllers/leadAutomation.controller');
 const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
 
 const READ = ['super_admin', 'branch_admin', 'property_manager', 'sales_executive', 'accounts'];
@@ -24,6 +25,20 @@ router.get('/properties/:propertyId/expenses', roleMiddleware(READ), reportsCtrl
 router.post('/properties/:propertyId/expenses', roleMiddleware(PREPARE), reportsCtrl.addExpense);
 router.delete('/expenses/:id', roleMiddleware(PREPARE), reportsCtrl.removeExpense);
 router.get('/reports', roleMiddleware(READ), reportsCtrl.report);
+// Lead automation: routing rules + follow-up sequences (config = admin) and
+// per-enquiry sequence actions (prepare).
+router.get('/lead-rules', roleMiddleware(READ), autoCtrl.listRules);
+router.post('/lead-rules', roleMiddleware(ADMIN), autoCtrl.createRule);
+router.put('/lead-rules/:id', roleMiddleware(ADMIN), autoCtrl.updateRule);
+router.delete('/lead-rules/:id', roleMiddleware(ADMIN), autoCtrl.removeRule);
+router.get('/lead-sequences', roleMiddleware(READ), autoCtrl.listSequences);
+router.post('/lead-sequences', roleMiddleware(ADMIN), autoCtrl.createSequence);
+router.put('/lead-sequences/:id', roleMiddleware(ADMIN), autoCtrl.updateSequence);
+router.delete('/lead-sequences/:id', roleMiddleware(ADMIN), autoCtrl.removeSequence);
+router.post('/enquiries/:id/sequence/enroll', roleMiddleware(PREPARE), autoCtrl.enrollSequence);
+router.post('/enquiries/:id/sequence/pause', roleMiddleware(PREPARE), autoCtrl.pauseSequence);
+router.post('/enquiries/:id/sequence/resume', roleMiddleware(PREPARE), autoCtrl.resumeSequence);
+router.post('/enquiries/:id/sequence/stop', roleMiddleware(PREPARE), autoCtrl.stopSequence);
 router.get('/accounting-options', roleMiddleware(ACCOUNTS), ctrl.accountingOptions);
 router.post('/bank-accounts', roleMiddleware(ACCOUNTS), ctrl.createPhysicalBankAccount);
 router.get('/properties/:propertyId', roleMiddleware(READ), ctrl.getPropertyFile);
