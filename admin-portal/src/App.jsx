@@ -23,6 +23,8 @@ import BuyerMandates from './screens/sales/BuyerMandates';
 import BuyerMandateDetail from './screens/sales/BuyerMandateDetail';
 import SalesIntroductions from './screens/sales/SalesIntroductions';
 import SalesCalendar from './screens/sales/SalesCalendar';
+import PurchaseAgreements from './screens/sales/PurchaseAgreements';
+import SaleAgreements from './screens/sales/SaleAgreements';
 import RentalProperties from './screens/RentalProperties';
 import PropertyWizard from './screens/PropertyWizard';
 import PropertyMgmtDashboard from './screens/PropertyMgmtDashboard';
@@ -931,6 +933,8 @@ export default function App() {
               <Route path="/residential/mandates/:id" element={<BuyerMandateDetail />} />
               <Route path="/residential/introductions" element={<SalesIntroductions />} />
               <Route path="/residential/calendar" element={<SalesCalendar />} />
+              <Route path="/residential/agreements/purchase" element={<PurchaseAgreements />} />
+              <Route path="/residential/agreements/sale" element={<SaleAgreements />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />

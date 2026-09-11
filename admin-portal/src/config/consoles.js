@@ -390,6 +390,7 @@ export const RESIDENTIAL_NAV = [
     label: 'Selling',
     items: [
       { to: '/residential/properties/new?listing_type=sale&category=residential', label: 'New Listing', icon: Home },
+      { to: '/residential/agreements/sale', label: 'Sale Agreements', icon: FileSignature },
     ],
   },
   {
@@ -399,6 +400,7 @@ export const RESIDENTIAL_NAV = [
       { to: '/residential/buy', label: 'Deals', icon: Briefcase },
       { to: '/residential/mandates', label: 'Buyer Mandates', icon: ClipboardList },
       { to: '/residential/enquiry', label: 'Buyer Enquiries', icon: MessageSquareQuote },
+      { to: '/residential/agreements/purchase', label: 'Purchase Agreements', icon: FileSignature },
     ],
   },
   {
