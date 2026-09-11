@@ -405,6 +405,7 @@ export const RESIDENTIAL_NAV = [
     label: 'Assurance',
     items: [
       { to: '/residential/compliance?category=residential', label: 'Compliance', icon: ShieldCheck },
+      { to: '/residential/introductions', label: 'Introductions', icon: ShieldCheck },
       { to: '/residential/workflows?vertical_key=properties', label: 'Checklists / Workflows', icon: Folder },
     ],
   },
