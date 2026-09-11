@@ -339,6 +339,21 @@ exports.workQueue = asyncHandler(async (req, res) => {
       push('prepare', 'offer_review', `Review an offer on ${prop.title || prop.property_code || o.property_id}`, { deal_id: null, property_id: o.property_id, property_code: prop.property_code || null, title: prop.title || null });
     }
   }
+  if (propertyById.size) {
+    const { stageDeadline } = require('../services/progressiveSop.service');
+    const ProjectModel = require('../models/Project');
+    const ProjectStageModel = require('../models/ProjectStage');
+    const sopProjects = await ProjectModel.findAll({ where: { property_id: { [Op.in]: [...propertyById.keys()] }, vertical_key: 'properties_sale', ...branchScope(req) }, include: [{ model: ProjectStageModel, as: 'stages' }] });
+    for (const proj of sopProjects) {
+      const prop = propertyById.get(Number(proj.property_id)) || {};
+      for (const stage of (proj.stages || [])) {
+        const dl = stageDeadline(stage.toJSON ? stage.toJSON() : stage);
+        if (dl.deadline_tier === 'overdue' || dl.deadline_tier === 'escalated') {
+          push('prepare', 'sop_overdue', `Overdue SOP stage "${stage.stage_name}" for ${prop.title || prop.property_code || proj.property_id}`, { deal_id: null, property_id: proj.property_id, property_code: prop.property_code || null, title: prop.title || null }, { tier: dl.deadline_tier, days_overdue: dl.days_overdue });
+        }
+      }
+    }
+  }
   const visible = wantAll ? items : items.filter((it) => (QUEUE_ROLE_MEMBERS[it.role] || []).includes(role));
   res.json({ data: { items: visible } });
 });
