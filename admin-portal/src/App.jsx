@@ -28,6 +28,7 @@ import SaleAgreements from './screens/sales/SaleAgreements';
 import SalesContracts from './screens/sales/SalesContracts';
 import SalesInbox from './screens/sales/SalesInbox';
 import SalesReports from './screens/sales/SalesReports';
+import LeadAutomation from './screens/sales/LeadAutomation';
 import RentalProperties from './screens/RentalProperties';
 import PropertyWizard from './screens/PropertyWizard';
 import PropertyMgmtDashboard from './screens/PropertyMgmtDashboard';
@@ -941,6 +942,7 @@ export default function App() {
               <Route path="/residential/contracts" element={<SalesContracts />} />
               <Route path="/residential/inbox" element={<SalesInbox />} />
               <Route path="/residential/reports" element={<SalesReports />} />
+              <Route path="/residential/lead-automation" element={<LeadAutomation />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />

@@ -385,6 +385,7 @@ export const RESIDENTIAL_NAV = [
       { to: '/residential/inbox', label: 'Sales Inbox', icon: Inbox },
       { to: '/residential/calendar', label: 'Calendar', icon: CalendarDays },
       { to: '/residential/reports', label: 'Reports', icon: BarChart3 },
+      { to: '/residential/lead-automation', label: 'Lead Automation', icon: Sparkles },
     ],
   },
   {
