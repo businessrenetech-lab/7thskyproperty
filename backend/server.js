@@ -289,6 +289,11 @@ const PORT = process.env.PORT || 5000;
         } catch (err) {
           console.warn(`[ArrearsReminder] not started: ${err.message}`);
         }
+        try {
+          require('./services/leadSequence.scheduler').startLeadSequenceScheduler();
+        } catch (err) {
+          console.warn(`[LeadSequence] not started: ${err.message}`);
+        }
       }
     });
 })();
