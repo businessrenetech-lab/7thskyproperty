@@ -100,6 +100,7 @@ module.exports = [
   ['/api/deals', './deal.routes'],
   ['/api/buyer-mandates', './buyerMandate.routes'],
   ['/api/sales/introductions', './salesIntroduction.routes'], // before /api/sales so the prefix wins
+  ['/api/sales/calendar', './salesCalendar.routes'], // before /api/sales so the prefix wins
   ['/api/sales', './sales.routes'],
   ['/api/sales-payments', './salesPayment.routes'],
   ['/api/services', './service.routes'],
