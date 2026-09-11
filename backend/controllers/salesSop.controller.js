@@ -9,7 +9,7 @@ const Project = require('../models/Project');
 const ProjectStage = require('../models/ProjectStage');
 const Property = require('../models/Property');
 const { createProjectFromTemplate } = require('../services/workflowProject.service');
-const { phaseOf, hintFor } = require('../services/progressiveSop.service');
+const { phaseOf, hintFor, stageDeadline } = require('../services/progressiveSop.service');
 const { asyncHandler, branchScope } = require('../utils/controllerHelpers');
 
 const VERTICAL = 'properties_sale';
@@ -26,6 +26,7 @@ const hydrate = (p) => {
       phase,
       locked: s.status === 'blocked',
       unlock_hint: s.status === 'blocked' ? hintFor(phase, VERTICAL) : null,
+      ...stageDeadline(s),
     };
   });
   return o;
