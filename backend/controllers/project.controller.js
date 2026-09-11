@@ -14,12 +14,13 @@ const propInc = { model: Property, as: 'property', attributes: ['id', 'property_
 
 // JSON columns can come back as strings on some MySQL/Sequelize combos — coerce to array.
 const arr = (v) => { if (Array.isArray(v)) return v; try { return JSON.parse(v || '[]'); } catch { return []; } };
-const { phaseOf, PHASE_UNLOCK_HINT } = require('../services/progressiveSop.service');
+const { phaseOf, hintFor } = require('../services/progressiveSop.service');
 const hydrate = (project) => {
   if (!project) return project;
   const o = project.toJSON ? project.toJSON() : project;
+  const vertical = o.vertical_key || 'leasing';
   if (o.stages) o.stages = o.stages.map((s) => {
-    const phase = phaseOf(s.stage_key);
+    const phase = phaseOf(s.stage_key, vertical);
     return {
       ...s,
       checklist: arr(s.checklist),
@@ -27,7 +28,7 @@ const hydrate = (project) => {
       // Progressive SOP metadata for the UI.
       phase,
       locked: s.status === 'blocked',
-      unlock_hint: s.status === 'blocked' ? (PHASE_UNLOCK_HINT[phase] || 'unlocks later in the lifecycle') : null,
+      unlock_hint: s.status === 'blocked' ? hintFor(phase, vertical) : null,
     };
   });
   return o;

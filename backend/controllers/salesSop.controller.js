@@ -9,6 +9,7 @@ const Project = require('../models/Project');
 const ProjectStage = require('../models/ProjectStage');
 const Property = require('../models/Property');
 const { createProjectFromTemplate } = require('../services/workflowProject.service');
+const { phaseOf, hintFor } = require('../services/progressiveSop.service');
 const { asyncHandler, branchScope } = require('../utils/controllerHelpers');
 
 const VERTICAL = 'properties_sale';
@@ -16,7 +17,17 @@ const arr = (v) => { if (Array.isArray(v)) return v; try { return JSON.parse(v |
 const hydrate = (p) => {
   if (!p) return null;
   const o = p.toJSON ? p.toJSON() : p;
-  if (o.stages) o.stages = o.stages.map((s) => ({ ...s, checklist: arr(s.checklist), required_documents: arr(s.required_documents) }));
+  if (o.stages) o.stages = o.stages.map((s) => {
+    const phase = phaseOf(s.stage_key, VERTICAL);
+    return {
+      ...s,
+      checklist: arr(s.checklist),
+      required_documents: arr(s.required_documents),
+      phase,
+      locked: s.status === 'blocked',
+      unlock_hint: s.status === 'blocked' ? hintFor(phase, VERTICAL) : null,
+    };
+  });
   return o;
 };
 const loadSop = (propertyId, req) => Project.findOne({
