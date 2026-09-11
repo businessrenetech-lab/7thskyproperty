@@ -26,6 +26,9 @@ export default function ContactDetail({ contactId, onBack }) {
   
   // Tab states
   const [activeTab, setActiveTab] = useState('overview');
+  const [rel, setRel] = useState(null);       // sales relationships (Phase-4 D)
+  const [dupes, setDupes] = useState([]);      // possible duplicate contacts
+  const [reps, setReps] = useState([]);        // authorised representatives (editable)
   
   // Modal / Drawer states
   const [activeDrawer, setActiveDrawer] = useState(null); // 'edit_contact' | 'add_comm' | 'add_invoice' | 'add_payment' | 'add_requirement' | 'add_shortlist' | 'add_third_party'
@@ -39,7 +42,17 @@ export default function ContactDetail({ contactId, onBack }) {
     try {
       // 1. Get contact detail
       const res = await api.get(`/contacts/${contactId}`);
-      setContact(res.data.data);
+      // JSON columns (tags, authorisations) can come back as strings on some
+      // MySQL/Sequelize combos — coerce to arrays so downstream .map is safe.
+      const arr = (v) => Array.isArray(v) ? v : (() => { try { const p = JSON.parse(v || '[]'); return Array.isArray(p) ? p : []; } catch { return []; } })();
+      const c = res.data.data;
+      c.tags = arr(c.tags);
+      c.authorisations = arr(c.authorisations);
+      setContact(c);
+      setReps(c.authorisations);
+      // Sales relationships + duplicate detection (Phase-4 D).
+      api.get(`/contacts/${contactId}/relationships`).then((r) => setRel(r.data)).catch(() => setRel({ by_property: [], mandates: [], agreements: [] }));
+      api.get(`/contacts/${contactId}/duplicates`).then((r) => setDupes(r.data.data || [])).catch(() => setDupes([]));
       setCommunications(res.data.communications || []);
       setInvoices(res.data.invoices || []);
       setPayments(res.data.payments || []);
@@ -64,6 +77,14 @@ export default function ContactDetail({ contactId, onBack }) {
       setLoading(false);
     }
   }, [contactId, toast]);
+
+  const saveReps = async () => {
+    try {
+      await api.put(`/contacts/${contact.id}`, { authorisations: reps.filter((r) => (r.name || '').trim()) });
+      toast.success('Authorised representatives saved');
+      load();
+    } catch (e) { toast.error(e.response?.data?.error || 'Could not save'); }
+  };
 
   useEffect(() => {
     load();
@@ -434,6 +455,7 @@ export default function ContactDetail({ contactId, onBack }) {
 
       <div className="tabs" style={{ marginBottom: 16 }}>
         <div className={`tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Overview & KYC</div>
+        <div className={`tab ${activeTab === 'relationships' ? 'active' : ''}`} onClick={() => setActiveTab('relationships')}>Relationships{dupes.length ? ` · ${dupes.length} dup` : ''}</div>
         {client?.is_buyer && <div className={`tab ${activeTab === 'buyer' ? 'active' : ''}`} onClick={() => setActiveTab('buyer')}>Buyer Requirement & Shortlist</div>}
         {(client?.is_seller || client?.is_landlord) && <div className={`tab ${activeTab === 'properties' ? 'active' : ''}`} onClick={() => setActiveTab('properties')}>Owned / Listed Properties</div>}
         {client?.is_tenant && <div className={`tab ${activeTab === 'tenant' ? 'active' : ''}`} onClick={() => setActiveTab('tenant')}>Tenant Lease & Rent</div>}
@@ -478,6 +500,78 @@ export default function ContactDetail({ contactId, onBack }) {
               
               <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: 8, marginTop: 20 }}>Internal Notes</h3>
               <p style={{ whiteSpace: 'pre-wrap', color: 'var(--muted)', fontSize: 13 }}>{contact.notes || 'No notes added.'}</p>
+            </div>
+          </div>
+        )}
+
+        {/* RELATIONSHIPS TAB (Phase-4 D) */}
+        {activeTab === 'relationships' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Possible duplicates */}
+            {dupes.length > 0 && (
+              <div style={{ border: '1px solid var(--warn, #d97706)', background: 'var(--warn-bg, #fffbeb)', borderRadius: 10, padding: 14 }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: 15, color: 'var(--warn, #b45309)' }}>⚠ Possible duplicate contacts ({dupes.length})</h3>
+                {dupes.map((x) => (
+                  <div key={x.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '4px 0' }}>
+                    <a href={`/admin/contacts/${x.id}`} style={{ fontWeight: 600 }}>{x.full_name}</a>
+                    <span style={{ fontSize: 12, color: 'var(--muted)' }}>{x.contact_code}</span>
+                    {(x.matched_on || []).map((m) => <Badge key={m} tone="amber">{m.replace('_', ' ')}</Badge>)}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Engagements by property */}
+            <div>
+              <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>Engagements by property</h3>
+              {!rel ? <Spinner /> : (rel.by_property.length === 0 && rel.mandates.length === 0 && rel.agreements.length === 0) ? (
+                <p style={{ color: 'var(--muted)', fontSize: 13 }}>No sales engagements recorded for this contact.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 10 }}>
+                  {rel.by_property.map((p, i) => (
+                    <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 12 }}>
+                      <div style={{ fontWeight: 700, marginBottom: 6 }}>
+                        {p.property.id ? <a href={`/admin/residential/property/${p.property.id}`}>{p.property.property_code || `Property ${p.property.id}`}</a> : 'Property'}
+                        {p.property.title ? <span style={{ color: 'var(--muted)', fontWeight: 400 }}> · {p.property.title}</span> : null}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 12.5 }}>
+                        {p.deals.map((d, j) => <Badge key={'d' + j} tone="blue">Deal {d.deal_code} · {d.role} · {d.status}</Badge>)}
+                        {p.offers.map((o, j) => <Badge key={'o' + j} tone="grey">Offer {o.offer_code} · {o.status}</Badge>)}
+                        {p.transactions.map((t, j) => <Badge key={'t' + j} tone="green">Txn {t.party_type} · {t.status}</Badge>)}
+                        {p.roles.map((r, j) => <Badge key={'r' + j} tone="grey">{r.role_type} · {r.status}</Badge>)}
+                        {p.introductions.map((n, j) => <Badge key={'n' + j} tone="amber">Intro {n.record_code} · {n.side} · {n.status}</Badge>)}
+                      </div>
+                    </div>
+                  ))}
+                  {rel.mandates.length > 0 && <div style={{ fontSize: 13 }}><strong>Buyer mandates:</strong> {rel.mandates.map((m) => `${m.mandate_code} (${m.status})`).join(', ')}</div>}
+                  {rel.agreements.length > 0 && (
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 13, margin: '4px 0' }}>Agreements ({rel.agreements.length})</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {rel.agreements.map((a, j) => <Badge key={j} tone="grey">{a.envelope_code} · {a.status}</Badge>)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Authorised representatives */}
+            <div>
+              <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>Authorised representatives</h3>
+              <p style={{ fontSize: 12.5, color: 'var(--muted)' }}>People authorised to act on this contact&apos;s behalf.</p>
+              {reps.map((r, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '6px 0', flexWrap: 'wrap' }}>
+                  <Input placeholder="Name" value={r.name || ''} onChange={(e) => setReps(reps.map((x, k) => k === i ? { ...x, name: e.target.value } : x))} />
+                  <Input placeholder="Relationship" value={r.relationship || ''} onChange={(e) => setReps(reps.map((x, k) => k === i ? { ...x, relationship: e.target.value } : x))} />
+                  <Input placeholder="Phone" value={r.phone || ''} onChange={(e) => setReps(reps.map((x, k) => k === i ? { ...x, phone: e.target.value } : x))} />
+                  <Button variant="ghost" size="sm" onClick={() => setReps(reps.filter((_, k) => k !== i))}><Trash2 size={14} /></Button>
+                </div>
+              ))}
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <Button variant="ghost" size="sm" icon={Plus} onClick={() => setReps([...reps, { name: '', relationship: '', phone: '' }])}>Add representative</Button>
+                <Button size="sm" onClick={saveReps}>Save representatives</Button>
+              </div>
             </div>
           </div>
         )}
