@@ -28,6 +28,8 @@ const Communication = sequelize.define('Communication', {
   // Inbox (0102): unread tracking + drafts.
   read_at: DataTypes.DATE,
   is_draft: { type: DataTypes.BOOLEAN, defaultValue: false },
+  visibility: { type: DataTypes.ENUM('internal', 'client'), defaultValue: 'client' },
+  assigned_to: DataTypes.INTEGER,
 }, {
   tableName: 'communications',
   underscored: true,
