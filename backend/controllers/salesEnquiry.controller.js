@@ -5,11 +5,34 @@ const Property = require('../models/Property');
 const Contact = require('../models/Contact');
 const Client = require('../models/Client');
 const { generateCode } = require('../utils/codeGenerator');
+const { routeEnquiry } = require('../services/leadRouting.service');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
 
 const FIELDS = ['property_id', 'contact_id', 'client_id', 'enquirer_name', 'phone', 'email', 'source',
+  'utm_source', 'utm_medium', 'utm_campaign',
   'budget', 'preferred_area', 'message', 'viewing_date', 'stage', 'assigned_officer_id', 'next_action',
   'follow_up_date', 'notes'];
+
+/**
+ * Auto-route a freshly created enquiry and, when the matched rule names a
+ * default sequence, enrol it. Shared by staff + public intake. Never throws
+ * into the create path — routing failure must not lose the enquiry.
+ */
+async function routeAndEnrol(enquiry, propertyId, transaction) {
+  try {
+    let category = null;
+    if (propertyId) {
+      const p = await Property.findByPk(propertyId, { attributes: ['category'], transaction });
+      category = p?.category || null;
+    }
+    const { sequenceId } = await routeEnquiry(enquiry, { category, transaction });
+    if (sequenceId) {
+      await require('../services/leadSequence.scheduler').enrollEnquiry(enquiry, sequenceId, { transaction });
+    }
+  } catch (e) {
+    console.warn('[routeAndEnrol]', e.message);
+  }
+}
 
 const STAGES = ['new', 'contacted', 'viewing_scheduled', 'viewed', 'offer_made', 'converted', 'rejected'];
 
@@ -18,7 +41,7 @@ const STAGES = ['new', 'contacted', 'viewing_scheduled', 'viewed', 'offer_made',
 const propInc = (category) => ({
   model: Property, as: 'property',
   attributes: ['id', 'property_code', 'title', 'area', 'district', 'category', 'listing_type'],
-  ...(category ? { where: { category }, required: true } : {}),
+  required: false,
 });
 const contactInc = { model: Contact, as: 'contact', attributes: ['id', 'full_name', 'primary_phone', 'email', 'is_client'] };
 const clientInc = { model: Client, as: 'client', attributes: ['id', 'client_code', 'is_buyer'] };
@@ -60,11 +83,10 @@ async function ensureBuyerContactAndClient({ branchId, name, phone, email, actor
     client = await Client.create({
       branch_id: branchId,
       contact_id: contact.id,
-      client_code: await generateCode(Client, 'client_code', 'SSPC-C-'),
+      client_code: await generateCode(Client, 'client_code', 'SSPC-CL-'),
+      client_type: 'buyer',
       is_buyer: true,
-      relationship_owner_id: actorId || null,
-      onboarded_at: new Date(),
-      status: 'prospect',
+      status: 'active',
       created_by: actorId || null,
     }, { transaction });
   } else if (!client.is_buyer) {
@@ -75,15 +97,37 @@ async function ensureBuyerContactAndClient({ branchId, name, phone, email, actor
 
 // ─── LIST (category-aware; flat table or kanban) ────────────────────────────
 exports.list = asyncHandler(async (req, res) => {
-  const where = { ...branchScope(req) };
-  if (req.query.property_id) where.property_id = req.query.property_id;
-  if (req.query.stage) where.stage = req.query.stage;
-  if (req.query.assigned_officer_id) where.assigned_officer_id = req.query.assigned_officer_id;
+  const bScope = branchScope(req);
+  const andConditions = [];
+
+  if (bScope.branch_id) {
+    andConditions.push({ [Op.or]: [{ branch_id: bScope.branch_id }, { branch_id: null }] });
+  }
+  if (req.query.property_id) andConditions.push({ property_id: req.query.property_id });
+  if (req.query.stage) andConditions.push({ stage: req.query.stage });
+  if (req.query.assigned_officer_id) andConditions.push({ assigned_officer_id: req.query.assigned_officer_id });
   if (req.query.search) {
     const s = `%${req.query.search}%`;
-    where[Op.or] = [{ enquirer_name: { [Op.like]: s } }, { enquiry_code: { [Op.like]: s } }, { phone: { [Op.like]: s } }];
+    andConditions.push({
+      [Op.or]: [
+        { enquirer_name: { [Op.like]: s } },
+        { enquiry_code: { [Op.like]: s } },
+        { phone: { [Op.like]: s } },
+      ],
+    });
   }
+
   const category = req.query.category || null;
+  if (category) {
+    andConditions.push({
+      [Op.or]: [
+        { '$property.category$': category },
+        { property_id: null },
+      ],
+    });
+  }
+
+  const where = andConditions.length ? { [Op.and]: andConditions } : {};
   const include = [propInc(category), contactInc, clientInc];
 
   if (req.query.view === 'kanban') {
@@ -122,7 +166,9 @@ exports.create = asyncHandler(async (req, res) => {
     data.branch_id = branchId;
     data.created_by = req.user?.id || null;
     data.enquiry_code = await generateCode(SalesEnquiry, 'enquiry_code', 'SSPC-BEQ-');
-    return SalesEnquiry.create(data, { transaction: tx });
+    const enquiry = await SalesEnquiry.create(data, { transaction: tx });
+    await routeAndEnrol(enquiry, data.property_id, tx);
+    return enquiry;
   });
   const full = await SalesEnquiry.findByPk(result.id, { include: [propInc(), contactInc, clientInc] });
   res.status(201).json({ data: full, message: `Enquiry ${result.enquiry_code} created.` });
@@ -152,4 +198,5 @@ exports.remove = asyncHandler(async (req, res) => {
 });
 
 module.exports.ensureBuyerContactAndClient = ensureBuyerContactAndClient;
+module.exports.routeAndEnrol = routeAndEnrol;
 module.exports.STAGES = STAGES;

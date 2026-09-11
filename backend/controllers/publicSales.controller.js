@@ -8,7 +8,7 @@ const Branch = require('../models/Branch');
 const Property = require('../models/Property');
 const SalesEnquiry = require('../models/SalesEnquiry');
 const { generateCode } = require('../utils/codeGenerator');
-const { ensureBuyerContactAndClient } = require('./salesEnquiry.controller');
+const { ensureBuyerContactAndClient, routeAndEnrol } = require('./salesEnquiry.controller');
 const { getTableColumns, hasColumn, pickExisting } = require('../utils/schemaSafe');
 
 const getMainBranchId = async () => {
@@ -26,7 +26,8 @@ const getMainBranchId = async () => {
 // or links a buyer Contact + Client, then records the enquiry.
 exports.submitSalesEnquiry = async (req, res) => {
   try {
-    const { name, phone, email, property_id, budget, preferred_area, message, source } = req.body || {};
+    const { name, phone, email, property_id, budget, preferred_area, message, source,
+      utm_source, utm_medium, utm_campaign } = req.body || {};
     if (!name || (!phone && !email)) {
       return res.status(400).json({ message: 'Name and a phone number or email are required.' });
     }
@@ -40,7 +41,7 @@ exports.submitSalesEnquiry = async (req, res) => {
       const { contact, client } = await ensureBuyerContactAndClient(
         { branchId, name, phone, email, actorId: null }, tx,
       );
-      return SalesEnquiry.create({
+      const created = await SalesEnquiry.create({
         branch_id: branchId,
         enquiry_code: await generateCode(SalesEnquiry, 'enquiry_code', 'SSPC-BEQ-'),
         property_id: property?.id || null,
@@ -50,12 +51,17 @@ exports.submitSalesEnquiry = async (req, res) => {
         phone: phone || null,
         email: email || null,
         source: source || 'website',
+        utm_source: utm_source || null,
+        utm_medium: utm_medium || null,
+        utm_campaign: utm_campaign || null,
         budget: budget || null,
         preferred_area: preferred_area || null,
         message: message || null,
         stage: 'new',
         next_action: 'Contact the buyer',
       }, { transaction: tx });
+      await routeAndEnrol(created, property?.id || null, tx);
+      return created;
     });
 
     res.status(201).json({ message: 'Enquiry received. Our team will contact you shortly.', code: enquiry.enquiry_code });
