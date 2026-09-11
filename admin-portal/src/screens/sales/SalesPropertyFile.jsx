@@ -3179,14 +3179,19 @@ export default function SalesPropertyFile({
               }
             />
           ) : (
-            (sop.stages || []).map((stage) => (
+            (sop.stages || []).map((stage) => {
+              const locked = stage.status === "blocked";
+              const readOnly = ["done", "blocked"].includes(stage.status);
+              return (
+              <div key={stage.id} style={{ opacity: locked ? 0.55 : 1 }}>
               <Panel
-                key={stage.id}
                 icon={ClipboardCheck}
                 heading={stage.stage_name}
                 sub={stage.status}
                 action={
-                  canPrepare && stage.status !== "done" ? (
+                  locked ? (
+                    <span className="cell-sub">🔒 {stage.unlock_hint || "locked"}</span>
+                  ) : canPrepare && stage.status !== "done" ? (
                     <div style={{ display: "flex", gap: 6 }}>
                       {stage.status !== "in_progress" && (
                         <Button
@@ -3222,7 +3227,7 @@ export default function SalesPropertyFile({
                           <input
                             type="checkbox"
                             checked={!!item.done}
-                            disabled={!canPrepare || stage.status === "done"}
+                            disabled={!canPrepare || readOnly}
                             onChange={(event) => {
                               const checklist = (stage.checklist || []).map((c, i) =>
                                 i === idx ? { ...c, done: event.target.checked } : c,
@@ -3235,7 +3240,7 @@ export default function SalesPropertyFile({
                             {item.required ? " *" : ""}
                           </span>
                         </label>
-                        {canPrepare && stage.status !== "done" && (
+                        {canPrepare && !readOnly && (
                           <UploadButton
                             value={item.evidence_url}
                             onChange={(url) => {
@@ -3258,7 +3263,9 @@ export default function SalesPropertyFile({
                   </p>
                 )}
               </Panel>
-            ))
+              </div>
+              );
+            })
           )}
         </div>
       )}
