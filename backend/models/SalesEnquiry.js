@@ -21,6 +21,13 @@ const SalesEnquiry = sequelize.define('SalesEnquiry', {
   phone: DataTypes.STRING,
   email: DataTypes.STRING,
   source: DataTypes.STRING,          // website | walk_in | phone | referral | staff
+  utm_source: DataTypes.STRING,      // first-touch marketing attribution (write-once)
+  utm_medium: DataTypes.STRING,
+  utm_campaign: DataTypes.STRING,
+  routing_rule_id: DataTypes.INTEGER, // which LeadRoutingRule assigned it (audit)
+  sequence_id: DataTypes.INTEGER,     // active follow-up sequence enrolment
+  sequence_status: DataTypes.ENUM('active', 'paused', 'completed', 'stopped'),
+  sequence_enrolled_at: DataTypes.DATE,
   budget: DataTypes.DECIMAL(15, 2),
   preferred_area: DataTypes.STRING,
   message: DataTypes.TEXT,           // what the buyer wrote
