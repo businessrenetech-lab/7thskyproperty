@@ -5126,3 +5126,10 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Verified: business-day units 7/0; seed+advance+unlock stamp 3-business-day (etc.) deadlines on property 51; back-dated stage → escalated in hydrate, Work Queue, badge, and bar chip; npm test 27/0 (+businessDays) + test:full 28/0. Rental non-regression: leasing SLA null → no due_date, tier on_track.
 - Deferred (out of layer scope): scheduler/notifications, holiday calendar, deals-board per-card badge, rental SLAs.
 - SOP trilogy (create+link+surface / progressive unlock / deadlines+escalation) now complete. Not merged; no PR.
+
+### 2026-09-11 | Claude Code (Opus 4.8) | COMPLETED | Phase-3 completion sub-project A — Sales Introductions (clause 22)
+- Wired the previously-unused non_circumvention_records table for sales. Committed on air-conditioning/phase-0-duplicate.
+- Backend: migration 0108 adds context/deal_id/introduced_by (additive; existing rental rows backfilled context='rental'). salesIntroduction.controller + routes at /api/sales/introductions (mounted before /api/sales in server.js AND routes/manifest.js so the prefix wins). Reuses columns with sales semantics (owner_contact_id=seller, tenant_contact_id=buyer) — controller is the only place those names appear; API speaks buyer/seller. context='sale' on every query. 12-month protection window + expired/days_remaining derived at read time. status active/breached/closed. Buyer/seller/property resolved via id-maps (no association aliases needed).
+- Frontend: property-file 'Introductions' section (table + add drawer + Mark breached/Close) and a branch-level /residential/introductions page (status + expiry filters, URL-backed) under Assurance nav.
+- Verified: create SSPC-IN-000001 (protection +12mo, 365d), list by property, mark breached, back-dated → expired; property-file section + branch page render with badges; expiry=expired filter narrows correctly; npm test 27/0 (+businessDays) + test:full 28/0. Rental untouched (additive columns; context filter).
+- Deferred (non-goals): auto breach detection, rental wiring, e-sign, money. Next: sub-project B (Calendar + saved views). Not merged; no PR.
