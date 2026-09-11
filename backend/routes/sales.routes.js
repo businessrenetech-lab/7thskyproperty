@@ -23,6 +23,7 @@ router.get('/properties/:propertyId/services', roleMiddleware(READ), svcCtrl.pro
 router.get('/properties/:propertyId/expenses', roleMiddleware(READ), reportsCtrl.listExpenses);
 router.post('/properties/:propertyId/expenses', roleMiddleware(PREPARE), reportsCtrl.addExpense);
 router.delete('/expenses/:id', roleMiddleware(PREPARE), reportsCtrl.removeExpense);
+router.get('/reports', roleMiddleware(READ), reportsCtrl.report);
 router.get('/accounting-options', roleMiddleware(ACCOUNTS), ctrl.accountingOptions);
 router.post('/bank-accounts', roleMiddleware(ACCOUNTS), ctrl.createPhysicalBankAccount);
 router.get('/properties/:propertyId', roleMiddleware(READ), ctrl.getPropertyFile);
