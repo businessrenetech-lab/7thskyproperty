@@ -5133,3 +5133,12 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Frontend: property-file 'Introductions' section (table + add drawer + Mark breached/Close) and a branch-level /residential/introductions page (status + expiry filters, URL-backed) under Assurance nav.
 - Verified: create SSPC-IN-000001 (protection +12mo, 365d), list by property, mark breached, back-dated → expired; property-file section + branch page render with badges; expiry=expired filter narrows correctly; npm test 27/0 (+businessDays) + test:full 28/0. Rental untouched (additive columns; context filter).
 - Deferred (non-goals): auto breach detection, rental wiring, e-sign, money. Next: sub-project B (Calendar + saved views). Not merged; no PR.
+
+### 2026-09-11 | Claude Code (Opus 4.8) | COMPLETED | Phase-3 completion sub-project B — Sales Calendar + Saved Views (PHASE 3 COMPLETE)
+- Committed on air-conditioning/phase-0-duplicate.
+- Backend: GET /api/sales/calendar?from&to[&category] aggregates SOP stage deadlines (properties_sale, active), open-offer expiries, and enquiry viewings/follow-ups into a flat events[] (property_code via one id-map); mounted before /api/sales in server.js + manifest.js. dpart() handles DATE (datetime) columns TZ-safely. Migration 0109 + SavedView model + /api/saved-views (per-user list?scope/create/delete); params coerced to an object on read (MySQL JSON-string quirk).
+- Frontend: in-house month calendar page (/residential/calendar, Home nav) with type-colored day dots + selected-day panel linking to property files; shared SavedViews dropdown on the Deals board + Work Queue (apply/save/delete).
+- Bug found + fixed via systematic-debugging: saved-view params returned as a JSON string → onApply(string) → p.search === String.prototype.search → setSearch(fn) → React ran it as a functional update next render → 'String.prototype.search called on null' crashed the board. Fixed at source (controller coerces params to object) + defensive parse in SavedViews. Verified no crash + filter applies, on dev server and production build.
+- Verified: calendar shows all 4 event types (Sep 2026) and links out; saved-view CRUD + apply works per-user; harnesses 27/0 (+businessDays) + 28/0.
+- Deferred (non-goals): event creation from calendar, week/day views, iCal, cross-user sharing, extra date sources.
+- PHASE 3 fully complete (Kanban, buyer mandates, versioned offers+approvals, SOP trilogy, introductions, calendar+saved views). Not merged; no PR.
