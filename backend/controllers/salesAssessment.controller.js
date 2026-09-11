@@ -39,6 +39,11 @@ const DEFAULT_ITEMS = [
 ];
 
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
+// Progressive-SOP unlock for a sale lifecycle event. Non-fatal.
+const unlockSale = (propertyId, event, transaction) => {
+  try { return require('../services/progressiveSop.service').unlockForEvent(propertyId, event, { vertical: 'properties_sale', transaction }); }
+  catch { return null; }
+};
 const plain = (row) => row?.get ? row.get({ plain: true }) : row;
 const ip = (req) => req.ip || req.socket?.remoteAddress || null;
 const hasValue = (value) => value !== null && value !== undefined && value !== '';
@@ -408,6 +413,7 @@ exports.approveAssessment = asyncHandler(async (req, res) => {
       transaction,
     });
     await profile.update({ assessment_status: 'complete', updated_by: req.user.id }, { transaction });
+    await unlockSale(assessment.property_id, 'sale_assessment_approved', transaction);
     await audit(req, assessment, assessment.property_id, 'ASSESSMENT_APPROVED', { status: oldStatus }, { status: 'approved', assessment_status: 'complete' }, body.approval_notes, transaction);
     return { assessment, profile };
   });

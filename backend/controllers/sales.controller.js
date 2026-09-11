@@ -42,6 +42,12 @@ const money = (value) => Number.parseFloat(value || 0) || 0;
 const roundMoney = (value) => Math.round((money(value) + Number.EPSILON) * 100) / 100;
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
 const ip = (req) => req.ip || req.socket?.remoteAddress || null;
+// Progressive-SOP unlock for a sale lifecycle event. Non-fatal: a missing SOP
+// project or any error never breaks the offer/settlement action.
+const unlockSale = (propertyId, event, transaction) => {
+  try { return require('../services/progressiveSop.service').unlockForEvent(propertyId, event, { vertical: 'properties_sale', transaction }); }
+  catch { return null; }
+};
 const plain = (row) => row?.get ? row.get({ plain: true }) : row;
 const lineFinanciallyChanged = (current, next) => current.line_type !== next.line_type
   || current.direction !== next.direction
@@ -630,6 +636,7 @@ exports.createOffer = asyncHandler(async (req, res) => {
     const row = await SaleOffer.create({ ...data, branch_id: property.branch_id, property_id: property.id, offer_code: await generateCode(SaleOffer, 'offer_code', 'SSPC-OF-'), source: 'staff', status: initialStatus, submitted_at: initialStatus === 'submitted' ? new Date() : null, created_by: req.user.id, updated_by: req.user.id }, { transaction });
     await SaleOfferParty.bulkCreate(buyers.map((buyer) => ({ ...buyer, branch_id: property.branch_id, offer_id: row.id })), { transaction });
     if (initialStatus === 'submitted') await appendOfferVersion(row, 'buyer', req.user.id, transaction);
+    if (initialStatus === 'submitted') await unlockSale(property.id, 'sale_offer_received', transaction);
     await recordEvent({ branchId: property.branch_id, propertyId: property.id, entityType: 'sale_offer', entityId: row.id, eventType: 'OFFER_CREATED', actorId: req.user.id, newValue: { ...plain(row), buyers }, ipAddress: ip(req), transaction });
     return row;
   });
@@ -680,6 +687,7 @@ exports.updateOfferStatus = asyncHandler(async (req, res) => {
     // A counter (seller) or a buyer re-submit is a new negotiation version.
     if (old === 'submitted' && target === 'countered') await appendOfferVersion(offer, 'seller', req.user.id, transaction);
     if (old === 'countered' && target === 'submitted') await appendOfferVersion(offer, 'buyer', req.user.id, transaction);
+    if (target === 'submitted') await unlockSale(offer.property_id, 'sale_offer_received', transaction);
     await recordEvent({ branchId: offer.branch_id, propertyId: offer.property_id, entityType: 'sale_offer', entityId: offer.id, eventType: 'STATUS_CHANGED', actorId: req.user.id, oldValue: { status: old }, newValue: { status: target }, reason: body.reason, ipAddress: ip(req), transaction });
   });
   res.json({ data: offer });
@@ -758,6 +766,7 @@ exports.acceptOffer = asyncHandler(async (req, res) => {
       override_reason: isOverride ? String(req.body.override_reason).trim() : null,
       approved_by: req.user.id, approved_at: new Date(),
     }, { transaction });
+    await unlockSale(property.id, 'sale_offer_accepted', transaction);
     await recordEvent({ branchId: property.branch_id, propertyId: property.id, entityType: 'sale_transaction', entityId: saleTransaction.id, eventType: 'OFFER_ACCEPTED', actorId: req.user.id, oldValue: null, newValue: { offer_id: offer.id, deal_id: deal.id }, reason: body.reason, ipAddress: ip(req), transaction });
     return { offer, deal, transaction: saleTransaction };
   });
@@ -1884,6 +1893,7 @@ exports.settlementAction = (action) => asyncHandler(async (req, res) => {
         await saleTransaction.update({ status: 'completed' }, { transaction });
         await PropertyDeal.update({ status: 'completed' }, { where: { id: saleTransaction.property_deal_id, branch_id: settlement.branch_id }, transaction });
         await Property.update({ status: 'sold' }, { where: { id: saleTransaction.property_id, branch_id: settlement.branch_id }, transaction });
+        await unlockSale(saleTransaction.property_id, 'sale_settlement_locked', transaction);
         // Close out every other open offer — the property is sold, so nothing
         // should keep counting as an offer awaiting review.
         const openOffers = await SaleOffer.findAll({ where: { property_id: saleTransaction.property_id, branch_id: settlement.branch_id, status: { [Op.in]: ['draft', 'submitted', 'countered'] } }, transaction });
