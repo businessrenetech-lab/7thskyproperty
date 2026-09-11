@@ -25,6 +25,7 @@ import {
   Upload,
   Users,
   WalletCards,
+  Wrench,
 } from "lucide-react";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -202,6 +203,7 @@ const SECTIONS = [
   { key: "settlement", label: "Settlement", icon: Scale },
   { key: "onboarding", label: "Onboarding", icon: ClipboardCheck },
   { key: "workflow", label: "Workflow", icon: ClipboardCheck },
+  { key: "services", label: "Services", icon: Wrench },
   { key: "introductions", label: "Introductions", icon: ShieldCheck },
   { key: "documents", label: "Documents", icon: FileText },
   { key: "activity", label: "Activity / Audit", icon: Activity },
@@ -437,6 +439,32 @@ export default function SalesPropertyFile({
       loadIntros();
     } catch (e) {
       toast.error(e.response?.data?.error || "Update failed");
+    }
+  };
+
+  // Services (work orders + financial commitments). undefined = not loaded.
+  const [services, setServices] = useState(undefined);
+  const loadServices = useCallback(async () => {
+    if (!propertyId) return;
+    try {
+      const { data } = await api.get(`/sales/properties/${propertyId}/services`);
+      setServices(data); // endpoint returns { work_orders, commitments } directly
+    } catch {
+      setServices({ work_orders: [], commitments: { invoices: [], totals: {} } });
+    }
+  }, [propertyId]);
+  useEffect(() => {
+    if (section === "services" && services === undefined) loadServices();
+  }, [section, services, loadServices]);
+  const saveWorkOrder = async (f) => {
+    if (!f.title) { setFormError("A title is required"); return; }
+    try {
+      await api.post(`/work-orders`, { property_id: propertyId, status: "issued", ...f });
+      setDrawer(null);
+      toast.success("Work order raised");
+      loadServices();
+    } catch (e) {
+      setFormError(e.response?.data?.error || "Could not raise the work order");
     }
   };
 
@@ -3341,6 +3369,64 @@ export default function SalesPropertyFile({
         </div>
       )}
 
+      {section === "services" && (
+        <div className="pm-col">
+          {services === undefined ? (
+            <Panel icon={Wrench} heading="Service coordination"><Spinner /></Panel>
+          ) : (
+            <>
+              <Panel icon={WalletCards} heading="Financial commitments" sub="Fees invoiced and service work committed on this property">
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  {[
+                    ["Invoiced", services.commitments?.totals?.invoiced],
+                    ["Paid", services.commitments?.totals?.paid],
+                    ["Outstanding", services.commitments?.totals?.outstanding],
+                    ["Work committed", services.commitments?.totals?.work_order_committed],
+                  ].map(([label, val]) => (
+                    <div key={label} style={{ flex: "1 1 140px", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px" }}>
+                      <div className="cell-sub">{label}</div>
+                      <strong style={{ fontSize: 16 }}>{money(val || 0)}</strong>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+              <Panel
+                icon={Wrench}
+                heading="Service work orders"
+                sub="Preparation, repairs and marketing production for this property"
+                action={canPrepare ? (
+                  <Button size="sm" onClick={() => openDrawer("work-order", { title: "", scope: "", provider_id: null, scheduled_date: "", amount: "" })}>Add work order</Button>
+                ) : null}
+              >
+                {services.work_orders.length === 0 ? (
+                  <p className="cell-sub">No service work orders for this property.</p>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table className="tbl">
+                      <thead><tr><th>Ref</th><th>Title</th><th>Provider</th><th>Status</th><th>Scheduled</th><th>Completed</th><th>Evidence</th><th style={{ textAlign: "right" }}>Amount</th></tr></thead>
+                      <tbody>
+                        {services.work_orders.map((w) => (
+                          <tr key={w.id}>
+                            <td><span className="code-chip">{w.work_order_code}</span></td>
+                            <td>{w.title}</td>
+                            <td>{w.provider_name || "—"}</td>
+                            <td><StatusBadge status={w.status} /></td>
+                            <td>{w.scheduled_date || "—"}</td>
+                            <td>{w.completed_date || "—"}</td>
+                            <td>📎 {w.before_count}/{w.after_count}</td>
+                            <td style={{ textAlign: "right" }}>{money(w.amount || 0)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Panel>
+            </>
+          )}
+        </div>
+      )}
+
       {section === "introductions" && (
         <Panel
           icon={ShieldCheck}
@@ -4362,6 +4448,39 @@ export default function SalesPropertyFile({
               )}
             </>
           )}
+        </Drawer>
+      )}
+
+      {drawer === "work-order" && (
+        <Drawer
+          title="Raise a service work order"
+          onClose={closeDrawer}
+          footer={
+            <DrawerActions close={closeDrawer} save={() => saveWorkOrder(form)} saving={saving} label="Raise work order" />
+          }
+        >
+          <ErrorBox error={formError} />
+          <Field label="Title">
+            <Input value={form.title || ""} onChange={(event) => set("title", event.target.value)} />
+          </Field>
+          <Field label="Scope">
+            <Textarea value={form.scope || ""} onChange={(event) => set("scope", event.target.value)} />
+          </Field>
+          <Field label="Provider">
+            <Combo
+              endpoint="/providers"
+              labelFn={(p) => p.company_name || p.name || `Provider ${p.id}`}
+              value={form.provider_id}
+              onChange={(v) => set("provider_id", v)}
+              placeholder="Search a provider…"
+            />
+          </Field>
+          <Field label="Scheduled date">
+            <Input type="date" value={form.scheduled_date || ""} onChange={(event) => set("scheduled_date", event.target.value)} />
+          </Field>
+          <Field label="Amount (BDT)">
+            <Input type="number" value={form.amount || ""} onChange={(event) => set("amount", event.target.value)} />
+          </Field>
         </Drawer>
       )}
 
