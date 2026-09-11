@@ -65,18 +65,61 @@ const PHASE_UNLOCK_HINT = {
   exit: 'unlocks when a vacancy / renewal begins',
 };
 
-const phaseOf = (stageKey) => STAGE_PHASE[stageKey] || 'ongoing';
+// --- sale (properties_sale) ---
+// Sale SOP is progressive too: only the engagement phase is active at seed; the
+// rest unlock as the sale lifecycle events fire. Keys are the slugs from
+// migration 0107 (slug of the layer-1 stage names).
+const SALE_STAGE_PHASE = {
+  enquiry_consultation: 'engagement', inspection_assessment: 'engagement',
+  documents_risk: 'engagement', agreement_phase_2_approval: 'engagement',
+  preparation: 'marketing', marketing_listing: 'marketing', buyer_enquiries_inspections: 'marketing',
+  offers_negotiation: 'offer',
+  agreement_settlement: 'settlement',
+  closure_post_sale: 'closure',
+};
+const SALE_EVENT_UNLOCKS = {
+  sale_assessment_approved: ['marketing'],
+  sale_offer_received: ['offer'],
+  sale_offer_accepted: ['settlement'],
+  sale_settlement_locked: ['closure'],
+};
+const SALE_HINTS = {
+  engagement: 'active from the start',
+  marketing: 'unlocks when the assessment is approved',
+  offer: 'unlocks when an offer is received',
+  settlement: 'unlocks when an offer is accepted',
+  closure: 'unlocks when the settlement completes',
+};
+
+// Vertical-keyed registry. Leasing preserved verbatim; sale added. A vertical
+// with NO entry here has no phase gating (initialStatusFor returns null).
+const REGISTRY = {
+  leasing: { stagePhase: STAGE_PHASE, eventUnlocks: EVENT_UNLOCKS, hints: PHASE_UNLOCK_HINT, activeAtStart: ['property'], ownerPhase: 'owner', fallbackPhase: 'ongoing' },
+  properties_sale: { stagePhase: SALE_STAGE_PHASE, eventUnlocks: SALE_EVENT_UNLOCKS, hints: SALE_HINTS, activeAtStart: ['engagement'], ownerPhase: null, fallbackPhase: 'engagement' },
+};
+
+const phaseOf = (stageKey, vertical = 'leasing') => {
+  const reg = REGISTRY[vertical] || REGISTRY.leasing;
+  return reg.stagePhase[stageKey] || reg.fallbackPhase;
+};
+const hintFor = (phase, vertical = 'leasing') => {
+  const reg = REGISTRY[vertical] || REGISTRY.leasing;
+  return reg.hints[phase] || 'unlocks later in the lifecycle';
+};
 
 /**
  * Initial status for a stage when the project is created.
- * Only the PROPERTY phase (plus OWNER if an owner is already linked) starts
- * unlocked; everything else is 'blocked' until its event fires.
+ * For a registered vertical, only its activeAtStart phase(s) (plus its owner
+ * phase when ownerLinked) start unlocked; everything else is 'blocked'. For a
+ * vertical with no registry entry, returns null = no phase gating (the caller
+ * keeps its default first-active seeding).
  */
-function initialStatusFor(stageKey, { ownerLinked = false } = {}) {
-  const phase = phaseOf(stageKey);
-  const activePhases = new Set(['property']);
-  if (ownerLinked) activePhases.add('owner');
-  return activePhases.has(phase) ? 'pending' : 'blocked';
+function initialStatusFor(stageKey, { vertical = 'leasing', ownerLinked = false } = {}) {
+  const reg = REGISTRY[vertical];
+  if (!reg) return null;
+  const active = new Set(reg.activeAtStart);
+  if (ownerLinked && reg.ownerPhase) active.add(reg.ownerPhase);
+  return active.has(phaseOf(stageKey, vertical)) ? 'pending' : 'blocked';
 }
 
 /**
@@ -85,15 +128,18 @@ function initialStatusFor(stageKey, { ownerLinked = false } = {}) {
  * active stage yet. Idempotent.
  */
 async function unlockForEvent(propertyId, event, opts = {}) {
+  const vertical = opts.vertical || 'leasing';
   const tx = opts.transaction;
-  const phases = EVENT_UNLOCKS[event];
+  const reg = REGISTRY[vertical];
+  if (!reg) return { unlocked: 0 };
+  const phases = reg.eventUnlocks[event];
   if (!phases || !phases.length) return { unlocked: 0 };
 
-  const project = await Project.findOne({ where: { property_id: propertyId, vertical_key: 'leasing' }, order: [['created_at', 'DESC']], transaction: tx });
+  const project = await Project.findOne({ where: { property_id: propertyId, vertical_key: vertical }, order: [['created_at', 'DESC']], transaction: tx });
   if (!project) return { unlocked: 0 };
 
   const stages = await ProjectStage.findAll({ where: { project_id: project.id }, order: [['sort_order', 'ASC']], transaction: tx });
-  const inPhase = stages.filter((s) => phases.includes(phaseOf(s.stage_key)));
+  const inPhase = stages.filter((s) => phases.includes(phaseOf(s.stage_key, vertical)));
   let unlocked = 0;
   for (const s of inPhase) {
     if (s.status === 'blocked') { await s.update({ status: 'pending' }, { transaction: tx }); unlocked++; }
@@ -111,4 +157,4 @@ async function unlockForEvent(propertyId, event, opts = {}) {
   return { unlocked };
 }
 
-module.exports = { STAGE_PHASE, EVENT_UNLOCKS, PHASE_UNLOCK_HINT, phaseOf, initialStatusFor, unlockForEvent };
+module.exports = { STAGE_PHASE, EVENT_UNLOCKS, PHASE_UNLOCK_HINT, phaseOf, hintFor, initialStatusFor, unlockForEvent, REGISTRY };
