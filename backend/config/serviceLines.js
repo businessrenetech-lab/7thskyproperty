@@ -899,6 +899,90 @@ const SERVICE_LINES = {
       service_frequencies: ['One-Off', 'Daily', 'Weekly', 'Fortnightly', 'Monthly', 'Quarterly', 'Six-Monthly', 'Annual', 'As Required'],
     },
   },
+
+  // ── Interior Design Solutions — parent group of 7 client-facing verticals ──
+  // NO service provider (no_provider) and NO AMC (no_amc): design/fit-out is
+  // delivered/coordinated by Seventh Sky and completed via a Project Completion
+  // Sign-Off, not a provider payout. Runs the shared /api/wt-* engine, scoped by
+  // X-Service-Line. First vertical live: Residential; the other six follow as
+  // agreement packs + config entries under the same `parent`.
+  residential_interior_design: {
+    key: 'residential_interior_design',
+    label: 'Residential Interior Design',
+    short: 'RIDS',
+    accent: '#9333ea',              // purple — Interior Design group
+    api_base: 'wt',                 // shared /api/wt-* mount, scoped by the header
+    route_base: 'residential-interior-design',
+    env_tag: 'RIDS',                // ENV-RIDSCSA-…
+    catalogue_vertical: 'residential_interior_design_csa',
+    parent: { key: 'interior_design', label: 'Interior Design Solutions' },
+    // Behaviour flags — no provider side, no AMC; interior-specific modules on.
+    no_provider: true,
+    no_amc: true,
+    variations: true,
+    completion_signoff: true,
+    // No provider prefix — providers are not used on this line.
+    code_prefix: {
+      client: 'RIDS-C', project: 'RIDS-P', request: 'RIDR-', assessment: 'RIDA-',
+      quotation: 'RIDQ-', work_order: 'RIDW-', invoice: 'RIDI-',
+    },
+    // No provider onboarding, so no required provider docs / service categories.
+    required_docs: { compliance: [], insurance: [] },
+    service_categories: [],
+    related_type: {
+      customer: 'residential_interior_design_customer_agreement',
+      // no provider agreement
+    },
+    agreement_template: {
+      customer: 'Residential Interior Design Solutions Customer Service Agreement',
+    },
+    ui: {
+      full_label: 'Residential Interior Design',
+      // From the SOP + CSA Clause 3 / Schedule A.
+      project_types: ['Interior Design & Planning', 'Renovation & Fit-Out', 'Furniture & Styling', 'Project Coordination', 'Full Home Design', 'Mixed Scope'],
+      categories: ['Design & Planning', 'Renovation', 'Fit-Out', 'Furniture', 'Styling', 'Coordination'],
+      property_types: ['Apartment', 'House', 'Duplex', 'Villa', 'Studio', 'Penthouse', 'Other'],
+      // Consultation service picker (Schedule A groups → services).
+      service_catalogue: {
+        'Interior Design & Planning': ['Design Consultation', 'Concept Design', 'Space Planning', '2D Layout & Drawings', '3D Visualisation', 'Material & Finish Selection', 'Lighting Design', 'Colour Scheme & Mood Board'],
+        'Renovation & Fit-Out': ['Full Home Renovation', 'Partial Renovation', 'False Ceiling', 'Flooring', 'Painting & Wall Finishes', 'Kitchen Fit-Out', 'Wardrobe & Storage', 'Bathroom Renovation', 'Electrical & Plumbing Coordination'],
+        'Furniture & Styling': ['Custom Furniture', 'Furniture Supply & Placement', 'Soft Furnishings', 'Curtains & Blinds', 'Decor & Accessories', 'Home Styling'],
+        'Project Coordination': ['Project Management', 'Site Supervision', 'Vendor Coordination', 'Procurement', 'Installation Management', 'Handover'],
+      },
+      // The shared project's generic equipment columns, relabelled for interiors.
+      equipment: {
+        section_label: 'Space Details',
+        type_label: 'Property Type',
+        type_options: ['Apartment', 'House', 'Duplex', 'Villa', 'Studio', 'Penthouse', 'Other'],
+        count_label: 'Number of Rooms / Zones',
+        capacity_label: 'Approximate Area',
+        capacity_placeholder: 'e.g. 1,800 sq ft',
+        source_label: 'Design Style',
+        source_options: ['Modern', 'Contemporary', 'Minimalist', 'Classic', 'Scandinavian', 'Industrial', 'Traditional', 'Mixed', 'Client to advise'],
+      },
+      // Interior "site visit" checklist (replaces WT tank-access checks).
+      assess_materials: ['Concrete', 'Brick', 'Wood', 'Gypsum', 'Tiles', 'Marble', 'Glass', 'Metal', 'Other'],
+      assess_sources: ['Modern', 'Contemporary', 'Minimalist', 'Classic', 'Scandinavian', 'Industrial', 'Traditional', 'Mixed'],
+      assess_checks: [
+        { key: 'access_confirmed', label: 'Site access and working hours confirmed', group: 'Access' },
+        { key: 'measurements_taken', label: 'Room measurements taken', group: 'Survey' },
+        { key: 'existing_condition', label: 'Existing condition photographed', group: 'Survey' },
+        { key: 'electrical_points', label: 'Electrical points / load noted', group: 'Systems' },
+        { key: 'plumbing_points', label: 'Plumbing points noted (kitchen / bath)', group: 'Systems' },
+        { key: 'client_brief', label: 'Client design brief and budget captured', group: 'Brief' },
+        { key: 'style_preference', label: 'Style preference / references collected', group: 'Brief' },
+        { key: 'structural_constraints', label: 'Structural constraints / no-touch areas identified', group: 'Risk' },
+      ],
+      assess_equipment: ['Measuring Tape / Laser', 'Camera', 'Moisture Meter', 'Sample Kit', 'Laptop / CAD'],
+      recommended_services: ['Design Consultation', 'Space Planning', '3D Visualisation', 'Full Home Renovation', 'Kitchen Fit-Out', 'Custom Furniture', 'Home Styling', 'Project Management'],
+      report_types: ['Site Visit', 'Design Concept', 'Progress', 'Handover', 'Completion Sign-Off'],
+      // From CSA Schedule D (Warranty Summary).
+      warranty_types: ['Workmanship', 'Fit-Out & Renovation', 'Custom Furniture', 'Supplied Materials', 'Installation', 'General Workmanship'],
+      warranty_months: { Workmanship: 12, 'Fit-Out & Renovation': 12, 'Custom Furniture': 12, 'Supplied Materials': 6, Installation: 6, 'General Workmanship': 6 },
+      complaint_types: ['Design Quality', 'Workmanship', 'Incomplete Work', 'Damage During Work', 'Material Quality', 'Staff Conduct', 'Delays', 'Billing Dispute', 'Other'],
+      incident_types: ['Injury', 'Property Damage', 'Fire', 'Electrical Incident', 'Water Damage', 'Other'],
+    },
+  },
 };
 
 const DEFAULT_SERVICE_LINE = 'water_tank';

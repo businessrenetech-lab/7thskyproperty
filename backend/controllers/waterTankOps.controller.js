@@ -689,10 +689,14 @@ exports.retiredMoneyRoute = retiredMoneyRoute;
  */
 exports.capabilities = asyncHandler(async (req, res) => {
   const { capabilitiesFor } = require('../middleware/wtRoles');
+  const { serviceFlags } = require('../utils/controllerHelpers');
   res.json({
     role: req.user?.role || null,
     name: req.user?.name || req.user?.email || null,
     can: capabilitiesFor(req.user?.role),
+    // Which modules this service line runs — lets the console hide Providers /
+    // Compliance / AMC for lines that don't have them (e.g. Interior Design).
+    flags: serviceFlags(req),
   });
 });
 

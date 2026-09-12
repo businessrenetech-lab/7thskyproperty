@@ -52,6 +52,15 @@ function codePrefix(req, kind) {
 function serviceUi(req) {
   return getServiceLine(resolveServiceLine(req)).ui || {};
 }
+// Behaviour flags for the active service line — which modules are on/off. Lets
+// shared screens + guards adapt (e.g. Interior Design has no_provider/no_amc).
+function serviceFlags(req) {
+  const sl = getServiceLine(resolveServiceLine(req)) || {};
+  return {
+    no_provider: !!sl.no_provider, no_amc: !!sl.no_amc,
+    variations: !!sl.variations, completion_signoff: !!sl.completion_signoff,
+  };
+}
 
 /** Parse pagination params -> { limit, offset, page }. */
 function getPagination(req, defaultLimit = 25, maxLimit = 100) {
@@ -71,4 +80,4 @@ function pick(body, allowed) {
   return out;
 }
 
-module.exports = { asyncHandler, branchScope, resolveBranchId, getPagination, pick, resolveServiceLine, serviceScope, catalogueVertical, serviceUi, codePrefix };
+module.exports = { asyncHandler, branchScope, resolveBranchId, getPagination, pick, resolveServiceLine, serviceScope, catalogueVertical, serviceUi, serviceFlags, codePrefix };
