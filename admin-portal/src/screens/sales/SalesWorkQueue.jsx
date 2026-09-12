@@ -49,7 +49,7 @@ const PIPELINE_KIND = {
 };
 const PIPELINE_ORDER = ['prepare', 'submit', 'review', 'approve', 'record_receipt', 'match_bank', 'pay_out', 'lock', 'offer_review', 'sop_overdue'];
 
-export default function SalesWorkQueue() {
+export default function SalesWorkQueue({ dealScope }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const toast = useToast();
@@ -114,6 +114,7 @@ export default function SalesWorkQueue() {
     setTasksLoading(true);
     try {
       const params = { scope };
+      if (dealScope) params.deal_type = dealScope;
       if (statusFilter === 'today') params.due_window = 'today';
       else if (statusFilter === 'overdue') params.due_window = 'overdue';
       else if (statusFilter === 'high') params.priority = 'urgent,high';
@@ -130,7 +131,7 @@ export default function SalesWorkQueue() {
     } finally {
       setTasksLoading(false);
     }
-  }, [scope, statusFilter, typeFilter, search, toast]);
+  }, [scope, dealScope, statusFilter, typeFilter, search, toast]);
 
   // Load pipeline work queue items
   const loadPipeline = useCallback(async () => {

@@ -953,6 +953,9 @@ export default function App() {
             {/* Residential BUYER Service — its own console (buyer-only sidebar). */}
             <Route element={<RequireAuth><AdminGate><BuyerConsole /></AdminGate></RequireAuth>}>
               <Route path="/residential/buyer-service" element={<BuyerServiceDashboard />} />
+              <Route path="/residential/buyer/work-queue" element={<SalesWorkQueue dealScope="buy" />} />
+              <Route path="/residential/buyer/calendar" element={<SalesCalendar category="residential" scope="buy" />} />
+              <Route path="/residential/buyer/contacts" element={<SalesContacts scope="buy" />} />
               <Route path="/residential/buyer-invoices" element={<BuyerInvoices />} />
               <Route path="/residential/buy" element={<DealsBoard category="residential" dealType="buy" title="Residential · Buy" desc="Buyer service — deals, buyers, agreements, fees and status." />} />
               <Route path="/residential/buy/:dealId" element={<BuyerDealFile />} />

@@ -35,7 +35,7 @@ const TYPE_CONFIG = {
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-export default function SalesCalendar({ category = 'residential' }) {
+export default function SalesCalendar({ category = 'residential', scope }) {
   const navigate = useNavigate();
   const toast = useToast();
   const { user } = useAuth();
@@ -99,14 +99,14 @@ export default function SalesCalendar({ category = 'residential' }) {
     try {
       const from = iso(cells[0]);
       const to = iso(cells[41]);
-      const { data } = await api.get(`/sales/calendar?from=${from}&to=${to}&category=${category}`);
+      const { data } = await api.get(`/sales/calendar?from=${from}&to=${to}&category=${category}${scope ? `&scope=${scope}` : ''}`);
       setEvents(data.events || []);
     } catch {
       toast.error('Failed to load the calendar events');
     } finally {
       setLoading(false);
     }
-  }, [cells, category, toast]);
+  }, [cells, category, scope, toast]);
 
   useEffect(() => {
     loadEvents();

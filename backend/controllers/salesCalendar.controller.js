@@ -36,21 +36,26 @@ exports.calendar = asyncHandler(async (req, res) => {
     ? (await Property.findAll({ where: { ...scope, listing_type: 'sale', category: req.query.category }, attributes: ['id'], raw: true })).map((p) => p.id)
     : null;
   const propFilter = catProps ? { [Op.in]: catProps } : undefined;
+  // scope='buy' → only buyer-side events (viewings, follow-ups, tasks); the sell
+  // SOP deadlines and offer expiries are skipped. Default keeps every event.
+  const buyScope = req.query.scope === 'buy';
   const events = [];
 
-  // sop_deadline — active SOP stages with a due date in range.
-  const stages = await ProjectStage.findAll({
-    where: { due_date: between, status: { [Op.in]: ['pending', 'in_progress'] } },
-    include: [{ model: Project, required: true, where: { vertical_key: 'properties_sale', ...scope, ...(propFilter ? { property_id: propFilter } : {}) } }],
-  }).catch(() => []);
-  for (const s of stages) {
-    const pj = s.Project || s.project;
-    if (pj) events.push({ date: dpart(s.due_date), type: 'sop_deadline', label: s.stage_name, property_id: pj.property_id, ref_id: s.id });
-  }
+  if (!buyScope) {
+    // sop_deadline — active SOP stages with a due date in range (sale SOP).
+    const stages = await ProjectStage.findAll({
+      where: { due_date: between, status: { [Op.in]: ['pending', 'in_progress'] } },
+      include: [{ model: Project, required: true, where: { vertical_key: 'properties_sale', ...scope, ...(propFilter ? { property_id: propFilter } : {}) } }],
+    }).catch(() => []);
+    for (const s of stages) {
+      const pj = s.Project || s.project;
+      if (pj) events.push({ date: dpart(s.due_date), type: 'sop_deadline', label: s.stage_name, property_id: pj.property_id, ref_id: s.id });
+    }
 
-  // offer_expiry — open offers expiring in range.
-  const offers = await SaleOffer.findAll({ where: { ...scope, expiry_date: between, status: { [Op.in]: ['submitted', 'countered'] }, ...(propFilter ? { property_id: propFilter } : {}) }, raw: true });
-  for (const o of offers) events.push({ date: dpart(o.expiry_date), type: 'offer_expiry', label: o.offer_code, property_id: o.property_id, ref_id: o.id });
+    // offer_expiry — open offers expiring in range.
+    const offers = await SaleOffer.findAll({ where: { ...scope, expiry_date: between, status: { [Op.in]: ['submitted', 'countered'] }, ...(propFilter ? { property_id: propFilter } : {}) }, raw: true });
+    for (const o of offers) events.push({ date: dpart(o.expiry_date), type: 'offer_expiry', label: o.offer_code, property_id: o.property_id, ref_id: o.id });
+  }
 
   // viewing + follow_up — from enquiries.
   const enq = await SalesEnquiry.findAll({ where: { ...scope, ...(propFilter ? { property_id: propFilter } : {}), [Op.or]: [{ viewing_date: between }, { follow_up_date: between }] }, raw: true });
@@ -65,12 +70,21 @@ exports.calendar = asyncHandler(async (req, res) => {
   const SalesTask = require('../models/SalesTask');
   const Contact = require('../models/Contact');
   const User = require('../models/User');
+  // In buy scope, keep tasks linked to a buy deal (plus general, deal-less tasks).
+  let buyTaskWhere = {};
+  if (buyScope) {
+    const PropertyDeal = require('../models/PropertyDeal');
+    const buyDeals = await PropertyDeal.findAll({ where: { ...scope, deal_type: 'buy' }, attributes: ['id'], raw: true });
+    const ids = buyDeals.map((d) => d.id);
+    buyTaskWhere = { [Op.or]: [{ deal_id: { [Op.in]: ids.length ? ids : [0] } }, { deal_id: null }] };
+  }
   const tasks = await SalesTask.findAll({
     where: {
       ...scope,
       due_date: between,
       status: { [Op.ne]: 'cancelled' },
       ...(propFilter ? { property_id: propFilter } : {}),
+      ...buyTaskWhere,
     },
     include: [
       { model: Contact, as: 'contact', attributes: ['id', 'full_name', 'primary_phone'] },

@@ -33,7 +33,7 @@ const getInitials = (name) => {
   return name.slice(0, 2).toUpperCase();
 };
 
-export default function SalesContacts() {
+export default function SalesContacts({ scope }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -41,7 +41,8 @@ export default function SalesContacts() {
   const isManager = ['super_admin', 'branch_admin', 'property_manager'].includes(user?.role);
 
   // Active primary tab: 'contacts' | 'leads' | 'vendors' | 'buyers' | 'automations'
-  const [activeTab, setActiveTab] = useState('contacts');
+  // The buy console leads with buyers.
+  const [activeTab, setActiveTab] = useState(scope === 'buy' ? 'buyers' : 'contacts');
 
   // Search & Global state
   const [search, setSearch] = useState('');

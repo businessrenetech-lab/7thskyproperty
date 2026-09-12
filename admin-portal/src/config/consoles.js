@@ -434,6 +434,8 @@ export const BUYER_NAV = [
     label: 'Home',
     items: [
       { to: '/residential/buyer-service', label: 'Buyer Dashboard', icon: LayoutGrid, end: true },
+      { to: '/residential/buyer/work-queue', label: 'My Work Queue', icon: Inbox },
+      { to: '/residential/buyer/calendar', label: 'Calendar', icon: CalendarDays },
       { to: '/residential/enquiry', label: 'Buyer Enquiries', icon: MessageSquareQuote },
     ],
   },
@@ -447,9 +449,10 @@ export const BUYER_NAV = [
     ],
   },
   {
-    key: 'money',
-    label: 'Money',
+    key: 'directory',
+    label: 'Directory & Money',
     items: [
+      { to: '/residential/buyer/contacts', label: 'Contacts', icon: Users },
       { to: '/residential/buyer-invoices', label: 'Buyer Invoices', icon: Landmark },
     ],
   },

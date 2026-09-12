@@ -60,6 +60,15 @@ exports.listTasks = asyncHandler(async (req, res) => {
     scopeWhere.contact_id = Number(req.query.contact_id);
   }
 
+  // deal_type filter (buy/sell) — tasks linked to a deal of that type, plus
+  // general (deal-less) tasks. Optional; omitted = every task.
+  if (req.query.deal_type === 'buy' || req.query.deal_type === 'sell') {
+    const PropertyDeal = require('../models/PropertyDeal');
+    const deals = await PropertyDeal.findAll({ where: { branch_id, deal_type: req.query.deal_type }, attributes: ['id'], raw: true });
+    const ids = deals.map((d) => d.id);
+    scopeWhere[Op.or] = [{ deal_id: { [Op.in]: ids.length ? ids : [0] } }, { deal_id: null }];
+  }
+
   const today = todayStr();
 
   // Due window filter
