@@ -66,8 +66,11 @@ async function computeStatement({ owner_contact_id, property_id, period_label })
   }
 
   // ── Opening balance: sum of all transactions BEFORE period_start ──
+  // Landlord folio balance = debit − credit (rent debit = held for owner; fees /
+  // payouts credit = money out). Must match folio.service so statements agree
+  // with the actual held balance and the disbursement.
   const [[open]] = await sequelize.query(
-    `SELECT COALESCE(SUM(credit) - SUM(debit), 0) AS bal
+    `SELECT COALESCE(SUM(debit) - SUM(credit), 0) AS bal
        FROM folio_transactions
       WHERE folio_id = :fid AND transaction_date < :start`,
     { replacements: { fid: folio.id, start: period_start } }
@@ -96,22 +99,25 @@ async function computeStatement({ owner_contact_id, property_id, period_label })
     const b = t.bucket;
     const label = t.description || (b || '').replace(/_/g, ' ');
 
-    // Track for statement rollup (money-in = credit on landlord folio; money-out = debit)
-    if (credit > 0) {
-      if (b === 'rent') rollup.rent_collected += credit;
-      else if (b === 'service_charge') rollup.service_charge_collected += credit;
-      else if (b === 'adjustment') rollup.other_credits += credit;
-      else rollup.other_credits += credit;
-    }
+    // Rollup matches the real folio postings: money-IN to the owner is a DEBIT
+    // on the landlord folio (rent/service received), money-OUT (our fees, bills,
+    // payouts) is a CREDIT.
     if (debit > 0) {
-      if (b === 'landlord_fee') rollup.management_fee += debit;
-      else if (b === 'maintenance') rollup.maintenance_deductions += debit;
-      else if (b === 'utility') rollup.utility_deductions += debit;
-      else if (b === 'supplier_bill') rollup.landlord_bills_deductions += debit;
-      else if (b === 'owner_payout') { /* excluded from deductions — pure payout */ }
+      if (b === 'rent') rollup.rent_collected += debit;
+      else if (b === 'service_charge') rollup.service_charge_collected += debit;
+      else if (b === 'adjustment') rollup.other_credits += debit;
       else if (b === 'deposit' || b === 'deposit_deduction') { /* deposit is separate, not statement income */ }
-      else if (b === 'adjustment') rollup.other_deductions += debit;
-      else rollup.other_deductions += debit;
+      else rollup.other_credits += debit;
+    }
+    if (credit > 0) {
+      if (b === 'landlord_fee') rollup.management_fee += credit;
+      else if (b === 'maintenance') rollup.maintenance_deductions += credit;
+      else if (b === 'utility') rollup.utility_deductions += credit;
+      else if (b === 'supplier_bill') rollup.landlord_bills_deductions += credit;
+      else if (b === 'owner_payout') { /* excluded from deductions — pure payout */ }
+      else if (b === 'deposit' || b === 'deposit_deduction') { /* deposit is separate */ }
+      else if (b === 'adjustment') rollup.other_deductions += credit;
+      else rollup.other_deductions += credit;
     }
 
     line_items.push({
@@ -129,7 +135,7 @@ async function computeStatement({ owner_contact_id, property_id, period_label })
   const total_deductions = rollup.management_fee + rollup.maintenance_deductions + rollup.utility_deductions + rollup.landlord_bills_deductions + rollup.other_deductions;
   const net_disbursement = total_credits - total_deductions;
   // Closing balance = opening + net movement over the period (credits - debits, ignoring deposit-only)
-  const netMovement = txns.reduce((a, t) => a + num(t.credit) - num(t.debit), 0);
+  const netMovement = txns.reduce((a, t) => a + num(t.debit) - num(t.credit), 0);
   const closing_balance = opening_balance + netMovement;
 
   return {

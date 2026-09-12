@@ -6549,3 +6549,24 @@ used "the last line starting with `import`", which landed inside a multi-line
   - PM "Tenant Invoices": uses /billing/tenant-invoices (invoice_type in tenant_invoice/rental_receipt) — no agreement-fee leak, no change.
 - FIX: extended the /api/invoices list endpoint with the same `scope` param (pm|sales|purchase|sale) — joins the source SigningEnvelope (agreementEnvelope assoc) and filters related_type; distinct:true. SalesInvoices.jsx now requests scope = kind||'sales' (purchase→scope=purchase, sale→scope=sale) instead of title matching.
 - Verified via /invoices?invoice_type=agreement_fee: none=77(all), sales=67, purchase=12, sale=55, pm=10 — each section sees only its own. admin-portal rebuilt; backend restarted.
+
+### 2026-09-12 19:50 | Antigravity | COMPLETED | Replace water-tank and AC main images + provide ChatGPT image prompts
+- Request: Replace main image for water-tank (Rooftop Concrete Overhead Tank) with user's uploaded image `3f9cb730-e29f-4f3b-9963-a33730543ec2.png`. Replace electrician photo for AC service with real AC servicing photo. Provide tailored ChatGPT/DALL-E 3 image generation prompts with exact aspect ratios and dimensions for all service cards so user can generate them via ChatGPT.
+- Scope: `website-mock/src/data/servicesData.js`, `website-mock/src/components/WaterTankLanding.jsx`, `website-mock/src/components/AirConditioningLanding.jsx`, `website/src/lib/servicesData.js`, `website/src/components/WaterTankLanding.jsx`, `website/src/components/AirConditioningLanding.jsx`, `website-mock/public/assets/services/`, `website/public/assets/services/`.
+- Changes:
+  - Copied user's `3f9cb730-e29f-4f3b-9963-a33730543ec2.png` to `/assets/services/water-tank-overhead.png` in both `website-mock` and `website`.
+  - Replaced old Unsplash water tank image in `WaterTankLanding.jsx` (gallery card & hero) and `servicesData.js` with `/assets/services/water-tank-overhead.png`.
+  - Replaced irrelevant electrician image (`photo-1621905252507-b35492cc74b4`) with authentic split AC indoor jet wash photo (`/assets/services/ac-servicing.jpg`) in `AirConditioningLanding.jsx` and `servicesData.js`.
+  - Rebuilt `website-mock` (Vite production build passed cleanly).
+  - Generated comprehensive, ready-to-copy ChatGPT / DALL-E 3 image prompts with 16:9 (1792x1024) dimensions and photorealistic specs for all 12 core services and deep-dive cards.
+- Verification:
+  - `npm run build` in `website-mock` passed cleanly (0 errors).
+  - HTTP 200 OK verified for `/assets/services/water-tank-overhead.png` (2.25MB) and `/assets/services/ac-servicing.jpg` (73KB).
+  - Zero prohibited location names found.
+- Handoff: The user can directly copy and paste the provided prompts into ChatGPT / DALL-E 3 to generate remaining card visuals.
+
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED (BUG FIX — accounting sign) | Owner statement vs folio/disbursement consistency
+- Discovered while starting the fees/SSLCommerz work: my earlier "mgmt fee → folio DEBIT" change was WRONG at the folio level. Folio balance = debit − credit; on the landlord folio rent is a DEBIT (money held for owner), so a deduction (management fee) MUST be a CREDIT. Posting it as a debit inflated the owner's held balance (would overpay the owner) and the disbursement reads landlord_fee from the CREDIT column (→ would have read 0). The reason the statement showed mgmt_fee=0 originally was a SEPARATE bug: the owner-statement rollup was sign-inverted vs the actual postings.
+- FIX (consistent, both sides): (1) ownerFees.applyOwnerFeesOnRent posts the management fee back as a CREDIT (folio + disbursement correct). (2) ownerStatement.computeStatement rollup now matches real postings — opening/closing balance = debit − credit; money-IN to owner (rent/service/credits) read from DEBIT; deductions (management_fee/maintenance/utility/supplier_bill) read from CREDIT.
+- Verified: e2eFullPmCookie 28/0 with owner statement mgmt_fee=3750 (5% of 37,500); fee is a folio credit so the disbursement's fees_deducted + net-to-owner are correct and the held balance is net.
