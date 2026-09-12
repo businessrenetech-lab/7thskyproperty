@@ -6580,3 +6580,19 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Frontend: AgencyIncome rows get a "Pay link" button (outstanding invoices only) → creates + copies + opens the gateway URL; surfaces the backend message if not configured.
 - Verified (paths ready, awaiting keys): POST /invoices/:id/pay-link → 409 "SSLCommerz credentials are not configured" (path works, needs store keys); public /invoice-pay/sslcommerz/ipn → 200, /cancel → 302; admin-portal builds; screen renders 0 errors.
 - PREREQUISITES for it to go live (owner-provided, per request "will provide later"): Settings → Integrations SSLCOMMERZ_STORE_ID/PASS (+live), and PUBLIC_API_URL = public https base for callbacks. Owner/landlord payout + refund via SSLCommerz remain the next slice (refund API already exists in the sales service).
+
+### 2026-09-12 20:09 | Antigravity | STARTED | Ingest 12 generated service card images into website assets and bind to services
+- Request: Copy all 12 generated service card images from "C:\Users\ADMIN\Downloads\FOR ANTIGTA" to public assets and bind them to the respective service cards in servicesData.js and landing components.
+- Scope: `website-mock/public/assets/services/`, `website/public/assets/services/`, `website-mock/src/data/servicesData.js`, `website/src/lib/servicesData.js`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Ingest images, update service configurations, verify build and HTTP responses.
+
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED | Pay Now across emails + portals (public signed-token pay path)
+- Request: Pay button across provider/tenant/client/landlord portals; and all invoices sent via email get a "Pay Now" button once SSLCommerz is connected.
+- Universal mechanism: PUBLIC signed pay-token + checkout so recipients (email) and portal users pay without extra login. invoiceGateway.controller: signPayToken(invoiceId) (jwt, 30d, purpose invoice_pay), payUrlFor(invoiceId) (null if no PUBLIC_API_URL), gatewayConfigured() (SSLCOMMERZ_STORE_ID present). NEW public GET /api/invoice-pay/checkout/:token → verify token → load invoice → if paid: "Already paid" page; else initiate SSLCommerz → 302 to gateway; if not configured: friendly "Online payment unavailable" page. Bad/expired token → "Link expired" 400 page.
+- Emailed invoices (invoicing.sendInvoice): add a "Pay Now — ৳balance" button to the email body, ONLY when the gateway is configured AND balance>0 (matches "after connecting SSLCommerz all invoices sent via email get a paynow button"). Non-fatal if it can't build.
+- Tenant portal: GET /api/tenant/invoices now returns pay_url per outstanding invoice (when configured); TenantPortal invoices table shows a "Pay now" button.
+- Provider/landlord portals: intentionally NO pay button — providers are PAID (folio statement, money-out) and landlords receive payouts/statements, not billed invoices. Client (buyer/vendor) agency fees are billed via emailed invoices → covered by the email Pay Now + admin pay-link.
+- Verified: bad token → "Link expired" (400); valid token on invoice #268 (bal 7000) → "Online payment unavailable / not configured" (409) — path fully wired, awaiting store keys + PUBLIC_API_URL. admin-portal builds; backend loads.

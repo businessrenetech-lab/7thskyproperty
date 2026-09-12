@@ -8,9 +8,36 @@
 const PropertyInvoice = require('../models/PropertyInvoice');
 const Contact = require('../models/Contact');
 const Payment = require('../models/Payment');
+const jwt = require('jsonwebtoken');
+const SystemSetting = require('../models/SystemSetting');
 const gateway = require('../services/sslCommerzInvoice.service');
 const invoicing = require('./invoicing.controller');
 const { asyncHandler, branchScope } = require('../utils/controllerHelpers');
+
+// Signed pay-token: authorizes paying ONE invoice (money IN only) without a
+// login — used by emailed "Pay Now" buttons and portal buttons alike.
+function signPayToken(invoiceId) {
+  return jwt.sign({ inv: Number(invoiceId), purpose: 'invoice_pay' }, process.env.JWT_SECRET, { expiresIn: '30d' });
+}
+// Public pay URL for an invoice, or null when no public base is configured yet.
+function payUrlFor(invoiceId) {
+  const base = String(process.env.PUBLIC_API_URL || process.env.BACKEND_URL || '').replace(/\/$/, '');
+  if (!base) return null;
+  return `${base}/api/invoice-pay/checkout/${signPayToken(invoiceId)}`;
+}
+// Is SSLCommerz wired up (store id present)? Used to decide whether to show the
+// Pay Now button on emails — per the requirement, it appears once connected.
+async function gatewayConfigured() {
+  try {
+    const row = await SystemSetting.findOne({ where: { setting_key: 'SSLCOMMERZ_STORE_ID' } });
+    return !!(row?.setting_value || process.env.SSLCOMMERZ_STORE_ID);
+  } catch { return false; }
+}
+exports.signPayToken = signPayToken;
+exports.payUrlFor = payUrlFor;
+exports.gatewayConfigured = gatewayConfigured;
+
+const PAGE = (title, body) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title></head><body style="font-family:system-ui,Arial,sans-serif;max-width:520px;margin:60px auto;padding:0 20px;color:#1f2430;text-align:center;"><h2 style="color:#003768;">${title}</h2>${body}</body></html>`;
 
 // POST /api/invoices/:id/pay-link (auth) — returns { gateway_url, tran_id }.
 exports.payLink = asyncHandler(async (req, res) => {
@@ -18,7 +45,34 @@ exports.payLink = asyncHandler(async (req, res) => {
   if (!inv) return res.status(404).json({ error: 'Invoice not found.' });
   const contact = inv.contact_id ? await Contact.findByPk(inv.contact_id, { attributes: ['id', 'full_name', 'email', 'primary_phone'] }) : null;
   const { transactionId, gatewayUrl } = await gateway.initiateInvoiceCollection({ invoice: inv, contact });
-  res.status(201).json({ data: { tran_id: transactionId, gateway_url: gatewayUrl, invoice_code: inv.invoice_code } });
+  res.status(201).json({ data: { tran_id: transactionId, gateway_url: gatewayUrl, invoice_code: inv.invoice_code, pay_url: payUrlFor(inv.id) } });
+});
+
+// GET /api/invoice-pay/checkout/:token (PUBLIC) — the "Pay Now" landing used by
+// emailed invoices and portal buttons. Verifies the signed token, creates an
+// SSLCommerz session for the invoice's balance, and redirects to the gateway.
+exports.checkout = asyncHandler(async (req, res) => {
+  let invoiceId;
+  try {
+    const decoded = jwt.verify(req.params.token, process.env.JWT_SECRET);
+    if (decoded.purpose !== 'invoice_pay') throw new Error('bad purpose');
+    invoiceId = Number(decoded.inv);
+  } catch {
+    return res.status(400).send(PAGE('Link expired', '<p>This payment link is invalid or has expired. Please contact Seventh Sky for a fresh link.</p>'));
+  }
+  const inv = await PropertyInvoice.findByPk(invoiceId);
+  if (!inv) return res.status(404).send(PAGE('Not found', '<p>We could not find this invoice.</p>'));
+  const balance = Number(inv.balance != null ? inv.balance : (Number(inv.total || 0) - Number(inv.amount_paid || 0)));
+  if (balance <= 0 || ['paid', 'cancelled', 'voided'].includes(inv.status)) {
+    return res.send(PAGE('Already paid', `<p>Invoice <strong>${inv.invoice_code}</strong> has no outstanding balance. Thank you.</p>`));
+  }
+  const contact = inv.contact_id ? await Contact.findByPk(inv.contact_id, { attributes: ['id', 'full_name', 'email', 'primary_phone'] }) : null;
+  try {
+    const { gatewayUrl } = await gateway.initiateInvoiceCollection({ invoice: inv, contact });
+    return res.redirect(302, gatewayUrl);
+  } catch (e) {
+    return res.status(e.status || 502).send(PAGE('Online payment unavailable', `<p>${e.message || 'The payment gateway is not available right now.'}</p><p>Please try again later or contact Seventh Sky.</p>`));
+  }
 });
 
 // Record the validated online payment on the invoice by reusing recordPayment

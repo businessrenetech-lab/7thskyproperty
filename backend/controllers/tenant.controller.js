@@ -104,7 +104,17 @@ exports.invoices = asyncHandler(async (req, res) => {
     order: [['due_date', 'ASC'], ['created_at', 'DESC']],
     limit: 200,
   });
-  res.json({ data: rows });
+  // Attach a public "Pay Now" URL for any invoice with a balance, so the tenant
+  // portal can offer online payment (SSLCommerz) once it's connected.
+  const gw = require('./invoiceGateway.controller');
+  const configured = await gw.gatewayConfigured().catch(() => false);
+  const data = rows.map((r) => {
+    const o = r.toJSON();
+    const bal = Number(o.balance != null ? o.balance : (Number(o.total || 0) - Number(o.amount_paid || 0)));
+    o.pay_url = (configured && bal > 0 && !['paid', 'cancelled', 'voided'].includes(o.status)) ? gw.payUrlFor(o.id) : null;
+    return o;
+  });
+  res.json({ data });
 });
 
 exports.invoiceDetail = asyncHandler(async (req, res) => {

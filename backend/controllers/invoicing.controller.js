@@ -255,8 +255,19 @@ exports.sendInvoice = asyncHandler(async (req, res) => {
   try { const { htmlToPdf, pdfAvailable } = require('../services/htmlToPdf.service'); if (pdfAvailable()) pdf = await htmlToPdf(html); } catch { pdf = null; }
   const { sendEmail } = require('../services/communication.service');
   const attachments = pdf ? [{ filename: `${inv.invoice_code}.pdf`, content: pdf, contentType: 'application/pdf' }] : [];
+  // Once SSLCommerz is connected, every emailed invoice with a balance carries a
+  // "Pay Now" button (public signed pay-link — no login needed).
+  const gw = require('./invoiceGateway.controller');
+  let payBtn = '';
+  try {
+    if (num(inv.balance) > 0 && await gw.gatewayConfigured()) {
+      const url = gw.payUrlFor(inv.id);
+      if (url) payBtn = `<p style="margin:16px 0;"><a href="${url}" style="background:#00AEEF;color:#fff;text-decoration:none;font-weight:bold;padding:11px 22px;border-radius:8px;display:inline-block;">Pay Now — ৳${num(inv.balance).toLocaleString('en-BD')}</a></p><p style="font-size:12px;color:#6b7280;">Secure online payment via SSLCommerz.</p>`;
+    }
+  } catch { /* non-fatal — email still sends without the button */ }
   const body = `<p>Dear ${inv.contact?.full_name || 'Sir/Madam'},</p>
     <p>Please find your invoice <strong>${inv.invoice_code}</strong>${inv.title ? ` for ${inv.title}` : ''}. Balance due: ৳${num(inv.balance).toLocaleString('en-BD')}.</p>
+    ${payBtn}
     ${pdf ? '<p>The invoice PDF is attached.</p>' : `<div style="border:1px solid #e5e9f0;border-radius:8px;padding:8px 12px;">${html}</div>`}
     <p>— Seventh Sky Property Care</p>`;
   const result = await sendEmail(to, `Invoice ${inv.invoice_code} — Seventh Sky Property Care`, body, attachments).catch((e) => ({ success: false, error: e.message }));

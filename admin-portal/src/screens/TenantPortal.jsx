@@ -268,6 +268,9 @@ function PaymentsTab({ me, onReload }) {
               { key: 'total', header: 'Total', render: (r) => money(r.total) },
               { key: 'balance', header: 'Balance', render: (r) => r.balance > 0 ? <strong style={{ color: 'var(--danger)' }}>{money(r.balance)}</strong> : <span style={{ color: 'var(--success)' }}>Paid</span> },
               { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status} /> },
+              { key: 'pay', header: '', render: (r) => r.pay_url
+                ? <a href={r.pay_url} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()} style={{ background: '#00AEEF', color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: 12, padding: '5px 12px', borderRadius: 8 }}>Pay now</a>
+                : (r.balance > 0 ? <span style={{ fontSize: 11, color: 'var(--muted)' }}>—</span> : null) },
             ]}
             rows={invoices}
             onRowClick={setSelected}
