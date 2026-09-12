@@ -61,6 +61,45 @@ exports.calendar = asyncHandler(async (req, res) => {
     if (fd && fd >= from && fd <= to) events.push({ date: fd, type: 'follow_up', label: e.enquirer_name || 'Follow-up', property_id: e.property_id, ref_id: e.id });
   }
 
+  // tasks — CRM sales tasks scheduled in range
+  const SalesTask = require('../models/SalesTask');
+  const Contact = require('../models/Contact');
+  const User = require('../models/User');
+  const tasks = await SalesTask.findAll({
+    where: {
+      ...scope,
+      due_date: between,
+      status: { [Op.ne]: 'cancelled' },
+      ...(propFilter ? { property_id: propFilter } : {}),
+    },
+    include: [
+      { model: Contact, as: 'contact', attributes: ['id', 'full_name', 'primary_phone'] },
+      { model: User, as: 'assignee', attributes: ['id', 'name'] },
+    ],
+  }).catch(() => []);
+
+  for (const t of tasks) {
+    const d = dpart(t.due_date);
+    if (d) {
+      events.push({
+        date: d,
+        time: t.due_time || null,
+        type: t.task_type ? `task_${t.task_type}` : 'task',
+        task_type: t.task_type,
+        label: t.title,
+        task_id: t.id,
+        ref_id: t.id,
+        property_id: t.property_id || null,
+        contact_name: t.contact?.full_name || null,
+        contact_phone: t.contact?.primary_phone || null,
+        assignee_name: t.assignee?.name || null,
+        priority: t.priority,
+        status: t.status,
+        description: t.description,
+      });
+    }
+  }
+
   // resolve property codes in one query
   const ids = [...new Set(events.map((e) => e.property_id).filter(Boolean))];
   const props = new Map((ids.length ? await Property.findAll({ where: { id: ids }, attributes: ['id', 'property_code', 'title'], raw: true }) : []).map((p) => [Number(p.id), p]));

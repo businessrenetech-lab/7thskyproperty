@@ -30,13 +30,13 @@ export default defineConfig({
     target: 'es2020',
   },
   server: {
-    host: '127.0.0.1',
-    port: 3005,
+    host: '0.0.0.0',
+    port: 3000,
     strictPort: true,
     hmr: {
       protocol: 'ws',
       host: '127.0.0.1',
-      port: 3005,
+      port: 3000,
     },
     proxy: {
       '/api': {

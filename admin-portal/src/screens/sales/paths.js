@@ -28,8 +28,20 @@ export const settlementDeskPath = (category, id) => `${salesBase(category)}/prop
 export const mandatesPath = (category) => `${salesBase(category)}/mandates`;
 export const mandateDetailPath = (category, id) => `${salesBase(category)}/mandates/${id}`;
 
+/** The properties register for this category. */
+export const salesPropertiesPath = (category) => `${salesBase(category)}/properties`;
+
 /** The listing wizard: new when given no id, editing when given one. */
 export const propertyWizardPath = (category, id, query = '') => {
   const base = `${salesBase(category)}/properties/new${id ? `/${id}` : ''}`;
   return query ? `${base}?${query.replace(/^\?/, '')}` : base;
 };
+
+/** Client profile path for a category (inside console for residential, global /clients for others). */
+export const clientProfilePath = (category, { clientId, contactId } = {}) => {
+  const base = category === 'residential' ? '/residential/contacts/clients' : '/clients';
+  if (clientId) return `${base}?client=${clientId}`;
+  if (contactId) return `${base}?contact=${contactId}`;
+  return base;
+};
+

@@ -298,6 +298,19 @@ exports.create = asyncHandler(async (req, res) => {
   data.created_by = req.user?.id || null;
   data.property_code = await generateCode(Property, 'property_code', 'SSPC-PR-');
 
+  // For rental properties, ensure price and approved_monthly_rent are synchronized
+  if (data.listing_type === 'rent') {
+    if (data.approved_monthly_rent && !data.price) data.price = data.approved_monthly_rent;
+    if (data.price && !data.approved_monthly_rent) data.approved_monthly_rent = data.price;
+    if (!data.price_unit) data.price_unit = 'month';
+  }
+  if (req.body.is_published !== undefined) {
+    data.is_published = Boolean(req.body.is_published);
+  } else if (data.status === 'available' || data.status === 'listed') {
+    data.is_published = true;
+    data.listing_status = 'active';
+  }
+
   // For managed rental properties, auto-spin up the rental-management workflow.
   // Caller can force/skip with manage_workflow=true|false (default: on for rentals).
   const manage = req.body.manage_workflow === undefined
@@ -396,7 +409,40 @@ exports.update = asyncHandler(async (req, res) => {
       data.listing_status = 'sold';
     }
   }
+
+  const effectiveListingType = data.listing_type || p.listing_type;
+  if (effectiveListingType === 'rent') {
+    if (data.approved_monthly_rent !== undefined && data.price === undefined) {
+      data.price = data.approved_monthly_rent;
+    } else if (data.price !== undefined && data.approved_monthly_rent === undefined) {
+      data.approved_monthly_rent = data.price;
+    }
+    if (!p.price_unit && !data.price_unit) data.price_unit = 'month';
+  }
+
   await p.update(data);
+
+  // Synchronize with ShortStayPropertyProfile if linked so live website rates & details stay in lockstep
+  try {
+    const ShortStayPropertyProfile = require('../models/ShortStayPropertyProfile');
+    const strProfile = await ShortStayPropertyProfile.findOne({ where: { property_id: p.id } });
+    if (strProfile) {
+      const profPatch = {};
+      if (data.price !== undefined) profPatch.base_nightly_rate = Number(data.price);
+      if (data.title !== undefined) profPatch.public_headline = data.title;
+      if (data.description !== undefined) profPatch.public_description = data.description;
+      if (data.bedrooms !== undefined) profPatch.bedrooms = Number(data.bedrooms);
+      if (data.bathrooms !== undefined) profPatch.bathrooms = Number(data.bathrooms);
+      if (data.features !== undefined) profPatch.amenities = data.features;
+      if (data.is_published !== undefined) profPatch.is_website_listed = Boolean(data.is_published);
+      if (Object.keys(profPatch).length > 0) {
+        await strProfile.update(profPatch);
+      }
+    }
+  } catch (syncErr) {
+    console.warn('[Property Update] STR Profile sync warning:', syncErr.message);
+  }
+
   res.json({ data: p, message: 'Property updated.' });
 });
 

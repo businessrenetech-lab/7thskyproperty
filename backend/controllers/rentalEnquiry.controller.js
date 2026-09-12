@@ -17,13 +17,23 @@ const STAGES = ['new', 'contacted', 'viewing_scheduled', 'viewed', 'application_
 
 // ─── LIST (flat or grouped-by-stage kanban) ─────────────────────────────────
 exports.list = asyncHandler(async (req, res) => {
-  const where = { ...branchScope(req) };
+  const bScope = branchScope(req);
+  const where = {};
+  if (bScope.branch_id) {
+    where[Op.or] = [{ branch_id: bScope.branch_id }, { branch_id: null }];
+  }
   if (req.query.property_id) where.property_id = req.query.property_id;
   if (req.query.stage) where.stage = req.query.stage;
   if (req.query.assigned_officer_id) where.assigned_officer_id = req.query.assigned_officer_id;
   if (req.query.search) {
     const s = `%${req.query.search}%`;
-    where[Op.or] = [{ enquirer_name: { [Op.like]: s } }, { enquiry_code: { [Op.like]: s } }, { phone: { [Op.like]: s } }];
+    const searchOr = [{ enquirer_name: { [Op.like]: s } }, { enquiry_code: { [Op.like]: s } }, { phone: { [Op.like]: s } }];
+    if (where[Op.or]) {
+      where[Op.and] = [{ [Op.or]: where[Op.or] }, { [Op.or]: searchOr }];
+      delete where[Op.or];
+    } else {
+      where[Op.or] = searchOr;
+    }
   }
 
   if (req.query.view === 'kanban') {

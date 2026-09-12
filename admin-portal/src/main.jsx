@@ -4,6 +4,7 @@ import App from './App.jsx'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import './theme.css'
 import './styles/pm-design.css'
+import './styles/toast.css'
 
 ReactDOM.createRoot(document.getElementById('app')).render(
   <React.StrictMode>

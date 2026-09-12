@@ -7,8 +7,7 @@ import {
   DataTable, Drawer, Button, Field, Input, Select, Textarea,
   StatusBadge, SearchInput, EmptyState, Badge
 } from "../ui/kit";
-import { Combo } from "../ui/pickers";
-import { propertyFilePath } from './sales/paths';
+import { propertyFilePath, clientProfilePath } from './sales/paths';
 
 const money = (v) => v == null || v === "" ? "—" : `৳${Number(v).toLocaleString("en-BD")}`;
 const dateTime = (v) => v ? new Date(v).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "—";
@@ -121,10 +120,8 @@ export default function SalesEnquiries({ category = "residential", title = "Buye
 
   // Click buyer name → opens their Buyer Client profile directly
   const openBuyer = (row) => {
-    if (row.client_id) {
-      navigate(`/clients?client=${row.client_id}`);
-    } else if (row.contact_id) {
-      navigate(`/clients?contact=${row.contact_id}`);
+    if (row.client_id || row.contact_id) {
+      navigate(clientProfilePath(category, { clientId: row.client_id, contactId: row.contact_id }));
     } else {
       toast.error("No linked buyer record for this enquiry.");
     }

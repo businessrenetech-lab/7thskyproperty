@@ -150,6 +150,7 @@ mount('/api/rental-assessments', './routes/rentalAssessment.routes');
 mount('/api/rental-enquiries', './routes/rentalEnquiry.routes');
 mount('/api/communications', './routes/communications.routes');
 mount('/api/sales-enquiries', './routes/salesEnquiry.routes');
+mount('/api/leads', './routes/lead.routes');
 mount('/api/public', './routes/publicSales.routes');
 mount('/api/property-management', './routes/propertyManagement.routes');
 mount('/api/owner-statements', './routes/ownerStatement.routes');
@@ -240,9 +241,24 @@ const adminDist = process.env.ADMIN_DIST
   ? path.resolve(process.env.ADMIN_DIST)
   : path.join(__dirname, '..', 'admin-portal', 'dist');
 if (fs.existsSync(path.join(adminDist, 'index.html'))) {
-  app.use('/admin', express.static(adminDist, { maxAge: '1h', etag: true }));
+  app.use('/admin', express.static(adminDist, {
+    maxAge: '1h',
+    etag: true,
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('index.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      }
+    }
+  }));
   // SPA fallback for client-side routes (but never for /api or /uploads).
-  app.get(/^\/admin(\/.*)?$/, (req, res) => res.sendFile(path.join(adminDist, 'index.html')));
+  app.get(/^\/admin(\/.*)?$/, (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.sendFile(path.join(adminDist, 'index.html'));
+  });
   console.log(`✓ Admin SPA served from ${adminDist} at /admin`);
 }
 

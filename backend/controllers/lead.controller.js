@@ -3,6 +3,7 @@ const Lead = require('../models/Lead');
 const LeadActivity = require('../models/LeadActivity');
 const Contact = require('../models/Contact');
 const Client = require('../models/Client');
+const Property = require('../models/Property');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
 
@@ -19,7 +20,12 @@ exports.list = asyncHandler(async (req, res) => {
     const s = `%${req.query.search}%`;
     where[Op.or] = [{ name: { [Op.like]: s } }, { phone: { [Op.like]: s } }, { email: { [Op.like]: s } }, { lead_code: { [Op.like]: s } }];
   }
-  const { rows, count } = await Lead.findAndCountAll({ where, limit, offset, order: [['created_at', 'DESC']] });
+  const include = [
+    { model: Property, as: 'property', attributes: ['id', 'property_code', 'title', 'area', 'district'], required: false },
+    { model: Contact, as: 'contact', attributes: ['id', 'full_name', 'primary_phone', 'email'], required: false },
+    { model: Client, as: 'converted_client', attributes: ['id', 'client_code', 'is_buyer', 'is_seller'], required: false },
+  ];
+  const { rows, count } = await Lead.findAndCountAll({ where, include, limit, offset, order: [['created_at', 'DESC']] });
   res.json({ data: rows, pagination: { page, limit, total: count, pages: Math.ceil(count / limit) } });
 });
 
@@ -76,23 +82,50 @@ exports.convert = asyncHandler(async (req, res) => {
   const lead = await Lead.findOne({ where: { id: req.params.id, ...branchScope(req) } });
   if (!lead) return res.status(404).json({ error: 'Lead not found.' });
 
+  let contact = null;
   let contactId = lead.contact_id;
   if (!contactId) {
-    const contact = await Contact.create({
-      branch_id: lead.branch_id, full_name: lead.name, primary_phone: lead.phone, email: lead.email,
-      source: lead.source, contact_code: await generateCode(Contact, 'contact_code', 'SSPC-CT-'),
-      is_client: true, created_by: req.user?.id || null,
+    contact = await Contact.create({
+      branch_id: lead.branch_id,
+      full_name: lead.name,
+      primary_phone: lead.phone,
+      email: lead.email,
+      source: lead.source || 'lead_conversion',
+      contact_code: await generateCode(Contact, 'contact_code', 'SSPC-CT-'),
+      is_client: true,
+      created_by: req.user?.id || null,
     });
     contactId = contact.id;
+    await lead.update({ contact_id: contactId });
   } else {
-    await Contact.update({ is_client: true }, { where: { id: contactId } });
+    contact = await Contact.findByPk(contactId);
+    if (contact) await contact.update({ is_client: true });
   }
+
+  const role = req.body.target_role || (req.body.is_seller ? 'seller' : 'buyer');
+  const isBuyer = req.body.is_buyer !== undefined ? Boolean(req.body.is_buyer) : (role === 'buyer');
+  const isSeller = req.body.is_seller !== undefined ? Boolean(req.body.is_seller) : (role === 'seller');
+
   const client = await Client.create({
-    branch_id: lead.branch_id, contact_id: contactId,
-    client_code: await generateCode(Client, 'client_code', 'SSPC-C-'),
-    ...pick(req.body, ['is_buyer', 'is_seller', 'is_landlord', 'is_tenant', 'is_service_client']),
-    relationship_owner_id: req.user?.id || null, onboarded_at: new Date(), created_by: req.user?.id || null,
+    branch_id: lead.branch_id,
+    contact_id: contactId,
+    client_code: await generateCode(Client, 'client_code', 'SSPC-CL-'),
+    is_buyer: isBuyer,
+    is_seller: isSeller,
+    ...pick(req.body, ['is_landlord', 'is_tenant', 'is_service_client', 'notes']),
+    relationship_owner_id: req.user?.id || null,
+    onboarded_at: new Date(),
+    created_by: req.user?.id || null,
   });
-  await lead.update({ status: 'converted', converted_client_id: client.id, converted_at: new Date() });
-  res.status(201).json({ data: { lead, client }, message: 'Lead converted to client.' });
+
+  await lead.update({
+    status: 'converted',
+    converted_client_id: client.id,
+    converted_at: new Date(),
+  });
+
+  res.status(201).json({
+    data: { lead, client, contact },
+    message: `Lead converted to ${isSeller ? 'Vendor (Seller)' : 'Buyer'} successfully.`
+  });
 });

@@ -1,35 +1,48 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
-import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
+import { Check, AlertCircle, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
+import '../styles/toast.css';
 
 /* ─── Toast Configuration ──────────────────────────────────── */
 const TOAST_CONFIG = {
   success: {
-    icon: CheckCircle2,
-    color: '#10b981',
-    glow: 'rgba(16,185,129,0.15)',
-    border: 'rgba(16,185,129,0.25)',
+    icon: Check,
+    accent: '#10b981',
+    iconBg: '#ecfdf5',
+    iconColor: '#059669',
+    iconBorder: '#a7f3d0',
     label: 'Success',
   },
   error: {
-    icon: XCircle,
-    color: '#ef4444',
-    glow: 'rgba(239,68,68,0.15)',
-    border: 'rgba(239,68,68,0.25)',
+    icon: AlertCircle,
+    accent: '#ef4444',
+    iconBg: '#fef2f2',
+    iconColor: '#dc2626',
+    iconBorder: '#fecaca',
     label: 'Error',
   },
   warning: {
     icon: AlertTriangle,
-    color: '#f59e0b',
-    glow: 'rgba(245,158,11,0.15)',
-    border: 'rgba(245,158,11,0.25)',
+    accent: '#f59e0b',
+    iconBg: '#fffbeb',
+    iconColor: '#d97706',
+    iconBorder: '#fde68a',
     label: 'Warning',
   },
   info: {
     icon: Info,
-    color: '#3b82f6',
-    glow: 'rgba(59,130,246,0.15)',
-    border: 'rgba(59,130,246,0.25)',
+    accent: '#0284c7',
+    iconBg: '#f0f9ff',
+    iconColor: '#0284c7',
+    iconBorder: '#bae6fd',
     label: 'Info',
+  },
+  loading: {
+    icon: Loader2,
+    accent: '#6366f1',
+    iconBg: '#eef2ff',
+    iconColor: '#4f46e5',
+    iconBorder: '#c7d2fe',
+    label: 'Loading',
   },
 };
 
@@ -51,13 +64,13 @@ const ToastItem = ({ toast, onDismiss }) => {
   const rafRef = useRef(null);
 
   const startTimer = useCallback(() => {
+    if (toast.duration === Infinity) return;
     startTimeRef.current = Date.now();
     timerRef.current = setTimeout(() => {
       setIsExiting(true);
-      setTimeout(() => onDismiss(toast.id), 320);
+      setTimeout(() => onDismiss(toast.id), 260);
     }, remainingRef.current);
 
-    // Progress bar animation
     const animate = () => {
       const elapsed = Date.now() - startTimeRef.current;
       const remaining = remainingRef.current - elapsed;
@@ -84,54 +97,84 @@ const ToastItem = ({ toast, onDismiss }) => {
     };
   }, [startTimer]);
 
-  const handleDismiss = () => {
+  const handleDismiss = useCallback(() => {
     setIsExiting(true);
     if (timerRef.current) clearTimeout(timerRef.current);
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    setTimeout(() => onDismiss(toast.id), 320);
-  };
+    setTimeout(() => onDismiss(toast.id), 260);
+  }, [onDismiss, toast.id]);
+
+  const hasTitle = Boolean(toast.title);
 
   return (
     <div
-      className={`la-toast ${isExiting ? 'la-toast-exit' : 'la-toast-enter'}`}
+      className={`sspc-toast la-toast ${isExiting ? 'sspc-toast-exit la-toast-exit' : 'sspc-toast-enter la-toast-enter'}`}
       onMouseEnter={pauseTimer}
       onMouseLeave={startTimer}
       role="alert"
       aria-live="assertive"
       style={{
-        '--toast-color': config.color,
-        '--toast-glow': config.glow,
-        '--toast-border': config.border,
+        '--toast-accent': config.accent,
+        '--toast-icon-bg': config.iconBg,
+        '--toast-icon-color': config.iconColor,
+        '--toast-icon-border': config.iconBorder,
+        alignItems: hasTitle ? 'flex-start' : 'center',
       }}
     >
-      {/* Icon */}
-      <div className="la-toast-icon">
-        <Icon size={20} />
+      {/* Icon Badge */}
+      <div className="sspc-toast-icon la-toast-icon">
+        <Icon
+          size={16}
+          strokeWidth={toast.type === 'success' ? 2.6 : 2.2}
+          className={toast.type === 'loading' ? 'animate-spin' : ''}
+        />
       </div>
 
       {/* Content */}
-      <div className="la-toast-content">
-        <span className="la-toast-title">{config.label}</span>
-        <p className="la-toast-message">{toast.message}</p>
+      <div className="sspc-toast-content la-toast-content">
+        {hasTitle ? (
+          <>
+            <span className="sspc-toast-title la-toast-title">{toast.title}</span>
+            <p className="sspc-toast-message la-toast-message">{toast.message}</p>
+          </>
+        ) : (
+          <span className="sspc-toast-single-line la-toast-message">{toast.message}</span>
+        )}
+
+        {toast.action && (
+          <button
+            type="button"
+            className="sspc-toast-action"
+            onClick={(e) => {
+              e.stopPropagation();
+              toast.action.onClick?.();
+              handleDismiss();
+            }}
+          >
+            {toast.action.label}
+          </button>
+        )}
       </div>
 
-      {/* Close */}
+      {/* Close Button */}
       <button
-        className="la-toast-close"
+        className="sspc-toast-close la-toast-close"
         onClick={handleDismiss}
         aria-label="Dismiss notification"
         type="button"
       >
-        <X size={14} />
+        <X size={14} strokeWidth={2} />
       </button>
 
-      {/* Progress bar */}
-      <div className="la-toast-progress">
-        <div
-          className="la-toast-progress-bar"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+      {/* Micro Progress Bar */}
+      {toast.duration !== Infinity && (
+        <div className="sspc-toast-progress la-toast-progress">
+          <div
+            className="sspc-toast-progress-bar la-toast-progress-bar"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 };
@@ -141,7 +184,23 @@ const ToastContainer = ({ toasts, onDismiss }) => {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="la-toast-container" aria-label="Notifications">
+    <div
+      className="sspc-toast-container la-toast-container"
+      aria-label="Notifications"
+      style={{
+        position: 'fixed',
+        top: '20px',
+        right: '24px',
+        bottom: 'auto',
+        zIndex: 999999,
+        pointerEvents: 'none',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        maxHeight: 'calc(100vh - 40px)',
+        overflow: 'visible',
+      }}
+    >
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} />
       ))}
@@ -156,16 +215,44 @@ export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
   const dismiss = useCallback((id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    setToasts((prev) => (id ? prev.filter((t) => t.id !== id) : []));
   }, []);
 
-  const addToast = useCallback((type, message, duration = DEFAULT_DURATION) => {
+  const addToast = useCallback((type, ...args) => {
     const id = ++toastIdCounter;
-    const newToast = { id, type, message, duration };
+    let title = '';
+    let message = '';
+    let duration = type === 'error' ? 5000 : DEFAULT_DURATION;
+    let action = null;
+
+    if (typeof args[0] === 'object' && args[0] !== null) {
+      const opts = args[0];
+      title = opts.title || '';
+      message = opts.message || opts.description || '';
+      if (opts.duration !== undefined) duration = opts.duration;
+      action = opts.action || null;
+    } else if (typeof args[0] === 'string' && typeof args[1] === 'string') {
+      title = args[0];
+      message = args[1];
+      if (typeof args[2] === 'number') duration = args[2];
+      if (typeof args[2] === 'object') action = args[2]?.action;
+    } else if (typeof args[0] === 'string') {
+      message = args[0];
+      if (typeof args[1] === 'number') {
+        duration = args[1];
+      } else if (typeof args[1] === 'object' && args[1] !== null) {
+        if (args[1].title) title = args[1].title;
+        if (args[1].duration !== undefined) duration = args[1].duration;
+        if (args[1].action) action = args[1].action;
+      }
+    } else {
+      message = String(args[0] || '');
+    }
+
+    const newToast = { id, type, title, message, duration, action };
 
     setToasts((prev) => {
       const updated = [...prev, newToast];
-      // Keep only the last MAX_TOASTS
       if (updated.length > MAX_TOASTS) {
         return updated.slice(updated.length - MAX_TOASTS);
       }
@@ -177,9 +264,24 @@ export const ToastProvider = ({ children }) => {
 
   const stableToast = useRef({
     success: (...args) => addToast('success', ...args),
-    error: (msg, dur) => addToast('error', msg, dur || 5000),
+    error: (...args) => addToast('error', ...args),
     warning: (...args) => addToast('warning', ...args),
     info: (...args) => addToast('info', ...args),
+    loading: (...args) => addToast('loading', ...args),
+    promise: async (promise, { loading, success, error } = {}) => {
+      const id = addToast('loading', loading || 'Processing...', Infinity);
+      try {
+        const result = await promise;
+        dismiss(id);
+        addToast('success', typeof success === 'function' ? success(result) : (success || 'Completed successfully'));
+        return result;
+      } catch (err) {
+        dismiss(id);
+        const errMsg = typeof error === 'function' ? error(err) : (error || err.response?.data?.error || err.message || 'Operation failed');
+        addToast('error', errMsg);
+        throw err;
+      }
+    },
     dismiss: (...args) => dismiss(...args),
   }).current;
 
@@ -201,3 +303,4 @@ export const useToast = () => {
 };
 
 export default ToastContext;
+

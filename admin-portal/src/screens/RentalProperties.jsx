@@ -89,7 +89,7 @@ export default function RentalProperties() {
     owner_contact_id: null, occupancy_status: 'vacant', utilities_active: false,
     market_rent_min: '', market_rent_max: '', approved_monthly_rent: '', rent_due_day: 5,
     management_fee_pct: 5, lease_min_period_months: 6, property_condition: '', access_contact: '',
-    listing_status: 'not_listed', remarks: ''
+    listing_status: 'active', is_published: true, remarks: ''
   });
 
   // Form states
@@ -327,14 +327,23 @@ export default function RentalProperties() {
     if (!createForm.category) return toast.error('Category is required');
     setSaving(true);
     try {
-      const { data } = await api.post('/properties', createForm);
-      toast.success(data.message || 'Property registered successfully');
+      const payload = {
+        ...createForm,
+        approved_monthly_rent: createForm.approved_monthly_rent || createForm.price || null,
+        price: createForm.price || createForm.approved_monthly_rent || null,
+        status: 'available',
+        is_published: true,
+        listing_status: 'active',
+      };
+      const { data } = await api.post('/properties', payload);
+      toast.success(data.message || 'Property registered and published to website');
       setShowCreateModal(false);
       // Reset form
       setCreateForm({
         title: '', category: 'residential', listing_type: 'rent', status: 'available', price: '',
         bedrooms: '', bathrooms: '', parking: '', building_size: '', floor_number: '',
-        address: '', area: '', city: '', district: '', description: ''
+        address: '', area: '', city: '', district: '', description: '',
+        listing_status: 'active', is_published: true
       });
       // Refresh list
       loadProperties();
@@ -342,6 +351,18 @@ export default function RentalProperties() {
       toast.error(e.response?.data?.error || 'Registration failed');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTogglePublish = async (propId, nextPublished, event) => {
+    if (event) event.stopPropagation();
+    try {
+      await api.patch(`/public-website/admin/properties/${propId}/publish`, { is_published: nextPublished });
+      toast.success(nextPublished ? 'Property published to public website' : 'Property unpublished from website');
+      loadProperties();
+      if (selectedId) loadDetail(selectedId);
+    } catch (e) {
+      toast.error('Failed to update website visibility');
     }
   };
 
@@ -362,24 +383,45 @@ export default function RentalProperties() {
         <div className="cell-sub">{[r.area, r.city].filter(Boolean).join(', ')}</div>
       </div>
     )},
+    { key: 'rent', header: 'Rent / Mo', render: (r) => <span className="cell-strong" style={{ color: 'var(--primary,#00AEEF)' }}>{money(r.approved_monthly_rent || r.price)}</span> },
     { key: 'category', header: 'Category', render: (r) => <span className="cell-sub" style={{ textTransform: 'capitalize' }}>{r.category}</span> },
     { key: 'property_type', header: 'Type', render: (r) => <span className="cell-sub">{r.property_type || '—'}</span> },
     { key: 'owner', header: 'Owner', render: (r) => r.owner ? <span className="cell-strong">{r.owner.full_name}</span> : <span className="cell-sub">—</span> },
     { key: 'tenant', header: 'Tenant', render: (r) => r.tenant ? <span className="cell-strong">{r.tenant.full_name}</span> : <span className="cell-sub">—</span> },
-    { key: 'manager', header: 'Manager', render: (r) => r.manager ? <span className="cell-sub">{r.manager.full_name}</span> : <span className="cell-sub">—</span> },
+    { key: 'website', header: 'Public Site', render: (r) => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} onClick={(e) => e.stopPropagation()}>
+        {r.is_published ? (
+          <>
+            <Badge tone="green" dot>Live</Badge>
+            <button
+              className="pm-btn pm-btn-ghost btn-icon"
+              style={{ padding: '2px 6px', height: 'auto', color: 'var(--primary,#00AEEF)' }}
+              title="Open live on public website"
+              onClick={() => window.open(`http://localhost:3050/properties/${r.id}`, '_blank')}
+            >
+              <ExternalLink size={13} />
+            </button>
+          </>
+        ) : (
+          <Badge tone="amber">Draft</Badge>
+        )}
+      </div>
+    )},
     { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status} /> },
-    { key: 'edit', header: '', render: (r) => (
-      <Button
-        size="sm"
-        variant="ghost"
-        icon={Edit}
-        onClick={(event) => {
-          event.stopPropagation();
-          nav(`/property-management/rentals/new/${r.id}?listing_type=rent&category=${encodeURIComponent(r.category || 'residential')}`);
-        }}
-      >
-        Edit property
-      </Button>
+    { key: 'actions', header: '', render: (r) => (
+      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={Edit}
+          onClick={(event) => {
+            event.stopPropagation();
+            nav(`/property-management/rentals/new/${r.id}?listing_type=rent&category=${encodeURIComponent(r.category || 'residential')}`);
+          }}
+        >
+          Edit &amp; Photos
+        </Button>
+      </div>
     )},
   ];
 
@@ -440,6 +482,14 @@ export default function RentalProperties() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+            <Button
+              variant="secondary"
+              icon={ExternalLink}
+              title="Open property page on public website"
+              onClick={() => window.open(`http://localhost:3050/properties/${prop.id}`, '_blank')}
+            >
+              Live on Website
+            </Button>
             <Button
               variant="secondary"
               icon={Edit}

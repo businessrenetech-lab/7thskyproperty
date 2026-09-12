@@ -73,7 +73,8 @@ export const Input = (props) => <input className="input" {...props} />;
 export const Textarea = (props) => <textarea className="textarea" {...props} />;
 export const Select = ({ children, ...rest }) => <select className="select" {...rest}>{children}</select>;
 
-export const Drawer = ({ title, onClose, children, footer, width }) => {
+export const Drawer = ({ open = true, title, onClose, children, footer, width }) => {
+  if (!open) return null;
   const titleId = React.useId();
   const drawerRef = React.useRef(null);
   const closeRef = React.useRef(null);

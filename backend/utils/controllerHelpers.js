@@ -64,6 +64,7 @@ function getPagination(req, defaultLimit = 25, maxLimit = 100) {
 /** Pick only allowed fields from a body (whitelist mass-assignment). */
 function pick(body, allowed) {
   const out = {};
+  if (!body || typeof body !== 'object') return out;
   for (const key of allowed) {
     if (body[key] !== undefined) out[key] = body[key];
   }

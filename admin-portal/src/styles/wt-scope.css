@@ -315,7 +315,7 @@
 .wt-crumb a, .wt-crumb .lnk { color: var(--wt-accent-ink); cursor: pointer; text-decoration: none; }
 
 /* ── toasts ─────────────────────────────────────────────── */
-.wt-toasts { position: fixed; right: 20px; bottom: 20px; z-index: 3000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.wt-toasts { position: fixed; right: 20px; top: 20px; bottom: auto; z-index: 999999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
 .wt-toast { pointer-events: auto; display: flex; align-items: center; gap: 9px; min-width: 260px; max-width: 400px; padding: 11px 13px; border-radius: 9px; background: #fff; border: 1px solid var(--wt-line); border-left: 3px solid var(--wt-slate); box-shadow: 0 8px 26px rgba(15,23,42,.14); font-size: 13px; font-weight: 600; color: var(--wt-ink-2); animation: wt-toast-in .18s ease; }
 .wt-toast.ok { border-left-color: var(--wt-green); } .wt-toast.ok svg { color: var(--wt-green); }
 .wt-toast.err { border-left-color: var(--wt-red); } .wt-toast.err svg { color: var(--wt-red); }

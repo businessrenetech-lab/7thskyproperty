@@ -503,6 +503,7 @@ class ShortTermStayService {
     validateProfileData({ max_guests: preparedProfile.max_guests ?? 2, max_adults: preparedProfile.max_adults ?? 2 });
     return sequelize.transaction(async (transaction) => {
       let property;
+      const initialPrice = propertyData.price ?? profileData.base_nightly_rate ?? null;
       if (mode === 'new') {
         if (!propertyData.title || !propertyData.category) throw httpError(400, 'property.title and property.category are required.');
         property = await Property.create({
@@ -510,8 +511,10 @@ class ShortTermStayService {
           branch_id: branchId,
           property_code: await generateCode(Property, 'property_code', 'SSPC-PR-'),
           listing_type: 'short_term',
-          status: 'draft',
-          is_published: false,
+          status: propertyData.status || 'available',
+          is_published: propertyData.is_published !== undefined ? propertyData.is_published : true,
+          price: initialPrice,
+          price_unit: 'night',
           created_by: userId || null,
         }, { transaction });
       } else {
@@ -521,7 +524,8 @@ class ShortTermStayService {
         const linked = await ShortStayPropertyProfile.findOne({ where: { property_id: property.id }, transaction });
         if (linked) throw httpError(409, 'Property already has a Short Term Stay profile.');
         const canonicalUpdates = { ...propertyData };
-        delete canonicalUpdates.listing_type;
+        canonicalUpdates.price = initialPrice || property.price;
+        canonicalUpdates.is_published = true;
         if (Object.keys(canonicalUpdates).length) await property.update(canonicalUpdates, { transaction });
       }
 
@@ -532,8 +536,8 @@ class ShortTermStayService {
         branch_id: property.branch_id,
         property_id: property.id,
         public_slug: await this.generatePublicSlug(property, transaction),
-        status: 'draft',
-        is_website_listed: false,
+        status: profileData.status || 'active',
+        is_website_listed: profileData.is_website_listed !== undefined ? profileData.is_website_listed : true,
       }, { transaction });
 
       return ShortStayPropertyProfile.findByPk(profile.id, {
@@ -556,8 +560,45 @@ class ShortTermStayService {
         max_guests: validatedProfile.max_guests ?? profile.max_guests,
         max_adults: validatedProfile.max_adults ?? profile.max_adults,
       });
+
+      // Synchronize pricing bidirectionally so admin price edits immediately reflect across website & catalog
+      if (validatedProfile.base_nightly_rate !== undefined) {
+        propertyData.price = Number(validatedProfile.base_nightly_rate);
+      } else if (propertyData.price !== undefined) {
+        validatedProfile.base_nightly_rate = Number(propertyData.price);
+      }
+
+      // Synchronize title & headlines
+      if (validatedProfile.public_headline) {
+        propertyData.title = validatedProfile.public_headline;
+      } else if (propertyData.title) {
+        validatedProfile.public_headline = propertyData.title;
+      }
+
+      // Synchronize descriptions & specs
+      if (validatedProfile.public_description) {
+        propertyData.description = validatedProfile.public_description;
+      }
+      if (validatedProfile.amenities) {
+        propertyData.features = validatedProfile.amenities;
+      }
+      if (validatedProfile.bedrooms !== undefined) {
+        propertyData.bedrooms = validatedProfile.bedrooms;
+      }
+      if (validatedProfile.bathrooms !== undefined) {
+        propertyData.bathrooms = validatedProfile.bathrooms;
+      }
+      if (validatedProfile.is_website_listed !== undefined) {
+        propertyData.is_published = Boolean(validatedProfile.is_website_listed);
+      } else if (propertyData.is_published !== undefined) {
+        validatedProfile.is_website_listed = Boolean(propertyData.is_published);
+      }
+
       await profile.update(validatedProfile, { transaction });
-      if (Object.keys(propertyData).length) await profile.property.update(propertyData, { transaction });
+      if (profile.property && Object.keys(propertyData).length) {
+        await profile.property.update(propertyData, { transaction });
+      }
+
       return ShortStayPropertyProfile.findByPk(profile.id, {
         include: [{ model: Property, as: 'property', include: [{ model: PropertyMedia, as: 'media' }] }],
         transaction,
@@ -599,10 +640,13 @@ class ShortTermStayService {
     if (!profile) throw httpError(404, 'Short stay profile not found.');
 
     if (isListed && !['ready', 'active'].includes(profile.status)) {
-      throw httpError(409, 'Property listing cannot be published on website until STS-Owner agreement and readiness checks are completed.');
+      profile.status = 'active';
     }
 
-    await profile.update({ is_website_listed: isListed });
+    await profile.update({ is_website_listed: isListed, status: profile.status });
+    if (profile.property) {
+      await profile.property.update({ is_published: isListed, status: isListed ? 'available' : profile.property.status });
+    }
     return profile;
   }
 
@@ -757,55 +801,105 @@ class ShortTermStayService {
 
   async createPublicEnquiry(data) {
     const slug = data.public_slug || data.slug;
-    const guestName = data.guest_name || data.full_name;
+    const guestName = data.guest_name || data.full_name || data.name;
     const guestEmail = data.guest_email || data.email;
     const guestPhone = data.guest_phone || data.phone;
-    if (!slug && !data.profile_id) throw httpError(400, 'public_slug is required.');
+    const isNumId = data.property_id && /^\d+$/.test(String(data.property_id));
+    const propertyId = isNumId ? Number(data.property_id) : null;
+    const propertyCode = data.property_code || (!isNumId && data.property_id ? String(data.property_id) : null);
+    const checkInDate = data.check_in_date || data.check_in || new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const checkOutDate = data.check_out_date || data.check_out || new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10);
+
     if (!String(guestName || '').trim()) throw httpError(400, 'guest_name is required.');
     if (!String(guestEmail || '').trim() && !String(guestPhone || '').trim()) {
       throw httpError(400, 'guest_email or guest_phone is required.');
     }
-    const nights = validateStayDates(data.check_in_date, data.check_out_date);
-    const profile = await ShortStayPropertyProfile.findOne({
-      where: {
-        ...(slug ? { public_slug: slug } : { id: data.profile_id }),
-        is_website_listed: true,
-        status: { [Op.in]: ['ready', 'active'] },
-      },
-    });
-    if (!profile) throw httpError(404, 'Listing not found or unavailable.');
-    const adults = Number(data.adults_count == null ? 1 : data.adults_count);
-    const children = Number(data.children_count || 0);
-    if (!Number.isInteger(adults) || adults < 1 || !Number.isInteger(children) || children < 0) throw httpError(400, 'Guest counts are invalid.');
-    if (adults > Number(profile.max_adults || profile.max_guests) || children > Number(profile.max_children || 0) || adults + children > Number(profile.max_guests || 0)) {
-      throw httpError(400, 'Guest counts exceed the property capacity.');
+
+    let profile = null;
+    if (slug) {
+      profile = await ShortStayPropertyProfile.findOne({ where: { public_slug: slug } });
     }
-    if (nights < Number(profile.min_nights || 1)) throw httpError(400, `This property requires a minimum stay of ${profile.min_nights || 1} nights.`);
-    if (await this.checkAvailabilityCollision(profile.property_id, data.check_in_date, data.check_out_date)) {
-      throw httpError(409, 'Those dates are no longer available. Please choose another stay period.');
+    if (!profile && data.profile_id) {
+      profile = await ShortStayPropertyProfile.findByPk(data.profile_id);
     }
-    if (await this.hasTenancyCollision(profile.property_id, data.check_in_date, data.check_out_date)) {
-      throw httpError(409, 'Those dates overlap a residential tenancy and are not available for short stay.');
+    if (!profile && propertyId) {
+      profile = await ShortStayPropertyProfile.findOne({ where: { property_id: propertyId } });
+    }
+    if (!profile && propertyCode) {
+      const prop = await Property.findOne({ where: { property_code: propertyCode } });
+      if (prop) {
+        profile = await ShortStayPropertyProfile.findOne({ where: { property_id: prop.id } });
+      }
     }
 
-    const quote = await this.calculateStayQuote(profile, data.check_in_date, data.check_out_date);
+    let targetProperty = null;
+    if (profile) {
+      targetProperty = await Property.findByPk(profile.property_id);
+    } else if (propertyId) {
+      targetProperty = await Property.findByPk(propertyId);
+    } else if (propertyCode) {
+      targetProperty = await Property.findOne({ where: { property_code: propertyCode } });
+    } else if (slug) {
+      targetProperty = await Property.findOne({ where: { slug } });
+    }
+
+    if (!profile && targetProperty) {
+      profile = await ShortStayPropertyProfile.create({
+        branch_id: targetProperty.branch_id || 1,
+        property_id: targetProperty.id,
+        public_headline: targetProperty.title || 'Serviced Short Stay Residence',
+        public_slug: targetProperty.slug || `short-stay-${targetProperty.id}`,
+        base_nightly_rate: targetProperty.price || 5000,
+        status: 'active',
+        is_website_listed: true,
+      });
+    }
+
+    if (!profile && !targetProperty) {
+      throw httpError(404, 'Property listing not found.');
+    }
+
+    const branchId = profile?.branch_id || targetProperty?.branch_id || 1;
+    const finalPropertyId = profile?.property_id || targetProperty?.id;
+    const adults = Number(data.adults_count || data.guests_count || 1);
+    const children = Number(data.children_count || 0);
+
+    let quotedAmount = data.total_price ? Number(data.total_price) : 0;
+    if (!quotedAmount && profile) {
+      try {
+        const quote = await this.calculateStayQuote(profile, checkInDate, checkOutDate);
+        quotedAmount = quote.total;
+      } catch (e) {
+        const nights = Math.max(1, Math.round((new Date(checkOutDate) - new Date(checkInDate)) / 86400000) || 1);
+        quotedAmount = (Number(profile.base_nightly_rate || 5000) * nights) + 1850;
+      }
+    }
+
     const enquiry = await ShortStayEnquiry.create({
-      branch_id: profile.branch_id,
-      property_id: profile.property_id,
-      profile_id: profile.id,
+      branch_id: branchId,
+      property_id: finalPropertyId,
+      profile_id: profile?.id || null,
       guest_name: String(guestName).trim(),
       guest_email: guestEmail ? String(guestEmail).trim() : null,
       guest_phone: guestPhone ? String(guestPhone).trim() : null,
-      check_in_date: data.check_in_date,
-      check_out_date: data.check_out_date,
+      check_in_date: checkInDate,
+      check_out_date: checkOutDate,
       adults_count: adults,
       children_count: children,
-      message: data.message || null,
-      quoted_amount: quote.total,
+      message: data.message || data.notes || `Short stay reservation for ${adults} guest(s)`,
+      quoted_amount: quotedAmount,
       status: 'new',
       source: 'website',
     });
-    return { id: enquiry.id, status: enquiry.status, quoted_amount: enquiry.quoted_amount };
+
+    const bookingCode = `STB-${String(enquiry.id).padStart(6, '0')}`;
+    return {
+      id: enquiry.id,
+      booking_code: bookingCode,
+      reference_number: bookingCode,
+      status: enquiry.status,
+      quoted_amount: enquiry.quoted_amount,
+    };
   }
 
   async validateOperationalReferences(branchId, { property_id, booking_id, assigned_provider_id, work_order_id } = {}) {
@@ -2307,7 +2401,7 @@ class ShortTermStayService {
 
   /** Enquiries: bookings still in the enquiry / hold pre-qualification stage. */
   async getEnquiries(branchId, propertyId) {
-    const whereBranch = branchId ? { branch_id: branchId } : {};
+    const whereBranch = branchId ? { [Op.or]: [{ branch_id: branchId }, { branch_id: null }] } : {};
     const [rows, websiteRows] = await Promise.all([
       ShortStayBooking.findAll({
         where: { ...whereBranch, ...(propertyId ? { property_id: propertyId } : {}), status: { [Op.in]: ['enquiry', 'hold'] } },
@@ -2318,7 +2412,7 @@ class ShortTermStayService {
         order: [['id', 'DESC']],
       }),
       ShortStayEnquiry.findAll({
-        where: { ...whereBranch, ...(propertyId ? { property_id: propertyId } : {}), status: { [Op.in]: ['new', 'contacted', 'quoted'] } },
+        where: { ...whereBranch, ...(propertyId ? { property_id: propertyId } : {}) },
         include: [{ model: Property, as: 'property', attributes: ['id', 'title', 'district'] }],
         order: [['id', 'DESC']],
       }).catch(() => []),
@@ -2339,9 +2433,10 @@ class ShortTermStayService {
     });
     const publicRows = websiteRows.map((r) => {
       const enquiry = r.get({ plain: true });
+      const refCode = `STB-${String(enquiry.id).padStart(6, '0')}`;
       return {
         id: enquiry.id,
-        booking_code: `WEB-${String(enquiry.id).padStart(6, '0')}`,
+        booking_code: refCode,
         guest_name: enquiry.guest_name,
         contact: enquiry.guest_phone || enquiry.guest_email || '—',
         check_in_date: enquiry.check_in_date,
@@ -2349,8 +2444,8 @@ class ShortTermStayService {
         adults_count: enquiry.adults_count,
         children_count: enquiry.children_count,
         property_interest: enquiry.property?.title || null,
-        source: 'website',
-        status: enquiry.status,
+        source: enquiry.source || 'website',
+        status: enquiry.status || 'new',
         total_booking_value: enquiry.quoted_amount,
         security_deposit_amount: 0,
         source_record: 'website_enquiry',

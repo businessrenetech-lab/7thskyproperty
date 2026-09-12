@@ -26,4 +26,12 @@ const Lead = sequelize.define('Lead', {
   created_by: DataTypes.INTEGER,
 }, { tableName: 'leads', underscored: true });
 
+const Property = require('./Property');
+const Contact = require('./Contact');
+const Client = require('./Client');
+
+Lead.belongsTo(Property, { as: 'property', foreignKey: 'property_id' });
+Lead.belongsTo(Contact, { as: 'contact', foreignKey: 'contact_id' });
+Lead.belongsTo(Client, { as: 'converted_client', foreignKey: 'converted_client_id' });
+
 module.exports = Lead;

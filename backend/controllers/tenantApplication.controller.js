@@ -60,9 +60,13 @@ const tenantInc = { model: Contact, as: 'tenant', attributes: ['id', 'full_name'
 // ─── LIST (global + per-property, with filters) ─────────────────────────────
 exports.list = asyncHandler(async (req, res) => {
   const { limit, offset, page } = getPagination(req);
-  const where = { ...branchScope(req) };
+  const bScope = branchScope(req);
+  const where = {};
+  if (bScope.branch_id) {
+    where[Op.or] = [{ branch_id: bScope.branch_id }, { branch_id: null }];
+  }
   if (req.query.property_id) where.property_id = req.query.property_id;
-  if (req.query.status) where.status = req.query.status;
+  if (req.query.status && req.query.status !== 'all') where.status = req.query.status;
   if (req.query.recommendation) where.recommendation = req.query.recommendation;
   if (req.query.assigned_officer_id) where.assigned_officer_id = req.query.assigned_officer_id;
   if (req.query.from || req.query.to) {
@@ -72,7 +76,13 @@ exports.list = asyncHandler(async (req, res) => {
   }
   if (req.query.search) {
     const s = `%${req.query.search}%`;
-    where[Op.or] = [{ applicant_name: { [Op.like]: s } }, { application_code: { [Op.like]: s } }, { mobile: { [Op.like]: s } }, { email: { [Op.like]: s } }];
+    const searchOr = [{ applicant_name: { [Op.like]: s } }, { application_code: { [Op.like]: s } }, { mobile: { [Op.like]: s } }, { email: { [Op.like]: s } }];
+    if (where[Op.or]) {
+      where[Op.and] = [{ [Op.or]: where[Op.or] }, { [Op.or]: searchOr }];
+      delete where[Op.or];
+    } else {
+      where[Op.or] = searchOr;
+    }
   }
   const { rows, count } = await TenantApplication.findAndCountAll({
     where, include: [propInc, tenantInc], limit, offset, order: [['created_at', 'DESC']],
@@ -81,7 +91,10 @@ exports.list = asyncHandler(async (req, res) => {
   // Lightweight status counts for the global view tabs
   let status_counts;
   if (req.query.include_counts === 'true') {
-    const base = { ...branchScope(req) };
+    const base = {};
+    if (bScope.branch_id) {
+      base[Op.or] = [{ branch_id: bScope.branch_id }, { branch_id: null }];
+    }
     if (req.query.property_id) base.property_id = req.query.property_id;
     const grp = await TenantApplication.findAll({
       where: base, attributes: ['status', [sequelize.fn('COUNT', sequelize.col('id')), 'c']], group: ['status'], raw: true,

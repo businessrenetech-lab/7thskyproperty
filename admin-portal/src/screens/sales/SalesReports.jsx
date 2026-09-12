@@ -2,8 +2,8 @@
 //
 // Sales reports & analytics — read-only over /api/sales/reports. Pipeline,
 // conversion, settlement forecast, overdue receivables, expected-vs-actual
-// fees, response-SLA + workload, and expenses/margin. Download as PDF via
-// bundled html2pdf.js.
+// fees, response-SLA + workload, expenses/margin, and lead attribution.
+// Download as PDF via bundled html2pdf.js.
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import {
   Download,
@@ -21,7 +21,12 @@ import {
   DollarSign,
   Briefcase,
   Layers,
-  Inbox
+  Inbox,
+  LayoutDashboard,
+  CalendarClock,
+  FileText,
+  ChevronRight,
+  PieChart
 } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -360,6 +365,8 @@ export default function SalesReports() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activePreset, setActivePreset] = useState('90D');
+  const [activeTab, setActiveTab] = useState('overview');
+
   const fromInputId = useId();
   const toInputId = useId();
   const categorySelectId = useId();
@@ -409,7 +416,7 @@ export default function SalesReports() {
       await html2pdf()
         .set({
           margin: [8, 8, 8, 8],
-          filename: `Sales-Report-${from}-to-${to}.pdf`,
+          filename: `Sales-Report-${activeTab}-${from}-to-${to}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
           html2canvas: { scale: 2, backgroundColor: '#ffffff' },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
@@ -423,6 +430,822 @@ export default function SalesReports() {
 
   // Pipeline deals total for distribution bar
   const pipelineTotal = data?.pipeline ? data.pipeline.reduce((acc, p) => acc + (p.count || 0), 0) : 0;
+  const overdueCount = data?.overdue_receivables?.length || 0;
+  const totalForecastValue = data?.settlement_forecast?.reduce((s, f) => s + (f.expected_value || 0), 0) || 0;
+
+  // Tabs list configuration
+  const TABS = [
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'pipeline', label: 'Pipeline & Deals', icon: Layers, count: pipelineTotal },
+    { id: 'settlements', label: 'Settlements & Credit', icon: CalendarClock, alert: overdueCount > 0 },
+    { id: 'financials', label: 'Fees & Margins', icon: DollarSign },
+    { id: 'team', label: 'Team & SLA', icon: Users },
+    { id: 'all', label: 'All Reports', icon: FileText },
+  ];
+
+  /* ── RENDER SUB-SECTIONS (Reusable across tabs & all-view) ── */
+  const renderPipelineSection = () => (
+    <SectionCard
+      title="Pipeline Distribution"
+      subtitle="Volume and velocity across all active and historical sales stages."
+      icon={Layers}
+      badge={
+        <span style={{ fontSize: 12, color: 'var(--muted, #64748b)', fontWeight: 600 }}>
+          {pipelineTotal} Total Deals
+        </span>
+      }
+    >
+      {pipelineTotal > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <div
+            style={{
+              height: 8,
+              borderRadius: 4,
+              overflow: 'hidden',
+              display: 'flex',
+              background: 'var(--line-soft, #edf2f7)',
+              width: '100%',
+            }}
+          >
+            {data.pipeline.map((p) => {
+              const pct = (p.count / pipelineTotal) * 100;
+              if (!pct) return null;
+              const conf = STAGE_CONFIG[p.status] || { bar: '#94a3b8' };
+              return (
+                <div
+                  key={p.status}
+                  title={`${p.status}: ${p.count} deals (${Math.round(pct)}%)`}
+                  style={{
+                    width: `${pct}%`,
+                    background: conf.bar,
+                    transition: 'width 0.2s ease',
+                  }}
+                />
+              );
+            })}
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              gap: 14,
+              marginTop: 8,
+              flexWrap: 'wrap',
+            }}
+          >
+            {data.pipeline.map((p) => {
+              const conf = STAGE_CONFIG[p.status] || { label: p.status, bar: '#94a3b8' };
+              return (
+                <div key={p.status} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: conf.bar }} />
+                  <span style={{ fontSize: 11, color: 'var(--muted, #64748b)', fontWeight: 500 }}>
+                    {conf.label}: <strong style={{ color: 'var(--ink, #0f172a)' }}>{p.count}</strong>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <DataTable
+        cols={[
+          {
+            k: 'status',
+            h: 'Stage',
+            render: (r) => <StageBadge status={r.status} />,
+          },
+          {
+            k: 'count',
+            h: 'Deals',
+            right: true,
+            render: (r) => <strong>{r.count}</strong>,
+          },
+          {
+            k: 'avg_age_days',
+            h: 'Avg Age',
+            right: true,
+            render: (r) => (
+              <span style={{ color: r.avg_age_days > 60 ? '#b45309' : 'var(--ink, #0f172a)' }}>
+                {r.avg_age_days} d
+              </span>
+            ),
+          },
+          {
+            k: 'avg_days_in_stage',
+            h: 'Avg In-Stage',
+            right: true,
+            render: (r) => <span>{r.avg_days_in_stage} d</span>,
+          },
+        ]}
+        rows={data.pipeline}
+      />
+    </SectionCard>
+  );
+
+  const renderConversionSection = () => (
+    <SectionCard
+      title="Conversion Velocity"
+      subtitle="Throughput of property deals created within the selected range."
+      icon={TrendingUp}
+    >
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <KpiTile
+          label="Deals Created"
+          value={data.conversion.created}
+          subtext="Total opportunities initiated in range"
+          tone="cyan"
+        />
+        <KpiTile
+          label="Reached Agreed"
+          value={`${data.conversion.reached_agreed} (${data.conversion.agreed_rate}%)`}
+          subtext="Deals progressed to agreed terms"
+          tone={data.conversion.agreed_rate >= 50 ? 'good' : 'warn'}
+          progress={data.conversion.agreed_rate}
+        />
+        <KpiTile
+          label="Completed Deals"
+          value={`${data.conversion.completed} (${data.conversion.completed_rate}%)`}
+          subtext="Transactions successfully closed"
+          tone={data.conversion.completed_rate >= 25 ? 'good' : 'neutral'}
+          progress={data.conversion.completed_rate}
+        />
+      </div>
+    </SectionCard>
+  );
+
+  const renderSettlementSection = () => (
+    <SectionCard
+      title="Settlement Forecast"
+      subtitle="Projected monthly closing schedule and expected transactional value."
+      icon={Calendar}
+    >
+      <DataTable
+        cols={[
+          {
+            k: 'month',
+            h: 'Forecast Month',
+            render: (r) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Calendar size={13} color="var(--muted, #64748b)" />
+                <span style={{ fontWeight: 600 }}>{r.month}</span>
+              </div>
+            ),
+          },
+          {
+            k: 'count',
+            h: 'Settlements',
+            right: true,
+            render: (r) => <strong>{r.count}</strong>,
+          },
+          {
+            k: 'expected_value',
+            h: 'Expected Value',
+            right: true,
+            render: (r) => (
+              <span style={{ fontWeight: 700, color: 'var(--navy, #003768)' }}>
+                {bdt(r.expected_value)}
+              </span>
+            ),
+          },
+        ]}
+        rows={data.settlement_forecast}
+        emptyText="No settlements forecasted for this period."
+      />
+    </SectionCard>
+  );
+
+  const renderOverdueSection = () => (
+    <SectionCard
+      title="Overdue Receivables"
+      subtitle="Deals with past settlement dates carrying unpaid or partial payment balances."
+      icon={AlertTriangle}
+      badge={
+        data.overdue_receivables.length > 0 ? (
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 5,
+              fontSize: 11.5,
+              fontWeight: 650,
+              background: '#fee2e2',
+              color: '#991b1b',
+            }}
+          >
+            {data.overdue_receivables.length} Action Needed
+          </span>
+        ) : (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 12,
+              color: '#166534',
+              fontWeight: 600,
+            }}
+          >
+            <CheckCircle2 size={13} />
+            <span>All Clear</span>
+          </span>
+        )
+      }
+    >
+      <DataTable
+        cols={[
+          {
+            k: 'property',
+            h: 'Property',
+            render: (r) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Building2 size={13} color="var(--muted, #64748b)" />
+                <span style={{ fontWeight: 600 }}>{r.property || '—'}</span>
+              </div>
+            ),
+          },
+          {
+            k: 'settlement_date',
+            h: 'Due Date',
+            render: (r) => <span style={{ color: '#b91c1c', fontWeight: 600 }}>{r.settlement_date}</span>,
+          },
+          {
+            k: 'status',
+            h: 'Payment Status',
+            render: (r) => (
+              <span
+                style={{
+                  padding: '2px 7px',
+                  borderRadius: 4,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  background: r.status === 'unpaid' ? '#fee2e2' : '#fef3c7',
+                  color: r.status === 'unpaid' ? '#991b1b' : '#92400e',
+                  textTransform: 'capitalize',
+                }}
+              >
+                {r.status}
+              </span>
+            ),
+          },
+          {
+            k: 'expected',
+            h: 'Expected Balance',
+            right: true,
+            render: (r) => <strong>{bdt(r.expected)}</strong>,
+          },
+        ]}
+        rows={data.overdue_receivables}
+        emptyText="No overdue receivables. All accounts are up to date."
+      />
+    </SectionCard>
+  );
+
+  const renderFeesSection = () => (
+    <SectionCard
+      title="Fees — Expected vs Actual"
+      subtitle="Commission and marketing fee reconciliation against billings and cash collections."
+      icon={DollarSign}
+    >
+      <DataTable
+        cols={[
+          {
+            k: 'property',
+            h: 'Property',
+            render: (r) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Building2 size={13} color="var(--muted, #64748b)" />
+                <span style={{ fontWeight: 600 }}>{r.property || '—'}</span>
+              </div>
+            ),
+          },
+          {
+            k: 'expected',
+            h: 'Expected Fee',
+            right: true,
+            render: (r) => bdt(r.expected),
+          },
+          {
+            k: 'invoiced',
+            h: 'Invoiced',
+            right: true,
+            render: (r) => bdt(r.invoiced),
+          },
+          {
+            k: 'collected',
+            h: 'Collected',
+            right: true,
+            render: (r) => <strong style={{ color: '#166534' }}>{bdt(r.collected)}</strong>,
+          },
+          {
+            k: 'variance',
+            h: 'Variance',
+            right: true,
+            render: (r) => {
+              const isPositive = r.variance >= 0;
+              return (
+                <span
+                  style={{
+                    fontWeight: 650,
+                    color: isPositive ? '#166534' : '#b91c1c',
+                  }}
+                >
+                  {isPositive ? `+${bdt(r.variance)}` : `-${bdt(Math.abs(r.variance))}`}
+                </span>
+              );
+            },
+          },
+        ]}
+        rows={data.fees.rows}
+        emptyText="No property fee profiles registered for the current scope."
+      />
+
+      <SummaryStrip
+        items={[
+          { label: 'Expected', value: bdt(data.fees.totals.expected) },
+          { label: 'Invoiced', value: bdt(data.fees.totals.invoiced) },
+          { label: 'Collected', value: bdt(data.fees.totals.collected), color: '#166534' },
+          {
+            label: 'Variance',
+            value:
+              data.fees.totals.variance >= 0
+                ? `+${bdt(data.fees.totals.variance)}`
+                : `-${bdt(Math.abs(data.fees.totals.variance))}`,
+            color: data.fees.totals.variance >= 0 ? '#166534' : '#b91c1c',
+          },
+        ]}
+      />
+    </SectionCard>
+  );
+
+  const renderSlaSection = () => (
+    <SectionCard
+      title="Response SLA & Assignee Workload"
+      subtitle="Inquiry turnaround times against business-day SLAs and officer allocation."
+      icon={ShieldCheck}
+    >
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+        <KpiTile
+          label="Enquiries Received"
+          value={data.sla.enquiries}
+          subtext="Total inbound inquiries in range"
+        />
+        <KpiTile
+          label="Responded"
+          value={data.sla.responded}
+          subtext="Inquiries with recorded outbound reply"
+        />
+        <KpiTile
+          label="Within SLA (≤1 Day)"
+          value={`${data.sla.within_sla_pct}%`}
+          subtext={`${data.sla.within_sla || 0} inquiries met response SLA`}
+          tone={data.sla.within_sla_pct >= 90 ? 'good' : 'warn'}
+          progress={data.sla.within_sla_pct}
+        />
+        <KpiTile
+          label="Avg First Response"
+          value={`${data.sla.avg_first_response_hours} hrs`}
+          subtext="Average duration to first outreach"
+          tone="cyan"
+        />
+      </div>
+
+      <DataTable
+        cols={[
+          {
+            k: 'name',
+            h: 'Officer / Assignee',
+            render: (r) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: '50%',
+                    background: 'var(--surface-3, #eff3f9)',
+                    border: '1px solid var(--line, #e2e8f0)',
+                    display: 'grid',
+                    placeItems: 'center',
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    color: 'var(--navy, #003768)',
+                  }}
+                >
+                  {r.name ? r.name.slice(0, 2).toUpperCase() : 'U'}
+                </div>
+                <span style={{ fontWeight: 600 }}>{r.name}</span>
+              </div>
+            ),
+          },
+          {
+            k: 'open_deals',
+            h: 'Active Deals',
+            right: true,
+            render: (r) => <strong>{r.open_deals}</strong>,
+          },
+          {
+            k: 'open_enquiries',
+            h: 'Open Inquiries',
+            right: true,
+            render: (r) => <strong>{r.open_enquiries}</strong>,
+          },
+        ]}
+        rows={data.workload}
+        emptyText="No assigned team members with active load in range."
+      />
+    </SectionCard>
+  );
+
+  const renderExpensesSection = () => (
+    <SectionCard
+      title="Expenses & Operational Margin"
+      subtitle="Direct marketing, staging, and property overheads measured against collections."
+      icon={Briefcase}
+    >
+      <DataTable
+        cols={[
+          {
+            k: 'property',
+            h: 'Property',
+            render: (r) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Building2 size={13} color="var(--muted, #64748b)" />
+                <span style={{ fontWeight: 600 }}>{r.property || '—'}</span>
+              </div>
+            ),
+          },
+          {
+            k: 'total',
+            h: 'Total Expenses',
+            right: true,
+            render: (r) => (
+              <span style={{ color: '#b45309' }}>{bdt(r.total)}</span>
+            ),
+          },
+          {
+            k: 'collected',
+            h: 'Collected Fees',
+            right: true,
+            render: (r) => bdt(r.collected),
+          },
+          {
+            k: 'margin',
+            h: 'Net Margin',
+            right: true,
+            render: (r) => {
+              const isPositive = r.margin >= 0;
+              return (
+                <span
+                  style={{
+                    fontWeight: 700,
+                    color: isPositive ? '#166534' : '#b91c1c',
+                  }}
+                >
+                  {isPositive ? `+${bdt(r.margin)}` : `-${bdt(Math.abs(r.margin))}`}
+                </span>
+              );
+            },
+          },
+        ]}
+        rows={data.expenses.rows}
+        emptyText="No expense records registered for properties in this range."
+      />
+
+      <SummaryStrip
+        items={[
+          { label: 'Total Expenses', value: bdt(data.expenses.totals.expenses), color: '#b45309' },
+          { label: 'Total Collected', value: bdt(data.expenses.totals.collected), color: '#166534' },
+          {
+            label: 'Net Margin',
+            value:
+              data.expenses.totals.margin >= 0
+                ? `+${bdt(data.expenses.totals.margin)}`
+                : `-${bdt(Math.abs(data.expenses.totals.margin))}`,
+            color: data.expenses.totals.margin >= 0 ? '#166534' : '#b91c1c',
+          },
+        ]}
+      />
+    </SectionCard>
+  );
+
+  const renderLeadAttributionSection = () => (
+    <SectionCard
+      title="Lead Attribution"
+      subtitle="First-touch marketing source and campaign for leads created in range, with conversion."
+      icon={Users}
+    >
+      <DataTable
+        cols={[
+          { k: 'source', h: 'Source', render: (r) => <span style={{ fontWeight: 600 }}>{r.source}</span> },
+          { k: 'campaign', h: 'Campaign' },
+          { k: 'created', h: 'Leads', right: true, render: (r) => <strong>{r.created}</strong> },
+          { k: 'converted', h: 'Converted', right: true, render: (r) => <span style={{ color: '#166534', fontWeight: 600 }}>{r.converted}</span> },
+          { k: 'rate', h: 'Conv. Rate', right: true, render: (r) => <span style={{ fontWeight: 650 }}>{r.rate}%</span> },
+        ]}
+        rows={data.lead_attribution || []}
+        emptyText="No leads created in this range."
+      />
+    </SectionCard>
+  );
+
+  /* ── EXECUTIVE OVERVIEW TAB (High-density, low scroll cockpit) ── */
+  const renderOverviewTab = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Executive Key Metrics Bar */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
+        <KpiTile
+          label="Active Pipeline"
+          value={pipelineTotal}
+          subtext="Total tracked opportunities"
+          tone="cyan"
+        />
+        <KpiTile
+          label="Conversion Rate"
+          value={`${data.conversion.completed_rate}%`}
+          subtext={`${data.conversion.completed} deals closed`}
+          tone={data.conversion.completed_rate >= 25 ? 'good' : 'neutral'}
+          progress={data.conversion.completed_rate}
+        />
+        <KpiTile
+          label="Settlement Forecast"
+          value={bdt(totalForecastValue)}
+          subtext={`${data.settlement_forecast?.length || 0} forecast periods`}
+          tone="neutral"
+        />
+        <KpiTile
+          label="Overdue Receivables"
+          value={overdueCount === 0 ? 'All Clear' : `${overdueCount} Pending`}
+          subtext={overdueCount === 0 ? 'Zero arrears detected' : 'Requires collection follow-up'}
+          tone={overdueCount === 0 ? 'good' : 'bad'}
+        />
+        <KpiTile
+          label="Collected Fees"
+          value={bdt(data.fees.totals.collected)}
+          subtext={`Variance: ${data.fees.totals.variance >= 0 ? '+' : ''}${bdt(data.fees.totals.variance)}`}
+          tone="good"
+        />
+        <KpiTile
+          label="SLA Compliance"
+          value={`${data.sla.within_sla_pct}%`}
+          subtext={`Avg response: ${data.sla.avg_first_response_hours}h`}
+          tone={data.sla.within_sla_pct >= 90 ? 'good' : 'warn'}
+          progress={data.sla.within_sla_pct}
+        />
+      </div>
+
+      {/* 2-Column High Density Cockpit */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: 16 }}>
+        {/* Left Column: Pipeline & Conversion */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div
+            style={{
+              background: '#ffffff',
+              border: '1px solid var(--line, #e2e8f0)',
+              borderRadius: 12,
+              padding: 16,
+              boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Layers size={15} color="var(--navy, #003768)" />
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink, #0f172a)' }}>
+                  Pipeline Stages & Velocity
+                </span>
+              </div>
+              <button
+                type="button"
+                className="pm-link"
+                onClick={() => setActiveTab('pipeline')}
+                style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+              >
+                <span>Details</span>
+                <ChevronRight size={13} />
+              </button>
+            </div>
+
+            {pipelineTotal > 0 ? (
+              <div>
+                <div
+                  style={{
+                    height: 8,
+                    borderRadius: 4,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    background: 'var(--line-soft, #edf2f7)',
+                    width: '100%',
+                    marginBottom: 10,
+                  }}
+                >
+                  {data.pipeline.map((p) => {
+                    const pct = (p.count / pipelineTotal) * 100;
+                    if (!pct) return null;
+                    const conf = STAGE_CONFIG[p.status] || { bar: '#94a3b8' };
+                    return (
+                      <div
+                        key={p.status}
+                        title={`${p.status}: ${p.count}`}
+                        style={{ width: `${pct}%`, background: conf.bar }}
+                      />
+                    );
+                  })}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 12 }}>
+                  {data.pipeline.map((p) => (
+                    <div
+                      key={p.status}
+                      style={{
+                        padding: '8px 10px',
+                        background: 'var(--surface-2, #f8fafc)',
+                        border: '1px solid var(--line-soft, #edf2f7)',
+                        borderRadius: 7,
+                      }}
+                    >
+                      <div style={{ fontSize: 10.5, color: 'var(--muted, #64748b)', textTransform: 'capitalize' }}>
+                        {p.status}
+                      </div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink, #0f172a)' }}>
+                        {p.count} <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--muted, #64748b)' }}>({p.avg_days_in_stage}d)</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted, #64748b)', fontSize: 12 }}>
+                No active deals in range.
+              </div>
+            )}
+          </div>
+
+          {/* Quick Conversion strip */}
+          <div
+            style={{
+              background: '#ffffff',
+              border: '1px solid var(--line, #e2e8f0)',
+              borderRadius: 12,
+              padding: 16,
+              boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <TrendingUp size={15} color="var(--navy, #003768)" />
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink, #0f172a)' }}>
+                  Conversion Throughput
+                </span>
+              </div>
+              <button
+                type="button"
+                className="pm-link"
+                onClick={() => setActiveTab('pipeline')}
+                style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+              >
+                <span>Funnel</span>
+                <ChevronRight size={13} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <KpiTile label="Created" value={data.conversion.created} tone="neutral" />
+              <KpiTile
+                label="Agreed"
+                value={`${data.conversion.reached_agreed}`}
+                subtext={`${data.conversion.agreed_rate}% rate`}
+                tone="warn"
+                progress={data.conversion.agreed_rate}
+              />
+              <KpiTile
+                label="Closed"
+                value={`${data.conversion.completed}`}
+                subtext={`${data.conversion.completed_rate}% rate`}
+                tone="good"
+                progress={data.conversion.completed_rate}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Financials & Operations */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Financial Summary card */}
+          <div
+            style={{
+              background: '#ffffff',
+              border: '1px solid var(--line, #e2e8f0)',
+              borderRadius: 12,
+              padding: 16,
+              boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <DollarSign size={15} color="var(--navy, #003768)" />
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink, #0f172a)' }}>
+                  Financial Health & Margins
+                </span>
+              </div>
+              <button
+                type="button"
+                className="pm-link"
+                onClick={() => setActiveTab('financials')}
+                style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+              >
+                <span>Ledger</span>
+                <ChevronRight size={13} />
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+              <div style={{ padding: 12, background: 'var(--surface-2, #f8fafc)', borderRadius: 8, border: '1px solid var(--line-soft, #edf2f7)' }}>
+                <div style={{ fontSize: 11, color: 'var(--muted, #64748b)', textTransform: 'uppercase' }}>Invoiced Fees</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink, #0f172a)' }}>{bdt(data.fees.totals.invoiced)}</div>
+                <div style={{ fontSize: 11, color: 'var(--muted, #64748b)', marginTop: 2 }}>Expected: {bdt(data.fees.totals.expected)}</div>
+              </div>
+              <div style={{ padding: 12, background: 'var(--surface-2, #f8fafc)', borderRadius: 8, border: '1px solid var(--line-soft, #edf2f7)' }}>
+                <div style={{ fontSize: 11, color: 'var(--muted, #64748b)', textTransform: 'uppercase' }}>Collected Cash</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#166534' }}>{bdt(data.fees.totals.collected)}</div>
+                <div style={{ fontSize: 11, color: data.fees.totals.variance >= 0 ? '#166534' : '#b91c1c', marginTop: 2 }}>
+                  Variance: {data.fees.totals.variance >= 0 ? '+' : ''}{bdt(data.fees.totals.variance)}
+                </div>
+              </div>
+              <div style={{ padding: 12, background: 'var(--surface-2, #f8fafc)', borderRadius: 8, border: '1px solid var(--line-soft, #edf2f7)' }}>
+                <div style={{ fontSize: 11, color: 'var(--muted, #64748b)', textTransform: 'uppercase' }}>Direct Expenses</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#b45309' }}>{bdt(data.expenses.totals.expenses)}</div>
+                <div style={{ fontSize: 11, color: 'var(--muted, #64748b)', marginTop: 2 }}>Overheads & staging</div>
+              </div>
+              <div style={{ padding: 12, background: 'var(--surface-2, #f8fafc)', borderRadius: 8, border: '1px solid var(--line-soft, #edf2f7)' }}>
+                <div style={{ fontSize: 11, color: 'var(--muted, #64748b)', textTransform: 'uppercase' }}>Net Margin</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: data.expenses.totals.margin >= 0 ? '#166534' : '#b91c1c' }}>
+                  {data.expenses.totals.margin >= 0 ? '+' : ''}{bdt(data.expenses.totals.margin)}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--muted, #64748b)', marginTop: 2 }}>Collected − expenses</div>
+              </div>
+            </div>
+          </div>
+
+          {/* SLA & Risk Highlights */}
+          <div
+            style={{
+              background: '#ffffff',
+              border: '1px solid var(--line, #e2e8f0)',
+              borderRadius: 12,
+              padding: 16,
+              boxShadow: '0 1px 3px rgba(15, 23, 42, 0.04)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ShieldCheck size={15} color="var(--navy, #003768)" />
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink, #0f172a)' }}>
+                  Service Operations & Credit
+                </span>
+              </div>
+              <button
+                type="button"
+                className="pm-link"
+                onClick={() => setActiveTab('team')}
+                style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 2 }}
+              >
+                <span>Team</span>
+                <ChevronRight size={13} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '8px 12px',
+                  background: 'var(--surface-2, #f8fafc)',
+                  borderRadius: 7,
+                }}
+              >
+                <span style={{ fontSize: 12, color: 'var(--muted, #64748b)' }}>Team Response SLA (≤1 Day)</span>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: data.sla.within_sla_pct >= 90 ? '#166534' : '#b45309' }}>
+                  {data.sla.within_sla_pct}% ({data.sla.within_sla}/{data.sla.responded} responded)
+                </span>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '8px 12px',
+                  background: overdueCount > 0 ? '#fee2e2' : 'var(--surface-2, #f8fafc)',
+                  borderRadius: 7,
+                }}
+              >
+                <span style={{ fontSize: 12, color: overdueCount > 0 ? '#991b1b' : 'var(--muted, #64748b)' }}>
+                  Overdue Accounts Receivable
+                </span>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: overdueCount > 0 ? '#991b1b' : '#166534' }}>
+                  {overdueCount === 0 ? 'All Clear (0)' : `${overdueCount} overdue actions`}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="pm-scope sales-reports-screen" style={{ minHeight: '100%', paddingBottom: 40 }}>
@@ -432,7 +1255,7 @@ export default function SalesReports() {
           display: 'flex',
           flexDirection: 'column',
           gap: 16,
-          marginBottom: 20,
+          marginBottom: 16,
         }}
       >
         <div
@@ -667,6 +1490,73 @@ export default function SalesReports() {
             </div>
           </div>
         </div>
+
+        {/* ── UX TABS NAVIGATION BAR ── */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            overflowX: 'auto',
+            paddingBottom: 2,
+            borderBottom: '1px solid var(--line, #e2e8f0)',
+          }}
+        >
+          {TABS.map((t) => {
+            const active = activeTab === t.id;
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setActiveTab(t.id)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  padding: '9px 14px',
+                  border: 'none',
+                  borderBottom: active ? '2px solid var(--navy, #003768)' : '2px solid transparent',
+                  background: 'transparent',
+                  color: active ? 'var(--navy, #003768)' : 'var(--muted, #64748b)',
+                  fontWeight: active ? 700 : 550,
+                  fontSize: 12.5,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <Icon size={14} color={active ? 'var(--navy, #003768)' : 'var(--muted, #64748b)'} />
+                <span>{t.label}</span>
+                {typeof t.count === 'number' && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      padding: '1px 6px',
+                      borderRadius: 10,
+                      background: active ? 'var(--surface-3, #eff3f9)' : 'var(--surface-2, #f8fafc)',
+                      color: active ? 'var(--navy, #003768)' : 'var(--muted, #64748b)',
+                      fontWeight: 650,
+                    }}
+                  >
+                    {t.count}
+                  </span>
+                )}
+                {t.alert && (
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: '#ef4444',
+                      display: 'inline-block',
+                    }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Main Report Body */}
@@ -691,501 +1581,55 @@ export default function SalesReports() {
           </span>
         </div>
       ) : !data ? null : (
-        <div ref={ref} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* 1. Pipeline */}
-          <SectionCard
-            title="Pipeline Distribution"
-            subtitle="Volume and velocity across all active and historical sales stages."
-            icon={Layers}
-            badge={
-              <span style={{ fontSize: 12, color: 'var(--muted, #64748b)', fontWeight: 600 }}>
-                {pipelineTotal} Total Deals
-              </span>
-            }
-          >
-            {/* Visual stage micro-bar */}
-            {pipelineTotal > 0 && (
-              <div style={{ marginBottom: 14 }}>
-                <div
-                  style={{
-                    height: 8,
-                    borderRadius: 4,
-                    overflow: 'hidden',
-                    display: 'flex',
-                    background: 'var(--line-soft, #edf2f7)',
-                    width: '100%',
-                  }}
-                >
-                  {data.pipeline.map((p) => {
-                    const pct = (p.count / pipelineTotal) * 100;
-                    if (!pct) return null;
-                    const conf = STAGE_CONFIG[p.status] || { bar: '#94a3b8' };
-                    return (
-                      <div
-                        key={p.status}
-                        title={`${p.status}: ${p.count} deals (${Math.round(pct)}%)`}
-                        style={{
-                          width: `${pct}%`,
-                          background: conf.bar,
-                          transition: 'width 0.2s ease',
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 14,
-                    marginTop: 8,
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  {data.pipeline.map((p) => {
-                    const conf = STAGE_CONFIG[p.status] || { label: p.status, bar: '#94a3b8' };
-                    return (
-                      <div key={p.status} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: conf.bar }} />
-                        <span style={{ fontSize: 11, color: 'var(--muted, #64748b)', fontWeight: 500 }}>
-                          {conf.label}: <strong style={{ color: 'var(--ink, #0f172a)' }}>{p.count}</strong>
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+        <div ref={ref}>
+          {/* TAB 1: EXECUTIVE OVERVIEW */}
+          {activeTab === 'overview' && renderOverviewTab()}
 
-            <DataTable
-              cols={[
-                {
-                  k: 'status',
-                  h: 'Stage',
-                  render: (r) => <StageBadge status={r.status} />,
-                },
-                {
-                  k: 'count',
-                  h: 'Deals',
-                  right: true,
-                  render: (r) => <strong>{r.count}</strong>,
-                },
-                {
-                  k: 'avg_age_days',
-                  h: 'Avg Age',
-                  right: true,
-                  render: (r) => (
-                    <span style={{ color: r.avg_age_days > 60 ? '#b45309' : 'var(--ink, #0f172a)' }}>
-                      {r.avg_age_days} d
-                    </span>
-                  ),
-                },
-                {
-                  k: 'avg_days_in_stage',
-                  h: 'Avg In-Stage',
-                  right: true,
-                  render: (r) => <span>{r.avg_days_in_stage} d</span>,
-                },
-              ]}
-              rows={data.pipeline}
-            />
-          </SectionCard>
-
-          {/* 2. Conversion */}
-          <SectionCard
-            title="Conversion Velocity"
-            subtitle="Throughput of property deals created within the selected range."
-            icon={TrendingUp}
-          >
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <KpiTile
-                label="Deals Created"
-                value={data.conversion.created}
-                subtext="Total opportunities initiated in range"
-                tone="cyan"
-              />
-              <KpiTile
-                label="Reached Agreed"
-                value={`${data.conversion.reached_agreed} (${data.conversion.agreed_rate}%)`}
-                subtext="Deals progressed to agreed terms"
-                tone={data.conversion.agreed_rate >= 50 ? 'good' : 'warn'}
-                progress={data.conversion.agreed_rate}
-              />
-              <KpiTile
-                label="Completed Deals"
-                value={`${data.conversion.completed} (${data.conversion.completed_rate}%)`}
-                subtext="Transactions successfully closed"
-                tone={data.conversion.completed_rate >= 25 ? 'good' : 'neutral'}
-                progress={data.conversion.completed_rate}
-              />
+          {/* TAB 2: PIPELINE & CONVERSION & LEADS */}
+          {activeTab === 'pipeline' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {renderPipelineSection()}
+              {renderConversionSection()}
+              {renderLeadAttributionSection()}
             </div>
-          </SectionCard>
+          )}
 
-          {/* 3. Settlement forecast */}
-          <SectionCard
-            title="Settlement Forecast"
-            subtitle="Projected monthly closing schedule and expected transactional value."
-            icon={Calendar}
-          >
-            <DataTable
-              cols={[
-                {
-                  k: 'month',
-                  h: 'Forecast Month',
-                  render: (r) => (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Calendar size={13} color="var(--muted, #64748b)" />
-                      <span style={{ fontWeight: 600 }}>{r.month}</span>
-                    </div>
-                  ),
-                },
-                {
-                  k: 'count',
-                  h: 'Settlements',
-                  right: true,
-                  render: (r) => <strong>{r.count}</strong>,
-                },
-                {
-                  k: 'expected_value',
-                  h: 'Expected Value',
-                  right: true,
-                  render: (r) => (
-                    <span style={{ fontWeight: 700, color: 'var(--navy, #003768)' }}>
-                      {bdt(r.expected_value)}
-                    </span>
-                  ),
-                },
-              ]}
-              rows={data.settlement_forecast}
-              emptyText="No settlements forecasted for this period."
-            />
-          </SectionCard>
-
-          {/* 4. Overdue receivables */}
-          <SectionCard
-            title="Overdue Receivables"
-            subtitle="Deals with past settlement dates carrying unpaid or partial payment balances."
-            icon={AlertTriangle}
-            badge={
-              data.overdue_receivables.length > 0 ? (
-                <span
-                  style={{
-                    padding: '2px 8px',
-                    borderRadius: 5,
-                    fontSize: 11.5,
-                    fontWeight: 650,
-                    background: '#fee2e2',
-                    color: '#991b1b',
-                  }}
-                >
-                  {data.overdue_receivables.length} Action Needed
-                </span>
-              ) : (
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    fontSize: 12,
-                    color: '#166534',
-                    fontWeight: 600,
-                  }}
-                >
-                  <CheckCircle2 size={13} />
-                  <span>All Clear</span>
-                </span>
-              )
-            }
-          >
-            <DataTable
-              cols={[
-                {
-                  k: 'property',
-                  h: 'Property',
-                  render: (r) => (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Building2 size={13} color="var(--muted, #64748b)" />
-                      <span style={{ fontWeight: 600 }}>{r.property || '—'}</span>
-                    </div>
-                  ),
-                },
-                {
-                  k: 'settlement_date',
-                  h: 'Due Date',
-                  render: (r) => <span style={{ color: '#b91c1c', fontWeight: 600 }}>{r.settlement_date}</span>,
-                },
-                {
-                  k: 'status',
-                  h: 'Payment Status',
-                  render: (r) => (
-                    <span
-                      style={{
-                        padding: '2px 7px',
-                        borderRadius: 4,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        background: r.status === 'unpaid' ? '#fee2e2' : '#fef3c7',
-                        color: r.status === 'unpaid' ? '#991b1b' : '#92400e',
-                        textTransform: 'capitalize',
-                      }}
-                    >
-                      {r.status}
-                    </span>
-                  ),
-                },
-                {
-                  k: 'expected',
-                  h: 'Expected Balance',
-                  right: true,
-                  render: (r) => <strong>{bdt(r.expected)}</strong>,
-                },
-              ]}
-              rows={data.overdue_receivables}
-              emptyText="No overdue receivables. All accounts are up to date."
-            />
-          </SectionCard>
-
-          {/* 5. Fees — expected vs actual */}
-          <SectionCard
-            title="Fees — Expected vs Actual"
-            subtitle="Commission and marketing fee reconciliation against billings and cash collections."
-            icon={DollarSign}
-          >
-            <DataTable
-              cols={[
-                {
-                  k: 'property',
-                  h: 'Property',
-                  render: (r) => (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Building2 size={13} color="var(--muted, #64748b)" />
-                      <span style={{ fontWeight: 600 }}>{r.property || '—'}</span>
-                    </div>
-                  ),
-                },
-                {
-                  k: 'expected',
-                  h: 'Expected Fee',
-                  right: true,
-                  render: (r) => bdt(r.expected),
-                },
-                {
-                  k: 'invoiced',
-                  h: 'Invoiced',
-                  right: true,
-                  render: (r) => bdt(r.invoiced),
-                },
-                {
-                  k: 'collected',
-                  h: 'Collected',
-                  right: true,
-                  render: (r) => <strong style={{ color: '#166534' }}>{bdt(r.collected)}</strong>,
-                },
-                {
-                  k: 'variance',
-                  h: 'Variance',
-                  right: true,
-                  render: (r) => {
-                    const isPositive = r.variance >= 0;
-                    return (
-                      <span
-                        style={{
-                          fontWeight: 650,
-                          color: isPositive ? '#166534' : '#b91c1c',
-                        }}
-                      >
-                        {isPositive ? `+${bdt(r.variance)}` : `-${bdt(Math.abs(r.variance))}`}
-                      </span>
-                    );
-                  },
-                },
-              ]}
-              rows={data.fees.rows}
-              emptyText="No property fee profiles registered for the current scope."
-            />
-
-            <SummaryStrip
-              items={[
-                { label: 'Expected', value: bdt(data.fees.totals.expected) },
-                { label: 'Invoiced', value: bdt(data.fees.totals.invoiced) },
-                { label: 'Collected', value: bdt(data.fees.totals.collected), color: '#166534' },
-                {
-                  label: 'Variance',
-                  value:
-                    data.fees.totals.variance >= 0
-                      ? `+${bdt(data.fees.totals.variance)}`
-                      : `-${bdt(Math.abs(data.fees.totals.variance))}`,
-                  color: data.fees.totals.variance >= 0 ? '#166534' : '#b91c1c',
-                },
-              ]}
-            />
-          </SectionCard>
-
-          {/* 6. Response SLA & workload */}
-          <SectionCard
-            title="Response SLA & Assignee Workload"
-            subtitle="Inquiry turnaround times against business-day SLAs and officer allocation."
-            icon={ShieldCheck}
-          >
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-              <KpiTile
-                label="Enquiries Received"
-                value={data.sla.enquiries}
-                subtext="Total inbound inquiries in range"
-              />
-              <KpiTile
-                label="Responded"
-                value={data.sla.responded}
-                subtext="Inquiries with recorded outbound reply"
-              />
-              <KpiTile
-                label="Within SLA (≤1 Day)"
-                value={`${data.sla.within_sla_pct}%`}
-                subtext={`${data.sla.within_sla || 0} inquiries met response SLA`}
-                tone={data.sla.within_sla_pct >= 90 ? 'good' : 'warn'}
-                progress={data.sla.within_sla_pct}
-              />
-              <KpiTile
-                label="Avg First Response"
-                value={`${data.sla.avg_first_response_hours} hrs`}
-                subtext="Average duration to first outreach"
-                tone="cyan"
-              />
+          {/* TAB 3: SETTLEMENTS & OVERDUE */}
+          {activeTab === 'settlements' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {renderSettlementSection()}
+              {renderOverdueSection()}
             </div>
+          )}
 
-            <DataTable
-              cols={[
-                {
-                  k: 'name',
-                  h: 'Officer / Assignee',
-                  render: (r) => (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div
-                        style={{
-                          width: 24,
-                          height: 24,
-                          borderRadius: '50%',
-                          background: 'var(--surface-3, #eff3f9)',
-                          border: '1px solid var(--line, #e2e8f0)',
-                          display: 'grid',
-                          placeItems: 'center',
-                          fontSize: 10.5,
-                          fontWeight: 700,
-                          color: 'var(--navy, #003768)',
-                        }}
-                      >
-                        {r.name ? r.name.slice(0, 2).toUpperCase() : 'U'}
-                      </div>
-                      <span style={{ fontWeight: 600 }}>{r.name}</span>
-                    </div>
-                  ),
-                },
-                {
-                  k: 'open_deals',
-                  h: 'Active Deals',
-                  right: true,
-                  render: (r) => <strong>{r.open_deals}</strong>,
-                },
-                {
-                  k: 'open_enquiries',
-                  h: 'Open Inquiries',
-                  right: true,
-                  render: (r) => <strong>{r.open_enquiries}</strong>,
-                },
-              ]}
-              rows={data.workload}
-              emptyText="No assigned team members with active load in range."
-            />
-          </SectionCard>
+          {/* TAB 4: FEES & MARGINS */}
+          {activeTab === 'financials' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {renderFeesSection()}
+              {renderExpensesSection()}
+            </div>
+          )}
 
-          {/* 7. Expenses & margin */}
-          <SectionCard
-            title="Expenses & Operational Margin"
-            subtitle="Direct marketing, staging, and property overheads measured against collections."
-            icon={Briefcase}
-          >
-            <DataTable
-              cols={[
-                {
-                  k: 'property',
-                  h: 'Property',
-                  render: (r) => (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Building2 size={13} color="var(--muted, #64748b)" />
-                      <span style={{ fontWeight: 600 }}>{r.property || '—'}</span>
-                    </div>
-                  ),
-                },
-                {
-                  k: 'total',
-                  h: 'Total Expenses',
-                  right: true,
-                  render: (r) => (
-                    <span style={{ color: '#b45309' }}>{bdt(r.total)}</span>
-                  ),
-                },
-                {
-                  k: 'collected',
-                  h: 'Collected Fees',
-                  right: true,
-                  render: (r) => bdt(r.collected),
-                },
-                {
-                  k: 'margin',
-                  h: 'Net Margin',
-                  right: true,
-                  render: (r) => {
-                    const isPositive = r.margin >= 0;
-                    return (
-                      <span
-                        style={{
-                          fontWeight: 700,
-                          color: isPositive ? '#166534' : '#b91c1c',
-                        }}
-                      >
-                        {isPositive ? `+${bdt(r.margin)}` : `-${bdt(Math.abs(r.margin))}`}
-                      </span>
-                    );
-                  },
-                },
-              ]}
-              rows={data.expenses.rows}
-              emptyText="No expense records registered for properties in this range."
-            />
+          {/* TAB 5: TEAM & SLA */}
+          {activeTab === 'team' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {renderSlaSection()}
+            </div>
+          )}
 
-            <SummaryStrip
-              items={[
-                { label: 'Total Expenses', value: bdt(data.expenses.totals.expenses), color: '#b45309' },
-                { label: 'Total Collected', value: bdt(data.expenses.totals.collected), color: '#166534' },
-                {
-                  label: 'Net Margin',
-                  value:
-                    data.expenses.totals.margin >= 0
-                      ? `+${bdt(data.expenses.totals.margin)}`
-                      : `-${bdt(Math.abs(data.expenses.totals.margin))}`,
-                  color: data.expenses.totals.margin >= 0 ? '#166534' : '#b91c1c',
-                },
-              ]}
-            />
-          </SectionCard>
-
-          {/* 8. Lead attribution */}
-          <SectionCard
-            title="Lead Attribution"
-            subtitle="First-touch marketing source and campaign for leads created in range, with conversion."
-            icon={Users}
-          >
-            <DataTable
-              cols={[
-                { k: 'source', h: 'Source', render: (r) => <span style={{ fontWeight: 600 }}>{r.source}</span> },
-                { k: 'campaign', h: 'Campaign' },
-                { k: 'created', h: 'Leads', right: true, render: (r) => <strong>{r.created}</strong> },
-                { k: 'converted', h: 'Converted', right: true, render: (r) => <span style={{ color: '#166534', fontWeight: 600 }}>{r.converted}</span> },
-                { k: 'rate', h: 'Conv. Rate', right: true, render: (r) => <span style={{ fontWeight: 650 }}>{r.rate}%</span> },
-              ]}
-              rows={data.lead_attribution || []}
-              emptyText="No leads created in this range."
-            />
-          </SectionCard>
+          {/* TAB 6: ALL REPORTS (Complete Sequential Dossier) */}
+          {activeTab === 'all' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {renderPipelineSection()}
+              {renderConversionSection()}
+              {renderSettlementSection()}
+              {renderOverdueSection()}
+              {renderFeesSection()}
+              {renderSlaSection()}
+              {renderExpensesSection()}
+              {renderLeadAttributionSection()}
+            </div>
+          )}
         </div>
       )}
 
@@ -1215,3 +1659,4 @@ export default function SalesReports() {
     </div>
   );
 }
+

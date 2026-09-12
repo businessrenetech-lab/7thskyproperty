@@ -152,7 +152,7 @@ export default function PropertyWizard() {
     floor_plan_url: "",
     virtual_tour_url: "",
     unit_floor_plans: [],
-    is_published: false,
+    is_published: true,
     is_featured: false,
     seo_title: "",
     seo_description: "",
@@ -271,9 +271,13 @@ export default function PropertyWizard() {
               is_featured: !!f.is_featured,
             }
           : {
+              price: f.approved_monthly_rent || null,
               approved_monthly_rent: f.approved_monthly_rent || null,
               market_rent_min: f.market_rent_min || null,
               market_rent_max: f.market_rent_max || null,
+              is_published: f.is_published !== undefined ? !!f.is_published : true,
+              is_featured: !!f.is_featured,
+              is_negotiable: !!f.is_negotiable,
             }),
       },
     };
@@ -336,7 +340,7 @@ export default function PropertyWizard() {
       toast.success(
         saleMode
           ? "Sales listing is ready."
-          : "Property is ready. Next: assessment, owner and tenant.",
+          : "Property is ready and published to website. Next: assessment, owner and tenant.",
       );
       nav(
         saleMode
@@ -1193,38 +1197,81 @@ export default function PropertyWizard() {
                       </div>
                     </>
                   ) : (
-                    <div className="form-grid">
-                      <Field label="Expected monthly rent (optional)">
-                        <Input
-                          type="number"
-                          value={f.approved_monthly_rent}
-                          onChange={(e) =>
-                            set("approved_monthly_rent", e.target.value)
-                          }
-                          placeholder="৳"
-                        />
-                      </Field>
-                      <Field label="Market rent range (optional)">
-                        <div style={{ display: "flex", gap: 6 }}>
+                    <>
+                      <div className="form-grid">
+                        <Field label="Standard / Approved Monthly Rent (৳)">
                           <Input
                             type="number"
-                            value={f.market_rent_min}
-                            onChange={(e) =>
-                              set("market_rent_min", e.target.value)
-                            }
-                            placeholder="min"
+                            value={f.approved_monthly_rent || f.price || ""}
+                            onChange={(e) => {
+                              set("approved_monthly_rent", e.target.value);
+                              set("price", e.target.value);
+                            }}
+                            placeholder="৳ e.g. 45000"
                           />
-                          <Input
-                            type="number"
-                            value={f.market_rent_max}
+                        </Field>
+                        <Field label="Market rent range (optional)">
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <Input
+                              type="number"
+                              value={f.market_rent_min}
+                              onChange={(e) =>
+                                set("market_rent_min", e.target.value)
+                              }
+                              placeholder="min"
+                            />
+                            <Input
+                              type="number"
+                              value={f.market_rent_max}
+                              onChange={(e) =>
+                                set("market_rent_max", e.target.value)
+                              }
+                              placeholder="max"
+                            />
+                          </div>
+                        </Field>
+                      </div>
+                      <div className="form-grid" style={{ gridTemplateColumns: "1fr 1fr 1fr" }}>
+                        <Field label="Price Negotiable">
+                          <Select
+                            value={f.is_negotiable ? "yes" : "no"}
                             onChange={(e) =>
-                              set("market_rent_max", e.target.value)
+                              set("is_negotiable", e.target.value === "yes")
                             }
-                            placeholder="max"
-                          />
-                        </div>
-                      </Field>
-                    </div>
+                          >
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                          </Select>
+                        </Field>
+                        <Field label="Website visibility">
+                          <Select
+                            value={f.is_published ? "published" : "draft"}
+                            onChange={(e) =>
+                              set(
+                                "is_published",
+                                e.target.value === "published",
+                              )
+                            }
+                          >
+                            <option value="published">
+                              Publish on website (Live)
+                            </option>
+                            <option value="draft">Keep website draft</option>
+                          </Select>
+                        </Field>
+                        <Field label="Featured listing">
+                          <Select
+                            value={f.is_featured ? "yes" : "no"}
+                            onChange={(e) =>
+                              set("is_featured", e.target.value === "yes")
+                            }
+                          >
+                            <option value="no">No</option>
+                            <option value="yes">Yes</option>
+                          </Select>
+                        </Field>
+                      </div>
+                    </>
                   )}
                   <div
                     className="pm-card"
@@ -1312,7 +1359,7 @@ export default function PropertyWizard() {
                           : "—"
                       }
                     />
-                    {saleMode && (
+                    {saleMode ? (
                       <SummaryRow
                         k="Asking price"
                         v={
@@ -1321,13 +1368,20 @@ export default function PropertyWizard() {
                             : "—"
                         }
                       />
-                    )}
-                    {saleMode && (
+                    ) : (
                       <SummaryRow
-                        k="Website"
-                        v={`${f.is_published ? "Published" : "Draft"}${f.is_featured ? " · Featured" : ""}${f.video_tour_url ? " · YouTube video set" : ""}`}
+                        k="Monthly rent"
+                        v={
+                          (f.approved_monthly_rent || f.price)
+                            ? `৳${Number(f.approved_monthly_rent || f.price).toLocaleString("en-BD")} / month`
+                            : "—"
+                        }
                       />
                     )}
+                    <SummaryRow
+                      k="Website"
+                      v={`${f.is_published ? "Published (Live)" : "Draft"}${f.is_featured ? " · Featured" : ""}${f.video_tour_url ? " · YouTube video set" : ""}`}
+                    />
                   </div>
                   <p
                     style={{

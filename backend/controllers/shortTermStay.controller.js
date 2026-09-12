@@ -168,12 +168,14 @@ exports.getPublicAvailability = asyncHandler(async (req, res) => {
 
 exports.createPublicEnquiry = asyncHandler(async (req, res) => {
   const payload = pick(req.body, [
-    'profile_id', 'public_slug', 'slug', 'guest_name', 'guest_email', 'guest_phone',
-    'full_name', 'email', 'phone', 'check_in_date', 'check_out_date', 'adults_count',
-    'children_count', 'message',
+    'property_id', 'property_code', 'profile_id', 'public_slug', 'slug',
+    'guest_name', 'guest_email', 'guest_phone', 'name', 'full_name', 'email', 'phone',
+    'check_in_date', 'check_out_date', 'check_in', 'check_out',
+    'adults_count', 'children_count', 'guests_count',
+    'message', 'notes', 'total_price',
   ]);
   const enquiry = await shortTermStayService.createPublicEnquiry(payload);
-  res.status(201).json(enquiry);
+  res.status(201).json({ success: true, ...enquiry });
 });
 
 // 6b. Availability timeline (properties + blocks/bookings across a date window)
