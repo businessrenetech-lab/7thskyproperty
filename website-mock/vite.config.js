@@ -14,6 +14,13 @@ export default defineConfig({
       '/uploads': {
         target: 'http://127.0.0.1:50001',
         changeOrigin: true,
+      },
+      // The admin SPA + all portals (tenant/landlord/provider/register/sign) live
+      // under /admin on the backend origin — proxy them so http://localhost:3005/admin
+      // and the portal links work exactly as they do on :50001.
+      '/admin': {
+        target: 'http://127.0.0.1:50001',
+        changeOrigin: true,
       }
     }
   }
