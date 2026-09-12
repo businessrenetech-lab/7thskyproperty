@@ -63,11 +63,26 @@ async function onCompleted(envelope, { transaction } = {}) {
     invoices.push(inv);
   }
 
-  // Activation (best-effort): flag the sale engagement as signed.
+  // Activation (best-effort): flag the sale engagement as signed and — for the
+  // SALE (vendor) agreement — sync the agreed commission onto the SaleProfile so
+  // the settlement's agency-fee quote (agencyFees.quoteForSale → commission_from
+  // SaleProfile) matches the signed agreement. The PURCHASE (buyer) success fee
+  // is a client agreement-fee invoice (drafted above), not a settlement deduction,
+  // so it does not touch the vendor's commission profile.
   if (envelope.related_id) {
     try {
       const profile = await SaleProfile.findOne({ where: { property_id: envelope.related_id, branch_id: envelope.branch_id }, transaction });
-      if (profile) await profile.update({ agreement_status: 'signed' }, { transaction });
+      if (profile) {
+        const patch = { agreement_status: 'signed' };
+        if (envelope.related_type === 'sale_sale_agreement') {
+          const mode = terms.commission_mode;
+          const amount = num(terms.commission);
+          const percent = num(terms.commission_percent);
+          if (mode === 'fixed' && amount > 0) { patch.commission_fixed = amount; patch.commission_percent = 0; }
+          else if (mode === 'percent' && percent > 0) { patch.commission_percent = percent; patch.commission_fixed = 0; }
+        }
+        await profile.update(patch, { transaction });
+      }
     } catch { /* best-effort */ }
   }
   return { invoices };
