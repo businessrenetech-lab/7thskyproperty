@@ -121,6 +121,12 @@ const finish = () => { console.log(`\n${'='.repeat(60)}\n${R.fail ? '\x1b[31m' :
   ok([200, 201].includes(assign.status) && wo?.provider_id === cheapest.provider_id, 'cheapest provider ASSIGNED to the job', `provider#${wo?.provider_id} @ ${money(wo?.amount)}`);
 
   // ── Start → complete → provider bill + tenant recharge ──────────────────────
+  // Resolve the owner folio + capture its balance so we can prove the owner is
+  // charged for the repair on completion.
+  const ownerFolioId = (await A('GET', `/api/disbursements/owner/${ownerId}/preview?property_id=${propId}`)).body?.data?.folio?.id;
+  const folioBal = async () => Number((await A('GET', `/api/folios/${ownerFolioId}`)).body?.data?.current_balance || 0);
+  const balBeforeJob = await folioBal();
+
   await A('POST', `/api/work-orders/${woId}/start`);
   const comp = await A('POST', `/api/work-orders/${woId}/complete`, { actual_cost: JOB_COST, tenant_recharge: true, tenant_recharge_amount: TENANT_RECHARGE, provider_notes: 'Replaced cartridge + seal' });
   const providerBill = comp.body?.landlord_bill;
@@ -128,6 +134,10 @@ const finish = () => { console.log(`\n${'='.repeat(60)}\n${R.fail ? '\x1b[31m' :
   ok([200, 201].includes(comp.status) && !!providerBill, 'completion auto-creates the provider bill', providerBill?.invoice_code);
   ok(providerBill?.invoice_kind === 'provider' && Number(providerBill?.provider_id) === Number(cheapest.provider_id), 'provider bill is addressed to the assigned provider', `kind=${providerBill?.invoice_kind} provider#${providerBill?.provider_id}`);
   ok(!!rechargeInv, 'tenant recharge invoice raised', `${rechargeInv?.invoice_code} (${money(TENANT_RECHARGE)})`);
+
+  // OWNER FUNDS THE REPAIR: completion charged the owner folio the full cost.
+  const balAfterJob = await folioBal();
+  ok(Math.abs((balBeforeJob - balAfterJob) - JOB_COST) < 0.01, 'owner folio CHARGED the repair cost on completion', `${money(balBeforeJob)} → ${money(balAfterJob)} (−${money(JOB_COST)})`);
 
   // ── PAY the provider (payout / money OUT) ───────────────────────────────────
   const payout = await A('POST', '/api/disbursements/supplier', { invoice_id: providerBill.id, method: 'bank_transfer', reference: `PROV-PO-${STAMP}` });
@@ -138,6 +148,9 @@ const finish = () => { console.log(`\n${'='.repeat(60)}\n${R.fail ? '\x1b[31m' :
   // ── Tenant pays their recharge share (money IN) ─────────────────────────────
   const payT = await A('POST', `/api/invoices/${rechargeInv.id}/payments`, { amount: TENANT_RECHARGE, method: 'bkash', reference: `PROV-TR-${STAMP}` });
   ok([200, 201].includes(payT.status), 'tenant pays the maintenance recharge (money IN)', `HTTP ${payT.status}`);
+  // The tenant reimbursement posts back to the owner folio → owner nets only their share.
+  const balAfterRecharge = await folioBal();
+  ok(Math.abs((balAfterRecharge - balAfterJob) - TENANT_RECHARGE) < 0.01, 'tenant recharge credited back to owner folio', `+${money(TENANT_RECHARGE)} → owner net cost ${money(JOB_COST - TENANT_RECHARGE)}`);
 
   // ── Dashboards reflect the job ──────────────────────────────────────────────
   const tenWOs = list((await tp('GET', '/api/tenant/work-orders')).body);

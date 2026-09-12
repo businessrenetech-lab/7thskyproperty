@@ -16,6 +16,7 @@ const InvoiceItem = require('../models/InvoiceItem');
 const Tenancy = require('../models/Tenancy');
 const Communication = require('../models/Communication');
 const { generateCode } = require('../utils/codeGenerator');
+const { findBestLandlordFolio, postFolioTransaction } = require('./folio.service');
 
 const num = (v) => Number(v || 0);
 
@@ -162,6 +163,27 @@ async function complete(workOrderId, { actual_cost, after_photos, provider_notes
         amount: cost,
         property_id: wo.property_id,
       }, { transaction: tx });
+
+      // Charge the OWNER's folio so they fund the repair: post the full cost as a
+      // `supplier_bill` CREDIT (a deduction — folio balance is debit − credit), so
+      // the held balance drops and the owner disbursement pays them net of the
+      // repair. If the tenant is recharged, their payment posts back as a DEBIT
+      // when they pay, so the owner ultimately bears only their share. Mirrors the
+      // manual landlord-bill path (billing.controller.createLandlordBill).
+      const landlordFolio = await findBestLandlordFolio(property.owner_contact_id, wo.property_id, { transaction: tx });
+      if (landlordFolio) {
+        await postFolioTransaction({
+          folio_id: landlordFolio.id,
+          transaction_type: 'supplier_bill',
+          bucket: 'supplier_bill',
+          provider_id: wo.provider_id || null,
+          property_id: wo.property_id,
+          invoice_id: landlordBill.id,
+          description: `Maintenance — ${wo.title} (${wo.work_order_code})`,
+          credit: cost,
+          created_by: user_id || null,
+        }, { transaction: tx });
+      }
     }
 
     // 2. Tenant recharge invoice (client invoice)
