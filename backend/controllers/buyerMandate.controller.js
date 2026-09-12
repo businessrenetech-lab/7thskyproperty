@@ -9,7 +9,8 @@ const sequelize = require('../config/db.config');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, pick } = require('../utils/controllerHelpers');
 
-const MANDATE_FIELDS = ['buyer_client_id', 'buyer_contact_id', 'status', 'budget_min', 'budget_max', 'areas', 'property_type', 'beds_min', 'baths_min', 'timeframe', 'notes', 'assigned_to', 'cancel_reason'];
+const MANDATE_FIELDS = ['buyer_client_id', 'buyer_contact_id', 'status', 'budget_min', 'budget_max', 'areas', 'property_type', 'beds_min', 'baths_min', 'timeframe', 'notes', 'assigned_to', 'cancel_reason',
+  'finance_status', 'investment_use', 'risk_notes', 'search_strategy'];
 const PROP_ATTRS = ['id', 'property_code', 'title', 'area', 'price', 'owner_contact_id'];
 // Client belongsTo Contact with no alias, so the accessor is `.Contact`.
 const buyerName = (m) => m.buyerClient?.Contact?.full_name || m.buyerContact?.full_name || '—';
@@ -56,6 +57,20 @@ exports.update = asyncHandler(async (req, res) => {
   res.json({ data: m, message: 'Mandate updated.' });
 });
 
+// POST /:id/approve-to-proceed — the stage-2 gate: the buyer is cleared to enter
+// active search. Toggle-able (undo). Records who/when.
+exports.approveToProceed = asyncHandler(async (req, res) => {
+  const m = await BuyerMandate.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!m) return res.status(404).json({ error: 'Mandate not found.' });
+  const approve = req.body?.approved !== false;
+  await m.update({
+    approved_to_proceed: approve,
+    approved_at: approve ? new Date() : null,
+    approved_by: approve ? (req.user?.id || null) : null,
+  });
+  res.json({ data: m, message: approve ? 'Approved to proceed to active search.' : 'Approval withdrawn.' });
+});
+
 exports.addCandidate = asyncHandler(async (req, res) => {
   const m = await BuyerMandate.findOne({ where: { id: req.params.id, ...branchScope(req) } });
   if (!m) return res.status(404).json({ error: 'Mandate not found.' });
@@ -70,7 +85,7 @@ exports.addCandidate = asyncHandler(async (req, res) => {
 exports.patchCandidate = asyncHandler(async (req, res) => {
   const c = await MandateCandidate.findOne({ where: { id: req.params.cid, ...branchScope(req) } });
   if (!c) return res.status(404).json({ error: 'Candidate not found.' });
-  await c.update(pick(req.body, ['status', 'feedback', 'fit_note']));
+  await c.update(pick(req.body, ['status', 'feedback', 'fit_note', 'viewing_date', 'inspection_notes', 'inspection_photos']));
   res.json({ data: c });
 });
 

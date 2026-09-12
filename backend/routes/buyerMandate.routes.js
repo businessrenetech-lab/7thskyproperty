@@ -10,6 +10,7 @@ router.get('/', ctrl.list);
 router.post('/', ctrl.create);
 router.get('/:id', ctrl.getOne);
 router.put('/:id', ctrl.update);
+router.post('/:id/approve-to-proceed', ctrl.approveToProceed);
 router.post('/:id/candidates', ctrl.addCandidate);
 router.patch('/candidates/:cid', ctrl.patchCandidate);
 router.delete('/candidates/:cid', ctrl.removeCandidate);

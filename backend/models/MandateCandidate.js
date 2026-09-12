@@ -16,6 +16,10 @@ const MandateCandidate = sequelize.define('MandateCandidate', {
   status: { type: DataTypes.ENUM('shortlisted', 'viewing', 'rejected', 'converted'), defaultValue: 'shortlisted' },
   fit_note: DataTypes.TEXT,
   feedback: DataTypes.TEXT,
+  // Stage 4 — inspection coordination
+  viewing_date: DataTypes.DATE,
+  inspection_notes: DataTypes.TEXT,
+  inspection_photos: DataTypes.JSON,
   converted_deal_id: DataTypes.INTEGER,
   created_by: DataTypes.INTEGER,
 }, { tableName: 'mandate_candidates', underscored: true });

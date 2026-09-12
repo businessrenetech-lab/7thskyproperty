@@ -9,7 +9,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ClipboardCheck, Users, HandCoins, FileSignature, ShieldCheck, Wrench } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
-import { PageHead, Button, Spinner, StatusBadge, Badge } from '../../ui/kit';
+import { PageHead, Button, Spinner, StatusBadge, Badge, Field, Input, Textarea, Select } from '../../ui/kit';
 import UploadButton from '../../ui/UploadButton';
 
 const bdt = (v) => '৳' + Number(v || 0).toLocaleString('en-BD');
@@ -46,6 +46,23 @@ export default function BuyerDealFile() {
   const patchStage = async (stage, patch) => {
     try { await api.patch(`/projects/${sop.id}/stages/${stage.id}`, patch); loadSop(); }
     catch (e) { toast.error(e.response?.data?.error || 'Could not update the stage'); }
+  };
+
+  // Stage 2 — save planning fields / toggle the approve-to-proceed gate.
+  const saveMandate = async (patch) => {
+    if (!file.mandate) return;
+    try { await api.put(`/buyer-mandates/${file.mandate.id}`, patch); toast.success('Saved'); loadFile(); }
+    catch (e) { toast.error(e.response?.data?.error || 'Could not save'); }
+  };
+  const toggleApprove = async () => {
+    if (!file.mandate) return;
+    try { await api.post(`/buyer-mandates/${file.mandate.id}/approve-to-proceed`, { approved: !file.mandate.approved_to_proceed }); loadFile(); }
+    catch (e) { toast.error(e.response?.data?.error || 'Could not update approval'); }
+  };
+  // Stage 4 — save per-candidate viewing / inspection.
+  const saveCandidate = async (cid, patch) => {
+    try { await api.patch(`/buyer-mandates/candidates/${cid}`, patch); toast.success('Saved'); loadFile(); }
+    catch (e) { toast.error(e.response?.data?.error || 'Could not save'); }
   };
 
   if (file === undefined) return <div className="card-pad" style={{ padding: 48, textAlign: 'center' }}><Spinner /></div>;
@@ -135,26 +152,16 @@ export default function BuyerDealFile() {
         </div>
       )}
 
-      {/* REQUIREMENTS & CANDIDATES */}
+      {/* REQUIREMENTS & CANDIDATES (stages 2-4) */}
       {tab === 'requirements' && (
-        <div className="pm-card"><div className="pm-card-body" style={{ padding: 16 }}>
-          {!file.mandate ? <p className="cell-sub">No buyer mandate linked. Create one from Buyer Mandates, or the deal was made directly.</p> : (
-            <>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-                {[['Budget', `${bdt(file.mandate.budget_min)}–${bdt(file.mandate.budget_max)}`], ['Areas', file.mandate.areas || '—'], ['Type', file.mandate.property_type || '—'], ['Timeframe', file.mandate.timeframe || '—']].map(([l, v]) => (
-                  <div key={l} style={{ flex: '1 1 150px', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px' }}><div className="cell-sub">{l}</div><strong>{v}</strong></div>
-                ))}
-              </div>
-              <div style={{ fontWeight: 700, margin: '10px 0 6px' }}>Shortlisted candidates ({file.candidates.length})</div>
-              {file.candidates.length === 0 ? <p className="cell-sub">No candidates shortlisted yet.</p> : (
-                <table className="tbl"><thead><tr><th>Property</th><th>Status</th><th>Feedback</th></tr></thead><tbody>
-                  {file.candidates.map((c) => <tr key={c.id}><td>{c.property?.property_code || c.property?.title || c.property_id}</td><td><StatusBadge status={c.status} /></td><td className="cell-sub">{c.feedback || '—'}</td></tr>)}
-                </tbody></table>
-              )}
-              <Button size="sm" variant="ghost" style={{ marginTop: 10 }} onClick={() => navigate('/residential/mandates')}>Open buyer mandates</Button>
-            </>
+        <div className="pm-col">
+          {!file.mandate ? (
+            <div className="pm-card card-pad"><p className="cell-sub">No buyer mandate linked. Create one from Buyer Mandates.</p>
+              <Button size="sm" variant="ghost" style={{ marginTop: 8 }} onClick={() => navigate('/residential/mandates')}>Open buyer mandates</Button></div>
+          ) : (
+            <PlanningPanel mandate={file.mandate} onSave={saveMandate} onToggleApprove={toggleApprove} candidates={file.candidates} onSaveCandidate={saveCandidate} />
           )}
-        </div></div>
+        </div>
       )}
 
       {/* AGREEMENT & FEES */}
@@ -188,6 +195,78 @@ export default function BuyerDealFile() {
           <p className="cell-sub">Buyer service coordinates the <strong>external</strong> settlement — Seventh Sky does not hold the purchase funds, so there is no trust settlement here. Registration status, settlement date, payment tracking and handover confirmation are added in the next phase. Our service fees are collected via the fee invoices (Agreement &amp; Fees tab).</p>
         </div></div>
       )}
+    </div>
+  );
+}
+
+// Stage 2 (planning + approve gate) + stage 4 (per-candidate viewing/inspection).
+function PlanningPanel({ mandate, onSave, onToggleApprove, candidates, onSaveCandidate }) {
+  const [f, setF] = useState({
+    finance_status: mandate.finance_status || 'unknown',
+    investment_use: mandate.investment_use || '',
+    search_strategy: mandate.search_strategy || '',
+    risk_notes: mandate.risk_notes || '',
+  });
+  const dirty = f.finance_status !== (mandate.finance_status || 'unknown') || f.investment_use !== (mandate.investment_use || '')
+    || f.search_strategy !== (mandate.search_strategy || '') || f.risk_notes !== (mandate.risk_notes || '');
+  return (
+    <>
+      <div className="pm-card"><div className="pm-card-body" style={{ padding: 16 }}>
+        <div className="between" style={{ marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+          <strong>Requirement assessment &amp; planning (Stage 2)</strong>
+          <div style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+            {mandate.approved_to_proceed
+              ? <Badge tone="green">Approved to proceed{mandate.approved_at ? ` · ${String(mandate.approved_at).slice(0, 10)}` : ''}</Badge>
+              : <Badge tone="amber">Not yet approved</Badge>}
+            <Button size="sm" variant={mandate.approved_to_proceed ? 'ghost' : 'primary'} onClick={onToggleApprove}>
+              {mandate.approved_to_proceed ? 'Withdraw approval' : 'Approve to proceed'}
+            </Button>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <Field label="Finance readiness"><Select value={f.finance_status} onChange={(e) => setF((p) => ({ ...p, finance_status: e.target.value }))}>
+            {['unknown', 'pre_approved', 'cash', 'pending', 'declined'].map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+          </Select></Field>
+          <Field label="Intended use"><Input value={f.investment_use} onChange={(e) => setF((p) => ({ ...p, investment_use: e.target.value }))} placeholder="Owner-occupier / Investment" /></Field>
+          <div style={{ gridColumn: '1 / -1' }}><Field label="Search strategy"><Textarea value={f.search_strategy} onChange={(e) => setF((p) => ({ ...p, search_strategy: e.target.value }))} /></Field></div>
+          <div style={{ gridColumn: '1 / -1' }}><Field label="Risk notes"><Textarea value={f.risk_notes} onChange={(e) => setF((p) => ({ ...p, risk_notes: e.target.value }))} /></Field></div>
+        </div>
+        <div style={{ marginTop: 10 }}><Button size="sm" disabled={!dirty} onClick={() => onSave(f)}>Save planning</Button></div>
+      </div></div>
+
+      <div className="pm-card" style={{ marginTop: 12 }}><div className="pm-card-body" style={{ padding: 16 }}>
+        <strong>Shortlisted candidates &amp; inspections (Stages 3-4) — {candidates.length}</strong>
+        {candidates.length === 0 ? <p className="cell-sub" style={{ marginTop: 8 }}>No candidates shortlisted yet.</p>
+          : candidates.map((c) => <CandidateRow key={c.id} c={c} onSave={onSaveCandidate} />)}
+      </div></div>
+    </>
+  );
+}
+
+function CandidateRow({ c, onSave }) {
+  const [v, setV] = useState({
+    viewing_date: c.viewing_date ? String(c.viewing_date).slice(0, 10) : '',
+    inspection_notes: c.inspection_notes || '',
+    feedback: c.feedback || '',
+  });
+  const photos = Array.isArray(c.inspection_photos) ? c.inspection_photos : [];
+  return (
+    <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 12, marginTop: 10 }}>
+      <div className="between" style={{ marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+        <strong>{c.property?.property_code || c.property?.title || `Property #${c.property_id}`}</strong>
+        <StatusBadge status={c.status} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 12, alignItems: 'end' }}>
+        <Field label="Viewing date"><Input type="date" value={v.viewing_date} onChange={(e) => setV((p) => ({ ...p, viewing_date: e.target.value }))} /></Field>
+        <Field label="Buyer feedback"><Input value={v.feedback} onChange={(e) => setV((p) => ({ ...p, feedback: e.target.value }))} /></Field>
+        <div style={{ gridColumn: '1 / -1' }}><Field label="Inspection notes"><Textarea value={v.inspection_notes} onChange={(e) => setV((p) => ({ ...p, inspection_notes: e.target.value }))} /></Field></div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+        <UploadButton folder="documents" label="Add inspection photo" onChange={(url) => url && onSave(c.id, { inspection_photos: [...photos, url] })} />
+        {photos.map((u, i) => <a key={i} className="btn btn-ghost btn-sm" href={u} target="_blank" rel="noreferrer">Photo {i + 1}</a>)}
+        <div style={{ flex: 1 }} />
+        <Button size="sm" onClick={() => onSave(c.id, v)}>Save</Button>
+      </div>
     </div>
   );
 }
