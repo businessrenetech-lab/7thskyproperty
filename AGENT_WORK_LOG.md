@@ -5267,3 +5267,141 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Frontend: new LeadAutomation admin screen (/residential/lead-automation, 'Lead Automation' Home nav) — Routing rules + Sequences panels with a step editor over MessageTemplate; SalesInbox thread shows source/campaign badges + a sequence-status chip with pause/resume/stop.
 - Verified: new unit suite scripts/testLeadAutomation.js (12 PASS — rule match, pool round-robin, no-override; step sends once + idempotent re-run; stage-advance stops; do-not-email suppressed) wired into npm test (now 7+5+12+27) + test:full 28/0. Live QA (fresh server): public enquiry source=qa_test → assigned officer 1 via rule + enrolled + utm facebook/spring_sale captured; runLeadSequences sent day-0 once (delivery 'sent'), re-run 0, auto-completed; Lead Automation screen renders both tabs, 0 console errors. All QA data (enquiry, contact/client, rule, sequence, comms) deleted. Non-regression: communication.service / sales inbox / settlement-signing-billing / rental enquiry all 0-line diffs.
 - Deferred (Phase 6 C + later): buyer/seller portal; multi-touch attribution path/history; lead scoring; A/B sequences; inbound-reply auto-pause; WhatsApp; cross-branch routing. Not merged; no PR.
+
+### 2026-09-12 02:18 | Antigravity (Gemini 3.8 Flash) | STARTED | High CRM UI/UX Redesign for Work Queue & Calendar
+- Request: Overhaul /admin/residential/work-queue and /admin/residential/calendar with high-CRM software features (HubSpot/Linear/Attio style). Support adding and updating tasks (priority, status, due date, assignee, property/contact links, notes, completion toggle). Add List/Agenda view to Calendar with filtering and CRM task sync.
+- Scope: `backend/migrations/0116-sales-crm-tasks.js`, `backend/models/SalesTask.js`, `backend/controllers/salesTasks.controller.js`, `backend/controllers/salesCalendar.controller.js`, `backend/routes/sales.routes.js`, `admin-portal/src/screens/sales/SalesWorkQueue.jsx`, `admin-portal/src/screens/sales/SalesCalendar.jsx`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Implement migration 0116, SalesTask model/controller/routes, integrate calendar, redesign SalesWorkQueue into a CRM task center, and redesign SalesCalendar with interactive list/agenda views.
+
+### 2026-09-12 02:27 | Antigravity (Gemini 3.8 Flash) | COMPLETED | High CRM UI/UX Redesign for Work Queue & Calendar
+- Request: Redesign /admin/residential/work-queue and /admin/residential/calendar with top-tier CRM capabilities (HubSpot/Linear/Attio style). Support task creation, task editing/updating, completion toggle, priority, due date/time, property and contact links, assignee selection, notes. In calendar, add full List/Agenda view alongside Month and Week views, and synchronize CRM tasks with viewing/SOP/offer timeline.
+- Files Changed:
+  - `backend/migrations/0116-sales-crm-tasks.js` (NEW): migration creating `sales_tasks` table with comprehensive schema and foreign keys.
+  - `backend/models/SalesTask.js` (NEW): Sequelize model with associations (`Property`, `Contact`, `SalesEnquiry`, `User` assignee/creator).
+  - `backend/controllers/salesTasks.controller.js` (NEW): CRUD handlers (`listTasks`, `createTask`, `getTask`, `updateTask`, `updateStatus`, `deleteTask`) with stats counter, branch scoping, search, and validation.
+  - `backend/controllers/salesCalendar.controller.js`: synchronized scheduled CRM tasks into the sales calendar events feed. Fixed contact phone attribute to `primary_phone`.
+  - `backend/routes/sales.routes.js`: mounted `/tasks`, `/tasks/:id`, and `/tasks/:id/status` endpoints under `/api/sales`.
+  - `admin-portal/src/screens/sales/SalesWorkQueue.jsx`: complete redesign featuring executive KPI cards, CRM Tasks vs Pipeline Action Desk tabs, Dual Task Views (Interactive List with 1-click toggle & Kanban Board), search, multi-faceted filtering, and comprehensive Task Drawer modal for creating and updating tasks.
+  - `admin-portal/src/screens/sales/SalesCalendar.jsx`: redesigned with 3 views (Month Grid, 7-Day Week timeline, Chronological List/Agenda view), category filtering, real-time stats strip, day schedule sidebar, and direct '+ Schedule Task' drawer modal.
+  - `admin-portal/src/screens/sales/sales-calendar.css`: styling for sleek CRM calendar components, list agenda cards, time badges, and status pills.
+- Decisions:
+  - Dual-mode Work Queue: Preserved existing settlement SOP actions and automated alerts on a dedicated "Pipeline Action Desk" tab, while elevating daily agent workflow into a high-density "CRM Tasks & Actions" desk.
+  - Correct contact schema reference: `contacts.primary_phone` instead of `phone` used to avoid SQL 500 column errors.
+  - Direct Task Scheduling in Calendar: Calendar's "+ Schedule Task" button pre-populates the currently selected date directly in the task creation drawer.
+- Verification:
+  - Database migration: `npm run db:migrate` ran cleanly, creating `sales_tasks` table (0.564s).
+  - API E2E Verification: Node script logged in as admin, created task `TSK-00002` (201), listed tasks (200), completed task via PATCH `/status` (200), fetched `/api/sales/calendar` confirming CRM task sync (200).
+  - Build: `npm run build` in `admin-portal/` succeeded without warnings (2049 modules transformed, 9.44s).
+  - Live Routing: `http://127.0.0.1:50001/admin/residential/work-queue` and `http://127.0.0.1:50001/admin/residential/calendar` returning 200 OK.
+- Remaining: None. Production build served from backend.
+
+### 2026-09-12 02:29 | Antigravity (Gemini 3.8 Flash) | STARTED | Fix persistent Drawer modal staying open
+- Request: "the pop up always stays fix" - modal remains stuck open on screen.
+- Scope: `admin-portal/src/ui/kit.jsx`, `admin-portal/src/screens/sales/SalesWorkQueue.jsx`, `admin-portal/src/screens/sales/SalesCalendar.jsx`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Add `open` prop guard to `Drawer` in `kit.jsx`, wrap `<Drawer>` with `{drawerOpen && ...}` in `SalesWorkQueue.jsx` and `SalesCalendar.jsx`, verify close on backdrop/cancel/X, rebuild frontend, and verify live.
+
+### 2026-09-12 02:31 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Fix persistent Drawer modal staying open
+- Request: Resolve issue where the CRM task modal stayed open and fixed on the screen without closing.
+- Files Changed:
+  - `admin-portal/src/ui/kit.jsx`: updated `Drawer` component to inspect `open` prop (`if (!open) return null;`) preventing accidental mounting when `open={false}`.
+  - `admin-portal/src/screens/sales/SalesWorkQueue.jsx`: wrapped `<Drawer>` in `{drawerOpen && ...}` conditional rendering and ensured `onClose` resets `drawerOpen` and `editingTask`.
+  - `admin-portal/src/screens/sales/SalesCalendar.jsx`: wrapped `<Drawer>` in `{drawerOpen && ...}` conditional rendering.
+- Decisions: Guarded both at the kit component level (`Drawer` returns `null` if `open` is false) and caller level (lazy conditional mounting `{drawerOpen && <Drawer...>}`) to guarantee the modal remains closed until explicitly opened by "+ New Task" or editing a task, and closes immediately on (X), Cancel, Escape, or backdrop click.
+- Verification:
+  - `npm run build` in `admin-portal` succeeded (2049 modules transformed, 9.87s).
+  - Verified HTTP 200 on `http://localhost:50001/admin/residential/work-queue` and `http://localhost:50001/admin/residential/calendar`.
+- Remaining: None.
+
+### 2026-09-12 02:44 | Antigravity (Gemini 3.8 Flash) | STARTED | Contacts & Leads CRM Hub (Rename, All Contacts, Leads, Vendors, Buyers, Conversion, Agreements)
+- Request: Rename /residential/lead-automation to Contacts. Add tabs: All Contacts, Leads, Vendors, Buyers. Under leads categorize website property enquiries as buyers and selling requests as vendors. Add lead creation, convert lead to buyer or vendor. Converted contacts ready for signing sale agreement (vendor) or purchase agreement (buyer), creating client profile and linking to client dashboard. Top CRM UI/UX.
+- Scope: `backend/server.js`, `backend/controllers/lead.controller.js`, `admin-portal/src/config/consoles.js`, `admin-portal/src/App.jsx`, `admin-portal/src/screens/sales/SalesContacts.jsx`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Mount `/api/leads` in server.js, enhance `lead.controller.js`, update console routing, build `SalesContacts.jsx`, rebuild frontend, test conversion and agreements flow.
+
+### 2026-09-12 02:49 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Contacts & Leads CRM Hub (Rename, All Contacts, Leads, Vendors, Buyers, Conversion, Agreements)
+- Request: Rename /residential/lead-automation to Contacts. Add tabs: All Contacts, Leads, Vendors, Buyers. Under leads categorize website property enquiries as buyers and selling requests as vendors. Add lead creation, convert lead to buyer or vendor. Converted contacts ready for signing sale agreement (vendor) or purchase agreement (buyer), creating client profile and linking to client dashboard. Top CRM UI/UX.
+- Files Changed:
+  - `backend/server.js`: mounted `/api/leads` route.
+  - `backend/models/Lead.js`: added associations to `Property` (`property`), `Contact` (`contact`), and `Client` (`converted_client`).
+  - `backend/controllers/lead.controller.js`: enhanced `list` with Property/Contact/Client associations; enhanced `convert` to support `target_role` (`seller` / `buyer`), create/upgrade Contact (`is_client: true`) and Client (`is_seller: true` or `is_buyer: true`), and return created entities with formatted codes.
+  - `admin-portal/src/config/consoles.js`: updated `RESIDENTIAL_NAV` item from `Lead Automation` to `Contacts` (`/residential/contacts`, icon `Users`).
+  - `admin-portal/src/App.jsx`: mounted `/residential/contacts` -> `<SalesContacts />` and aliased `/residential/lead-automation` -> `<Navigate to="/residential/contacts" replace />`.
+  - `admin-portal/src/screens/sales/SalesContacts.jsx` (NEW): built full-featured top CRM Contacts Hub:
+    - Executive Metric Cockpit (`Total Contacts`, `Active Leads`, `Verified Vendors`, `Qualified Buyers`, `Agreement Ready`).
+    - 5 Primary Tabs (`All Contacts`, `Leads`, `Vendors`, `Buyers`, `Automations`).
+    - All Contacts: Master directory with search, type filters, phone/email/WhatsApp actions, code chips, and client dossier links.
+    - Leads: Aggregates website property enquiries (categorized as Buyer Leads) and seller step-form requests (categorized as Vendor Leads). Includes stage filtering and `+ New Lead` creation drawer.
+    - Convert Lead Workflow: Interactive modal allowing operators to promote leads to Vendor (Seller) or Buyer, creating client profiles (`SSPC-CL-`) and providing instant 1-click action to **Sign Sale Agreement** (`/residential/agreements/sale`) or **Sign Purchase Agreement** (`/residential/agreements/purchase`) with prefilled client state.
+    - Vendors Tab: Lists all registered sellers (`is_seller: true`) with direct **Sign Sale Agreement** actions and 1-click navigation to client dossier (`/clients?client=<id>`).
+    - Buyers Tab: Lists all registered buyers (`is_buyer: true`) with direct **Sign Purchase Agreement** actions and 1-click navigation to client dossier (`/clients?client=<id>`).
+    - Automations Tab: Houses routing rules and email follow-up sequences.
+- Verification:
+  - API E2E Script: Admin login verified; `GET /api/leads` (200); created lead `SSPC-LD-000005` (201); converted to Vendor (201, generated `SSPC-CL-000005` & `SSPC-CT-000138`); verified in `GET /api/clients?role=seller` (found newly converted vendor); verified routes `/admin/residential/contacts`, `/admin/residential/lead-automation`, `/admin/residential/agreements/sale`, and `/admin/residential/agreements/purchase` all return 200 OK.
+
+
+### 2026-09-12 02:52 | Antigravity (Gemini 3.8 Flash) | STARTED | Residential Contacts Client Profile Navigation
+- Request: "click on client name open their profile in admin/clients.....http://localhost:50001/admin/clients?client=13 it should open under sell sections admin/residential/contacts/clients?client=13"
+- Scope: `admin-portal/src/App.jsx`, `admin-portal/src/screens/sales/SalesContacts.jsx`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Register `/residential/contacts/clients` (and `/residential/clients`) inside `<ResidentialConsole>` in `App.jsx`, update `openClientDashboard` in `SalesContacts.jsx`, build frontend with `npm run build`, verify live navigation and client profile dossier inside the Residential Console layout.
+
+### 2026-09-12 03:02 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Residential Contacts Client Profile Navigation
+- Request: Open client profiles under the sell/residential console at `admin/residential/contacts/clients?client=13` instead of ejecting to global `/admin/clients?client=13`.
+- Files Changed:
+  - `admin-portal/src/App.jsx`: registered `<Route path="/residential/contacts/clients" element={<Clients />} />` and `<Route path="/residential/clients" element={<Navigate to="/residential/contacts/clients" replace />} />` inside `<ResidentialConsole>`.
+  - `admin-portal/src/screens/sales/paths.js`: added `clientProfilePath(category, { clientId, contactId })` helper returning `/residential/contacts/clients?...` for residential and `/clients?...` for others.
+  - `admin-portal/src/screens/sales/SalesContacts.jsx`: updated `openClientDashboard` to navigate to `/residential/contacts/clients?client=${clientId}` (or `?contact=${contactId}`).
+  - `admin-portal/src/screens/Clients.jsx`: updated `onBack` in `Clients` and `ClientWorkspace` to return to `/residential/contacts` and render `<Back to Contacts` contextual button when viewed in residential console scope.
+  - `admin-portal/src/screens/PropertySellDashboard.jsx`: updated `openBuyerClient` to use `clientProfilePath`.
+  - `admin-portal/src/screens/SalesEnquiries.jsx`: updated `openBuyer` to use `clientProfilePath`.
+  - `admin-portal/src/screens/sales/SalesPropertyFile.jsx`: updated buyer link navigation to use `clientProfilePath`.
+- Decisions: Integrated `Clients` component directly under the residential console shell so operators retain sidebar context with the "Contacts" nav item highlighted, access all 360° dossier tabs and KYC docs, and return with 1 click directly back to Contacts directory.
+- Verification:
+  - `npm run build` in `admin-portal` succeeded (2050 modules transformed, 9.00s).
+  - HTTP 200 confirmed on `http://localhost:50001/admin/residential/contacts/clients?client=13`.
+
+
+### 2026-09-12 03:07 | Antigravity (Gemini 3.8 Flash) | STARTED | Leads/Buyers/Vendors Edit Modals & Agreement Pre-fill & Signed Gate
+- Request: "no option for edit leads.....click edit button open pop up edit lead details,.......also same for buyers and vendors who does not yet signed open pop up and edit... do not so show sign agreement button if the buyer /vendor already signed..... and click on the button should prefilled details of vendor or buyer"
+- Scope: `admin-portal/src/screens/sales/SalesContacts.jsx`, `admin-portal/src/screens/SaleAgreements.jsx`, `admin-portal/src/screens/PurchaseAgreements.jsx`, backend lead/client controllers as needed.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Add edit modal for leads; add edit modal for unsigned buyers & vendors; check agreement signed status and hide Sign button if already signed (showing Signed badge); ensure clicking Sign Sale / Purchase Agreement passes prefilled buyer/vendor details to agreement wizard and pre-populates form fields.
+
+### 2026-09-12 03:20 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Leads/Buyers/Vendors Edit Modals & Agreement Pre-fill & Signed Gate
+- Request: Add option to edit leads with a pop-up modal; add edit option for buyers and vendors who have not yet signed; do not show "Sign Agreement" button if buyer/vendor has already signed (show "Agreement Signed" badge instead); clicking Sign Agreement button must prefill party details (name, phone, email, NID, address, budget) into the agreement builder.
+- Files Changed:
+  - `backend/controllers/salesAgreement.controller.js`: updated `contracts` bucket query and `listAgreements` helper to extract `contact_id` (`party_contact_id: s.contact_id || null`) from signers in `signing_envelopes`.
+  - `admin-portal/src/screens/sales/SalesAgreementScreen.jsx`: updated agreement Builder state initialization to consume `location.state.prefill` and URL search parameters (`client_contact_id`, `client.full_name`, `client.phone`, `client.email`, `client.nid`, `client.property_address`, `schedule_b.target_value`), and added an auto-fetch hook to load contact profile data if `client_contact_id` is supplied without full fields.
+  - `admin-portal/src/screens/sales/SalesContacts.jsx`:
+    - Added `signedVendors` and `signedBuyers` Sets derived from `/sales-agreements/contracts` completed bucket matching by `contact_id`, `email`, or `party_name`.
+    - Added `isSignedVendor(v)` and `isSignedBuyer(b)` guards:
+      - Signed buyers and vendors display a green `<CheckCircle2 size={12} /> Agreement Signed` chip, hiding the "Sign Agreement" button.
+      - Unsigned buyers and vendors display a `<Pencil size={12} /> Edit` button and the "Sign Sale Agreement" / "Sign Purchase Agreement" button.
+    - Updated `goToAgreement` to pass rich prefill state (`client_contact_id`, `client_id`, `client: { full_name, phone, email, nid, property_address }`, `schedule_b: { target_value }`, `property_id`).
+    - Added interactive **Edit Lead Drawer** (`editLeadOpen`): allows editing lead/enquiry name, phone, email, stage, priority, budget, source, linked property, preferred area, assigned officer, requirement, and internal notes; updates via `PUT /api/leads/:id` or `PUT /api/sales-enquiries/:id`.
+    - Added interactive **Edit Party Drawer** (`editPartyOpen`): allows editing full name, company name, primary phone, WhatsApp, email, NID, passport, address line 1, area, city, district, client segment, status, and notes; updates via `PUT /api/contacts/:id` and `PUT /api/clients/:id`.
+    - Updated Lead tab rows with `<Pencil size={12} /> Edit` button and signed agreement check (`isSignedLead`).
+    - Updated Conversion Success modal to pass prefill data to `goToAgreement`.
+- Decisions: Matched signed status using three layers (contact ID, normalized email, and party full name) to ensure no false negatives even if envelopes were created before contact association was saved. Prefilled data is injected directly into `SalesAgreementScreen` `Builder` form initial state so Step 0 (Parties) has all vendor/buyer fields ready for immediate agreement generation.
+- Verification:
+  - `npm run build` in `admin-portal` succeeded (2050 modules transformed, 8.57s).
+  - Verified backend API: `GET /api/sales-agreements/contracts` returns completed envelopes with `party_contact_id`, `party_name`, `party_email`.
+  - Verified `GET /api/leads`, `GET /api/clients?role=seller`, `GET /api/clients?role=buyer`.
+  - Backend running healthy on `http://localhost:50001` (PID 973).
+- Remaining: None.
+
+### 2026-09-12 | Claude Code (Opus 4.8) | COMPLETED | Sale/Purchase (and RPRM/RPTM) agreement signing + V0.2 document fidelity
+- Committed on air-conditioning/phase-0-duplicate. Fixes the reported bug: after signing, no signature appeared on sale/purchase agreements, and parties got no signed PDF.
+- ROOT CAUSE: the sale/purchase (and RPRM/RPTM) envelopes were single-signer with signature-field labels ('Buyer/Landlord/Tenant signature' + 'Date') that never matched the document's data-sign-party anchors ('Client'/'Seventh Sky'/'Witness 1/2'). wtSignedDocument.applySignatures joins on party name, so captured signatures were never rendered onto the document, and Seventh Sky + witnesses never signed at all.
+- FIX (backend): new services/agreementSigners.service.js (buildSignerDefs/persistSigners/dispatchEnvelope/emailFirstSigner) — Client + Seventh Sky countersign + up to 2 witnesses, order enforced, labels matching the anchors. Wired into salesAgreement.controller (RPPS/RPSS), rprm.controller and rptm.controller. wtAgreementCompletion.principalRoleFor now recognises sale_purchase/sale_sale/property_management/tenancy_management related types → the fully-executed PDF is emailed to the client + Seventh Sky.
+- DOCUMENT FIDELITY (sale/purchase, from the V0.2 docx): new salesAgreementSchedules.js with the verbatim Schedule A service taxonomy (34/33 items, 6-7 groups per kind) and Schedule D checklist. salesAgreementRender now renders Schedule A as grouped checkboxes (☑ selected / ☐ not — the 'checkmark for selected options' ask), adds Schedule D (was entirely missing), a commission/success-fee row (percent of price OR fixed → Schedule C summary + payment schedule + terms for invoice drafting and the fees report), fixes party/company blocks (Trading Name, Represented by/Position, buyer/vendor Relationship/Position), and a per-kind Schedule B field list. Clauses 1–25 already matched V0.2 (verified) — untouched.
+- FRONTEND (SalesAgreementScreen): new Scope (Schedule A) step with server-driven checkbox taxonomy; commission input (percent/fixed with live amount); Seventh Sky countersigner email/position; witness inputs (name/NID/email ×2); Schedule D checklist; Save-as-draft + Send; list actions — draft→Edit/Send, sent→Copy link/Edit & reissue, completed→Signed copy. getMeta returns the taxonomies.
+- VERIFIED: live HTTP sign-throughs — purchase (Client→Seventh Sky→Witness, order enforced) → COMPLETED, signed doc shows all 3 signatures + FULLY EXECUTED + ☑ selected services + Schedule D + commission (2% of 5M = 100,000); RPRM same (landlord/countersign/witness) → completed + signatures rendered; RPTM shares the identical code path. Builder UI: 33 Schedule A checkboxes render, 0 console errors. npm test 7+5+12+27 + test:full 28/0. All QA data cleaned up.
+- Deferred: draft/edit UI for RPRM/RPTM (their frontends unchanged — backend now multi-signer); witnesses don't receive the final PDF (attest only, matching water-tank behaviour). Not merged; no PR.
