@@ -54,6 +54,13 @@ export default function PropertyDetailPage({ onBookInspection }) {
   // Tenant Application Modal State
   const [tenantAppOpen, setTenantAppOpen] = useState(false);
 
+  // Make-an-Offer Modal State (for-sale properties only)
+  const [offerOpen, setOfferOpen] = useState(false);
+  const [offerForm, setOfferForm] = useState({ name: '', email: '', phone: '', offer_amount: '', message: '' });
+  const [offerSubmitting, setOfferSubmitting] = useState(false);
+  const [offerSuccess, setOfferSuccess] = useState(null);
+  const [offerError, setOfferError] = useState('');
+
   useEffect(() => {
     async function loadProp() {
       setLoading(true);
@@ -75,6 +82,15 @@ export default function PropertyDetailPage({ onBookInspection }) {
     }
     loadProp();
   }, [id]);
+
+  // Honour ?offer=1 (e.g. from an admin-shared offer link): open the offer form
+  // once the property has loaded, but only if it can still accept offers.
+  useEffect(() => {
+    if (!property) return;
+    const params = new URLSearchParams(window.location.search);
+    const canOffer = property.canOffer ?? ((property.listing_type === 'sale' || property.purpose === 'For Sale') && !property.isSold);
+    if (params.get('offer') === '1' && canOffer) setOfferOpen(true);
+  }, [property]);
 
   // Calculate nights for short stay
   const nights = Math.max(1, Math.round((new Date(checkOutDate) - new Date(checkInDate)) / (1000 * 60 * 60 * 24)) || 3);
@@ -122,6 +138,31 @@ export default function PropertyDetailPage({ onBookInspection }) {
       }
     } finally {
       setEnquirySubmitting(false);
+    }
+  };
+
+  const handleOfferSubmit = async (e) => {
+    e.preventDefault();
+    setOfferError('');
+    if (!offerForm.name || (!offerForm.phone && !offerForm.email)) { setOfferError('Please provide your name and a phone or email.'); return; }
+    if (!offerForm.offer_amount || Number(offerForm.offer_amount) <= 0) { setOfferError('Please enter a valid offer amount.'); return; }
+    setOfferSubmitting(true);
+    try {
+      const res = await websiteApi.submitPropertyOffer({
+        property_id: property.id,
+        property_code: property.code,
+        name: offerForm.name,
+        email: offerForm.email || undefined,
+        phone: offerForm.phone || undefined,
+        offer_amount: Number(offerForm.offer_amount),
+        message: offerForm.message || undefined,
+      });
+      setOfferSuccess(res?.enquiry_code || res?.data?.enquiry_code || 'SSPC-OFFER-OK');
+      setOfferForm({ name: '', email: '', phone: '', offer_amount: '', message: '' });
+    } catch (err) {
+      setOfferError(err?.message || 'Could not submit your offer. This property may no longer be available.');
+    } finally {
+      setOfferSubmitting(false);
     }
   };
 
@@ -775,6 +816,38 @@ export default function PropertyDetailPage({ onBookInspection }) {
                 </div>
               )}
 
+              {/* Make an Offer / Sold — for-sale properties */}
+              {(property.listing_type === 'sale' || property.purpose === 'For Sale' || property.type === 'sale') && (
+                property.isSold ? (
+                  <div className="p-5 rounded-3xl bg-slate-800 text-white space-y-2 shadow-md">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/90 text-white text-[11px] font-bold uppercase tracking-wide">SOLD</div>
+                    <div className="font-bold text-sm">This property has been sold</div>
+                    <p className="text-[11px] text-slate-300 leading-relaxed">Offers are closed for this property. Browse our other available listings or contact us for similar options.</p>
+                  </div>
+                ) : (
+                  <div className="p-5 rounded-3xl bg-[#012a4e] text-white space-y-3 shadow-md">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-[#00AEEF]/20 flex items-center justify-center text-[#00AEEF]">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-sm text-white">Make an Offer</div>
+                        <div className="text-[11px] text-slate-300">Submit your best price online</div>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      Put forward an offer for this property — our sales team will review it and get back to you.
+                    </p>
+                    <button
+                      onClick={() => setOfferOpen(true)}
+                      className="w-full py-2.5 rounded-full font-bold text-xs bg-[#00AEEF] hover:bg-[#0096ce] text-white transition-colors cursor-pointer shadow-xs"
+                    >
+                      Make an Offer
+                    </button>
+                  </div>
+                )
+              )}
+
               {/* Online Tenant Application for rental properties */}
               {(property.listing_type === 'rent' || property.purpose?.toLowerCase().includes('rent') || property.purpose === 'For Rent' || property.type === 'rent') && (
                 <div className="p-5 rounded-3xl bg-[#012a4e] text-white space-y-3 shadow-md">
@@ -856,6 +929,49 @@ export default function PropertyDetailPage({ onBookInspection }) {
         onClose={() => setTenantAppOpen(false)}
         property={property}
       />
+
+      {/* Make an Offer Modal */}
+      {offerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !offerSubmitting && setOfferOpen(false)}>
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 bg-[#012a4e] text-white flex items-center justify-between">
+              <div>
+                <div className="font-bold">Make an Offer</div>
+                <div className="text-[11px] text-slate-300">{property.title || property.code}</div>
+              </div>
+              <button onClick={() => setOfferOpen(false)} className="text-slate-300 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div className="p-6">
+              {offerSuccess ? (
+                <div className="text-center space-y-3 py-4">
+                  <div className="text-[#00AEEF] font-bold text-lg">Offer submitted</div>
+                  <p className="text-sm text-slate-600">Thank you — our sales team will review your offer and get back to you.</p>
+                  <div className="text-xs text-slate-500">Reference: <strong>{offerSuccess}</strong></div>
+                  <button onClick={() => { setOfferOpen(false); setOfferSuccess(null); }} className="mt-2 px-5 py-2 rounded-full bg-[#00AEEF] hover:bg-[#0096ce] text-white font-bold text-sm">Done</button>
+                </div>
+              ) : (
+                <form onSubmit={handleOfferSubmit} className="space-y-3">
+                  <p className="text-xs text-slate-500">Listed at <strong className="text-[#012a4e]">{property.priceDisplay}</strong>. Enter your offer below.</p>
+                  <input type="text" required placeholder="Your Name" value={offerForm.name} onChange={(e) => setOfferForm({ ...offerForm, name: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-hidden" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <input type="tel" placeholder="Phone" value={offerForm.phone} onChange={(e) => setOfferForm({ ...offerForm, phone: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-hidden" />
+                    <input type="email" placeholder="Email" value={offerForm.email} onChange={(e) => setOfferForm({ ...offerForm, email: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-hidden" />
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">৳</span>
+                    <input type="number" required min="1" placeholder="Your offer amount" value={offerForm.offer_amount} onChange={(e) => setOfferForm({ ...offerForm, offer_amount: e.target.value })} className="w-full pl-7 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-hidden" />
+                  </div>
+                  <textarea placeholder="Message (optional)" rows={3} value={offerForm.message} onChange={(e) => setOfferForm({ ...offerForm, message: e.target.value })} className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm focus:outline-hidden" />
+                  {offerError && <div className="text-xs text-red-600">{offerError}</div>}
+                  <button type="submit" disabled={offerSubmitting} className="w-full py-2.5 rounded-full font-bold text-sm bg-[#00AEEF] hover:bg-[#0096ce] disabled:opacity-60 text-white transition-colors cursor-pointer">
+                    {offerSubmitting ? 'Submitting…' : 'Submit Offer'}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

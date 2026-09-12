@@ -94,6 +94,11 @@ export const websiteApi = {
             gallery,
             orientation: p.orientation || 'landscape',
             status: p.listing_status || p.status || 'available',
+            // Sale lifecycle status straight from the property (never the listing
+            // label) so the UI can reliably tell sold from available.
+            saleStatus: p.status || 'available',
+            isSold: String(p.status || '').toLowerCase() === 'sold',
+            canOffer: p.listing_type === 'sale' && String(p.status || '').toLowerCase() !== 'sold',
             isShortStay: isShort,
             shortStayProfile: p.short_stay_profile || null,
             features,
@@ -219,6 +224,11 @@ export const websiteApi = {
             heroImage: heroImg,
             gallery,
             status: p.listing_status || p.status || 'available',
+            // Sale lifecycle status straight from the property (never the listing
+            // label) so the UI can reliably tell sold from available.
+            saleStatus: p.status || 'available',
+            isSold: String(p.status || '').toLowerCase() === 'sold',
+            canOffer: p.listing_type === 'sale' && String(p.status || '').toLowerCase() !== 'sold',
             isShortStay: isShort,
             shortStayProfile: p.short_stay_profile,
             shortStayData,
@@ -275,6 +285,15 @@ export const websiteApi = {
 
   async submitContactMessage(payload) {
     return request('/public-website/contact', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // Make an offer on a for-sale property. The backend rejects offers on sold
+  // properties (409) and records accepted ones as a website sales enquiry.
+  async submitPropertyOffer(payload) {
+    return request('/public-website/offers', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
