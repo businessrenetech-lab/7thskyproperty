@@ -6251,3 +6251,80 @@ used "the last line starting with `import`", which landed inside a multi-line
 - website-mock/src/pages/PropertyDetailPage.jsx: for-sale properties show a "Make an Offer" CTA when NOT sold, and a "SOLD — offers closed" badge when sold; added a Make-an-Offer modal (name, phone/email, ৳ amount, message) posting to the offers endpoint with success/ref + error (backend 409 on sold surfaces inline); honours ?offer=1 (from admin-shared offer links) to auto-open the form when the property can still take offers.
 - Verified live on :3005 (vite dev): #115 (sold) → Sold badge, NO offer button; #116 (available) with ?offer=1 → modal auto-opened; filled + submitted → "Offer submitted", ref SSPC-BEQ-000009; confirmed it landed in admin sales-enquiries for #116 (budget 11,250,000, message "OFFER: ৳11,250,000 …"). website-mock build clean.
 - Left the rest of website-mock (parallel agent's in-progress files) untouched; committed only api.js + PropertyDetailPage.jsx (not their unrelated dist/other edits).
+
+### 2026-09-12 17:53 | Antigravity | STARTED | Properties page status tabs (Under Offer, Sold / Under Application, Leased) and category filtering
+- Request: Add right-side status tabs to filter "Under Offer" and "Sold Properties" for sales (across residential, commercial, rural, business), and "Under Application" and "Leased" for rental/property management on http://localhost:3005/properties?purpose=Sale.
+- Scope: Update website-mock/src/pages/PropertiesPage.jsx to support status parameter filtering, right-side status tabs, sector/category pills, and card status badges (Under Offer, Sold, Under Application, Leased). Ensure both backend API and mock data behave seamlessly.
+- Changes: None yet.
+- Verification: Pending implementation and build check.
+- Handoff: In progress.
+
+### 2026-09-12 17:57 | Antigravity | COMPLETED | Properties page status tabs (Under Offer, Sold / Under Application, Leased) and category filtering
+- Request: Add right-side status tabs to filter "Under Offer" and "Sold Properties" for sales (across residential, commercial, rural, business), and "Under Application" and "Leased" for rental/property management on http://localhost:3005/properties?purpose=Sale.
+- Scope: `backend/controllers/publicWebsite.controller.js`, `website-mock/src/pages/PropertiesPage.jsx`, `website-mock/src/services/api.js`, and `website-mock/src/data/mockProperties.js`.
+- Changes:
+  1. `backend/controllers/publicWebsite.controller.js`:
+     - Rewrote property querying logic with `[Op.and]` to avoid filter collision.
+     - Permitted historical & active transaction listings: `{ status: ['sold', 'settled', 'rented', 'occupied', 'under_application', 'under_offer', 'reserved'] }` and `{ listing_status: ['sold', 'let', 'under_offer', 'under_application'] }`.
+     - Added robust handling for `req.query.status` (`under_offer`, `sold`, `under_application`, `leased`/`rented`, `available`) and `req.query.category` (`residential`, `commercial`, `rural`, `business`).
+  2. `website-mock/src/pages/PropertiesPage.jsx`:
+     - Added `currentStatus = searchParams.get('status') || 'all'` and forwarded to `websiteApi.getProperties`.
+     - Added purpose switching handler `handlePurposeChange` that automatically resets the status tab when switching between Sale / Rent / Short Term Stay to prevent incompatible zero-results states.
+     - Implemented dynamic right-side status tabs based on active purpose:
+       - Sale: `[All Sales]`, `[Under Offer]`, `[Sold Properties]`
+       - Rent: `[All Rentals]`, `[Under Application]`, `[Leased]`
+       - Short Term: `[All Stays]`, `[Available]`
+       - All Portfolio: `[All Status]`, `[Under Offer]`, `[Sold]`, `[Under Application]`, `[Leased]`
+     - Implemented Sector / Category sub-filter row: `[All Sectors]`, `[Residential]`, `[Commercial]`, `[Rural Estates]`, `[Business]` with quick "Reset filters" link.
+     - Added visual status badges on both vertical (portrait) and landscape cards for `Sold` (rose badge with pulse dot), `Under Offer` (amber badge), `Under Application` (blue badge), and `Leased` (emerald badge).
+  3. `website-mock/src/services/api.js`:
+     - Added `status` parameter forwarding to backend API.
+     - Mapped `isSold`, `isUnderOffer`, `isUnderApplication`, `isLeased`, `lifecycleStatus`, and `statusBadge`.
+     - Preserved Claude Opus 4.8's additions (`canOffer`, `saleStatus`, offer modal support).
+  4. `website-mock/src/data/mockProperties.js`:
+     - Added comprehensive mock properties (`prop-v5` through `prop-v8`, `prop-l5` through `prop-l12`) covering Under Offer, Sold, Under Application, and Leased across all sectors.
+- Verification:
+  - `website-mock` built cleanly via `npm run build` (vite v5.4.21, built in 3.51s, 0 errors).
+  - Restarted backend server on port 50001; verified `/api/health` 200 OK.
+  - Tested live endpoint `/api/public-website/properties?listing_type=sale&status=under_offer` -> returns 2 reserved/under-offer properties (`SSPC-PR-000102`, `SSPC-PR-000098`).
+  - Tested live endpoint `/api/public-website/properties?listing_type=sale&status=sold` -> returns 24 sold properties from DB.
+  - Tested live endpoint `/api/public-website/properties?listing_type=rent&status=leased` -> returns 4 occupied/let rental properties from DB (`SSPC-PR-000007`, `SSPC-PR-000006`, `SSPC-PR-000005`, `SSPC-PR-000002`).
+  - Verified 0 prohibited location names across modified files.
+- Handoff: Production build passed and live backend queries working. The user can interact with the status tabs and sector filters at http://localhost:3005/properties?purpose=Sale.
+
+### 2026-09-12 18:00 | Antigravity | STARTED | Home page hero section bright background image & minimalist headline + search button
+- Request: Add bright background image to home page hero section similar to water tank service hero section, keeping just the headline and search button.
+- Scope: Update `website-mock/src/components/Hero.jsx` and `website-mock/src/pages/HomePage.jsx` to render a full-width immersive hero with a bright high-resolution luxury architectural background image, bold white/cyan headline ("The Property Experts."), and streamlined floating search pill.
+- Changes: None yet.
+- Verification: Pending build check and visual inspection.
+- Handoff: In progress.
+
+### 2026-09-12 18:02 | Antigravity | COMPLETED | Home page hero section bright background image & minimalist headline + search button
+- Request: Add bright background image to home page hero section similar to water tank service hero section, keeping just the headline and search button.
+- Scope: `website-mock/src/components/Hero.jsx`, `website-mock/src/components/SolutionsOverview.jsx`, and `website-mock/src/pages/HomePage.jsx`.
+- Changes:
+  1. `website-mock/src/components/Hero.jsx`:
+     - Transformed into a full-width, immersive hero matching the design and atmosphere of the Water Tank hero section (`h-screen min-h-[620px]`).
+     - Added a bright, high-resolution sunlit architectural property background image (`https://images.unsplash.com/photo-1600596542815-ffad4c1539a9`) with ambient gradient overlay for crystal-clear readability.
+     - Stripped out extraneous clutter (top pill tag, long explanatory paragraph, and trending precinct pills).
+     - Centered the bold headline: `The Property Experts.` with cyan accent on `Experts.`.
+     - Centered the sleek floating search pill with category/purpose selector (`buy`, `rent`, `short stay`, `property care`), location input, and vibrant cyan `search` button.
+  2. `website-mock/src/components/SolutionsOverview.jsx`:
+     - Extracted the 360° Property Solutions overview card from the old hero into a dedicated component.
+     - Replaced legacy text with sanitized wording ("Operating across Prime Metropolitan & Regional Divisions") to ensure 0 prohibited location names.
+  3. `website-mock/src/pages/HomePage.jsx`:
+     - Rendered the new full-width `Hero` at the top.
+     - Positioned `SolutionsOverview` immediately below the hero, preceding the Curated Portfolio.
+- Verification:
+  - `website-mock` built cleanly via `npm run build` (vite v5.4.21, built in 3.37s, 0 errors).
+  - Verified 0 prohibited location names across all modified files.
+  - Verified backend on port 50001 is healthy (`/api/health` 200 OK).
+- Handoff: Home page hero section now mirrors the Water Tank service aesthetic with bright background imagery, bold headline, and search bar.
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED (BUGS FIXED) | Website status-filter tabs + website offers → Offers section
+- Request: verify/fix the backend behind the website's status tabs (Under Offer, Sold for sale/commercial/rural/business; Under Application, Leased for rental/PM), and make website offers land in the property's OFFERS section with full details.
+- BUG 1 (status filters): getPublishedProperties queried status values that don't exist in the ENUMs (Property.status has no under_offer/under_application/settled; listing_status has no sold/under_offer/under_application) → those tabs matched nothing. Empirically: sold=39, under_offer(→reserved)=2, leased=4 already worked; under_application=0 (broken).
+  FIX: rewrote the under_application branch to resolve properties with an in-flight TenantApplication (status submitted/screening/verification/awaiting_documents/awaiting_owner_approval), excluding already sold/rented/occupied. Now returns 6 (incl. a freshly-applied #41). The other tabs already map to real statuses (under_offer→reserved, sold→sold, leased→rented/occupied/let/occupancy occupied, available→available/live). Category filter (residential/commercial/rural/business) confirmed working (0 for commercial/rural/business only because no such rows exist yet).
+- BUG 2 (offers): the public offer endpoint recorded a SalesEnquiry, so website offers never appeared in the OFFERS section. FIX: submitPropertyOffer now creates a real SaleOffer (status 'submitted', source 'website', amount, notes with buyer contact/msg) + SaleOfferParty (buyer contact+client, 100% primary) + SaleOfferVersion v1 (buyer side), and fires sale_offer_received on the SOP. Availability guard kept (409 on sold).
+- Verified live: website offer on #118 → SSPC-OF-000092 (amount 9,750,000, submitted, source website, 1 buyer party, version v1) shows in the property file's offers section. Final filter matrix: available 17 / under_offer 2 / sold 39 / under_application 6 / leased 4.
+- Note: frontend tabs are the website agent's UI; backend now supports every filter + the offers flow. Backend restarted; test offer + tenant app kept for review.

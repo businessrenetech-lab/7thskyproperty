@@ -19,6 +19,7 @@ const Branch = require('../models/Branch');
 const ShortStayPropertyProfile = require('../models/ShortStayPropertyProfile');
 const ShortStayBooking = require('../models/ShortStayBooking');
 const SystemSetting = require('../models/SystemSetting');
+const { SaleOffer, SaleOfferParty, SaleOfferVersion } = require('../models/SalesModels');
 const { generateCode } = require('../utils/codeGenerator');
 const { routeAndEnrol } = require('./salesEnquiry.controller');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
@@ -91,60 +92,115 @@ exports.getPublishedProperties = asyncHandler(async (req, res) => {
   const limitNum = Math.min(Math.max(parseInt(limit, 10) || 24, 1), 100);
   const offset = (pageNum - 1) * limitNum;
 
-  const where = {
-    [Op.or]: [
-      { is_published: true },
-      { listing_type: 'short_term' },
-    ],
-  };
+  const andConditions = [
+    {
+      [Op.or]: [
+        { is_published: true },
+        { listing_type: 'short_term' },
+        { status: ['sold', 'settled', 'rented', 'occupied', 'under_application', 'under_offer', 'reserved'] },
+        { listing_status: ['sold', 'let', 'under_offer', 'under_application'] },
+      ],
+    },
+  ];
 
-  // Category filter: residential, commercial, rural
-  if (req.query.category && ['residential', 'commercial', 'rural', 'business'].includes(req.query.category)) {
-    where.category = req.query.category;
+  // Category filter: residential, commercial, rural, business
+  if (req.query.category && ['residential', 'commercial', 'rural', 'business'].includes(String(req.query.category).toLowerCase())) {
+    andConditions.push({ category: String(req.query.category).toLowerCase() });
   }
 
   // Listing type: sale, rent, lease, short_term
-  if (req.query.listing_type && ['sale', 'rent', 'lease', 'short_term'].includes(req.query.listing_type)) {
-    where.listing_type = req.query.listing_type;
+  if (req.query.listing_type && ['sale', 'rent', 'lease', 'short_term'].includes(String(req.query.listing_type).toLowerCase())) {
+    andConditions.push({ listing_type: String(req.query.listing_type).toLowerCase() });
   }
 
-  // Status: available, reserved, under_offer, sold, rented
-  if (req.query.status) {
-    if (req.query.status !== 'all') {
-      where.status = req.query.status;
+  // Status: available, reserved, under_offer, sold, rented, under_application, leased
+  if (req.query.status && req.query.status !== 'all') {
+    const s = String(req.query.status).toLowerCase();
+    if (s === 'under_offer' || s === 'underoffer' || s === 'under-offer') {
+      andConditions.push({
+        [Op.or]: [
+          { status: 'under_offer' },
+          { status: 'reserved' },
+          { listing_status: 'under_offer' },
+        ],
+      });
+    } else if (s === 'sold') {
+      andConditions.push({
+        [Op.or]: [
+          { status: 'sold' },
+          { listing_status: 'sold' },
+        ],
+      });
+    } else if (s === 'under_application' || s === 'underapplication' || s === 'under-application') {
+      // "Under application" is not a property status — it means the property has
+      // an in-flight tenant application. Resolve those property ids and filter to
+      // them (excluding already-leased/sold so the tab reads honestly).
+      const PENDING_APP = ['submitted', 'screening', 'verification', 'awaiting_documents', 'awaiting_owner_approval'];
+      const apps = await TenantApplication.findAll({
+        attributes: ['property_id'], where: { status: { [Op.in]: PENDING_APP }, property_id: { [Op.ne]: null } },
+        group: ['property_id'], raw: true,
+      });
+      const ids = apps.map((a) => a.property_id).filter(Boolean);
+      andConditions.push({ id: { [Op.in]: ids.length ? ids : [0] } });
+      andConditions.push({ status: { [Op.notIn]: ['sold', 'rented', 'occupied'] } });
+    } else if (s === 'leased' || s === 'rented' || s === 'let') {
+      andConditions.push({
+        [Op.or]: [
+          { status: 'rented' },
+          { status: 'occupied' },
+          { listing_status: 'let' },
+          { occupancy_status: 'occupied' },
+        ],
+      });
+    } else if (s === 'available') {
+      andConditions.push({
+        [Op.or]: [
+          { status: 'available' },
+          { status: 'live' },
+          { listing_status: 'active' },
+          { listing_status: 'live' },
+        ],
+      });
+    } else {
+      andConditions.push({ status: req.query.status });
     }
   }
 
   // Featured filter
   if (req.query.featured === 'true' || req.query.featured === '1') {
-    where.is_featured = true;
+    andConditions.push({ is_featured: true });
   }
 
   // Bedrooms
   if (req.query.bedrooms) {
     const beds = parseInt(req.query.bedrooms, 10);
-    if (!isNaN(beds)) where.bedrooms = { [Op.gte]: beds };
+    if (!isNaN(beds)) andConditions.push({ bedrooms: { [Op.gte]: beds } });
   }
 
   // Price range
   if (req.query.min_price || req.query.max_price) {
-    where.price = {};
-    if (req.query.min_price) where.price[Op.gte] = Number(req.query.min_price);
-    if (req.query.max_price) where.price[Op.lte] = Number(req.query.max_price);
+    const priceCond = {};
+    if (req.query.min_price) priceCond[Op.gte] = Number(req.query.min_price);
+    if (req.query.max_price) priceCond[Op.lte] = Number(req.query.max_price);
+    andConditions.push({ price: priceCond });
   }
 
   // Search keyword
   if (req.query.search) {
     const q = `%${req.query.search}%`;
-    where[Op.or] = [
-      { title: { [Op.like]: q } },
-      { property_code: { [Op.like]: q } },
-      { area: { [Op.like]: q } },
-      { city: { [Op.like]: q } },
-      { district: { [Op.like]: q } },
-      { address: { [Op.like]: q } },
-    ];
+    andConditions.push({
+      [Op.or]: [
+        { title: { [Op.like]: q } },
+        { property_code: { [Op.like]: q } },
+        { area: { [Op.like]: q } },
+        { city: { [Op.like]: q } },
+        { district: { [Op.like]: q } },
+        { address: { [Op.like]: q } },
+      ],
+    });
   }
+
+  const where = { [Op.and]: andConditions };
 
   // Order
   let order = [['is_featured', 'DESC'], ['id', 'DESC']];
@@ -1026,23 +1082,34 @@ exports.submitPropertyOffer = asyncHandler(async (req, res) => {
   if (property.status === 'sold') return res.status(409).json({ error: 'This property has been sold and is no longer accepting offers.' });
 
   const branchId = property.branch_id || await getDefaultBranchId();
-  const enquiry = await sequelize.transaction(async (tx) => {
+  const result = await sequelize.transaction(async (tx) => {
+    // Buyer identity (contact + buyer client) so the offer carries a real party.
     const contact = await ensureContact({ branchId, name, phone, email, source: 'website', notes: `Offer on ${property.title}` }, tx);
     let client = await Client.findOne({ where: { contact_id: contact.id }, transaction: tx });
     if (!client) client = await Client.create({ branch_id: branchId, contact_id: contact.id, client_code: await generateCode(Client, 'client_code', 'SSPC-CL-'), client_type: 'buyer', is_buyer: true, status: 'active' }, { transaction: tx });
-    const created = await SalesEnquiry.create({
-      branch_id: branchId, enquiry_code: await generateCode(SalesEnquiry, 'enquiry_code', 'SSPC-BEQ-'),
-      property_id: property.id, contact_id: contact.id, client_id: client.id,
-      enquirer_name: name, phone: phone || null, email: email || null, source: 'website',
-      utm_source: utm_source || null, utm_medium: utm_medium || null, utm_campaign: utm_campaign || null,
-      budget: Number(offer_amount), preferred_area: property.area || null,
-      message: `OFFER: ৳${Number(offer_amount).toLocaleString('en-BD')} on ${property.property_code || property.title}. ${message || ''}`.trim(),
-      stage: 'new', next_action: 'Review buyer offer and formalise',
+
+    // A real SaleOffer so it appears in the property's OFFERS section with the
+    // full details (amount, buyer party, negotiation version), submitted for
+    // staff review — not just a generic enquiry.
+    const offer = await SaleOffer.create({
+      branch_id: branchId, property_id: property.id,
+      offer_code: await generateCode(SaleOffer, 'offer_code', 'SSPC-OF-'),
+      amount: Number(offer_amount), deposit_amount: 0, source: 'website',
+      status: 'submitted', submitted_at: new Date(),
+      notes: `Website offer from ${name}${phone ? ` · ${phone}` : ''}${email ? ` · ${email}` : ''}.${message ? ` Message: ${message}` : ''}`,
     }, { transaction: tx });
-    await routeAndEnrol(created, property.id, tx);
-    return created;
+    await SaleOfferParty.create({ branch_id: branchId, offer_id: offer.id, contact_id: contact.id, client_id: client.id, ownership_percent: 100, is_primary: true }, { transaction: tx });
+    // Negotiation history v1 (buyer side), mirroring the staff createOffer flow.
+    await SaleOfferVersion.create({
+      branch_id: branchId, offer_id: offer.id, version_no: 1, side: 'buyer',
+      amount: offer.amount, deposit_amount: 0, notes: offer.notes,
+      parties_snapshot: [{ contact_id: contact.id, client_id: client.id, ownership_percent: 100, is_primary: true }],
+    }, { transaction: tx });
+    // Advance the sale SOP's offer phase if a workflow exists (idempotent no-op otherwise).
+    try { await require('../services/progressiveSop.service').unlockForEvent(property.id, 'sale_offer_received', { vertical: 'properties_sale', transaction: tx }); } catch { /* non-fatal */ }
+    return offer;
   });
-  res.status(201).json({ message: 'Your offer has been submitted. Our sales team will review it and get back to you.', enquiry_code: enquiry.enquiry_code, id: enquiry.id });
+  res.status(201).json({ message: 'Your offer has been submitted. Our sales team will review it and get back to you.', offer_code: result.offer_code, enquiry_code: result.offer_code, id: result.id });
 });
 
 // POST /api/public-website/admin/offer-link — a shareable "make an offer" link
