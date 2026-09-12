@@ -4,6 +4,12 @@ This is the persistent handoff log for every developer and AI agent working in t
 repository. Read the full log before starting work and append an entry for every task.
 The mandatory workflow is defined in `AGENTS.md` under **Shared Agent Coordination**.
 
+> **👉 New here? Read [`AGENT_GUIDE.md`](AGENT_GUIDE.md) first.** It is the working
+> guide for agents: how to analyse the codebase & workflow, do's & don'ts, how to
+> submit work to the Lead for review, and the recipes for adding a new service line
+> (Water Tank/AC clone), new buy/sell verticals, and new property-management
+> verticals. You do **not** merge to `main` — every task ends with a report to the Lead.
+
 > **Working on the Water Tank module (`/water-tank/*`)?** Read
 > **Working Conventions — Water Tank Module** at the bottom of this file first.
 > It documents the register/detail/edit route shape, the central identity service,
