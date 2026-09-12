@@ -137,10 +137,23 @@ exports.payOwner = asyncHandler(async (req, res) => {
       folio_txn_id: folioTxn?.id || null, created_by: req.user?.id || null,
     }, { transaction: tx });
 
-    return disb;
+    // Auto-collect our fees: the management/letting fees for this owner (+ period
+    // / property, when given) were netted out of this payout, so they are
+    // realized now. Mark the accrued PmIncomeEntry rows collected and link them
+    // to this disbursement — this is our fee income "collected after paying the
+    // owner", staged for our own payout later.
+    const feeWhere = { owner_contact_id, status: 'accrued' };
+    if (property_id) feeWhere.property_id = property_id;
+    if (period_label) feeWhere.period_label = period_label;
+    const [collectedCount] = await PmIncomeEntry.update(
+      { status: 'collected', collected_at: new Date(), disbursement_id: disb.id },
+      { where: feeWhere, transaction: tx },
+    );
+
+    return { disb, feesCollected: collectedCount };
   });
 
-  res.status(201).json({ data: result, message: `Disbursed ${amount.toLocaleString()} to owner. Balance updated.` });
+  res.status(201).json({ data: result.disb, fees_collected: result.feesCollected, message: `Disbursed ${amount.toLocaleString()} to owner. ${result.feesCollected} fee(s) collected.` });
 });
 
 // ═══ SUPPLIER: pay a provider invoice / landlord bill ════════════════════════

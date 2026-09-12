@@ -91,6 +91,13 @@ export default function AgencyIncome() {
             <Stat label="Drafts" value={s.drafted} hint={`${s.draft_count} not yet sent`} accent="#64748b" />
           </div>
 
+          {data?.fee_income && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
+              <Stat label="Mgmt fees collected" value={data.fee_income.collected} hint="Realized — owner paid out" accent="#16a34a" />
+              <Stat label="Mgmt fees accrued" value={data.fee_income.accrued} hint="Earned — awaiting owner payout" accent="#d97706" />
+            </div>
+          )}
+
           <div className="pm-segment" style={{ marginBottom: 14, flexWrap: 'wrap' }}>
             {[['all', 'All'], ['draft', 'Drafts'], ['outstanding', 'Dues'], ['paid', 'Paid'], ['recurring', 'Recurring fees']].map(([k, l]) => (
               <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>

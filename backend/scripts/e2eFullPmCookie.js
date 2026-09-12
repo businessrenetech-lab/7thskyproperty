@@ -140,6 +140,17 @@ async function signEnvelope(envId) {
   ok([200, 201].includes(stmt.status), 'owner statement generated', `HTTP ${stmt.status}`);
   ok(mgmtFee > 0, 'management fee (our income) appears on the owner statement', `mgmt_fee=${mgmtFee} (5% of ${RENT + SERVICE})`);
 
+  // ── Fees accrued before payout; auto-COLLECTED after paying the owner ───────
+  const incBefore = await A('GET', `/api/invoices/agency-income?scope=pm&property_id=${propId}`);
+  const feeBefore = incBefore.body?.fee_income || {};
+  ok(Number(feeBefore.accrued) > 0, 'our fees are ACCRUED before owner payout', `accrued=${feeBefore.accrued} collected=${feeBefore.collected}`);
+  // Pay the owner their net held balance → should auto-collect the fees.
+  const payOwner = await A('POST', '/api/disbursements/owner', { owner_contact_id: llId, property_id: propId, method: 'bank_transfer', reference: `CK-OD-${STAMP}` });
+  ok([200, 201].includes(payOwner.status) && payOwner.body?.fees_collected >= 1, 'owner disbursement AUTO-COLLECTS our fees', `HTTP ${payOwner.status} fees_collected=${payOwner.body?.fees_collected}`);
+  const incAfter = await A('GET', `/api/invoices/agency-income?scope=pm&property_id=${propId}`);
+  const feeAfter = incAfter.body?.fee_income || {};
+  ok(Number(feeAfter.collected) > 0 && Number(feeAfter.accrued) === 0, 'fees now show COLLECTED in Agency Income', `collected=${feeAfter.collected} accrued=${feeAfter.accrued}`);
+
   // ── Provision + check LANDLORD portal dashboard ─────────────────────────────
   const llPortal = await A('POST', `/api/clients/${llClientId}/portal-access`, { email: `ckllportal${STAMP}@example.com`, password: 'Portal#2026', role: 'owner' });
   ok(llPortal.status === 201, 'landlord portal account provisioned', `HTTP ${llPortal.status}`);

@@ -18,6 +18,12 @@ const PmIncomeEntry = sequelize.define('PmIncomeEntry', {
   amount: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
   account_category_id: DataTypes.INTEGER,
   landlord_folio_txn_id: DataTypes.INTEGER,
+  // Lifecycle: 'accrued' when earned on rent; 'collected' once the owner is paid
+  // out (the fee is netted at disbursement). collected_at + disbursement_id link
+  // the realized fee to the payout that collected it.
+  status: { type: DataTypes.ENUM('accrued', 'collected'), defaultValue: 'accrued' },
+  collected_at: DataTypes.DATE,
+  disbursement_id: DataTypes.INTEGER,
   notes: DataTypes.TEXT,
   created_by: DataTypes.INTEGER,
 }, { tableName: 'pm_income_entries', underscored: true });

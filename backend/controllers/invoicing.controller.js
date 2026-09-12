@@ -472,5 +472,21 @@ exports.agencyIncome = asyncHandler(async (req, res) => {
     } catch { /* non-fatal */ }
   }
 
-  res.json({ summary, invoices, recurring });
+  // Realized fee income (PmIncomeEntry): accrued (earned, owner not yet paid) vs
+  // collected (owner paid out → our fee is realized/collected). Shown for the PM
+  // / all views. This is the "collect our fees" picture tied to disbursements.
+  let fee_income = null;
+  if (req.query.scope !== 'sales') {
+    try {
+      const PmIncomeEntry = require('../models/PmIncomeEntry');
+      const feeWhere = { ...branchScope(req) };
+      if (req.query.property_id) feeWhere.property_id = req.query.property_id;
+      const entries = await PmIncomeEntry.findAll({ where: feeWhere, attributes: ['status', 'amount'], raw: true, limit: 5000 });
+      const acc = { accrued: 0, collected: 0 };
+      for (const e of entries) acc[e.status === 'collected' ? 'collected' : 'accrued'] += n(e.amount);
+      fee_income = { accrued: n(acc.accrued), collected: n(acc.collected), total: n(acc.accrued + acc.collected) };
+    } catch { /* non-fatal */ }
+  }
+
+  res.json({ summary, invoices, recurring, fee_income });
 });
