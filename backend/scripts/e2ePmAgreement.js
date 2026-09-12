@@ -113,8 +113,11 @@ async function signAll(envId) {
   ok(fee.length > 0, 'one-time fee invoices drafted on completion', `${fee.length} invoice(s), total=${total}`);
   ok(!fee.some((i) => /monthly management|recurring/i.test(i.title || '')), 'recurring fee NOT invoiced (no monthly-mgmt invoice)');
 
-  // 7. Recurring fee captured on the owner fee schedule
-  const ofs = await req('GET', `/api/properties/${propId}/owner-fees`).then((r) => r).catch(() => ({ status: 0 }));
+  // 7. Recurring fee captured CORRECTLY on the owner fee schedule so it will
+  // actually charge on rent (owner_profile_id set + rental_receipt trigger).
+  const income = await req('GET', `/api/invoices/agency-income?property_id=${propId}`);
+  const rec = (income.body?.recurring || []).filter((f) => f.property_id === propId && f.fee_category === 'management');
+  ok(rec.length === 1, 'recurring management fee established (single, owner-profile-linked)', `${rec.length} row(s)`);
   console.log(`\nFIXTURE IDS: landlord=${contactId} property=${propId} agreementEnv=${envId} stamp=${STAMP}`);
   finish();
 })().catch((e) => { log('FAIL', 'harness crashed', e.stack || e.message); finish(); });

@@ -10,6 +10,7 @@ const SigningEnvelope = require('../models/SigningEnvelope');
 const EnvelopeSigner = require('../models/EnvelopeSigner');
 const SignatureField = require('../models/SignatureField');
 const OwnerFeeSchedule = require('../models/OwnerFeeSchedule');
+const PropertyOwnerProfile = require('../models/PropertyOwnerProfile');
 const { buildSignerDefs, persistSigners, dispatchEnvelope, emailFirstSigner } = require('../services/agreementSigners.service');
 const sequelize = require('../config/db.config');
 
@@ -32,17 +33,32 @@ exports.preview = asyncHandler(async (req, res) => {
   res.json({ ...built, pricing });
 });
 
-// Persist the recurring management fee to the owner fee schedule (best-effort).
-async function syncRecurringFee(env, pricing, propertyId, t) {
+// Persist the recurring management fee so it is actually charged: the owner-fee
+// engine (applyOwnerFeesOnRent) reads schedules by owner_profile_id with a
+// rental_receipt trigger, so the fee must be attached to the property's owner
+// profile — not just the property. Idempotent: one active management fee per
+// owner profile. Best-effort (never blocks agreement creation).
+async function syncRecurringFee(env, pricing, propertyId, contactId, t) {
   const mgmt = pricing.lines.find((l) => l.code === 'RPRM-018');
   if (!propertyId || !mgmt) return;
-  await OwnerFeeSchedule.create({
-    property_id: propertyId, fee_name: 'Property Management Fee',
-    fee_category: 'management', fee_trigger: 'monthly',
-    amount_type: mgmt.price_type === 'percent_of_rent' ? 'percentage' : 'fixed',
-    amount_value: mgmt.price_type === 'percent_of_rent' ? (mgmt.percent || 5) : mgmt.agreed_price,
-    notes: `From ${env.envelope_code} (min ${mgmt.min || 0})`, is_active: true,
-  }, { transaction: t }).catch(() => {});
+  try {
+    const [profile] = await PropertyOwnerProfile.findOrCreate({
+      where: { property_id: propertyId },
+      defaults: { property_id: propertyId, contact_id: contactId || null },
+      transaction: t,
+    });
+    if (!profile.contact_id && contactId) await profile.update({ contact_id: contactId }, { transaction: t });
+    // Replace any prior management-fee schedule for this owner profile (avoid dupes).
+    await OwnerFeeSchedule.destroy({ where: { owner_profile_id: profile.id, fee_category: 'management' }, transaction: t });
+    await OwnerFeeSchedule.create({
+      property_id: propertyId, owner_profile_id: profile.id,
+      fee_name: 'Property Management Fee', fee_category: 'management',
+      fee_trigger: 'rental_receipt',
+      amount_type: mgmt.price_type === 'percent_of_rent' ? 'percentage' : 'fixed',
+      amount_value: mgmt.price_type === 'percent_of_rent' ? (mgmt.percent || 5) : mgmt.agreed_price,
+      notes: `From ${env.envelope_code} (min ${mgmt.min || 0})`, is_active: true,
+    }, { transaction: t });
+  } catch (e) { console.warn('[rprm] syncRecurringFee:', e.message); }
 }
 
 // Create the agreement — save as a draft, or send it to the landlord for signing.
@@ -79,7 +95,7 @@ exports.createAgreement = asyncHandler(async (req, res) => {
       client: { ...client, contact_id: body.client_contact_id || null },
       org: body.org || {}, witnesses: body.witnesses, user: req.user || {}, clientRole: 'landlord',
     }), t);
-    await syncRecurringFee(env, pricing, body.property_id, t);
+    await syncRecurringFee(env, pricing, body.property_id, body.client_contact_id || null, t);
     if (asDraft) return { env, links: [] };
     const links = await dispatchEnvelope(env, t);
     return { env, links };

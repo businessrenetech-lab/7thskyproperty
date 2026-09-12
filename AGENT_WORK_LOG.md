@@ -6435,11 +6435,16 @@ used "the last line starting with `import`", which landed inside a multi-line
   - Verified 0 occurrences of prohibited location names across all modified files.
 - Handoff: Production build passed and live server verified. Services page is now visual, photo-rich, mass-friendly, and customer-focused.
 
-### 2026-09-12 18:43 | Antigravity | STARTED | ServicesPage UI refinements (single-line filter tabs, visible titles, removed prices, identical image sizing)
+### 2026-09-12 18:43 | Antigravity | COMPLETED | ServicesPage UI refinements (single-line filter tabs, visible titles, removed prices, identical image sizing)
 - Request: Ensure filter tabs are strictly on 1 line. Remove price badges from cards. Make card titles completely visible without truncation/clamping. Enforce identical image dimensions across all service cards.
-- Scope: Update `website-mock/src/pages/ServicesPage.jsx`.
-- Verification: In progress.
-- Handoff: In progress.
+- Files Changed:
+  - `website-mock/src/pages/ServicesPage.jsx`: Configured category filter tabs in a non-wrapping single line (`flex-nowrap overflow-x-auto no-scrollbar`) with compact labels. Completely removed price badges from cards. Removed `line-clamp-1` from card titles and applied `min-h-[3rem] leading-snug` so all service titles are 100% visible. Enforced exact image sizing with `h-48 sm:h-52 w-full object-cover` on all service cards.
+- Verification:
+  - `website-mock` built cleanly via `npm run build` (vite v5.4.21, 0 errors, 3.50s).
+  - Verified `http://localhost:3005/services` returns HTTP 200 OK.
+  - Verified 0 occurrences of prohibited location names.
+- Handoff: Production build passed and live server verified. Layout is aligned with user's screenshot requirements.
+
 
 
 
@@ -6454,3 +6459,17 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Task 2 — Agency Income view: NEW backend GET /api/invoices/agency-income (invoicing.controller.agencyIncome) rolls up agreement-fee invoices into billed/received/dues/drafts + lists them + active recurring OwnerFeeSchedule fees. NEW screen admin-portal/src/screens/AgencyIncome.jsx (route /property-management/agency-income, PM "Money In" nav "Agency Income (Our Fees)") — summary cards, All/Drafts/Dues/Paid/Recurring tabs, per-invoice Open (auth'd blob). Verified live: billed 805,000 / received 805,000 / dues 0 / drafts 4,240,000, 71 invoices, 27 recurring fees, 0 console errors.
 - Task 3 — Tenant-app → RPTM prefill: TenantApplications detail has a "Create tenancy agreement" button that navigates to the RPTM builder with prefill (tenant name/email/phone/NID + property + rent/deposit/lease term); TmAgreements honours location.state.prefill to open the builder prefilled. Removes the re-keying gap noted earlier.
 - admin-portal built clean; backend restarted. Test data kept.
+
+### 2026-09-12 18:55 | Antigravity | STARTED | Transparent background AI images for service cards while keeping card size & UI unchanged
+- Request: Keep service card size and UI unchanged. Add transparent background visuals with relevant AI generated images so viewers can instantly relate to each service.
+- Scope: Generate 3D isometric glassmorphism visual assets for remaining services, add them as transparent background elements in `website-mock/src/pages/HomePage.jsx` (and align `ServicesPage.jsx`), preserving 100% of card size, typography, pills, badges, bullets, and layout.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Generating remaining visual assets with AI and integrating subtle background styling.
+
+
+### 2026-09-12 | Claude Opus 4.8 | IN PROGRESS | Full PM journey E2E + BUG: RPRM management fee never charged
+- NEW backend/scripts/e2ePropertyManagement.js (22/0): rental property → website tenant application → 8-item verification → approve → convert to tenancy (deposit + folios) → raise month-1 rent invoice (+DUPLICATE guard: same-period refused 409) → pay (paid, balance 0) → bulk collect month-2 → arrears feed → owner statement → activate → quick renewal → end tenancy. All green.
+- BUG FOUND + FIXED (high impact — "our fees"/recurring): the RPRM controller's syncRecurringFee created the management-fee OwnerFeeSchedule with property_id only and fee_trigger:'monthly'. But owner_profile_id is NOT NULL and 'monthly' is not a valid fee_trigger enum → the create threw and was swallowed by .catch(()=>{}) → NO fee row created. Even if created, applyOwnerFeesOnRent only reads schedules by owner_profile_id with trigger in [rental_receipt, first_rent], so the RPRM fee would never charge. Net: the management fee a signed RPRM establishes was never deducted on rent nor shown on owner statements.
+  FIX (rprm.controller.syncRecurringFee): find-or-create the PropertyOwnerProfile (property+landlord), replace any prior management fee for that profile (no dupes), and create the schedule with owner_profile_id + fee_trigger 'rental_receipt'. Verified: signing an RPRM now creates fee {owner_profile_id:9, trigger:rental_receipt, percentage 5%}; e2ePmAgreement 16/0 incl. new assertion.
+- STILL TO CHECK (this request): sidebar clutter/declutter + any UI "shows doubles" duplicates. Test data kept.
