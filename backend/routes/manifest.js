@@ -61,6 +61,8 @@ module.exports = [
   ['/api/wt-quotes', './waterTankQuotation.routes'],
   ['/api/wt-intake', './waterTankIntake.routes'],
   ['/api/wt-work-orders', './waterTankWorkOrder.routes'],
+  ['/api/wt-suppliers', './waterTankSupplier.routes'],
+  ['/api/wt-supplier-bills', './waterTankSupplierBill.routes'],
   ['/api/wt-projects', './waterTankProject.routes'],
   ['/api/wt-amc', './waterTankAmc.routes'],
   ['/api/wt-invoices', './waterTankInvoice.routes'],

@@ -171,6 +171,8 @@ mount('/api/wt-clients', './routes/waterTankClients.routes');
 mount('/api/wt-quotes', './routes/waterTankQuotation.routes');
 mount('/api/wt-intake', './routes/waterTankIntake.routes');
 mount('/api/wt-work-orders', './routes/waterTankWorkOrder.routes');
+  mount('/api/wt-suppliers', './routes/waterTankSupplier.routes'); // project-costing supplier register
+  mount('/api/wt-supplier-bills', './routes/waterTankSupplierBill.routes'); // accounts payable
 mount('/api/wt-projects', './routes/waterTankProject.routes');
 mount('/api/wt-amc', './routes/waterTankAmc.routes');
 mount('/api/wt-invoices', './routes/waterTankInvoice.routes');

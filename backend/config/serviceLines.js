@@ -26,6 +26,8 @@ const SERVICE_LINES = {
     code_prefix: {
       client: 'WTCM-C', project: 'WTCM-P', request: 'SR-', assessment: 'SA-',
       quotation: 'Q-', work_order: 'WO-', invoice: 'INV-', provider: 'SP-',
+      // Project-costing accounts payable (all lines fall back to these).
+      supplier: 'SUP-', supplier_bill: 'SB-',
     },
     required_docs: {
       compliance: ['Trade Licence', 'Company Registration', 'TIN', 'BIN', 'Safety Certification'],
@@ -1017,6 +1019,9 @@ const SERVICE_LINES = {
       assess_equipment: ['Measuring Tape / Laser Meter', 'Camera', 'Moisture Meter', 'Material & Finish Samples', 'Laptop / CAD', 'Mood Board / Reference Deck'],
       recommended_services: ['Design Consultation', 'Space Planning', '3D Visualisation', 'Full Home Renovation', 'Kitchen Fit-Out', 'Custom Furniture', 'Home Styling', 'Project Management'],
       report_types: ['Site Visit', 'Design Concept', 'Progress', 'Handover', 'Completion Sign-Off'],
+      // Project-costing categories for supplier bills + the cost sheet.
+      cost_categories: ['Materials', 'Furniture', 'Joinery / Carpentry', 'Painting', 'Electrical', 'Plumbing', 'Flooring', 'False Ceiling', 'Labour', 'Subcontractor', 'Transport', 'Permits / Govt', 'Design / Consultant', 'Misc'],
+      supplier_categories: ['Material Supplier', 'Furniture Supplier', 'Carpenter / Joiner', 'Painter', 'Electrician', 'Plumber', 'Flooring Contractor', 'False Ceiling Contractor', 'Labour Contractor', 'Subcontractor', 'Transport', 'Other'],
       // From CSA Schedule D (Warranty Summary).
       warranty_types: ['Workmanship', 'Fit-Out & Renovation', 'Custom Furniture', 'Supplied Materials', 'Installation', 'General Workmanship'],
       warranty_months: { Workmanship: 12, 'Fit-Out & Renovation': 12, 'Custom Furniture': 12, 'Supplied Materials': 6, Installation: 6, 'General Workmanship': 6 },
