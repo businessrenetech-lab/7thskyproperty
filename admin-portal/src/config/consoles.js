@@ -397,17 +397,6 @@ export const RESIDENTIAL_NAV = [
     ],
   },
   {
-    key: 'buying',
-    label: 'Buying',
-    items: [
-      { to: '/residential/buyer-service', label: 'Buyer Service', icon: LayoutGrid, end: true },
-      { to: '/residential/buy', label: 'Deals', icon: Briefcase },
-      { to: '/residential/mandates', label: 'Buyer Mandates', icon: ClipboardList },
-      { to: '/residential/enquiry', label: 'Buyer Enquiries', icon: MessageSquareQuote },
-      { to: '/residential/agreements/purchase', label: 'Purchase Agreements', icon: FileSignature },
-    ],
-  },
-  {
     key: 'assurance',
     label: 'Assurance',
     items: [
@@ -423,6 +412,45 @@ export const RESIDENTIAL_NAV = [
     items: [
       { to: '/residential/accounting', label: 'Accounting', icon: Landmark },
       { to: '/residential/settlements', label: 'Settlements (Bulk)', icon: HandCoins },
+    ],
+  },
+  {
+    key: 'switch',
+    label: 'Switch',
+    items: [
+      { to: '/residential/buyer-service', label: '→ Buyer Service', icon: Briefcase },
+    ],
+  },
+];
+
+/* ── Residential BUYER service — its own focused console (no sell groups) ──
+ * Only buyer-owned routes (mounted under BuyerConsole in App.jsx) are listed, so
+ * every item renders with the buyer sidebar and the sell groups never appear.
+ * Shared tools (Inbox, Accounting/fees, Contacts) are reached from the Sell side
+ * via the Switch link; each buyer deal file surfaces its own fees inline. */
+export const BUYER_NAV = [
+  {
+    key: 'home',
+    label: 'Home',
+    items: [
+      { to: '/residential/buyer-service', label: 'Buyer Dashboard', icon: LayoutGrid, end: true },
+      { to: '/residential/enquiry', label: 'Buyer Enquiries', icon: MessageSquareQuote },
+    ],
+  },
+  {
+    key: 'buying',
+    label: 'Buying',
+    items: [
+      { to: '/residential/buy', label: 'Buy Deals', icon: Briefcase },
+      { to: '/residential/mandates', label: 'Buyer Mandates', icon: ClipboardList },
+      { to: '/residential/agreements/purchase', label: 'Purchase Agreements', icon: FileSignature },
+    ],
+  },
+  {
+    key: 'switch',
+    label: 'Switch',
+    items: [
+      { to: '/residential/sell', label: '→ Sell Dashboard', icon: LayoutGrid },
     ],
   },
 ];
@@ -446,6 +474,14 @@ export const residentialConsole = {
   api: {},
   contentClass: 'pm-scope',
   exitTo: '/dashboard',
+};
+
+// Residential BUYER service console — same shell/accent, buyer-only sidebar.
+export const buyerConsole = {
+  ...residentialConsole,
+  storageKey: 'res.buyer.nav.collapsed',
+  brand: { ...residentialConsole.brand, sub: 'Residential Buyer Service' },
+  navGroups: BUYER_NAV,
 };
 
 /* ── Air Conditioning ──────────────────────────────────────────────────────
