@@ -29,6 +29,8 @@ const { Op } = require('sequelize');
 const sequelize = require('../config/db.config');
 const M = require('../models/waterTankOps');
 const P = require('../models/waterTankProviders');
+// Online payment (SSLCommerz) for a service invoice. Required lazily inside the
+// dossier to avoid any load-order coupling with the gateway controller.
 
 const num = (v) => Number(v || 0);
 const round2 = (v) => Math.round((num(v) + Number.EPSILON) * 100) / 100;
@@ -485,6 +487,16 @@ async function clientDossier(client) {
 
   const outstanding = round2(liveInvoices.reduce((s, i) => s + Math.max(0, num(i.outstanding)), 0));
 
+  // A "Pay Now" link per outstanding invoice — only once SSLCommerz is wired up
+  // in Settings. Built from the raw invoice id (clientInvoice() drops the id).
+  const wtGateway = require('../controllers/wtInvoiceGateway.controller');
+  const gwOn = await wtGateway.gatewayConfigured();
+  const withPayUrl = (i) => {
+    const shaped = clientInvoice(i);
+    if (gwOn && shaped.outstanding > 0) shaped.pay_url = wtGateway.payUrlFor(i.id);
+    return shaped;
+  };
+
   return {
     client: {
       code: client.code,
@@ -496,7 +508,7 @@ async function clientDossier(client) {
     },
     quotations: liveQuotes.map(clientQuotation),
     work_orders: workOrders.filter((w) => lower(w.status) !== 'draft').map(clientWorkOrder),
-    invoices: liveInvoices.map(clientInvoice),
+    invoices: liveInvoices.map(withPayUrl),
     amc: amcs.map((a) => ({
       code: a.code, package: a.package, status: a.status,
       start_date: a.start_date, end_date: a.end_date,

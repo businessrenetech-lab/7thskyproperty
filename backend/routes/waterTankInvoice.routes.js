@@ -34,6 +34,9 @@ router.post('/:code/send', canTransact, ctrl.send);
 router.get('/:code/actions', canRead, ctrl.actions);
 router.get('/:code/payments', canRead, ctrl.paymentHistory);
 router.post('/:code/payments', canTransact, ctrl.recordPayment);
+// Create an SSLCommerz online pay-link for this invoice (online option alongside
+// manual recording). Taking money in is a transact action.
+router.post('/:code/pay-link', canTransact, require('../controllers/wtInvoiceGateway.controller').payLink);
 // Reversing a receipt is a correction to the books, so it sits with the people
 // who can bind the business rather than with everyone who can record one.
 router.post('/:code/payments/:eventId/reverse', canAdminister, ctrl.reversePayment);
