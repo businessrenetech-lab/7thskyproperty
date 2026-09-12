@@ -5,6 +5,7 @@ import {
 import api from '../../services/api';
 import { toast, errText } from './common';
 import { fileSrc } from '../../ui/FileUpload';
+import { compressImage } from '../../utils/imageCompress';
 
 /*
  * Photos — one component for uploading, captioning and viewing site pictures.
@@ -172,14 +173,24 @@ export default function Photos({
     if (!files.length) return;
     setBusy(true);
     const added = [];
-    for (const file of files) {
+    for (const original of files) {
+      // Shrink big phone photos in the browser first — a 10–15 MB shot becomes
+      // a few hundred KB, so the upload succeeds on 3G/4G instead of timing out.
+      // compressImage returns the original untouched if it can't help.
+      const file = await compressImage(original); // eslint-disable-line no-await-in-loop
       const form = new FormData();
       form.append('file', file);
-      try {
-        const r = await api.post(uploadUrl, form);
-        added.push({ url: r.data.url, caption: '', name: r.data.name || file.name });
-      } catch (err) {
-        toast.err(errText(err, `Could not upload ${file.name}`));
+      let done = false;
+      // A dropped mobile connection is the common failure; one automatic retry
+      // clears most of them without the tech noticing.
+      for (let attempt = 0; attempt < 2 && !done; attempt += 1) {
+        try {
+          const r = await api.post(uploadUrl, form); // eslint-disable-line no-await-in-loop
+          added.push({ url: r.data.url, caption: '', name: r.data.name || original.name });
+          done = true;
+        } catch (err) {
+          if (attempt === 1) toast.err(errText(err, `Could not upload ${original.name}`));
+        }
       }
     }
     // One state update for the whole batch: updating per file made the earlier
