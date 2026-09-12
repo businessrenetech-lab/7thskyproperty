@@ -745,36 +745,36 @@ export const propertyCareConciergeConsole = {
   exitTo: '/dashboard',
 };
 
-/* ── Residential Interior Design ────────────────────────────────────────────
+/* ── Interior Service Solutions ─────────────────────────────────────────────
  * Seventh Sky coordinates the project in-house — NO service provider and NO AMC.
  * Drop the Providers/Compliance group and the AMC item entirely, add a Variations
- * screen to Delivery. Rebased onto /residential-interior-design/* with a purple
+ * screen to Delivery. Rebased onto /interior-service-solutions/* with a purple
  * accent. Every other screen is the shared console, scoped by the header. */
-export const RESIDENTIAL_INTERIOR_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/residential-interior-design')
+export const INTERIOR_SERVICE_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/interior-service-solutions')
   .map((g) => ({
     ...g,
     // drop AMC (no annual maintenance for one-off projects); add Variations
     items: g.key.endsWith('delivery')
-      ? [...g.items.filter((it) => !/\/amc$/.test(it.to)), { to: '/residential-interior-design/variations', label: 'Variations', icon: FileSignature }]
+      ? [...g.items.filter((it) => !/\/amc$/.test(it.to)), { to: '/interior-service-solutions/variations', label: 'Variations', icon: FileSignature }]
       : g.items,
   }))
   // drop the whole Providers & Compliance group — no provider on this line
   .filter((g) => !g.key.endsWith('providers'));
 
-export const residentialInteriorConsole = {
-  slug: 'residential-interior-design',
-  storageKey: 'rid.nav.collapsed',
+export const interiorServiceConsole = {
+  slug: 'interior-service-solutions',
+  storageKey: 'iss.nav.collapsed',
   brand: {
     name: 'Seventh Sky',
-    sub: 'Residential Interior Design',
+    sub: 'Interior Service Solutions',
     icon: Home,
-    accent: '#9333ea',          // purple — Interior Design group
+    accent: '#9333ea',          // purple — Interior Service Solutions
     accentStrong: '#7e22ce',
     accentInk: '#6b21a8',
     accentTint: 'rgba(147,51,234,.12)',
     accentTint2: '#f3e8ff',
   },
-  navGroups: RESIDENTIAL_INTERIOR_NAV,
+  navGroups: INTERIOR_SERVICE_NAV,
   api: { capabilities: '/wt-ops/capabilities', workQueue: '/wt-ops/work-queue' },
   exitTo: '/dashboard',
 };
@@ -782,7 +782,7 @@ export const residentialInteriorConsole = {
 export const CONSOLES = {
   'water-tank': waterTankConsole,
   'air-conditioning': airConditioningConsole,
-  'residential-interior-design': residentialInteriorConsole,
+  'interior-service-solutions': interiorServiceConsole,
   'land-property-assessment': landPropertyAssessmentConsole,
   'loan-financial-support': loanFinancialSupportConsole,
   'property-documentation-verification': propertyDocVerificationConsole,

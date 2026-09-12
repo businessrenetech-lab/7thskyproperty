@@ -908,11 +908,11 @@ const SERVICE_LINES = {
   // agreement packs + config entries under the same `parent`.
   residential_interior_design: {
     key: 'residential_interior_design',
-    label: 'Residential Interior Design',
+    label: 'Interior Service Solutions',
     short: 'RIDS',
-    accent: '#9333ea',              // purple — Interior Design group
+    accent: '#9333ea',              // purple — Interior Service Solutions
     api_base: 'wt',                 // shared /api/wt-* mount, scoped by the header
-    route_base: 'residential-interior-design',
+    route_base: 'interior-service-solutions',
     env_tag: 'RIDS',                // ENV-RIDSCSA-…
     catalogue_vertical: 'residential_interior_design_csa',
     parent: { key: 'interior_design', label: 'Interior Design Solutions' },

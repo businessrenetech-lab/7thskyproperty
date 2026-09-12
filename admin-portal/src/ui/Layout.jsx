@@ -57,10 +57,9 @@ const NAV = [
     { to: '/property-care-concierge', label: 'Property Care & Concierge' },
     // Property Doc Verification & Transfer Support — its own group. Each sub-service
     // is a live console; the remaining two light up here once their documents arrive.
-    // Interior Design Solutions — its own group of 7 client-facing verticals.
-    // Residential is live; the other six light up here as they are built.
-    { group: true, label: 'Interior Design Solutions' },
-    { to: '/residential-interior-design', label: 'Residential Interior Design' },
+    // Interior Service Solutions — interior design / fit-out / styling.
+    { group: true, label: 'Interior Service Solutions' },
+    { to: '/interior-service-solutions', label: 'Interior Service Solutions' },
     { group: true, label: 'Doc Verification & Transfer' },
     { to: '/land-property-assessment', label: 'Land & Property Assessment' },
     { to: '/loan-financial-support', label: 'Loan & Financial Support' },

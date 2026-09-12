@@ -93,6 +93,7 @@ import WTPortalAccounts from './screens/watertank/PortalAccounts';
 import { ForgotPassword, ResetPassword, ChangePassword } from './screens/PasswordScreens';
 import WTClients from './screens/watertank/Clients';
 import InteriorVariations from './screens/watertank/InteriorVariations';
+import InteriorServiceConsole from './screens/watertank/InteriorServiceConsole';
 import WTClientDetail from './screens/watertank/clients/ClientDashboard';
 import WTClientCreate from './screens/watertank/clients/ClientCreate';
 import WTServiceRequests from './screens/watertank/ServiceRequests';
@@ -485,54 +486,56 @@ export default function App() {
               <Route path="/air-conditioning/catalogue" element={<WaterTankCatalogue />} />
               <Route path="/air-conditioning/portal-accounts" element={<WTPortalAccounts />} />
               <Route path="/air-conditioning/settings" element={<WaterTankSettings />} />
-              {/* Residential Interior Design — shared engine, scoped by the header.
-                  No provider / no AMC routes; adds Variations. */}
-              <Route path="/residential-interior-design" element={<WaterTankDashboard />} />
-              <Route path="/residential-interior-design/clients" element={<WTClients />} />
-              <Route path="/residential-interior-design/clients/new" element={<WTClientCreate />} />
-              <Route path="/residential-interior-design/clients/:code" element={<WTClientDetail />} />
-              <Route path="/residential-interior-design/service-requests" element={<WTServiceRequests />} />
-              <Route path="/residential-interior-design/service-requests/new" element={<WTServiceRequestNew />} />
-              <Route path="/residential-interior-design/site-assessments" element={<WTSiteAssessments />} />
-              <Route path="/residential-interior-design/site-assessments/new" element={<WTAssessmentForm />} />
-              <Route path="/residential-interior-design/site-assessments/:code" element={<WTAssessmentDetail />} />
-              <Route path="/residential-interior-design/site-assessments/:code/edit" element={<WTAssessmentForm />} />
-              <Route path="/residential-interior-design/site-assessments/:code/quotation" element={<WTQuotationBuilder />} />
-              <Route path="/residential-interior-design/site-assessments/:code/quotation/:quoteCode/agreement" element={<WTQuotationAgreement />} />
-              <Route path="/residential-interior-design/quotations" element={<WTQuotations />} />
-              <Route path="/residential-interior-design/quotations/new" element={<WTQuotationDirect />} />
-              <Route path="/residential-interior-design/quotations/:code" element={<WTQuotationDetail />} />
-              <Route path="/residential-interior-design/quotations/:code/edit" element={<WTQuotationBuilder />} />
-              <Route path="/residential-interior-design/quotations/:code/agreement" element={<WTQuotationAgreement />} />
-              <Route path="/residential-interior-design/work-orders" element={<WTWorkOrders />} />
-              <Route path="/residential-interior-design/work-orders/:code" element={<WTWorkOrderDetail />} />
-              <Route path="/residential-interior-design/work-orders/:code/edit" element={<WTWorkOrderForm />} />
-              <Route path="/residential-interior-design/work-orders/:code/document" element={<WTWorkOrderDocument />} />
-              <Route path="/residential-interior-design/projects" element={<WTProjects />} />
-              <Route path="/residential-interior-design/projects/new" element={<WTProjectForm />} />
-              <Route path="/residential-interior-design/projects/:code" element={<WTProjectDetail />} />
-              <Route path="/residential-interior-design/projects/:code/edit" element={<WTProjectForm />} />
-              <Route path="/residential-interior-design/variations" element={<InteriorVariations />} />
-              <Route path="/residential-interior-design/agreements/customer" element={<WtCustomerAgreements />} />
-              <Route path="/residential-interior-design/agreements" element={<WTAgreementsHub />} />
-              <Route path="/residential-interior-design/reports" element={<WTReports />} />
-              <Route path="/residential-interior-design/reports/:kind" element={<WTReports />} />
-              <Route path="/residential-interior-design/service-reports" element={<WTServiceReports />} />
-              <Route path="/residential-interior-design/service-reports/:code" element={<WTServiceReports />} />
-              <Route path="/residential-interior-design/work-queue" element={<WTWorkQueue />} />
-              <Route path="/residential-interior-design/invoices" element={<WTInvoices />} />
-              <Route path="/residential-interior-design/invoices/:code" element={<WTInvoiceEditor />} />
-              <Route path="/residential-interior-design/payments" element={<WTPayments />} />
-              <Route path="/residential-interior-design/calendar" element={<WTCalendar />} />
-              <Route path="/residential-interior-design/registers" element={<WTRegisters />} />
-              <Route path="/residential-interior-design/registers/:kind" element={<WTRegisters />} />
-              <Route path="/residential-interior-design/registers/:kind/:code" element={<WTRegisters />} />
-              <Route path="/residential-interior-design/complaints" element={<WTComplaints />} />
-              <Route path="/residential-interior-design/complaints/:code" element={<WTComplaints />} />
-              <Route path="/residential-interior-design/communication" element={<WTCommLog />} />
-              <Route path="/residential-interior-design/catalogue" element={<WaterTankCatalogue />} />
-              <Route path="/residential-interior-design/portal-accounts" element={<WTPortalAccounts />} />
-              <Route path="/residential-interior-design/settings" element={<WaterTankSettings />} />
+            </Route>
+            {/* Interior Service Solutions — shared engine, scoped by the header.
+                Its OWN console shell (no provider / no AMC nav); adds Variations. */}
+            <Route element={<RequireAuth><AdminGate><InteriorServiceConsole /></AdminGate></RequireAuth>}>
+              <Route path="/interior-service-solutions" element={<WaterTankDashboard />} />
+              <Route path="/interior-service-solutions/clients" element={<WTClients />} />
+              <Route path="/interior-service-solutions/clients/new" element={<WTClientCreate />} />
+              <Route path="/interior-service-solutions/clients/:code" element={<WTClientDetail />} />
+              <Route path="/interior-service-solutions/service-requests" element={<WTServiceRequests />} />
+              <Route path="/interior-service-solutions/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/interior-service-solutions/site-assessments" element={<WTSiteAssessments />} />
+              <Route path="/interior-service-solutions/site-assessments/new" element={<WTAssessmentForm />} />
+              <Route path="/interior-service-solutions/site-assessments/:code" element={<WTAssessmentDetail />} />
+              <Route path="/interior-service-solutions/site-assessments/:code/edit" element={<WTAssessmentForm />} />
+              <Route path="/interior-service-solutions/site-assessments/:code/quotation" element={<WTQuotationBuilder />} />
+              <Route path="/interior-service-solutions/site-assessments/:code/quotation/:quoteCode/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/interior-service-solutions/quotations" element={<WTQuotations />} />
+              <Route path="/interior-service-solutions/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/interior-service-solutions/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/interior-service-solutions/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/interior-service-solutions/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/interior-service-solutions/work-orders" element={<WTWorkOrders />} />
+              <Route path="/interior-service-solutions/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/interior-service-solutions/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/interior-service-solutions/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/interior-service-solutions/projects" element={<WTProjects />} />
+              <Route path="/interior-service-solutions/projects/new" element={<WTProjectForm />} />
+              <Route path="/interior-service-solutions/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/interior-service-solutions/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/interior-service-solutions/variations" element={<InteriorVariations />} />
+              <Route path="/interior-service-solutions/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/interior-service-solutions/agreements" element={<WTAgreementsHub />} />
+              <Route path="/interior-service-solutions/reports" element={<WTReports />} />
+              <Route path="/interior-service-solutions/reports/:kind" element={<WTReports />} />
+              <Route path="/interior-service-solutions/service-reports" element={<WTServiceReports />} />
+              <Route path="/interior-service-solutions/service-reports/:code" element={<WTServiceReports />} />
+              <Route path="/interior-service-solutions/work-queue" element={<WTWorkQueue />} />
+              <Route path="/interior-service-solutions/invoices" element={<WTInvoices />} />
+              <Route path="/interior-service-solutions/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/interior-service-solutions/payments" element={<WTPayments />} />
+              <Route path="/interior-service-solutions/calendar" element={<WTCalendar />} />
+              <Route path="/interior-service-solutions/registers" element={<WTRegisters />} />
+              <Route path="/interior-service-solutions/registers/:kind" element={<WTRegisters />} />
+              <Route path="/interior-service-solutions/registers/:kind/:code" element={<WTRegisters />} />
+              <Route path="/interior-service-solutions/complaints" element={<WTComplaints />} />
+              <Route path="/interior-service-solutions/complaints/:code" element={<WTComplaints />} />
+              <Route path="/interior-service-solutions/communication" element={<WTCommLog />} />
+              <Route path="/interior-service-solutions/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/interior-service-solutions/portal-accounts" element={<WTPortalAccounts />} />
+              <Route path="/interior-service-solutions/settings" element={<WaterTankSettings />} />
             </Route>
             {/* ── Land & Property Assessment console — Survey & Valuation, same
                 screens as Water Tank, scoped to land_property_assessment (first
