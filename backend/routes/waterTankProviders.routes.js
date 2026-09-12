@@ -8,8 +8,18 @@ const { authMiddleware, roleMiddleware } = require('../middleware/auth.middlewar
 const { canRead, canOperate, canAdminister } = require('../middleware/wtRoles');
 const upload = require('../utils/uploadAny');
 const ctrl = require('../controllers/waterTankProviders.controller');
+const { serviceFlags } = require('../utils/controllerHelpers');
 
 router.use(authMiddleware);
+// Service lines that deliver without an external provider (e.g. Interior Design)
+// have no provider register — refuse the whole surface with a clear message
+// rather than showing an empty, meaningless console.
+router.use((req, res, next) => {
+  if (serviceFlags(req).no_provider) {
+    return res.status(409).json({ error: 'Providers are not used on this service line.' });
+  }
+  next();
+});
 // This file predates wtRoles and carries its own two guards. They are kept
 // because they are narrower than the shared tiers for these specific actions:
 // APPROVE additionally admits accounts, who verify payment details.

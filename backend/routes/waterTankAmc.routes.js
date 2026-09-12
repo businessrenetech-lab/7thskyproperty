@@ -7,8 +7,17 @@ const router = express.Router();
 const { authMiddleware } = require('../middleware/auth.middleware');
 const { canRead, canOperate, canTransact, canBind, canAdminister } = require('../middleware/wtRoles');
 const ctrl = require('../controllers/waterTankAmc.controller');
+const { serviceFlags } = require('../utils/controllerHelpers');
 
 router.use(authMiddleware);
+// Lines with no annual-maintenance offering (e.g. Interior Design one-off
+// projects) refuse AMC endpoints rather than expose an inapplicable module.
+router.use((req, res, next) => {
+  if (serviceFlags(req).no_amc) {
+    return res.status(409).json({ error: 'AMC is not offered on this service line.' });
+  }
+  next();
+});
 
 // Static paths first so a contract is never looked up by the literal "reference".
 router.get('/reference', canRead, ctrl.reference);

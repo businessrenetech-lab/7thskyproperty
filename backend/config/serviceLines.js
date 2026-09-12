@@ -921,6 +921,11 @@ const SERVICE_LINES = {
     no_amc: true,
     variations: true,
     completion_signoff: true,
+    // Seventh Sky delivers/coordinates the project itself — no agreement-bound
+    // service provider. Reuse the tested internal-team work-order flow (allocate
+    // instead of assign; schedule → start → complete → verify unchanged), the
+    // same model the Removal line uses.
+    delivery_model: 'internal_team',
     // No provider prefix — providers are not used on this line.
     code_prefix: {
       client: 'RIDS-C', project: 'RIDS-P', request: 'RIDR-', assessment: 'RIDA-',
