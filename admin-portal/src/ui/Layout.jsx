@@ -34,14 +34,14 @@ const NAV = [
    * repeated in this one.
    */
   { to: '/short-stay', label: 'Short Term Stay', icon: Hotel },
-  { key: 'commercial', label: 'Commercial', to: '/commercial/sell', icon: Building2, children: [
+  { key: 'commercial', label: 'Commercial', icon: Building2, children: [
     { to: '/commercial/sell', label: 'Sales / Sell Dashboard' },
     { to: '/commercial/buy', label: 'Buy' },
     { to: '/commercial/enquiry', label: 'Buyer Enquiries' },
     { to: '/compliance?category=commercial', label: 'Compliance' },
     { to: '/projects?vertical_key=commercial_rent,commercial_sale', label: 'Checklists / Workflows' },
   ] },
-  { key: 'rural', label: 'Rural Properties', to: '/rural/sell', icon: Trees, children: [
+  { key: 'rural', label: 'Rural Properties', icon: Trees, children: [
     { to: '/rural/sell', label: 'Sales / Sell Dashboard' },
     { to: '/rural/buy', label: 'Buy' },
     { to: '/rural/enquiry', label: 'Buyer Enquiries' },
