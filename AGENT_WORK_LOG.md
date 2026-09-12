@@ -5778,8 +5778,17 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Verification & Test Results:
   - `website-mock/`: `npm run build` passed with 0 errors (1503 modules transformed, 3.34s).
   - `website/`: `npm run build` passed with 0 errors (all 23 static pages generated in 372ms). Static output `website/.next/server/app/services/interior-design.html` confirmed status 200 (115,078 bytes) with all custom sections and bullet specifications verified.
-  - HTTP checks to `http://localhost:3005/services/interior-design` return 200 OK.
-- Handoff: The `/services/interior-design` page is completely transformed into an editorial, high-aesthetic landing page experience matching modern architectural standards in both `website-mock` (Vite) and `website` (Next.js).
+### 2026-09-12 15:15 | Antigravity (Gemini 3.8 Flash) | STARTED | Refine Interior Landing Page: Light Theme & Full-Width Minimalist Hero
+- Request: "http://localhost:3005/services/interior-design keep the previous background color light structure.,,,,,on hero section put a nice minimalist interior image only full width.....Short headline only....and a button to request for the service"
+- Scope: `website-mock/src/components/InteriorDesignLanding.jsx`, `website/src/components/InteriorDesignLanding.jsx`.
+- Intended outcome:
+  - Transition whole page background color structure to clean, crisp light theme (pure white, light slate `bg-slate-50`, dark navy headings `#012a4e`, slate body text, clean bordered cards).
+  - Redesign hero section into a stunning full-width minimalist interior architectural visual showcase.
+  - Short, punchy headline only (e.g. "Minimalist Turnkey Interiors.") with no wall of text.
+  - Single clear, high-impact CTA button: "Request Interior Consultation" (linking smoothly to `#book-service`).
+  - Keep all organized spatial portfolio images, deep technical bullet lists, 4-phase process roadmap, transparent pricing tiers, and embedded consultation wizard in the elegant light theme.
+  - Retain zero location names and zero internal jargon.
+
 
 
 
@@ -5795,3 +5804,82 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Non-bugs confirmed (were only harness-fixture gaps): KYC-link token is in data.link; commission must be in pricing_input.commission to build the payment schedule that seeds invoices; assessment auto-seeds a 9-item checklist that must all be completed before submit.
 - Note: an earlier test-data cleanup partially ran (removed most E2E fixtures across runs; contact rows survived a bank-account FK). A fresh full dataset was regenerated and LEFT IN PLACE for review — run stamp 962781, property #102, sale env #260 (ENV-RPSS-985258), draft #261, purchase env #262.
 - Admin-portal rebuilt (dist). Untouched: parallel Gemini/Antigravity website work.
+
+### 2026-09-12 15:20 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Interior Landing Page Light Background & Full-Width Minimalist Hero
+- Request: "http://localhost:3005/services/interior-design keep the previous background color light structure.,,,,,on hero section put a nice minimalist interior image only full width.....Short headline only....and a button to request for the service"
+- Scope: `website-mock/src/components/InteriorDesignLanding.jsx`, `website/src/components/InteriorDesignLanding.jsx`, `website/src/app/services/[slug]/page.jsx`.
+- Changes Made:
+  1. Full-Width Minimalist Architectural Hero Section:
+     - Hero now features a full-width, immersive high-resolution minimalist architectural interior photography showcase (`object-cover w-full h-[65vh]`).
+     - Subtle dark ambient scrim ensuring sharp contrast for text while keeping the architecture pristine.
+     - Ultra-clean minimalist content:
+       - Single pill badge: "Turnkey Architectural Interiors".
+       - Short, high-impact headline only: "Refined Spaces. / Crafted for Living."
+       - Prominent call-to-action button: "Request Interior Consultation" (linking directly to `#book-service`).
+     - Removed cluttered text blocks, body paragraphs, and multiple micro-cards from the hero, delivering an uncluttered architectural aesthetic.
+  2. Crisp Light Background Structure:
+     - Restored the overall background to clean light structure (`bg-white text-[#012a4e]`).
+     - Sticky Sub-Navigation: Light frosted styling (`bg-white/95 backdrop-blur-md border-y border-slate-200 text-slate-600`).
+     - Spatial Works Gallery: Pure white background, light cards (`border-slate-200/90 shadow-xs hover:shadow-xl`), dark navy titles (`#012a4e`), slate text, light category pills (`bg-slate-100` / `bg-[#012a4e]`).
+     - Technical Engineering: Light slate background (`bg-slate-50/70`), white cards with blue-tinted icon containers (`bg-blue-50 text-[#00AEEF]`), crisp bullet lists with high technical depth.
+     - 4-Phase Roadmap: Light cards with light timeline pills and sky blue phase tags.
+     - Investment Packages: Light cards with prominent `#00AEEF` highlight on popular tier.
+     - Consultation Form: Clean white/slate container with crisp border and prominent contact concierge desk.
+  3. Parity & Build Verification:
+     - Replicated identically in `website-mock` (Vite) and `website` (Next.js).
+     - `website-mock/`: `npm run build` passed in 2.35s (0 errors).
+     - `website/`: `npm run build` passed in 2.0s with all 23 static pages generated in 401ms. Static output `website/.next/server/app/services/interior-design.html` verified status 200 (111,383 bytes).
+     - HTTP request to `http://localhost:3005/services/interior-design` verified returning status 200.
+- Handoff: The Interior Design service landing page is now rendered in the clean light aesthetic with a full-width minimalist hero, short headline, and direct consultation CTA.
+
+### 2026-09-12 15:25 | Antigravity (Gemini 3.8 Flash) | STARTED | Hero Full-Screen Viewport Height & Badge Removal
+- Request: "the hero image should visible first viewport.....increase height full screen,.....remove this text Turnkey Architectural Interiors"
+- Scope: `website-mock/src/components/InteriorDesignLanding.jsx`, `website/src/components/InteriorDesignLanding.jsx`.
+- Intended outcome:
+  - Increase hero section height to full screen (`h-screen min-h-screen`) so the hero image and headline cleanly occupy the complete first viewport on initial load without fold bleed.
+  - Remove the "Turnkey Architectural Interiors" text pill badge from the hero section.
+
+### 2026-09-12 15:28 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Hero Full-Screen Viewport Height & Badge Removal
+- Request: "the hero image should visible first viewport.....increase height full screen,.....remove this text Turnkey Architectural Interiors"
+- Scope: `website-mock/src/components/InteriorDesignLanding.jsx`, `website/src/components/InteriorDesignLanding.jsx`.
+- Changes Made:
+  1. Full-Screen Viewport Hero (`h-screen min-h-screen`):
+     - Updated hero container from `h-[65vh]` to `h-screen min-h-screen` with `w-full relative flex items-center justify-center overflow-hidden`.
+     - Ensures the minimalist architectural interior photograph and typography occupy 100% of the first viewport on initial load, preventing the sub-navigation bar or subsequent sections from bleeding above the fold.
+  2. Pill Badge Removal:
+     - Completely removed the "Turnkey Architectural Interiors" text badge and its container from the hero section.
+     - Kept strictly the bold short headline ("Refined Spaces. / Crafted for Living.") and the "Request Interior Consultation" button.
+  3. Parity & Build Verification:
+     - Synchronized across both `website-mock` (Vite) and `website` (Next.js).
+     - `website-mock/`: `npm run build` passed in 5.06s (0 errors).
+     - `website/`: `npm run build` passed in 3.7s with all 23 static pages generated in 650ms.
+     - Confirmed static HTML output in `website/.next/server/app/services/interior-design.html` has `Turnkey Architectural Interiors` badge removed and `h-screen` applied.
+     - Live endpoint `http://localhost:3005/services/interior-design` verified returning 200 OK.
+- Handoff: The hero section now spans the complete first viewport with a clean minimalist image, short headline, and consultation button with zero text badges.
+
+### 2026-09-12 15:30 | Antigravity (Gemini 3.8 Flash) | STARTED | Align Interior Service Content with Real SOPs & Agreements
+- Request: "C:\Users\ADMIN\Downloads\Interior Design-20260912T091604Z-1-001\Interior Design here our interior design related sops....services,.......make sure the interior service http://localhost:3005/services/interior-design should write the content based on the content services available here C:\Users\ADMIN\Downloads\Interior Design-20260912T091604Z-1-001\Interior Design"
+- Scope: `website-mock/src/components/InteriorDesignLanding.jsx`, `website/src/components/InteriorDesignLanding.jsx`, `servicesData.js`.
+- Intended outcome:
+  - Extract and incorporate the exact services from the 7 official SOPs and Customer Agreements:
+    1. Residential Interior Design Solutions (Living, Dining, Chef Kitchens, Master Suites, Home Offices)
+    2. Commercial Interior Design Solutions (Corporate Offices, Retail Stores, Restaurants/Cafés, Hospitality, Brand Integration)
+    3. Custom Design & Fit-Out Solutions (Architectural Carpentry, Joinery, Built-in Cabinetry, Sintered Stone/Quartz)
+    4. Space Planning & Renovation Solutions (Structural Remodeling, Functional Traffic Flow, Modernization)
+    5. Furniture & Styling Consultation (Curated Procurement, Window & Soft Furnishing, Art & Plant Staging)
+    6. Fitness Room Interior Design Solutions (Home Gyms, Commercial/Corporate Gyms, Acoustic Flooring, Equipment Layout)
+    7. Muslim Prayer Room Interior Design Solutions (Musallah Planning, Qibla Orientation, Wudu Facilities, Acoustic Carpeting, Quranic Storage)
+  - Retain the clean light background structure (`bg-white`), the full-screen minimalist hero image, short headline, request button, zero location names, and zero internal jargon.
+
+
+
+
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED | E2E debug of the COMPLETE sell-side settlement journey
+- Request: test the whole settlement process for the sell side end-to-end — offers → start settlement → receive payments → payouts → settled → our invoice paid & shown; sell-service buyers created WITHOUT signing an agreement but KYC must be verified properly.
+- Harness: backend/scripts/e2eSellJourneyFull.js (KEPT) — drives the entire journey over the real API, clearing every gate through the REAL flows (not DB-seeded).
+- Full journey verified — 34 PASS / 0 FAIL:
+  vendor + property + sale profile (commission) → vendor KYC submit+verify (real → kyc_status complete) → vendor signs RPSS sale agreement (→ agreement_status signed, drafts our commission invoice) → site assessment create/complete/submit/approve (→ assessment_status complete) → compliance cleared + trust/operating banks linked (profile API) → BUYER created with NO agreement but KYC verified (gate satisfied) → offer → accept (deal+transaction+parties) → settlement started (obligations: commission 200k + vendor proceeds 9.8M) → buyer pays full price into trust → reconcile → prepare payouts → submit→review→approve → pay out → reconcile → pay (vendor + agency) → LOCK → property SOLD, deal completed, trust ledger nets to ZERO, residual ZERO → OUR commission invoice (SSPC-IN, 200,000) recorded PAID and shown as status=paid, balance 0.
+- Confirmed the KYC gate works via the real path: onKycChange flips PartyRoleProfile.kyc_status→complete when all required docs are verified; settlement lock enforces party_kyc_not_verified until then. Buyer needs KYC but no agreement — exactly as required.
+- One minor limitation noted (not in scope to fix): a witness with no email 500s (EnvelopeSigner.email is notNull) — witnesses currently require an email.
+- No product code changes were needed for the sell settlement journey — it is fully functional. Fresh dataset left in place for review: prop=108, vendor=266, buyer=267, deal=94, settlement=82, agreement env=268 (run 890709).
