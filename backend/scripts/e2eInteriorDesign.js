@@ -111,6 +111,21 @@ async function signAll(signers) {
     ok([201, 409].includes(pl.status), 'invoice pay-link path reachable (409 = ready-for-keys)', `HTTP ${pl.status}`);
   }
 
+  // ── Project costing / accounts payable: supplier → bill → part-pay ──────────
+  const sup = await A('POST', '/api/wt-suppliers', { name: `E2E Furniture ${STAMP}`, category: 'Furniture Supplier', phone: `018${STAMP}` });
+  const supId = sup.body?.data?.id;
+  ok([200, 201].includes(sup.status) && /^SUP-/.test(sup.body?.data?.code || ''), 'supplier created (SUP- code)', sup.body?.data?.code);
+  const bill = await A('POST', '/api/wt-supplier-bills', { supplier_id: supId, category: 'Furniture', description: 'Sofa + wardrobe', total: 100000 });
+  const billCode = bill.body?.data?.bill_code;
+  ok([200, 201].includes(bill.status) && /^SB-/.test(billCode || ''), 'supplier bill recorded (SB- code, owed 100k)', billCode);
+  const bp = await A('POST', `/api/wt-supplier-bills/${billCode}/pay`, { amount: 40000, method: 'bank_transfer' });
+  ok(bp.body?.data?.status === 'partial' && Number(bp.body?.data?.balance) === 60000, 'part-payment 40k → bill partial, balance 60k', `disb=${bp.body?.disbursement_code}`);
+  const supList = list((await A('GET', '/api/wt-suppliers')).body);
+  const mySup = supList.find((s) => s.id === supId);
+  ok(mySup && Number(mySup.payable) === 60000, 'supplier running payable = 60k', `payable=${mySup?.payable}`);
+  const payables = (await A('GET', '/api/wt-supplier-bills')).body?.summary || {};
+  ok(Number(payables.outstanding) >= 60000, 'firm-wide payables reflect the outstanding bill', `outstanding=${payables.outstanding}`);
+
   // ── No provider / no AMC on this line ───────────────────────────────────────
   ok((await A('GET', '/api/wt-providers/directory')).status === 409, 'provider endpoints refused (no_provider)');
   ok((await A('GET', '/api/wt-amc/overview')).status === 409, 'AMC endpoints refused (no_amc)');
