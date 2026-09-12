@@ -47,6 +47,7 @@ import TenantPortal from './screens/TenantPortal';
 import Renewals from './screens/Renewals';
 import Vacancies from './screens/Vacancies';
 import WebsiteManagement from './pages/WebsiteManagement';
+import WebsiteContent from './screens/WebsiteContent';
 import DepositSettlements from './screens/DepositSettlements';
 import RentalReports from './screens/RentalReports';
 import Disbursements from './screens/Disbursements';
@@ -341,6 +342,7 @@ export default function App() {
               <Route path="/users" element={PH('Users & Roles', 'User management and RBAC matrix.')} />
               <Route path="/settings" element={PH('Settings', 'System configuration.')} />
               <Route path="/website-management" element={<WebsiteManagement />} />
+              <Route path="/website-content" element={<WebsiteContent />} />
               <Route path="/website" element={<Navigate to="/website-management" replace />} />
               <Route path="/website/enquiries" element={<WebsiteManagement />} />
             </Route>

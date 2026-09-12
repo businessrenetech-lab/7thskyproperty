@@ -6129,3 +6129,58 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Fix: stripped only the static "SIGNATURES …" placeholder block from clause 25 in both files (kept the legal execution paragraphs, ending "…together constitute one Agreement."). Both files still load as 25-clause arrays.
 - Verified on a fresh agreement: 0 static SIGNATURES headings, 1 dynamic Signatures section, 0 "Signature: ____" placeholders, 4 real anchors (Client 1, Client 2, Seventh Sky, Witness), signatures still last, checkboxes filled, multi-vendor intact.
 - Note: snapshot behaviour — pre-existing agreements keep their stored document_html (still duplicated); only newly generated agreements are clean. Backend restarted.
+
+### 2026-09-12 16:15 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Eliminate Excessive White Space and Redesign Gallery Service Cards
+- Request: "not looks good too much white space in the cards.." with 2 screenshots showing stretched gallery cards with 300px white gaps.
+- Scope: `website-mock/src/components/AirConditioningLanding.jsx`, `website/src/components/AirConditioningLanding.jsx`, `website-mock/src/components/WaterTankLanding.jsx`, `website/src/components/WaterTankLanding.jsx`.
+- Root Cause Identified:
+  1. `aspect-4/3` was an invalid Tailwind utility, which caused vertical photos (such as image 3 crossword puzzle and image 6 window cleaning) to expand naturally up to 600px tall. In CSS Grid, this stretched every card in the row to 700px+ tall.
+  2. `flex flex-col justify-between` pushed the title to the top and bullet points to the bottom, creating an empty 300px void in the card center.
+  3. Unrelated stock images (crossword puzzle, welder with sparks, woman cleaning window shutter, residential house) reduced authenticity.
+- Changes & Fixes Applied:
+  1. Fixed image height across all cards to `relative h-48 w-full overflow-hidden shrink-0` with `object-cover`. Every card now has an identical 192px tall image container, preventing any height distortion.
+  2. Replaced unrelated images in `GALLERY_ITEMS` with authentic, verified AC technician and equipment photos (outdoor condensers, jet wash jackets, electronic testing multimeter, indoor maintenance).
+  3. Redesigned card body layout:
+     - Title + short 1-sentence value description (`text-xs text-slate-500 mt-1.5`).
+     - Deliverables checklist directly beneath (`space-y-2 mt-4 pt-3.5 border-t border-slate-100`) with 3 concise bullets.
+     - Compact bottom meta strip with duration (`Clock`) and direct action link (`Book Service →`).
+     - Removed `justify-between`, eliminating all empty white space.
+  4. Applied the same height lock and balanced card cadence to `WaterTankLanding.jsx` across both `website-mock/` and `website/`.
+- Verification & Test Results:
+  - `website-mock/`: `npm run build` completed in 6.46s with 0 errors.
+  - `website/`: `npm run build` (Next.js Turbopack) compiled in 3.1s with all 23 static pages generated with 0 errors.
+- Verified visual balance: every card has uniform height, content is tightly grouped, and 0 dead white space exists.
+
+### 2026-09-12 16:31 | Antigravity (Gemini 3.8 Flash) | STARTED | Transform Remaining 9 Services into Clear, Marketing-Friendly Copy & Images
+- Request: "ok now change the wordings to other rest of the services also easy to understand for mass people ....make the writing easy to catch markeeting friendly writing that focus on our servicesa and what we delivering.......less texts visualise more.. please... change hero section image...relavant to service.....do not change the structure just change the image keep the hero action as it is"
+- Scope:
+  * `website-mock/src/data/servicesData.js`
+  * `website/src/lib/servicesData.js`
+- Services to Overhaul (9 remaining lines):
+  1. `land-property-assessment` (Land Survey & Valuation)
+  2. `loan-financial-support` (Home Loan & Mortgage Support)
+  3. `property-documentation-verification` (Title Search & Legal Verification)
+  4. `property-will-succession` (Wills, Heba & Inheritance Succession)
+  5. `removal-relocation` (Packers & Movers Relocation)
+  6. `property-care-concierge` (Vacant Home Care & Concierge)
+  7. `property-management` (Tenancy & Property Management)
+  8. `residential-sales` (Residential Buy & Sell Advisory)
+  9. `short-stay` (Executive Serviced Stays)
+- Intended Outcome:
+  - Punchy, simple, marketing-friendly copywriting focused on deliverables and benefits ("less texts, visualise more").
+  - Hero image updated to relevant verified high-res photo for each service while strictly preserving hero structure and actions.
+  - Zero prohibited location names (remove "in Bangladesh", "Dhaka", etc.).
+  - Mirror all changes exactly between `website-mock/src/data/servicesData.js` and `website/src/lib/servicesData.js`.
+  - Verify with clean builds in both applications.
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED | Website↔admin: service-request routing + site-content CMS (backend + admin editor)
+- Request: website enquiries/service requests/appraisals should appear at the relevant admin routes (e.g. Water Tank service request → /admin/water-tank/service-requests); admin edits reflect on the website; contact/footer/branding/social + hero/service/card photos editable from admin with uploads; keep uploads gitignored so deploys don't wipe them.
+- Survey findings: property feed (/api/public-website/properties) + sales/rental/tenant enquiries already route to admin; uploads ALREADY gitignored (backend/uploads/, 0 tracked) — survive deploys; contact & branding already exist as SystemSetting categories (editable in Settings), but had no public read endpoint and no photo/CMS layer.
+- Gap 1 fixed — service-request routing: publicWebsite.submitServiceRequest now maps the website service label/slug to a canonical service_line (water_tank, air_conditioning, land_property_assessment, loan_financial_support, property_documentation_verification, property_will_succession, removal_relocation) and delegates to the tested waterTankIntake.publicEnquiry, so the request is created as a WtServiceRequest under that line and shows at /admin/<line>/service-requests. General Property Care requests still fall through to CareEnquiry. Verified: website "Water Tank Cleaning" request → SR-1112, service_line=water_tank, source=Website.
+- Gap 2 fixed (foundation) — site-content CMS reusing SystemSetting (no new table):
+  - Public GET /api/public-website/site → non-secret site content grouped { contact, branding, social, website } (WEBSITE_* keys JSON-parsed). Secrets never exposed.
+  - Admin GET/PUT /api/public-website/admin/content (ROLES) → read/edit contact/footer/branding/social + website photo sets (WEBSITE_HERO_IMAGES, WEBSITE_SERVICE_PHOTOS, WEBSITE_CARD_PHOTOS as JSON). Never writes secrets/non-site keys.
+  - Admin screen admin-portal/src/screens/WebsiteContent.jsx (route /website-content, nav "Website Content"): edits contact/footer text, branding (name/tagline/colours + logo/dark-logo/favicon via UploadButton), social links, and hero/service/card photo repeaters (UploadButton, folder 'website'). Verified save→GET /site roundtrip.
+- HANDOFF to the website agent (website-mock, not touched to avoid conflicts): render live content from GET /api/public-website/site — contact/footer from data.contact.CONTACT_*, branding from data.branding.BRAND_*, social from data.social.SOCIAL_*, hero from data.website.WEBSITE_HERO_IMAGES [{url,heading,subheading}], per-service images from WEBSITE_SERVICE_PHOTOS [{name,url}], card/section images from WEBSITE_CARD_PHOTOS [{title,url}]. Image URLs are /uploads/website/... (served by backend, proxied on :3005). Also ensure website property/enquiry forms post service requests with a service_name/service_line so they route to the right console.
+- Uploads: confirmed already gitignored; nothing to change.
+- Backend restarted; admin-portal dist rebuilt. Test WtServiceRequest SR-1112 left in place; test config values reset to defaults.

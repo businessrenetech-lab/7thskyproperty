@@ -18,6 +18,7 @@ const Lead = require('../models/Lead');
 const Branch = require('../models/Branch');
 const ShortStayPropertyProfile = require('../models/ShortStayPropertyProfile');
 const ShortStayBooking = require('../models/ShortStayBooking');
+const SystemSetting = require('../models/SystemSetting');
 const { generateCode } = require('../utils/codeGenerator');
 const { routeAndEnrol } = require('./salesEnquiry.controller');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
@@ -621,6 +622,27 @@ exports.submitTenantApplication = asyncHandler(async (req, res) => {
 });
 
 // ─── 6. SUBMIT CARE SERVICE REQUEST ───────────────────────────────────────────
+// Map a website service label/slug to a canonical service-line key so the request
+// lands in the right service console (e.g. Water Tank → /admin/water-tank/service-requests).
+const SERVICE_LINE_ALIASES = {
+  water_tank: 'water_tank', 'water tank': 'water_tank', watertank: 'water_tank', 'water tank cleaning': 'water_tank', 'tank cleaning': 'water_tank',
+  air_conditioning: 'air_conditioning', ac: 'air_conditioning', 'air conditioning': 'air_conditioning', aircon: 'air_conditioning', 'ac service': 'air_conditioning', 'ac servicing': 'air_conditioning',
+  land_property_assessment: 'land_property_assessment', 'land assessment': 'land_property_assessment', 'property assessment': 'land_property_assessment', 'land survey': 'land_property_assessment',
+  loan_financial_support: 'loan_financial_support', loan: 'loan_financial_support', 'financial support': 'loan_financial_support', 'home loan': 'loan_financial_support',
+  property_documentation_verification: 'property_documentation_verification', 'document verification': 'property_documentation_verification', 'doc verification': 'property_documentation_verification', 'documentation verification': 'property_documentation_verification',
+  property_will_succession: 'property_will_succession', 'will succession': 'property_will_succession', succession: 'property_will_succession', will: 'property_will_succession',
+  removal_relocation: 'removal_relocation', removal: 'removal_relocation', relocation: 'removal_relocation', moving: 'removal_relocation', 'removal & relocation': 'removal_relocation',
+  property_care_concierge: 'property_care_concierge', concierge: 'property_care_concierge', 'property care': 'property_care_concierge',
+};
+function resolveWebsiteServiceLine(...vals) {
+  for (const v of vals) {
+    const key = String(v || '').trim().toLowerCase();
+    if (!key) continue;
+    if (SERVICE_LINE_ALIASES[key]) return SERVICE_LINE_ALIASES[key];
+  }
+  return null;
+}
+
 exports.submitServiceRequest = asyncHandler(async (req, res) => {
   const {
     name, phone, email, service_line, service_name,
@@ -629,6 +651,22 @@ exports.submitServiceRequest = asyncHandler(async (req, res) => {
 
   if (!name || (!phone && !email)) {
     return res.status(400).json({ error: 'Name and a phone or email are required.' });
+  }
+
+  // Route service-line requests (Water Tank, Air Conditioning, …) into that line's
+  // Service Requests module so they appear at /admin/<line>/service-requests. The
+  // shared intake needs a phone; general Property Care requests fall through to the
+  // Care enquiry desk below.
+  const canonicalLine = resolveWebsiteServiceLine(service_line, service_name);
+  if (canonicalLine && canonicalLine !== 'property_care_concierge' && phone) {
+    req.serviceLine = canonicalLine;
+    req.body = {
+      client_name: name, phone, email,
+      site_address: address, district,
+      services_requested: service_name ? [service_name] : [],
+      preferred_date, message: description, source: 'Website',
+    };
+    return require('./waterTankIntake.controller').publicEnquiry(req, res);
   }
 
   const branchId = await getDefaultBranchId();
@@ -892,4 +930,76 @@ exports.togglePropertyWebsiteStatus = asyncHandler(async (req, res) => {
   }
 
   res.json({ message: 'Property website status updated.', data: property });
+});
+
+// ─── SITE CONTENT (CMS) ───────────────────────────────────────────────────────
+// Editable, website-facing content stored in SystemSetting. Only these
+// categories are exposed/editable here — secrets (SMTP, API keys) are never
+// touched. Keys prefixed WEBSITE_ hold JSON (hero/service/card photo sets).
+const SITE_CATEGORIES = ['contact', 'branding', 'social', 'website'];
+const maybeJson = (v) => {
+  if (typeof v !== 'string') return v;
+  const t = v.trim();
+  if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
+    try { return JSON.parse(t); } catch { return v; }
+  }
+  return v;
+};
+
+// Build the grouped content map from the non-secret site settings.
+async function loadSiteContent() {
+  const rows = await SystemSetting.findAll({
+    where: { category: { [Op.in]: SITE_CATEGORIES }, is_secret: false },
+    attributes: ['setting_key', 'setting_value', 'category'],
+    raw: true,
+  });
+  const grouped = { contact: {}, branding: {}, social: {}, website: {} };
+  const flat = {};
+  for (const r of rows) {
+    const val = maybeJson(r.setting_value);
+    (grouped[r.category] = grouped[r.category] || {})[r.setting_key] = val;
+    flat[r.setting_key] = val;
+  }
+  return { grouped, flat };
+}
+
+// GET /api/public-website/site — public, read-only site content for the website
+// (contact + footer details, branding, social links, hero/service/card photos).
+exports.getSiteContent = asyncHandler(async (req, res) => {
+  const { grouped } = await loadSiteContent();
+  res.set('Cache-Control', 'public, max-age=60');
+  res.json({ data: grouped });
+});
+
+// GET /api/public-website/admin/content — admin editor read (same shape).
+exports.getAdminSiteContent = asyncHandler(async (req, res) => {
+  const { grouped, flat } = await loadSiteContent();
+  res.json({ data: grouped, flat });
+});
+
+// PUT /api/public-website/admin/content — upsert site content.
+// Body: { settings: { KEY: value | object | array } }. Objects/arrays are JSON
+// stringified. Only non-secret keys in the site categories (or WEBSITE_* keys)
+// may be written; anything else is ignored.
+exports.updateSiteContent = asyncHandler(async (req, res) => {
+  const incoming = (req.body && req.body.settings) || {};
+  const keys = Object.keys(incoming);
+  if (!keys.length) return res.status(400).json({ error: 'No settings provided.' });
+
+  const updated = [];
+  for (const key of keys) {
+    const raw = incoming[key];
+    const value = (raw !== null && typeof raw === 'object') ? JSON.stringify(raw) : String(raw ?? '');
+    const existing = await SystemSetting.findOne({ where: { setting_key: key } });
+    if (existing) {
+      if (existing.is_secret || !SITE_CATEGORIES.includes(existing.category)) continue; // never touch secrets / non-site keys
+      await existing.update({ setting_value: value });
+    } else {
+      if (!/^WEBSITE_/.test(key)) continue; // only allow creating new website content keys
+      await SystemSetting.create({ setting_key: key, setting_value: value, category: 'website', is_secret: false, description: 'Website content' });
+    }
+    updated.push(key);
+  }
+  const { grouped } = await loadSiteContent();
+  res.json({ message: `Updated ${updated.length} setting(s).`, updated, data: grouped });
 });

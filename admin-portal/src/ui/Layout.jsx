@@ -116,12 +116,14 @@ const NAV = [
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { section: 'Administration' },
   { to: '/website-management', label: 'Website Management', icon: Globe },
+  { to: '/website-content', label: 'Website Content', icon: Globe },
   { to: '/users', label: 'Users & Roles', icon: ShieldCheck },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
 const TITLES = {
   '/website-management': 'Website Management',
+  '/website-content': 'Website Content',
   '/dashboard': 'Dashboard', '/residential/buy': 'Residential · Buy', '/residential/sell': 'Residential · Sell',
   '/property-management': 'Property Management', '/property-management/rentals': 'Rentals', '/property-management/global-invoicing': 'Global Tenant Invoicing', '/property-management/collect-rent': 'Bulk Rent Collection', '/property-management/disburse-owners': 'Bulk Owner Disbursement', '/property-management/rent-reminders': 'Bulk Rent Reminders', '/property-management/inbox': 'Communication — Inbox',
   '/property-management/applications': 'Tenant Applications', '/property-management/enquiries': 'Rental Enquiries', '/property-management/assessments': 'Rental Assessments', '/property-management/statements': 'Owner Statements', '/property-management/renewals': 'Renewals', '/property-management/vacancies': 'Vacancy Notices', '/property-management/settlements': 'Deposit Settlements', '/property-management/disbursements': 'Disbursements & Payouts', '/property-management/utilities': 'Utilities & Bills', '/property-management/tenant-requests': 'Tenant Requests', '/property-management/arrears': 'Arrears Actions', '/property-management/marketing': 'Rental Marketing', '/property-management/expense-approvals': 'Expense Approvals', '/property-management/risks': 'Risk Register', '/property-management/reports': 'Rental Reports',
