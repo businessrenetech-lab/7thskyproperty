@@ -8,6 +8,7 @@ const svc = require('../services/rptmAgreement.service');
 const SigningEnvelope = require('../models/SigningEnvelope');
 const EnvelopeSigner = require('../models/EnvelopeSigner');
 const SignatureField = require('../models/SignatureField');
+const { buildSignerDefs, persistSigners, dispatchEnvelope, emailFirstSigner } = require('../services/agreementSigners.service');
 const sequelize = require('../config/db.config');
 
 exports.getCatalog = asyncHandler(async (req, res) => {
@@ -43,26 +44,26 @@ exports.createAgreement = asyncHandler(async (req, res) => {
       document_html: built.html,
       related_type: 'tenancy_management_agreement',
       related_id: body.property_id || null,
-      status: 'sent', sent_at: new Date(), expires_at: expires,
-      signing_order_enforced: false, kyc_role: 'tenant', terms: built.terms,
+      status: 'draft', expires_at: expires,
+      signing_order_enforced: true, kyc_role: 'tenant', terms: built.terms,
       created_by: req.user?.id || null,
     }, { transaction: t });
 
-    const token = crypto.randomBytes(24).toString('hex');
-    const signer = await EnvelopeSigner.create({
-      envelope_id: env.id, signer_order: 1, role: 'tenant',
-      name: client.full_name, email: client.email, phone: client.phone || null,
-      contact_id: body.client_contact_id || null,
-      access_token: token, token_expires_at: expires, status: 'sent',
-    }, { transaction: t });
-    await SignatureField.create({ envelope_id: env.id, signer_id: signer.id, field_type: 'signature', page: 1, required: true, label: 'Tenant signature' }, { transaction: t });
-    await SignatureField.create({ envelope_id: env.id, signer_id: signer.id, field_type: 'date_signed', page: 1, required: true, label: 'Date' }, { transaction: t });
-    return { env, token };
+    // Multi-party signers with labels matching the document anchors
+    // ("Client"/"Seventh Sky"/"Witness N") so the captured signatures render.
+    await persistSigners(env, buildSignerDefs({
+      client: { ...client, contact_id: body.client_contact_id || null },
+      org: body.org || {}, witnesses: body.witnesses, user: req.user || {}, clientRole: 'tenant',
+    }), t);
+    const links = await dispatchEnvelope(env, t);
+    return { env, links };
   });
 
+  await emailFirstSigner(out.env, out.links, req);
+  const clientLink = out.links.find((l) => l.role === 'tenant');
   res.status(201).json({
     id: out.env.id, envelope_code: out.env.envelope_code, status: out.env.status,
-    signing_token: out.token, signing_path: `/admin/sign/${out.token}`,
+    signing_token: clientLink?.token || null, signing_path: clientLink ? `/admin/sign/${clientLink.token}` : null,
   });
 });
 

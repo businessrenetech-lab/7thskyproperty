@@ -10,6 +10,7 @@ const SigningEnvelope = require('../models/SigningEnvelope');
 const EnvelopeSigner = require('../models/EnvelopeSigner');
 const SignatureField = require('../models/SignatureField');
 const OwnerFeeSchedule = require('../models/OwnerFeeSchedule');
+const { buildSignerDefs, persistSigners, dispatchEnvelope, emailFirstSigner } = require('../services/agreementSigners.service');
 const sequelize = require('../config/db.config');
 
 // Editable Schedule C standard price catalog
@@ -51,24 +52,20 @@ exports.createAgreement = asyncHandler(async (req, res) => {
       document_html: built.html,
       related_type: 'property_management_agreement',
       related_id: body.property_id || null,
-      status: 'sent', sent_at: new Date(), expires_at: expires,
-      signing_order_enforced: false,
+      status: 'draft', expires_at: expires,
+      signing_order_enforced: true, // Client → Seventh Sky countersign → witnesses
       kyc_role: 'landlord',
       terms: built.terms,
       created_by: req.user?.id || null,
     }, { transaction: t });
 
-    const token = crypto.randomBytes(24).toString('hex');
-    const signer = await EnvelopeSigner.create({
-      envelope_id: env.id, signer_order: 1, role: 'landlord',
-      name: client.full_name, email: client.email, phone: client.phone || null,
-      contact_id: body.client_contact_id || null,
-      access_token: token, token_expires_at: expires, status: 'sent',
-    }, { transaction: t });
-
-    // Signature + date fields so the signing page shows the sign box
-    await SignatureField.create({ envelope_id: env.id, signer_id: signer.id, field_type: 'signature', page: 1, required: true, label: 'Landlord signature' }, { transaction: t });
-    await SignatureField.create({ envelope_id: env.id, signer_id: signer.id, field_type: 'date_signed', page: 1, required: true, label: 'Date' }, { transaction: t });
+    // Multi-party signers with labels matching the document anchors
+    // ("Client"/"Seventh Sky"/"Witness N"), so the captured signatures render.
+    await persistSigners(env, buildSignerDefs({
+      client: { ...client, contact_id: body.client_contact_id || null },
+      org: body.org || {}, witnesses: body.witnesses, user: req.user || {}, clientRole: 'landlord',
+    }), t);
+    const links = await dispatchEnvelope(env, t);
 
     // Persist the recurring management fee to the owner fee schedule (best-effort)
     const mgmt = pricing.lines.find((l) => l.code === 'RPRM-018');
@@ -81,12 +78,14 @@ exports.createAgreement = asyncHandler(async (req, res) => {
         notes: `From ${env.envelope_code} (min ${mgmt.min || 0})`, is_active: true,
       }, { transaction: t }).catch(() => {});
     }
-    return { env, token };
+    return { env, links };
   });
 
+  await emailFirstSigner(out.env, out.links, req);
+  const clientLink = out.links.find((l) => l.role === 'landlord');
   res.status(201).json({
     id: out.env.id, envelope_code: out.env.envelope_code, status: out.env.status,
-    signing_token: out.token, signing_path: `/admin/sign/${out.token}`,
+    signing_token: clientLink?.token || null, signing_path: clientLink ? `/admin/sign/${clientLink.token}` : null,
   });
 });
 

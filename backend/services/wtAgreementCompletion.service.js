@@ -26,6 +26,10 @@ const principalRoleFor = (relatedType) => {
   // client is the buyer/seller; they + Seventh Sky's countersigner receive the
   // fully-executed PDF, exactly as the water-tank customer agreements do.
   if (t === 'sale_purchase_agreement' || t === 'sale_sale_agreement') return 'client';
+  // Rental management (RPRM) / tenancy management (RPTM) — the landlord/tenant
+  // client + Seventh Sky's countersigner receive the fully-executed PDF.
+  if (t === 'property_management_agreement') return 'landlord';
+  if (t === 'tenancy_management_agreement') return 'tenant';
   return null;
 };
 
