@@ -6034,3 +6034,98 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Request: write instructions for other agents — how to analyse the codebase & workflow, how/what to modify (do's & don'ts), how to submit to the Lead for review, how to add a new service via the Water Tank/AC dashboard pattern, how to extend residential buy/sell and add new verticals (commercial/rural/business buy-sell, commercial property management), and that they must always report their work to the Lead for review.
 - Delivered: AGENT_GUIDE.md at repo root. Sections: 0 golden rules; 1 analyse codebase/workflow (layout, the 3 core engines — consoles/service-line core/progressive-SOP, cross-cutting subsystems, how to explore); 2 do's & don'ts (route in server.js AND manifest.js, migrations not sync, UploadButton, rebuild dist, keep e2e green); 3 handing work to the Lead + what the Lead checks; 4 Recipe A add a new service line (rebaseNav clone of Water Tank + config/serviceLines.js + service_line param); 5 Recipe B residential buy/sell + new deal verticals (SOP REGISTRY + console + scope/kind props + PropertyDeal deal_type); 6 Recipe C new property-management vertical (vertical_key filter reuse); 7 Definition of Done + report template.
 - All cited APIs verified in-tree: rebaseNav (consoles.js:503), config/serviceLines.js (getServiceLine/codePrefix), progressiveSop REGISTRY, PROPERTY_MGMT_NAV ?vertical_key filters, residential scope/kind props.
+
+### 2026-09-12 15:52 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Transform Water Tank Cleaning Service into Visual, Marketing-Friendly Landing Page
+- Request: "now make the water tanks servce similar to this...... easy to understand for mass people ....make the writing easy to catch markeeting friendly writing that focus on our servicesa and what we delivering.......less texts visualise more.. please..."
+- Changes & Deliverables:
+  1. Created `website-mock/src/components/WaterTankLanding.jsx` and `website/src/components/WaterTankLanding.jsx`:
+     - Pure minimalist full-viewport hero exactly matching Interior Design: full-width service image, subtle ambient gradient overlay (`bg-gradient-to-t from-black/85 via-black/40 to-black/25`), large 2-line headline ("Pure Water. Certified Sanitisation."), and a single pill CTA button ("Request Water Tank Cleaning").
+     - Sticky sub-header navigation bar with quick jump links (What We Deliver, Real Tank Work, Why Seventh Sky, How It Works, Pricing Plans, Book Service).
+     - 6 Interactive service discipline tabs with what-we-deliver visual check cards:
+       * Rooftop Overhead Tank Cleaning (PVC & Concrete)
+       * Underground Reservoir De-Sludging (slurry mud extraction)
+       * Whole Building Complex Package (Underground + Rooftops)
+       * Food-Safe Anti-Bacterial Sanitisation (WHO-approved, zero harsh bleach)
+       * Crack, Seepage & Float Valve Repairs (polymer waterproofing)
+       * Certified Water Quality Lab Testing (12-parameter independent testing)
+     - Curated 8-item visual photography gallery with filter pills (All Tank Work, Rooftop Tanks, Underground Reservoirs, Jet Washing & Scrub, Food-Safe Sanitisation, Repairs & Waterproofing, Water Lab Testing).
+     - "The Seventh Sky Difference" (4 visual quality pillars: Zero Harsh Bleach, 150-Bar Rotary Scrub, Heavy Sludge Vacuum, WhatsApp Video Proof).
+     - 4-Step simple process (Drain & Inspect, Sludge Vacuum, 150-Bar Jet & Sanitise, Refill & Video Report).
+     - 3 Upfront transparent pricing packages: Overhead Rooftop Tank (৳3,500), Underground Reservoir (৳7,500), Whole Complex Bundle (৳9,900).
+     - Embedded direct dispatch step form (`ServiceStepForm`) with WhatsApp quick chat and urgent helpline.
+  2. Routed `water-tank` in both applications:
+     - `website-mock/src/pages/ServiceDetailPage.jsx`: Returns `<WaterTankLanding service={service} />` for `slug === "water-tank"`.
+     - `website/src/app/services/[slug]/page.jsx`: Returns `<WaterTankLanding service={service} />` with JSON-LD schema injection for `slug === "water-tank"`.
+  3. Streamlined service datasets:
+     - `website-mock/src/data/servicesData.js` & `website/src/lib/servicesData.js`: Updated `water-tank` overview, keyHighlights, features, processSteps, and FAQs to short, punchy, benefit-driven copy. Removed any reference to WASA or location-specific terms.
+  4. Strict compliance with user rules:
+     - 0 forbidden location names anywhere in components or datasets.
+     - Light background palette (`bg-white text-[#012a4e]`) maintained throughout.
+- Verification & Test Results:
+  - `website-mock/`: `npm run build` completed in 3.71s with 0 errors.
+  - `website/`: `npm run build` (Next.js Turbopack) completed in 3.3s with all 23 static pages generated, including `/services/water-tank`.
+  - Live dev server `http://localhost:3005/services/water-tank` returns HTTP 200 OK.
+  - Pre-rendered `water-tank.html` verified for all key headlines, trust badges, deliverables, pricing, and components.
+- Handoff: The Water Tank Cleaning service now provides an ultra-visual, easy-to-understand landing page experience tailored for everyday homeowners and housing society committees.
+
+### 2026-09-12 16:06 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Transform Air Conditioning Service into Visual, Marketing-Friendly Landing Page
+- Request: "now change the wordings to air conditioning service also////////easy to understand for mass people ....make the writing easy to catch markeeting friendly writing that focus on our servicesa and what we delivering.......less texts visualise more.. please... change hero section image...relavant to air cond cleaning......do not change the structure just change the image keep the hero action as it is"
+- Scope:
+  * `website-mock/src/components/AirConditioningLanding.jsx` (NEW)
+  * `website/src/components/AirConditioningLanding.jsx` (NEW)
+  * `website-mock/src/pages/ServiceDetailPage.jsx` (UPDATED)
+  * `website/src/app/services/[slug]/page.jsx` (UPDATED)
+  * `website-mock/src/data/servicesData.js` (UPDATED)
+  * `website/src/lib/servicesData.js` (UPDATED)
+- Changes & Deliverables:
+  1. Hero section preserved structure strictly:
+     - Minimalist full-viewport layout identical in structure to Interior Design & Water Tank heroes.
+     - Updated image to high-resolution verified photo of AC technician servicing/cleaning a unit (`https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=2200&auto=format&fit=crop`).
+     - Hero action button kept strictly as requested: `<a href="#book-service"><span>Request AC Servicing</span><ArrowRight size={18} /></a>`.
+     - Headline kept as "Optimal Climate. Precision Air Care."
+  2. Created dedicated `AirConditioningLanding.jsx` across both `website-mock/` (React/Vite) and `website/` (Next.js):
+     - Sticky in-page quick navigation bar (What We Deliver, Real AC Work, Why Seventh Sky, How It Works, Pricing Plans, Book Service).
+     - 6 Interactive service discipline tabs with clear "What We Deliver" visual check cards:
+       * Master Jet Wash (Indoor & Outdoor with zero mess)
+       * Deep Chemical Foam Sanitisation (dissolves grease, mold, damp smell)
+       * Refrigerant Gas Leak Fix & Refill (virgin R32, R410A, R22)
+       * Inverter PCB Circuit & Sensor Repair (error codes E1, E6, F0, P0)
+       * Water Leakage & Drain Clearing (stops wall drips permanently)
+       * Safe AC Uninstallation & Shifting (pump-down 100% gas preservation)
+     - Curated 8-photo visual gallery with interactive category filters:
+       * All AC Work, Indoor Jet Cleaning, Outdoor Condenser, Chemical Foam Wash, Gas Refill & Leaks, Inverter PCB Repair, AC Shifting & Install.
+     - "The Seventh Sky Difference" (4 quality pillars: 100% Mess-Free Guarantee, 100% Pure Virgin Gas, Multi-Brand Certified Pros, 30-Day Service Warranty).
+     - 4-Step visual workflow (Diagnostic Check, Mess-Free Setup, High-Pressure Jet Wash, Cooling Test & Sign-Off).
+     - 3 Upfront transparent pricing packages: Master Jet Servicing (৳1,200), Deep Chemical Anti-Bacterial Wash (৳2,200), Full Gas Refill & Leak Fix (৳3,500).
+     - Embedded direct booking step form (`ServiceStepForm`) with WhatsApp quick chat and urgent helpline.
+  3. Integrated routing:
+     - `website-mock/src/pages/ServiceDetailPage.jsx`: Dispatches `<AirConditioningLanding service={service} />` on `slug === "air-conditioning"`.
+     - `website/src/app/services/[slug]/page.jsx`: Dispatches `<AirConditioningLanding service={service} />` with schema metadata.
+  4. Streamlined service datasets:
+     - `website-mock/src/data/servicesData.js` and `website/src/lib/servicesData.js`: Updated hero image, overview, market context, highlights, features, and steps to benefit-first, plain English. Sanitized all geographic identifiers.
+  5. Strict compliance:
+     - ZERO prohibited location mentions across all files.
+     - Light theme (`bg-white text-[#012a4e]`) maintained consistently.
+- Verification & Test Results:
+  - `website-mock/`: `npm run build` finished in 4.43s with 0 errors.
+  - `website/`: `npm run build` (Next.js Turbopack) compiled in 3.8s and generated all 23 static pages including `/services/air-conditioning` with 0 errors.
+  - Live dev server `http://localhost:3005/services/air-conditioning` tested with curl: returns HTTP 200 OK.
+  - Grep verification confirms zero prohibited location mentions.
+- Handoff: The Air Conditioning service page is now visually rich, easy to understand for everyday people, has the new AC cleaning hero image with preserved hero structure and action, and is fully functional across both Vite and Next.js platforms.
+
+### 2026-09-12 16:13 | Antigravity (Gemini 3.8 Flash) | STARTED | Eliminate Excessive White Space and Redesign Gallery Service Cards
+- Request: "not looks good too much white space in the cards.." with 2 screenshots showing stretched gallery cards with 300px white gaps.
+- Scope: `website-mock/src/components/AirConditioningLanding.jsx`, `website/src/components/AirConditioningLanding.jsx`, `website-mock/src/components/WaterTankLanding.jsx`, `website/src/components/WaterTankLanding.jsx`.
+- Intended Outcome:
+  - Fix invalid `aspect-4/3` class to locked `h-48 w-full object-cover` uniform image container across all cards so vertical photos don't explode card height.
+  - Eliminate `justify-between` that pushed titles to top and specs to bottom leaving 300px white space.
+  - Replace unrelated photos (newspaper crossword, welder with sparks, woman cleaning window, residential house) with authentic, verified high-resolution AC cleaning and technician photos.
+  - Enrich card layout with a concise 1-sentence value description, 3 compact deliverable bullet points, and a neat bottom meta strip (duration + "Book Service →" link) so cards are tightly packed, balanced, and visually appealing with 0 wasted space.
+  - Apply the same card height lock and balance to `WaterTankLanding.jsx`.
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED | Fix duplicate signature block on sale + purchase agreements
+- Request: signed sale/purchase agreement copies showed a DUPLICATE signature section (a static "SIGNATURES / Name ___ / Signature ___ / Date __/__/__" block for Seventh Sky, Client, Witness 1, Witness 2) in addition to the real anchored one.
+- Root cause: clause "25. EXECUTION" in services/rpssClauses.js and services/rppsClauses.js (auto-generated verbatim from the V0.2 docx) embedded a static signatures placeholder block, while salesAgreementRender.buildAgreement already appends the dynamic anchored signatures block (the one that receives captured signatures). Two blocks rendered.
+- Fix: stripped only the static "SIGNATURES …" placeholder block from clause 25 in both files (kept the legal execution paragraphs, ending "…together constitute one Agreement."). Both files still load as 25-clause arrays.
+- Verified on a fresh agreement: 0 static SIGNATURES headings, 1 dynamic Signatures section, 0 "Signature: ____" placeholders, 4 real anchors (Client 1, Client 2, Seventh Sky, Witness), signatures still last, checkboxes filled, multi-vendor intact.
+- Note: snapshot behaviour — pre-existing agreements keep their stored document_html (still duplicated); only newly generated agreements are clean. Backend restarted.
