@@ -9,10 +9,33 @@ const Project = require('../models/Project');
 const ProjectStage = require('../models/ProjectStage');
 const Property = require('../models/Property');
 const { createProjectFromTemplate } = require('../services/workflowProject.service');
-const { phaseOf, hintFor, stageDeadline } = require('../services/progressiveSop.service');
+const { phaseOf, hintFor, stageDeadline, unlockForEvent } = require('../services/progressiveSop.service');
 const { asyncHandler, branchScope } = require('../utils/controllerHelpers');
+const { Op } = require('sequelize');
+const { SaleProfile, SaleOffer, SaleTransaction, SaleSettlement } = require('../models/SalesModels');
+const { SaleAssessment } = require('../models/SalesAssessmentModels');
 
 const VERTICAL = 'properties_sale';
+
+// Replay lifecycle events that ALREADY happened, so a SOP started late on an
+// advanced (or sold) property unlocks the phases those past events would have.
+// unlockForEvent is idempotent, so this is safe to run on every load.
+async function reconcileSaleSop(propertyId, branchId, tx) {
+  const scope = { property_id: propertyId, branch_id: branchId };
+  const [profile, assessmentApproved, offer, txn] = await Promise.all([
+    SaleProfile.findOne({ where: scope, transaction: tx }),
+    SaleAssessment.findOne({ where: { ...scope, status: 'approved' }, transaction: tx }),
+    SaleOffer.findOne({ where: { ...scope, status: { [Op.in]: ['submitted', 'countered', 'accepted'] } }, transaction: tx }),
+    SaleTransaction.findOne({ where: scope, transaction: tx }),
+  ]);
+  // A settlement links to the property via its transaction (no property_id column).
+  const settlement = txn ? await SaleSettlement.findOne({ where: { transaction_id: txn.id, status: 'locked' }, transaction: tx }) : null;
+  const opts = { vertical: VERTICAL, transaction: tx };
+  if (assessmentApproved || ['complete', 'waived'].includes(profile?.assessment_status)) await unlockForEvent(propertyId, 'sale_assessment_approved', opts);
+  if (offer) await unlockForEvent(propertyId, 'sale_offer_received', opts);
+  if (txn) await unlockForEvent(propertyId, 'sale_offer_accepted', opts);
+  if (settlement) await unlockForEvent(propertyId, 'sale_settlement_locked', opts);
+}
 const arr = (v) => { if (Array.isArray(v)) return v; try { return JSON.parse(v || '[]'); } catch { return []; } };
 const hydrate = (p) => {
   if (!p) return null;
@@ -38,14 +61,23 @@ const loadSop = (propertyId, req) => Project.findOne({
 });
 
 exports.getSop = asyncHandler(async (req, res) => {
-  res.json({ data: hydrate(await loadSop(req.params.propertyId, req)) });
+  const existing = await loadSop(req.params.propertyId, req);
+  if (existing) {
+    // Self-heal: unlock phases whose triggering events already occurred.
+    try { await reconcileSaleSop(Number(req.params.propertyId), existing.branch_id, undefined); } catch { /* non-fatal */ }
+    return res.json({ data: hydrate(await loadSop(req.params.propertyId, req)) });
+  }
+  res.json({ data: hydrate(existing) });
 });
 
 exports.ensureSop = asyncHandler(async (req, res) => {
   const property = await Property.findOne({ where: { id: req.params.propertyId, ...branchScope(req) } });
   if (!property) return res.status(404).json({ error: 'Property not found.' });
   const existing = await loadSop(req.params.propertyId, req);
-  if (existing) return res.json({ data: hydrate(existing) });
+  if (existing) {
+    try { await reconcileSaleSop(property.id, property.branch_id, undefined); } catch { /* non-fatal */ }
+    return res.json({ data: hydrate(await loadSop(req.params.propertyId, req)) });
+  }
   await sequelize.transaction(async (t) => {
     // Re-check under lock so a double-submit does not create two SOP projects.
     const again = await Project.findOne({ where: { property_id: property.id, vertical_key: VERTICAL, ...branchScope(req) }, transaction: t, lock: t.LOCK.UPDATE });
@@ -54,6 +86,9 @@ exports.ensureSop = asyncHandler(async (req, res) => {
       branch_id: property.branch_id, vertical_key: VERTICAL, property_id: property.id,
       title: `SOP · ${property.property_code || property.title || property.id}`, actorId: req.user?.id || null,
     }, t);
+    // Reconcile inside the same transaction so a SOP created on an advanced
+    // property is born with the right phases already unlocked.
+    await reconcileSaleSop(property.id, property.branch_id, t);
   });
   res.status(201).json({ data: hydrate(await loadSop(req.params.propertyId, req)) });
 });
