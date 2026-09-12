@@ -29,8 +29,9 @@ exports.createAgreement = asyncHandler(async (req, res) => {
   const branchId = resolveBranchId(req);
   const body = req.body || {};
   const client = body.client || {};
+  const asDraft = !!body.save_as_draft;
   if (!client.full_name) return res.status(400).json({ error: 'Tenant full name is required.' });
-  if (!client.email) return res.status(400).json({ error: 'Tenant email is required to send for signature.' });
+  if (!asDraft && !client.email) return res.status(400).json({ error: 'Tenant email is required to send for signature.' });
 
   const pricing = await svc.computePricing(body.pricing_input || {}, branchId);
   const built = svc.buildTenancyMgmtAgreement({ ...body, pricing });
@@ -55,16 +56,51 @@ exports.createAgreement = asyncHandler(async (req, res) => {
       client: { ...client, contact_id: body.client_contact_id || null },
       org: body.org || {}, witnesses: body.witnesses, user: req.user || {}, clientRole: 'tenant',
     }), t);
+    if (asDraft) return { env, links: [] };
     const links = await dispatchEnvelope(env, t);
     return { env, links };
   });
 
-  await emailFirstSigner(out.env, out.links, req);
+  if (!asDraft) await emailFirstSigner(out.env, out.links, req);
   const clientLink = out.links.find((l) => l.role === 'tenant');
   res.status(201).json({
     id: out.env.id, envelope_code: out.env.envelope_code, status: out.env.status,
     signing_token: clientLink?.token || null, signing_path: clientLink ? `/admin/sign/${clientLink.token}` : null,
   });
+});
+
+// Rebuild a DRAFT in place from an edited body.
+exports.updateAgreement = asyncHandler(async (req, res) => {
+  const branchId = resolveBranchId(req);
+  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req), related_type: 'tenancy_management_agreement' } });
+  if (!env) return res.status(404).json({ error: 'Agreement not found.' });
+  if (env.status !== 'draft') return res.status(409).json({ error: 'Only a draft agreement can be edited. Use "Edit & reissue" for a sent one.' });
+  const body = req.body || {}; const client = body.client || {};
+  if (!client.full_name) return res.status(400).json({ error: 'Tenant full name is required.' });
+  const pricing = await svc.computePricing(body.pricing_input || {}, branchId);
+  const built = svc.buildTenancyMgmtAgreement({ ...body, pricing });
+  await sequelize.transaction(async (t) => {
+    await SignatureField.destroy({ where: { envelope_id: env.id }, transaction: t });
+    await EnvelopeSigner.destroy({ where: { envelope_id: env.id }, transaction: t });
+    await env.update({ title: `${built.title} — ${client.full_name}`, document_html: built.html, terms: built.terms, related_id: body.property_id || env.related_id }, { transaction: t });
+    await persistSigners(env, buildSignerDefs({
+      client: { ...client, contact_id: body.client_contact_id || null },
+      org: body.org || {}, witnesses: body.witnesses, user: req.user || {}, clientRole: 'tenant',
+    }), t);
+  });
+  res.json({ id: env.id, status: env.status, message: 'Draft updated.' });
+});
+
+// Send / re-send a draft.
+exports.sendAgreement = asyncHandler(async (req, res) => {
+  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req), related_type: 'tenancy_management_agreement' } });
+  if (!env) return res.status(404).json({ error: 'Agreement not found.' });
+  if (env.status !== 'draft') return res.status(409).json({ error: `Cannot send an agreement in '${env.status}' state.` });
+  const tenant = await EnvelopeSigner.findOne({ where: { envelope_id: env.id, role: 'tenant' } });
+  if (!tenant?.email) return res.status(400).json({ error: 'Tenant email is required to send for signature.' });
+  const links = await sequelize.transaction(async (t) => dispatchEnvelope(env, t));
+  await emailFirstSigner(env, links, req);
+  res.json({ id: env.id, status: 'sent', links: links.map((l) => ({ name: l.name, role: l.role, order: l.order })) });
 });
 
 exports.listAgreements = asyncHandler(async (req, res) => {

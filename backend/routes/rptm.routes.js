@@ -11,5 +11,7 @@ router.get('/meta', ctrl.getMeta);
 router.post('/preview', ctrl.preview);
 router.get('/agreements', ctrl.listAgreements);
 router.post('/agreements', ctrl.createAgreement);
+router.put('/agreements/:id', ctrl.updateAgreement);      // edit a draft
+router.post('/agreements/:id/send', ctrl.sendAgreement);  // send / re-send a draft
 
 module.exports = router;

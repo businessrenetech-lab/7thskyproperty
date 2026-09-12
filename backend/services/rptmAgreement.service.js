@@ -163,7 +163,13 @@ function scheduleC(pricing) {
 function checkboxGroups(id, title, groups, selectedSet) {
   const body = Object.entries(groups).map(([g, items]) => `
     <div style="margin:10px 0 4px;font-weight:700;font-size:12.5px;color:#334155;">${esc(g)}</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px 18px;">${items.map((it) => `<span style="font-size:12.5px;">${selectedSet.has(it) ? '☑' : '☐'} ${esc(it)}</span>`).join('')}</div>`).join('');
+    <div style="display:flex;flex-wrap:wrap;gap:6px 18px;">${items.map((it) => {
+    const on = selectedSet.has(it);
+    const box = on
+      ? '<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #003768;background:#003768;color:#fff;text-align:center;line-height:12px;font-size:11px;font-weight:700;vertical-align:middle;margin-right:6px;">&#10003;</span>'
+      : '<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #9aa4b2;background:#fff;vertical-align:middle;margin-right:6px;"></span>';
+    return `<span style="font-size:12.5px;${on ? 'font-weight:700;color:#0f172a;' : 'color:#4b5563;'}">${box}${esc(it)}</span>`;
+  }).join('')}</div>`).join('');
   return `<h2 id="${id}" style="font-size:15px;color:#003768;margin:22px 0 6px;">${esc(title)}</h2>${body}`;
 }
 
@@ -257,8 +263,8 @@ function buildTenancyMgmtAgreement(data = {}) {
     ${schedB}
     ${schedC}
     ${schedD}
-    ${signatures}
     <div style="margin-top:22px;padding-top:10px;border-top:1px solid #d1d5db;font-size:11px;color:#6b7280;">This Agreement becomes effective when signed by both Parties through the Seventh Sky electronic signing system. The electronic record, audit trail and content hash constitute proof of execution.</div>
+    ${signatures}
   </div>`;
 
   const terms = {
