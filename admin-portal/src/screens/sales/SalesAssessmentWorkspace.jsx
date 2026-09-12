@@ -43,6 +43,7 @@ import {
   Textarea,
 } from "../../ui/kit";
 import FileUpload, { fileSrc } from "../../ui/FileUpload";
+import RoleKycManager from "../../components/RoleKycManager";
 
 const TABS = [
   { key: "workflow", label: "Overview", icon: ClipboardCheck },
@@ -316,6 +317,7 @@ export default function SalesAssessmentWorkspace({
   const [actionError, setActionError] = useState("");
   const [busy, setBusy] = useState("");
   const [openItem, setOpenItem] = useState(null);
+  const [kycInlineId, setKycInlineId] = useState(null); // vendor profile verified inline here (no reroute)
   const [uploadState, setUploadState] = useState({});
   const [newItem, setNewItem] = useState({
     section: "",
@@ -2533,20 +2535,89 @@ export default function SalesAssessmentWorkspace({
                         <span className="sa-row-label">Documents</span>
                         <strong>{profileDocs.length}</strong>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() =>
-                          navigate(
-                            `/role-onboarding?property_id=${propertyId}&sales_roles=1&profile_id=${entry.id}`,
-                          )
-                        }
-                      >
-                        Review profile
-                      </Button>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            setKycInlineId((current) =>
+                              current === entry.id ? null : entry.id,
+                            )
+                          }
+                        >
+                          {kycInlineId === entry.id ? "Hide KYC" : "Verify KYC"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            navigate(
+                              `/residential/agreements/sale?property_id=${propertyId}${entry.contact_id ? `&contact_id=${entry.contact_id}` : ""}`,
+                            )
+                          }
+                        >
+                          Signatures
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}
+                {kycInlineId &&
+                  (() => {
+                    const entry = roleProfiles.find((r) => r.id === kycInlineId);
+                    if (!entry) return null;
+                    const complete =
+                      entry.kyc_status === "complete" &&
+                      entry.documents_status === "complete";
+                    return (
+                      <div
+                        style={{
+                          border: "1px solid var(--line)",
+                          borderRadius: 10,
+                          padding: 12,
+                          marginTop: 4,
+                        }}
+                      >
+                        <div
+                          className="between"
+                          style={{ marginBottom: 8, flexWrap: "wrap", gap: 8 }}
+                        >
+                          <strong>
+                            {title(entry.role || entry.role_type || "vendor")} KYC —{" "}
+                            {entry.full_name || entry.name || `#${entry.id}`}
+                          </strong>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            <Button
+                              size="sm"
+                              disabled={!complete}
+                              onClick={() =>
+                                navigate(
+                                  `/residential/agreements/sale?property_id=${propertyId}${entry.contact_id ? `&contact_id=${entry.contact_id}` : ""}`,
+                                )
+                              }
+                            >
+                              Go to signatures
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                navigate(
+                                  `/residential/agreements/sale?property_id=${propertyId}${entry.contact_id ? `&contact_id=${entry.contact_id}` : ""}`,
+                                )
+                              }
+                            >
+                              Skip → signatures
+                            </Button>
+                          </div>
+                        </div>
+                        <RoleKycManager
+                          profile={{ ...entry, role_type: entry.role_type || entry.role || "vendor" }}
+                          onChanged={() => loadWorkspace(true)}
+                        />
+                      </div>
+                    );
+                  })()}
               </div>
             ) : (
               <EmptyState

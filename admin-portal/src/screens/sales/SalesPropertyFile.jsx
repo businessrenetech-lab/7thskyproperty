@@ -49,6 +49,7 @@ import FileUpload, { fileSrc } from "../../ui/FileUpload";
 import SalesAssessmentWorkspace from "./SalesAssessmentWorkspace";
 import { settlementDeskPath, clientProfilePath } from "./paths";
 import UploadButton from "../../ui/UploadButton";
+import RoleKycManager from "../../components/RoleKycManager";
 
 const unwrap = (response) =>
   response?.data?.data ?? response?.data ?? response ?? {};
@@ -344,6 +345,7 @@ export default function SalesPropertyFile({
   const section = SECTIONS.some((s) => s.key === rawSection) ? rawSection : "overview";
   const [assessmentDirty, setAssessmentDirty] = useState(false);
   const [activityTab, setActivityTab] = useState("activity");
+  const [inlineKyc, setInlineKyc] = useState(false); // KYC verified inline in the onboarding tab (no reroute)
   const [drawer, setDrawer] = useState(null);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
@@ -964,6 +966,14 @@ export default function SalesPropertyFile({
     detail.agreement?.status ||
     detail.onboarding?.agreement_status ||
     "not_started";
+  // Route a party straight to their e-signature agreement builder (vendor → RPSS
+  // sale, buyer → RPPS purchase), prefilled with their contact.
+  const goToSignatures = (role) => {
+    const kind = role.role_type === "buyer" ? "purchase" : "sale";
+    navigate(
+      `/residential/agreements/${kind}?property_id=${propertyId}${role.contact_id ? `&contact_id=${role.contact_id}` : ""}`,
+    );
+  };
   const kycStatus = !salesRoleProfiles.length
     ? "not_started"
     : salesRoleProfiles.every(
@@ -3219,13 +3229,71 @@ export default function SalesPropertyFile({
             <OnboardingRow
               label={`KYC${salesRoleProfiles.length ? ` (${salesRoleProfiles.length} parties)` : ""}`}
               status={kycStatus}
-              actionLabel={kycStatus === "complete" ? "Review" : "Complete / review"}
-              onAction={() =>
-                navigate(
-                  `/role-onboarding?property_id=${propertyId}&sales_roles=1${pendingKycProfile ? `&profile_id=${pendingKycProfile.id}` : ""}`,
-                )
-              }
+              sub="Verify identity documents here — parties go to signatures once complete"
+              actionLabel={inlineKyc ? "Hide" : kycStatus === "complete" ? "Review" : "Verify inline"}
+              onAction={() => setInlineKyc((open) => !open)}
             />
+
+            {inlineKyc && (
+              <div className="pm-col" style={{ gap: 12, marginTop: 10 }}>
+                {salesRoleProfiles.length === 0 ? (
+                  <p className="cell-sub">
+                    No vendor or buyer parties yet. Add a party in the Parties tab
+                    first, then verify their KYC here.
+                  </p>
+                ) : (
+                  salesRoleProfiles.map((role) => {
+                    const roleComplete =
+                      role.kyc_status === "complete" &&
+                      role.documents_status === "complete";
+                    return (
+                      <div
+                        key={role.id}
+                        style={{
+                          border: "1px solid var(--line)",
+                          borderRadius: 10,
+                          padding: 12,
+                        }}
+                      >
+                        <div
+                          className="between"
+                          style={{ marginBottom: 8, flexWrap: "wrap", gap: 8 }}
+                        >
+                          <div
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 8,
+                              fontWeight: 700,
+                            }}
+                          >
+                            {title(role.role_type)} KYC
+                            <StatusBadge status={role.kyc_status} />
+                          </div>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            <Button
+                              size="sm"
+                              disabled={!roleComplete}
+                              onClick={() => goToSignatures(role)}
+                            >
+                              Go to signatures
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => goToSignatures(role)}
+                            >
+                              Skip → signatures
+                            </Button>
+                          </div>
+                        </div>
+                        <RoleKycManager profile={role} onChanged={load} />
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
             {salesRoleProfiles.some(
               (role) => role.kyc_status !== "complete",
             ) && (
