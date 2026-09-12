@@ -6524,5 +6524,18 @@ used "the last line starting with `import`", which landed inside a multi-line
 ### 2026-09-12 | Claude Opus 4.8 | COMPLETED (BUG FIXED) | Invoice document mojibake (৳ → "à§³") on blob open
 - Report: opening an invoice document (blob:http://localhost:3005/…) showed garbled "à§³" instead of the ৳ Taka sign.
 - Root cause: invoicing.controller.document served renderInvoiceHtml output as a bare <div> (no <meta charset>). Direct requests were saved by the response charset header, but the Agency Income screen opens it via fetch→Blob→createObjectURL, and a blob text/html with no <meta charset> makes the browser default to Latin-1 → the 3-byte UTF-8 ৳ (E0 A7 B3) renders as "à§³".
-- FIX: wrap the served invoice document in a full HTML doc with <meta charset="utf-8"> (+viewport+title). Verified: document now starts with <!doctype html>…<meta charset="utf-8">, ৳ bytes intact, and the fetched blob renders ৳ with no mojibake.
 - Audited other blob-opened docs: owner-statement printable + landlord statement (delegates to it) already include <meta charset="utf-8">; only the invoice document lacked it.
+
+### 2026-09-12 19:40 | Antigravity | STARTED | Replace water-tank and AC main images + provide ChatGPT image prompts
+- Request: Replace main image for water-tank (Rooftop Concrete Overhead Tank) with user's uploaded image `3f9cb730-e29f-4f3b-9963-a33730543ec2.png`. Replace electrician photo for AC service with real AC servicing photo. Provide tailored ChatGPT/DALL-E 3 image generation prompts with exact aspect ratios and dimensions for all service cards so user can generate them via ChatGPT.
+- Scope: `website-mock/src/data/servicesData.js`, `website-mock/src/components/WaterTankLanding.jsx`, `website-mock/src/components/AirConditioningLanding.jsx`, `website/src/lib/servicesData.js`, `website/src/components/WaterTankLanding.jsx`, `website/src/components/AirConditioningLanding.jsx`, and copy new visual assets into `website-mock/public/assets/services/`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Copying images and replacing references across the codebase, then formulating copy-paste ChatGPT prompts.
+
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED | Scope Agency Income by section (PM view shows only PM fees)
+- Report: the PM "Agency Income (Our Fees)" view showed agreement fees from ALL sections (sales + purchase + PM), not just property management.
+- Root cause: /api/invoices/agency-income queried every invoice_type='agreement_fee' regardless of the source agreement kind.
+- FIX: added a `scope` param (pm | sales | omitted=all). Scoped by joining the source SigningEnvelope (new PropertyInvoice.belongsTo(SigningEnvelope, as 'agreementEnvelope')) and filtering related_type — pm = [property_management_agreement, tenancy_management_agreement], sales = [sale_purchase_agreement, sale_sale_agreement]. Recurring management fees only appear for pm/all (never sales), and honour property_id. Each row now carries agreement_type. AgencyIncome.jsx (PM console) requests scope=pm.
+- Verified: all=77 (10 PM + 12 purchase + 55 sale); pm=10 (PM only) + recurring; sales=67 (no recurring). PM view now shows only its own invoices. admin-portal rebuilt; backend restarted.

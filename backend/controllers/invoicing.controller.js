@@ -399,11 +399,26 @@ exports.listPayments = asyncHandler(async (req, res) => {
 // billed / received / dues / drafts, plus the recurring management fees. This is
 // the read-only "our fees" view for the PM/accounting section.
 const OwnerFeeSchedule = require('../models/OwnerFeeSchedule');
+const SigningEnvelope = require('../models/SigningEnvelope');
+// Which agreement kinds belong to each section, so a section's income view shows
+// only its own fees. scope=pm → property-management + tenancy agreements;
+// scope=sales → purchase + sale agreements; omitted → all agreement fees.
+const SCOPE_RELATED = {
+  pm: ['property_management_agreement', 'tenancy_management_agreement'],
+  sales: ['sale_purchase_agreement', 'sale_sale_agreement'],
+};
 exports.agencyIncome = asyncHandler(async (req, res) => {
   const where = { ...branchScope(req), invoice_type: 'agreement_fee' };
   if (req.query.property_id) where.property_id = req.query.property_id;
+  const scopeRelated = SCOPE_RELATED[String(req.query.scope || '').toLowerCase()];
+  // Join the source agreement envelope so we can scope by its related_type (and
+  // expose the kind on each row). Inner-join when a scope is requested.
+  const envInclude = {
+    model: SigningEnvelope, as: 'agreementEnvelope', attributes: ['id', 'related_type', 'envelope_code'],
+    required: !!scopeRelated, ...(scopeRelated ? { where: { related_type: { [Op.in]: scopeRelated } } } : {}),
+  };
   const rows = await PropertyInvoice.findAll({
-    where, include: [contactInc], order: [['created_at', 'DESC']], limit: 500,
+    where, include: [contactInc, envInclude], order: [['created_at', 'DESC']], limit: 500,
   });
   const n = (v) => Math.round(Number(v || 0) * 100) / 100;
   const summary = { billed: 0, received: 0, dues: 0, drafted: 0, count: rows.length, draft_count: 0, paid_count: 0, outstanding_count: 0 };
@@ -417,17 +432,24 @@ exports.agencyIncome = asyncHandler(async (req, res) => {
     return {
       id: r.id, invoice_code: r.invoice_code, title: r.title, status: r.status,
       property_id: r.property_id, contact_id: r.contact_id, contact_name: r.contact?.full_name || null,
+      agreement_type: r.agreementEnvelope?.related_type || null,
       total, amount_paid: paid, balance, issue_date: r.issue_date, due_date: r.due_date, created_at: r.created_at,
     };
   });
   Object.keys(summary).forEach((k) => { if (typeof summary[k] === 'number') summary[k] = n(summary[k]); });
 
-  // Recurring agency fees (management fee schedules) — income that recurs per period.
+  // Recurring agency fees (management fee schedules) — income that recurs per
+  // period. These are property-management fees, so they belong to the PM scope
+  // (and the unscoped "all" view); the sales scope has no recurring fees.
   let recurring = [];
-  try {
-    recurring = (await OwnerFeeSchedule.findAll({ where: { is_active: true }, order: [['id', 'DESC']], limit: 500 }))
-      .map((f) => ({ id: f.id, property_id: f.property_id, fee_name: f.fee_name, fee_category: f.fee_category, fee_trigger: f.fee_trigger, amount_type: f.amount_type, amount_value: n(f.amount_value) }));
-  } catch { /* non-fatal */ }
+  if (req.query.scope !== 'sales') {
+    try {
+      const feeWhere = { is_active: true };
+      if (req.query.property_id) feeWhere.property_id = req.query.property_id;
+      recurring = (await OwnerFeeSchedule.findAll({ where: feeWhere, order: [['id', 'DESC']], limit: 500 }))
+        .map((f) => ({ id: f.id, property_id: f.property_id, fee_name: f.fee_name, fee_category: f.fee_category, fee_trigger: f.fee_trigger, amount_type: f.amount_type, amount_value: n(f.amount_value) }));
+    } catch { /* non-fatal */ }
+  }
 
   res.json({ summary, invoices, recurring });
 });

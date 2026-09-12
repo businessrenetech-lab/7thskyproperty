@@ -57,5 +57,9 @@ PropertyInvoice.belongsTo(Contact, { as: 'contact', foreignKey: 'contact_id' });
 PropertyInvoice.belongsTo(ServiceProvider, { as: 'provider', foreignKey: 'provider_id' });
 PropertyInvoice.belongsTo(Folio, { as: 'folio', foreignKey: 'folio_id' });
 PropertyInvoice.belongsTo(AccountCategory, { as: 'category', foreignKey: 'account_category_id' });
+// The signing envelope that drafted this agreement-fee invoice — lets income
+// views scope by the agreement kind (PM/tenancy vs sale/purchase).
+const SigningEnvelope = require('./SigningEnvelope');
+PropertyInvoice.belongsTo(SigningEnvelope, { as: 'agreementEnvelope', foreignKey: 'agreement_envelope_id' });
 
 module.exports = PropertyInvoice;

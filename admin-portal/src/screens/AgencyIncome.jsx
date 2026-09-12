@@ -22,7 +22,9 @@ export default function AgencyIncome() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const r = await api.get('/invoices/agency-income'); setData(r.data); }
+    // scope=pm → only property-management + tenancy agreement fees (this is the PM
+    // console's income view; sales fees live under the residential/sales section).
+    try { const r = await api.get('/invoices/agency-income?scope=pm'); setData(r.data); }
     catch { toast.error('Failed to load agency income'); }
     finally { setLoading(false); }
   }, [toast]);
