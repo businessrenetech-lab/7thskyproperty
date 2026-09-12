@@ -16,7 +16,7 @@ const NAV = [
    * a single destination. Commercial and Rural still use the shared screens and
    * keep their grouped entries below.
    */
-  { key: 'residential', label: 'Residential', to: '/residential/sell', icon: Home, children: [
+  { key: 'residential', label: 'Residential', icon: Home, children: [
     { to: '/residential/sell', label: 'Sell' },
     { to: '/residential/buyer-service', label: 'Buy' },
   ] },

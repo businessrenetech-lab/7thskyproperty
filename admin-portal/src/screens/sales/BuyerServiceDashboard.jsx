@@ -33,6 +33,8 @@ export default function BuyerServiceDashboard() {
   const byStage = (s) => (deals || []).filter((d) => d.status === s);
   const activeMandates = (mandates || []).filter((m) => ['active', 'engaged'].includes(m.status));
   const openDeals = (deals || []).filter((d) => !['completed', 'cancelled'].includes(d.status));
+  // Stage-2 gate: mandates still under assessment (not yet approved to search).
+  const awaitingApproval = activeMandates.filter((m) => !m.approved_to_proceed);
 
   const WL = ({ title, icon: Icon, rows, render, onRow, empty }) => (
     <div className="card" style={{ marginTop: 12 }}>
@@ -54,13 +56,25 @@ export default function BuyerServiceDashboard() {
 
   return (
     <>
-      <PageHead title="Buyer Service" desc="Buyer-side pipeline, mandates and service-fee status — open a deal for its 8-stage purchase workflow." actions={<Button variant="ghost" icon={RefreshCw} onClick={load}>Refresh</Button>} />
+      <PageHead title="Buyer Service" desc="Buyer-side pipeline: mandates, property search and the 8-stage purchase workflow. Buyer service is fee-for-coordination — fees are collected on the deal file." actions={<Button variant="ghost" icon={RefreshCw} onClick={load}>Refresh</Button>} />
       <div className="grid-stats" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <StatCard icon={Users} tone="sky" label="Active mandates" value={activeMandates.length} />
+        <StatCard icon={ClipboardList} tone="amber" label="Awaiting approval to search" value={awaitingApproval.length} />
         <StatCard icon={Briefcase} tone="green" label="Open buy deals" value={openDeals.length} />
-        <StatCard icon={ClipboardList} tone="amber" label="In negotiation" value={byStage('negotiation').length} />
-        <StatCard icon={HandCoins} tone="amber" label="At settlement" value={byStage('settlement').length} />
+        <StatCard icon={HandCoins} tone="amber" label="In negotiation" value={byStage('negotiation').length} />
       </div>
+
+      <WL
+        title="Mandates awaiting approval to search (Stage 2)" icon={ClipboardList} rows={awaitingApproval}
+        onRow={() => navigate('/residential/mandates')}
+        empty="No mandates awaiting approval — all cleared to search."
+        render={(m) => (<>
+          <td><strong>{m.mandate_code}</strong></td>
+          <td>{m.buyer_name || '—'}</td>
+          <td className="cell-sub">finance: {(m.finance_status || 'unknown').replace(/_/g, ' ')}</td>
+          <td><span className="pm-chip">{m.status}</span></td>
+        </>)}
+      />
 
       <WL
         title="Active buyer mandates" icon={Users} rows={activeMandates}
@@ -70,7 +84,7 @@ export default function BuyerServiceDashboard() {
           <td><strong>{m.mandate_code}</strong></td>
           <td>{m.buyer_name || '—'}</td>
           <td className="cell-sub">{m.candidate_count} candidates</td>
-          <td><span className="pm-chip">{m.status}</span></td>
+          <td><span className="pm-chip">{m.approved_to_proceed ? 'searching' : m.status}</span></td>
         </>)}
       />
 
