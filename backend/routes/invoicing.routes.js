@@ -9,6 +9,9 @@ router.use(authMiddleware, roleMiddleware(ROLES));
 router.get('/', ctrl.list);
 router.post('/', ctrl.create);
 router.get('/:id', ctrl.getOne);
+router.put('/:id', ctrl.update);                 // edit header + line items
+router.get('/:id/document', ctrl.document);      // HTML / PDF download
+router.post('/:id/send', ctrl.sendInvoice);      // email with PDF
 router.patch('/:id/status', ctrl.setStatus);
 router.post('/:id/payments', ctrl.recordPayment);
 

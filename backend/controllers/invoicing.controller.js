@@ -56,6 +56,7 @@ exports.list = asyncHandler(async (req, res) => {
   const { limit, offset, page } = getPagination(req);
   const where = { ...branchScope(req) };
   if (req.query.kind) where.invoice_kind = req.query.kind;
+  if (req.query.invoice_type) where.invoice_type = req.query.invoice_type.includes(',') ? { [Op.in]: req.query.invoice_type.split(',') } : req.query.invoice_type;
   if (req.query.status) where.status = req.query.status;
   if (req.query.tenancy_id) where.tenancy_id = req.query.tenancy_id;
   if (req.query.contact_id) where.contact_id = req.query.contact_id;
@@ -69,7 +70,13 @@ exports.list = asyncHandler(async (req, res) => {
 exports.getOne = asyncHandler(async (req, res) => {
   const inv = await PropertyInvoice.findOne({
     where: { id: req.params.id, ...branchScope(req) },
-    include: [clientInc, contactInc, providerInc, categoryInc, folioInc, { model: InvoiceItem, as: 'items', include: [categoryInc, providerInc] }, { model: Payment, as: 'payments' }],
+    include: [
+      clientInc, contactInc, providerInc, categoryInc, folioInc,
+      // Fetch items separately so their own category/provider includes don't
+      // collide with the invoice-level ones ("Not unique table/alias").
+      { model: InvoiceItem, as: 'items', separate: true, include: [{ model: AccountCategory, as: 'category', attributes: ['id', 'name', 'code'] }, { model: ServiceProvider, as: 'provider', attributes: ['id', 'company_name'] }] },
+      { model: Payment, as: 'payments', separate: true },
+    ],
   });
   if (!inv) return res.status(404).json({ error: 'Invoice not found.' });
   res.json({ data: { ...inv.toJSON(), payable_name: payableName(inv) } });
@@ -130,6 +137,120 @@ exports.create = asyncHandler(async (req, res) => {
   });
   const fresh = await PropertyInvoice.findByPk(inv.id, { include: [{ model: InvoiceItem, as: 'items' }] });
   res.status(201).json({ data: fresh, message: 'Invoice created.' });
+});
+
+// PUT /api/invoices/:id — edit header + replace line items (draft/unpaid only),
+// recompute totals. If items are omitted the existing lines are kept.
+const EDITABLE = ['title', 'discount', 'due_date', 'notes', 'account_category_id', 'service_period_start', 'service_period_end'];
+exports.update = asyncHandler(async (req, res) => {
+  const inv = await PropertyInvoice.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!inv) return res.status(404).json({ error: 'Invoice not found.' });
+  if (num(inv.amount_paid) > 0 || ['paid', 'cancelled'].includes(inv.status)) {
+    return res.status(409).json({ error: 'A paid or cancelled invoice can no longer be edited.' });
+  }
+  const meta = pick(req.body, EDITABLE);
+  const items = Array.isArray(req.body.items) ? req.body.items : null;
+  await sequelize.transaction(async (t) => {
+    if (items) {
+      await InvoiceItem.destroy({ where: { invoice_id: inv.id }, transaction: t });
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i]; const calc = itemTax(it);
+        await InvoiceItem.create({
+          invoice_id: inv.id, description: it.description, quantity: num(it.quantity) || 1, unit: it.unit || null,
+          unit_price: num(it.unit_price), amount: calc.amount, tax_enabled: !!it.tax_enabled, tax_included: !!it.tax_included,
+          tax_rate: num(it.tax_rate), tax_amount: calc.tax, property_id: it.property_id || inv.property_id || null, sort_order: i,
+        }, { transaction: t });
+      }
+    }
+    const rows = await InvoiceItem.findAll({ where: { invoice_id: inv.id }, transaction: t });
+    const { subtotal, tax_amount, total } = recomputeTotals({ ...inv.toJSON(), ...meta }, rows.map((r) => r.toJSON()));
+    await inv.update({ ...meta, subtotal, tax: tax_amount, tax_amount, total, balance: total - num(inv.amount_paid) }, { transaction: t });
+  });
+  const fresh = await PropertyInvoice.findByPk(inv.id, { include: [{ model: InvoiceItem, as: 'items' }] });
+  res.json({ data: { ...fresh.toJSON() }, message: 'Invoice updated.' });
+});
+
+// A print-quality invoice document (company header, bill-to, line items, totals).
+function renderInvoiceHtml(inv, items) {
+  const bdt = (v) => '৳' + num(v).toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const to = inv.contact?.full_name || inv.client?.Contact?.full_name || inv.provider?.company_name || '—';
+  const rows = (items || []).map((it) => `<tr>
+    <td style="padding:7px 10px;border-bottom:1px solid #e5e9f0;">${esc(it.description || '')}</td>
+    <td style="padding:7px 10px;border-bottom:1px solid #e5e9f0;text-align:right;">${num(it.quantity || 1)}</td>
+    <td style="padding:7px 10px;border-bottom:1px solid #e5e9f0;text-align:right;">${bdt(it.unit_price)}</td>
+    <td style="padding:7px 10px;border-bottom:1px solid #e5e9f0;text-align:right;">${bdt(it.amount)}</td></tr>`).join('');
+  return `<div style="font-family:Georgia,'Times New Roman',serif;max-width:800px;margin:0 auto;color:#1f2430;padding:24px;">
+    <div style="display:flex;justify-content:space-between;border-bottom:3px double #003768;padding-bottom:12px;">
+      <div><div style="font-size:20px;font-weight:bold;color:#003768;">Seventh Sky Property Care</div>
+        <div style="font-size:12px;color:#6b7280;">Residential Property Services</div></div>
+      <div style="text-align:right;"><div style="font-size:16px;font-weight:bold;">INVOICE</div>
+        <div style="font-size:12px;color:#6b7280;">${esc(inv.invoice_code)}</div>
+        <div style="font-size:12px;color:#6b7280;">${esc((inv.invoice_type || '').replace(/_/g, ' '))}</div></div>
+    </div>
+    <table style="width:100%;margin:14px 0;font-size:12.5px;"><tr>
+      <td style="vertical-align:top;"><b>Bill to</b><br/>${esc(to)}</td>
+      <td style="vertical-align:top;text-align:right;">Issue date: ${inv.issue_date ? String(inv.issue_date).slice(0, 10) : '—'}<br/>Due date: ${inv.due_date ? String(inv.due_date).slice(0, 10) : '—'}<br/>Status: ${esc(inv.status)}</td>
+    </tr></table>
+    <div style="font-size:14px;font-weight:bold;margin:6px 0;">${esc(inv.title || 'Invoice')}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+      <thead><tr style="background:#eef3f8;"><th style="padding:7px 10px;text-align:left;">Description</th><th style="padding:7px 10px;text-align:right;">Qty</th><th style="padding:7px 10px;text-align:right;">Unit</th><th style="padding:7px 10px;text-align:right;">Amount</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="4" style="padding:12px;text-align:center;color:#9aa4b2;">No line items.</td></tr>'}</tbody>
+    </table>
+    <table style="width:100%;margin-top:10px;font-size:13px;"><tr><td></td><td style="width:240px;">
+      <table style="width:100%;"><tr><td style="padding:4px 10px;">Subtotal</td><td style="padding:4px 10px;text-align:right;">${bdt(inv.subtotal)}</td></tr>
+      ${num(inv.discount) ? `<tr><td style="padding:4px 10px;">Discount</td><td style="padding:4px 10px;text-align:right;">– ${bdt(inv.discount)}</td></tr>` : ''}
+      ${num(inv.tax_amount) ? `<tr><td style="padding:4px 10px;">Tax</td><td style="padding:4px 10px;text-align:right;">${bdt(inv.tax_amount)}</td></tr>` : ''}
+      <tr style="font-weight:bold;background:#003768;color:#fff;"><td style="padding:6px 10px;">TOTAL</td><td style="padding:6px 10px;text-align:right;">${bdt(inv.total)}</td></tr>
+      <tr><td style="padding:4px 10px;">Paid</td><td style="padding:4px 10px;text-align:right;">${bdt(inv.amount_paid)}</td></tr>
+      <tr style="font-weight:bold;"><td style="padding:4px 10px;">Balance due</td><td style="padding:4px 10px;text-align:right;">${bdt(inv.balance)}</td></tr>
+      </table></td></tr></table>
+    ${inv.notes ? `<div style="margin-top:14px;font-size:12px;color:#4b5563;"><b>Notes:</b> ${esc(inv.notes)}</div>` : ''}
+  </div>`;
+}
+
+// GET /api/invoices/:id/document?format=pdf|html — download / print the invoice.
+exports.document = asyncHandler(async (req, res) => {
+  const inv = await PropertyInvoice.findOne({
+    where: { id: req.params.id, ...branchScope(req) },
+    include: [{ model: Contact, as: 'contact', attributes: ['id', 'full_name'] }, clientInc, providerInc, { model: InvoiceItem, as: 'items' }],
+  });
+  if (!inv) return res.status(404).send('Invoice not found.');
+  const html = renderInvoiceHtml(inv, inv.items || []);
+  const { htmlToPdf, pdfAvailable } = require('../services/htmlToPdf.service');
+  if (req.query.format === 'pdf' && pdfAvailable()) {
+    try {
+      const pdf = await htmlToPdf(html);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${inv.invoice_code}.pdf"`);
+      return res.send(pdf);
+    } catch { /* fall through to HTML */ }
+  }
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+// POST /api/invoices/:id/send — email the invoice (PDF attached when available).
+exports.sendInvoice = asyncHandler(async (req, res) => {
+  const inv = await PropertyInvoice.findOne({
+    where: { id: req.params.id, ...branchScope(req) },
+    include: [{ model: Contact, as: 'contact', attributes: ['id', 'full_name', 'email'] }, { model: Client, as: 'client', include: [{ model: Contact, attributes: ['id', 'full_name', 'email'] }] }, { model: InvoiceItem, as: 'items' }],
+  });
+  if (!inv) return res.status(404).json({ error: 'Invoice not found.' });
+  const to = req.body?.email || inv.contact?.email || inv.client?.Contact?.email;
+  if (!to) return res.status(400).json({ error: 'No client email address to send this invoice to.' });
+  const html = renderInvoiceHtml(inv, inv.items || []);
+  let pdf = null;
+  try { const { htmlToPdf, pdfAvailable } = require('../services/htmlToPdf.service'); if (pdfAvailable()) pdf = await htmlToPdf(html); } catch { pdf = null; }
+  const { sendEmail } = require('../services/communication.service');
+  const attachments = pdf ? [{ filename: `${inv.invoice_code}.pdf`, content: pdf, contentType: 'application/pdf' }] : [];
+  const body = `<p>Dear ${inv.contact?.full_name || 'Sir/Madam'},</p>
+    <p>Please find your invoice <strong>${inv.invoice_code}</strong>${inv.title ? ` for ${inv.title}` : ''}. Balance due: ৳${num(inv.balance).toLocaleString('en-BD')}.</p>
+    ${pdf ? '<p>The invoice PDF is attached.</p>' : `<div style="border:1px solid #e5e9f0;border-radius:8px;padding:8px 12px;">${html}</div>`}
+    <p>— Seventh Sky Property Care</p>`;
+  const result = await sendEmail(to, `Invoice ${inv.invoice_code} — Seventh Sky Property Care`, body, attachments).catch((e) => ({ success: false, error: e.message }));
+  if (inv.status === 'draft') await inv.update({ status: 'sent' });
+  res.json({ data: { to, emailed: !!(result && result.success), simulated: !!(result && result.simulated), has_pdf: !!pdf }, message: result?.simulated ? `Invoice recorded (email simulated) for ${to}` : `Invoice ${inv.invoice_code} sent to ${to}` });
 });
 
 // PATCH /api/invoices/:id/status

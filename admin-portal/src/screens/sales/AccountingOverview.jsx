@@ -9,11 +9,13 @@ import { RefreshCw, Wallet, HandCoins, Receipt, CheckCircle2 } from 'lucide-reac
 import api from '../../services/api';
 import { PageHead, StatCard, Button, Spinner } from '../../ui/kit';
 import { settlementDeskPath } from './paths';
+import SalesInvoices from './SalesInvoices';
 
 const money = (v) => 'BDT ' + Number(v || 0).toLocaleString();
 
 export default function AccountingOverview() {
   const navigate = useNavigate();
+  const [tab, setTab] = useState('overview');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -50,12 +52,30 @@ export default function AccountingOverview() {
     </div>
   );
 
-  if (loading) return <div className="card-pad"><Spinner /></div>;
-  if (error) return <div className="pm-card card-pad">{error} <Button variant="ghost" size="sm" onClick={load}>Retry</Button></div>;
+  const tabs = (
+    <div className="pm-segment" style={{ marginBottom: 16 }}>
+      <button className={`pm-seg-btn ${tab === 'overview' ? 'active' : ''}`} onClick={() => setTab('overview')}>Overview</button>
+      <button className={`pm-seg-btn ${tab === 'invoices' ? 'active' : ''}`} onClick={() => setTab('invoices')}>Invoices</button>
+    </div>
+  );
+
+  if (tab === 'invoices') {
+    return (
+      <>
+        <PageHead title="Accounting" desc="Vendor & buyer invoices generated and drafted after a sale/purchase agreement is signed." />
+        {tabs}
+        <SalesInvoices />
+      </>
+    );
+  }
+
+  if (loading) return <><PageHead title="Accounting" />{tabs}<div className="card-pad"><Spinner /></div></>;
+  if (error) return <><PageHead title="Accounting" />{tabs}<div className="pm-card card-pad">{error} <Button variant="ghost" size="sm" onClick={load}>Retry</Button></div></>;
   const h = data.headline; const w = data.worklists;
   return (
     <>
       <PageHead title="Accounting" desc="Portfolio finance across every sale — drill into a deal's Settlement Desk to act." actions={<Button variant="ghost" icon={RefreshCw} onClick={load}>Refresh</Button>} />
+      {tabs}
       <div className="grid-stats" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <StatCard icon={Wallet} tone="green" label="Trust cash held" value={money(h.trust_cash_held)} />
         <StatCard icon={Receipt} tone="sky" label="Buyer receivable" value={money(h.buyer_receivable)} />
