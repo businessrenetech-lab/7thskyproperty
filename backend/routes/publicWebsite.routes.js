@@ -21,6 +21,7 @@ router.post('/tenant-applications', enquiryLimiter, ctrl.submitTenantApplication
 router.post('/service-requests', enquiryLimiter, ctrl.submitServiceRequest);
 router.post('/appraisals', enquiryLimiter, ctrl.submitAppraisalRequest);
 router.post('/contact', enquiryLimiter, ctrl.submitContactMessage);
+router.post('/offers', enquiryLimiter, ctrl.submitPropertyOffer);
 
 // Public, read-only site content (contact/footer details, branding, social,
 // hero/service/card photos) — what the website renders.
@@ -33,5 +34,6 @@ router.patch('/admin/properties/:id/publish', authMiddleware, roleMiddleware(ROL
 // Site content CMS — read + edit contact/footer/branding/social/photos from admin.
 router.get('/admin/content', authMiddleware, roleMiddleware(ROLES), ctrl.getAdminSiteContent);
 router.put('/admin/content', authMiddleware, roleMiddleware(ROLES), ctrl.updateSiteContent);
+router.post('/admin/offer-link', authMiddleware, roleMiddleware(ROLES), ctrl.createOfferLink);
 
 module.exports = router;

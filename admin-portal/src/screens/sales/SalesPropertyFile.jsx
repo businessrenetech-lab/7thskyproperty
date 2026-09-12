@@ -906,7 +906,29 @@ export default function SalesPropertyFile({
       normalizedAccount(payment.to_account_number) ===
         normalizedAccount(form.bank_account_number),
   );
-  const documents = array(detail.documents, property.documents);
+  // The Documents section aggregates EVERY document store attached to the sale —
+  // property documents, each party's verified KYC, and the signed agreements —
+  // not just the PropertyDocument table.
+  const kycDocRows = array(detail.kyc_documents).map((k) => ({
+    title: k.title || title(k.document_type || "KYC document"),
+    doc_type: `KYC${k.role ? ` · ${title(k.role)}` : ""}`,
+    status: k.status,
+    file_url: k.file_url || k.file_url_back || null,
+    created_at: k.created_at || k.createdAt || k.updated_at,
+  }));
+  const agreementDocRows = array(detail.sale_agreements).map((a) => ({
+    title: a.title || a.envelope_code || "Service agreement",
+    doc_type: `Agreement${a.related_type === "sale_purchase_agreement" ? " · Purchase" : a.related_type === "sale_sale_agreement" ? " · Sale" : ""}`,
+    status: a.status,
+    file_url: a.final_pdf_url || a.certificate_url || null,
+    envelope_id: a.id,
+    created_at: a.completed_at || a.created_at || a.createdAt,
+  }));
+  const documents = [
+    ...array(detail.documents, property.documents),
+    ...kycDocRows,
+    ...agreementDocRows,
+  ];
   const salesRoleProfiles = array(
     detail.role_profiles,
     detail.roleProfiles,
@@ -2992,6 +3014,26 @@ export default function SalesPropertyFile({
               <Button
                 size="sm"
                 variant="ghost"
+                icon={Link2}
+                onClick={async () => {
+                  const email = window.prompt("Email the offer link to (leave blank to just copy the link):", "") ?? "";
+                  try {
+                    const r = await api.post("/public-website/admin/offer-link", { property_id: propertyId, email: email.trim() || undefined });
+                    const link = r.data?.data?.link;
+                    if (!link) return toast.error("Could not create offer link");
+                    try { await navigator.clipboard.writeText(link); } catch { /* ignore */ }
+                    toast.success(r.data?.data?.emailed ? "Offer link emailed and copied" : "Offer link copied to clipboard");
+                    window.prompt("Custom offer link (copy):", link);
+                  } catch (e) {
+                    toast.error(e.response?.data?.error || "Could not create offer link");
+                  }
+                }}
+              >
+                Offer link
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
                 onClick={() => openNewBuyer("offer")}
               >
                 Create buyer
@@ -3852,6 +3894,23 @@ export default function SalesPropertyFile({
                       >
                         <ExternalLink size={13} /> View
                       </a>
+                    ) : row.envelope_id ? (
+                      <button
+                        className="pm-link"
+                        style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                        onClick={async () => {
+                          try {
+                            const r = await api.get(`/signing/envelopes/${row.envelope_id}/links`);
+                            const doc = r.data?.data?.signed_document;
+                            if (doc) window.open(doc, "_blank");
+                            else toast.error("Signed copy not available yet");
+                          } catch {
+                            toast.error("Could not open the signed document");
+                          }
+                        }}
+                      >
+                        <ExternalLink size={13} /> Signed copy
+                      </button>
                     ) : (
                       "—"
                     ),

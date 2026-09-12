@@ -1003,3 +1003,66 @@ exports.updateSiteContent = asyncHandler(async (req, res) => {
   const { grouped } = await loadSiteContent();
   res.json({ message: `Updated ${updated.length} setting(s).`, updated, data: grouped });
 });
+
+// ─── PROPERTY OFFERS (from the website) ───────────────────────────────────────
+// A visitor makes an offer on a for-sale property. Blocked once the property is
+// SOLD. Recorded as a website sales enquiry carrying the offered amount so staff
+// can formalise it into a sale offer.
+exports.submitPropertyOffer = asyncHandler(async (req, res) => {
+  const { name, phone, email, property_id, property_code, offer_amount, message,
+    utm_source, utm_medium, utm_campaign } = req.body || {};
+  if (!name || (!phone && !email)) return res.status(400).json({ error: 'Name and a phone or email are required.' });
+  if (!offer_amount || Number(offer_amount) <= 0) return res.status(400).json({ error: 'A valid offer amount is required.' });
+
+  const propIdentifier = property_id || property_code;
+  if (!propIdentifier) return res.status(400).json({ error: 'A property is required to make an offer.' });
+  const isNum = /^\d+$/.test(String(propIdentifier));
+  const property = await Property.findOne({
+    where: isNum ? { [Op.or]: [{ id: Number(propIdentifier) }, { property_code: String(propIdentifier) }] }
+      : { [Op.or]: [{ property_code: String(propIdentifier) }, { slug: String(propIdentifier) }] },
+  });
+  if (!property) return res.status(404).json({ error: 'Property not found.' });
+  if (property.listing_type !== 'sale') return res.status(400).json({ error: 'Offers can only be made on properties listed for sale.' });
+  if (property.status === 'sold') return res.status(409).json({ error: 'This property has been sold and is no longer accepting offers.' });
+
+  const branchId = property.branch_id || await getDefaultBranchId();
+  const enquiry = await sequelize.transaction(async (tx) => {
+    const contact = await ensureContact({ branchId, name, phone, email, source: 'website', notes: `Offer on ${property.title}` }, tx);
+    let client = await Client.findOne({ where: { contact_id: contact.id }, transaction: tx });
+    if (!client) client = await Client.create({ branch_id: branchId, contact_id: contact.id, client_code: await generateCode(Client, 'client_code', 'SSPC-CL-'), client_type: 'buyer', is_buyer: true, status: 'active' }, { transaction: tx });
+    const created = await SalesEnquiry.create({
+      branch_id: branchId, enquiry_code: await generateCode(SalesEnquiry, 'enquiry_code', 'SSPC-BEQ-'),
+      property_id: property.id, contact_id: contact.id, client_id: client.id,
+      enquirer_name: name, phone: phone || null, email: email || null, source: 'website',
+      utm_source: utm_source || null, utm_medium: utm_medium || null, utm_campaign: utm_campaign || null,
+      budget: Number(offer_amount), preferred_area: property.area || null,
+      message: `OFFER: ৳${Number(offer_amount).toLocaleString('en-BD')} on ${property.property_code || property.title}. ${message || ''}`.trim(),
+      stage: 'new', next_action: 'Review buyer offer and formalise',
+    }, { transaction: tx });
+    await routeAndEnrol(created, property.id, tx);
+    return created;
+  });
+  res.status(201).json({ message: 'Your offer has been submitted. Our sales team will review it and get back to you.', enquiry_code: enquiry.enquiry_code, id: enquiry.id });
+});
+
+// POST /api/public-website/admin/offer-link — a shareable "make an offer" link
+// for a for-sale property, optionally emailed to a prospective buyer.
+exports.createOfferLink = asyncHandler(async (req, res) => {
+  const { property_id, email, name } = req.body || {};
+  const property = await Property.findOne({ where: { id: Number(property_id), ...branchScope(req) } });
+  if (!property) return res.status(404).json({ error: 'Property not found.' });
+  if (property.status === 'sold') return res.status(409).json({ error: 'This property is sold — offers are closed.' });
+  const base = process.env.WEBSITE_BASE_URL || 'http://localhost:3005';
+  const slug = property.slug || property.property_code || property.id;
+  const link = `${base}/properties/${slug}?offer=1`;
+  let emailed = false;
+  if (email) {
+    try {
+      const { sendEmail } = require('../services/communication.service');
+      await sendEmail(email, `Make an offer on ${property.title}`,
+        `<p>Dear ${name || 'there'},</p><p>You're invited to make an offer on <strong>${property.title}</strong>.</p><p><a href="${link}">${link}</a></p><p>— Seventh Sky Property Care</p>`);
+      emailed = true;
+    } catch { /* best-effort */ }
+  }
+  res.json({ data: { link, emailed, property: { id: property.id, title: property.title, status: property.status } } });
+});

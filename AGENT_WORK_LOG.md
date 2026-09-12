@@ -6201,3 +6201,14 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Result: e2eSellJourneyFull now 43 PASS / 0 FAIL. The full assessment SOP passed cleanly — appraisal values/gates, comparable, report generation, and proposal generate/send(email)/accept all work. No bugs found in the assessment SOP during the checks.
 - Test data kept in place (prop=115, vendor=290, buyer=291, deal=100, settlement=87; appraisal/proposal fixtures created).
 - Full-suite status unchanged elsewhere: npm test green, test:full 28/0, e2eSalesAgreementFlow 28/0, e2eBuyerServiceFull 13/0.
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED | Property-file sections (workflow/documents/enquiries) + website offers (property #115)
+- Request: test property #115 sections not covered — workflow, documents, enquiries; documents should show ALL property documents (currently empty); website enquiries per property; offers from website + custom offer link (email/copy); property listed on website; sold status visible on frontend; offer button only when for-sale (none when sold).
+- Findings on #115 (sold): documents section showed 0 despite 9 verified KYC docs + 1 signed agreement; enquiries + workflow sections work; no public offer endpoint existed.
+- Fixes/additions:
+  1. DOCUMENTS (admin-portal SalesPropertyFile.jsx): the Documents section now aggregates every store — PropertyDocument + each party's KYC (title/type/status/file link) + signed agreements (opens the signed copy via /signing/envelopes/:id/links). #115 now lists 10 documents.
+  2. PUBLIC OFFERS (backend): POST /api/public-website/offers — availability-guarded (blocked once SOLD), records the offer as a website sales enquiry carrying the amount; lands in the property's Enquiries section. Verified: sold #115 blocked; available #116 → SSPC-BEQ-000008 (৳11,500,000) shows in its enquiries.
+  3. CUSTOM OFFER LINK (backend + admin): POST /api/public-website/admin/offer-link returns a shareable /properties/:slug?offer=1 URL (emails it when given an address), blocked when sold. Added an "Offer link" button in the property-file Offers section (copies to clipboard / emails).
+  4. Verified: workflow SOP starts (10 stages engagement→closure); website enquiry for a property routes to its Enquiries; public property detail returns status=sold; feed lists both sold (#115) and available (#116) with status.
+- HANDOFF to website agent (website-mock): on the property detail page show a "Make an offer" button ONLY when status !== 'sold' (posts to /api/public-website/offers with property_id + offer_amount); show a "Sold" badge when status==='sold'; honour ?offer=1 to open the offer form. Property status is already in GET /public-website/properties/:idOrSlug.
+- Backend restarted; dist rebuilt. Test data kept (property #116, offer enquiries).
