@@ -15,6 +15,7 @@ router.post('/:id/decide', ctrl.decide);
 router.post('/:id/assign', ctrl.assign);
 router.post('/:id/start', ctrl.start);
 router.post('/:id/complete', ctrl.complete);
+router.post('/:id/void', ctrl.voidCompletion);
 
 // Quotes
 router.get('/:id/quotes', ctrl.listQuotes);

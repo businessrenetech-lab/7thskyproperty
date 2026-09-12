@@ -122,6 +122,25 @@ exports.complete = asyncHandler(async (req, res) => {
   });
 });
 
+// POST /api/work-orders/:id/void — reverse a completed WO (wrong cost, etc.)
+//   body: { reason?, reopen? (default true) }
+exports.voidCompletion = asyncHandler(async (req, res) => {
+  const wo = await WorkOrder.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!wo) return res.status(404).json({ error: 'Work order not found.' });
+  try {
+    const result = await maintenance.voidCompletion(wo.id, {
+      reason: req.body.reason || null,
+      reopen: req.body.reopen !== false,
+      user_id: req.user?.id || null,
+    });
+    res.json({
+      data: result.workOrder,
+      message: `Completion reversed — BDT ${Number(result.cost || 0).toLocaleString()} refunded to the owner folio${result.cancelledProviderBill ? `, bill ${result.cancelledProviderBill} cancelled` : ''}${result.cancelledRecharge ? `, recharge ${result.cancelledRecharge} cancelled` : ''}. ${result.workOrder.status === 'in_progress' ? 'Work order reopened.' : 'Work order cancelled.'}`,
+      folio_reversed: result.folioReversed,
+    });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 // ─── QUOTES ─────────────────────────────────────────────────────────────────
 exports.listQuotes = asyncHandler(async (req, res) => {
   const wo = await WorkOrder.findOne({ where: { id: req.params.id, ...branchScope(req) } });

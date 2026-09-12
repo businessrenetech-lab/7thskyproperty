@@ -249,4 +249,85 @@ async function complete(workOrderId, { actual_cost, after_photos, provider_notes
   });
 }
 
-module.exports = { triage, decide, assign, start, complete };
+/**
+ * Reverse / void a COMPLETED work order — e.g. it was completed with the wrong
+ * cost. Undoes the money side cleanly:
+ *   · reverses the owner-folio repair charge (offsetting DEBIT, so the held
+ *     balance is restored),
+ *   · cancels the provider bill and the tenant recharge invoice.
+ *
+ * REFUSES if money has already moved on either invoice (provider paid out, or
+ * tenant paid their recharge) — those must be reversed first, so we never leave
+ * a paid invoice cancelled. By default the WO reopens to `in_progress` so it can
+ * be re-completed with the correct figures; pass reopen:false to cancel it.
+ */
+async function voidCompletion(workOrderId, { reason, reopen = true, user_id } = {}) {
+  const wo = await WorkOrder.findByPk(workOrderId);
+  if (!wo) throw new Error('Work order not found');
+  if (wo.status !== 'completed') throw new Error('Only a completed work order can be reversed.');
+
+  const providerBill = wo.landlord_bill_id ? await PropertyInvoice.findByPk(wo.landlord_bill_id) : null;
+  const rechargeInv = wo.tenant_recharge_invoice_id ? await PropertyInvoice.findByPk(wo.tenant_recharge_invoice_id) : null;
+  if (providerBill && num(providerBill.amount_paid) > 0) {
+    throw new Error(`Provider bill ${providerBill.invoice_code} is already paid (${num(providerBill.amount_paid).toLocaleString()}). Reverse the provider payout before voiding this work order.`);
+  }
+  if (rechargeInv && num(rechargeInv.amount_paid) > 0) {
+    throw new Error(`Tenant recharge ${rechargeInv.invoice_code} is already paid. Refund the tenant before voiding this work order.`);
+  }
+
+  const cost = num(wo.actual_cost ?? wo.amount);
+
+  return sequelize.transaction(async (tx) => {
+    // 1. Reverse the owner-folio repair charge (the supplier_bill CREDIT posted on
+    //    completion) with an offsetting DEBIT, restoring the held balance.
+    let reversed = false;
+    if (cost > 0 && wo.property_id) {
+      const property = await Property.findByPk(wo.property_id, { transaction: tx });
+      const landlordFolio = property?.owner_contact_id
+        ? await findBestLandlordFolio(property.owner_contact_id, wo.property_id, { transaction: tx })
+        : null;
+      if (landlordFolio) {
+        await postFolioTransaction({
+          folio_id: landlordFolio.id,
+          transaction_type: 'adjustment',
+          bucket: 'supplier_bill',
+          provider_id: wo.provider_id || null,
+          property_id: wo.property_id,
+          invoice_id: providerBill?.id || null,
+          description: `Reversal — ${wo.title} (${wo.work_order_code})${reason ? ` · ${reason}` : ''}`,
+          debit: cost,
+          created_by: user_id || null,
+        }, { transaction: tx });
+        reversed = true;
+      }
+    }
+
+    // 2. Cancel the linked invoices (neither has any payment — checked above).
+    if (providerBill) await providerBill.update({ status: 'cancelled', balance: 0 }, { transaction: tx });
+    if (rechargeInv) await rechargeInv.update({ status: 'cancelled', balance: 0 }, { transaction: tx });
+
+    // 3. Reopen for re-completion, or cancel the work order outright.
+    await wo.update(reopen ? {
+      status: 'in_progress', tenant_visible_status: 'in_progress',
+      completed_date: null, actual_cost: null,
+      landlord_bill_id: null, tenant_recharge_invoice_id: null,
+    } : {
+      status: 'cancelled', tenant_visible_status: 'cancelled',
+      landlord_bill_id: null, tenant_recharge_invoice_id: null,
+    }, { transaction: tx });
+
+    // 4. Timeline note.
+    await Communication.create({
+      branch_id: wo.branch_id,
+      entity_type: 'property', entity_id: wo.property_id,
+      channel: 'note', direction: 'outbound',
+      subject: `Work order ${reopen ? 'reopened' : 'voided'}: ${wo.title}`,
+      body: `Reversed completion (cost BDT ${cost.toLocaleString()} refunded to owner folio${providerBill ? `, bill ${providerBill.invoice_code} cancelled` : ''}${rechargeInv ? `, recharge ${rechargeInv.invoice_code} cancelled` : ''}).${reason ? `\nReason: ${reason}` : ''}`,
+      user_id: user_id || null,
+    }, { transaction: tx });
+
+    return { workOrder: wo, folioReversed: reversed, cost, cancelledProviderBill: providerBill?.invoice_code || null, cancelledRecharge: rechargeInv?.invoice_code || null };
+  });
+}
+
+module.exports = { triage, decide, assign, start, complete, voidCompletion };

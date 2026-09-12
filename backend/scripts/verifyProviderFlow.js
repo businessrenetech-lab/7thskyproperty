@@ -160,6 +160,37 @@ const finish = () => { console.log(`\n${'='.repeat(60)}\n${R.fail ? '\x1b[31m' :
   const provInvoices = list((await A('GET', '/api/invoices?kind=provider&limit=200')).body);
   ok(provInvoices.some((i) => i.id === providerBill.id), 'admin: provider bill listed under provider invoices', `${provInvoices.length} provider invoices`);
 
+  // ── VOID / REVERSAL: refuse when paid; reverse cleanly when unpaid ──────────
+  // The first WO is fully paid (provider + tenant), so a void must be REFUSED.
+  const voidPaid = await A('POST', `/api/work-orders/${woId}/void`, { reason: 'test' });
+  ok(voidPaid.status === 400 && /paid/i.test(voidPaid.body?.error || ''), 'void REFUSED while provider bill is paid', voidPaid.body?.error?.slice(0, 70));
+
+  // A second, UNPAID job so we can reverse it. Assign directly, complete, void.
+  const wo2 = await A('POST', '/api/work-orders', { title: `Wrong-cost job ${STAMP}`, scope: 'Repaint', property_id: propId, category: 'general', severity: 'normal', reported_by_type: 'staff' });
+  const wo2Id = wo2.body?.data?.id;
+  await A('POST', `/api/work-orders/${wo2Id}/assign`, { provider_id: cheapest.provider_id, amount: 5000 });
+  await A('POST', `/api/work-orders/${wo2Id}/start`);
+  const balBeforeWO2 = await folioBal();
+  const comp2 = await A('POST', `/api/work-orders/${wo2Id}/complete`, { actual_cost: 5000, tenant_recharge: false });
+  const bill2 = comp2.body?.landlord_bill;
+  const balAfterWO2 = await folioBal();
+  ok(Math.abs((balBeforeWO2 - balAfterWO2) - 5000) < 0.01, 'second job charges the owner folio', `−${money(5000)}`);
+
+  const voided = await A('POST', `/api/work-orders/${wo2Id}/void`, { reason: 'Wrong cost entered', reopen: true });
+  ok([200, 201].includes(voided.status), 'void ACCEPTED for the unpaid job', voided.body?.message?.slice(0, 80));
+  const balAfterVoid = await folioBal();
+  ok(Math.abs(balAfterVoid - balBeforeWO2) < 0.01, 'owner folio charge REVERSED (balance restored)', `${money(balAfterWO2)} → ${money(balAfterVoid)}`);
+  const bill2After = (await A('GET', `/api/invoices/${bill2.id}`)).body?.data;
+  ok(bill2After?.status === 'cancelled', 'provider bill CANCELLED on void', `status=${bill2After?.status}`);
+  const wo2After = (await A('GET', `/api/work-orders/${wo2Id}`)).body?.data;
+  ok(wo2After?.status === 'in_progress', 'work order REOPENED for re-completion', `status=${wo2After?.status}`);
+
+  // Re-complete with the corrected cost → owner charged the right amount.
+  const recomp = await A('POST', `/api/work-orders/${wo2Id}/complete`, { actual_cost: 3000, tenant_recharge: false });
+  ok([200, 201].includes(recomp.status) && !!recomp.body?.landlord_bill, 're-completed with corrected cost', `new bill ${recomp.body?.landlord_bill?.invoice_code} @ ${money(3000)}`);
+  const balAfterRecomp = await folioBal();
+  ok(Math.abs((balBeforeWO2 - balAfterRecomp) - 3000) < 0.01, 'owner folio charged the corrected cost only', `−${money(3000)} (net)`);
+
   console.log(`\nInspect: property #${propId} · owner #${ownerId} · tenancy #${tenancyId} · work order #${woId} · provider #${cheapest.provider_id} · provider bill ${providerBill.invoice_code}`);
   finish();
 })().catch((e) => { ok(false, 'harness crashed', e.stack || e.message); finish(); });
