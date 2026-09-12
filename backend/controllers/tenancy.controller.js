@@ -366,8 +366,10 @@ exports.collectRentData = asyncHandler(async (req, res) => {
       month_invoice_id: raised ? led.invoice_id : null, raised,
       month_outstanding: monthOutstanding, month_received: monthReceived,
       arrears, status,
-      // What we suggest collecting: this month's outstanding (operator can bump to add arrears).
-      suggested_amount: monthOutstanding || monthCharge,
+      // What we suggest collecting: this month's outstanding. When the month is
+      // fully paid this is 0 (do NOT fall back to the full charge — that would
+      // re-collect an already-settled month). Operator can bump to add arrears.
+      suggested_amount: monthOutstanding,
       rent_due_day: t.rent_due_day || 1,
     };
     if (statusFilter && status !== statusFilter) continue;

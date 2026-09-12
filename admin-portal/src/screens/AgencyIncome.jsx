@@ -150,7 +150,13 @@ export default function AgencyIncome() {
                       </td>
                     </tr>
                   ))}
-                  {!filtered.length && <tr><td colSpan={9} style={{ textAlign: 'center', padding: 28, color: 'var(--muted)' }}>No invoices in this view.</td></tr>}
+                  {!filtered.length && <tr><td colSpan={9} style={{ textAlign: 'center', padding: 28, color: 'var(--muted)' }}>{
+                    invoices.length === 0 ? 'No agreement-fee invoices yet — they are drafted when a sales or management agreement is signed.'
+                      : tab === 'paid' ? `No paid fee invoices yet. ${s.draft_count || 0} draft and ${s.outstanding_count || 0} outstanding — record a payment to see it here.`
+                      : tab === 'outstanding' ? 'No outstanding fee invoices — nothing sent is awaiting payment.'
+                      : tab === 'draft' ? 'No drafts — every fee invoice has been sent.'
+                      : 'No invoices in this view.'
+                  }</td></tr>}
                 </tbody>
               </table>
             </div></div>

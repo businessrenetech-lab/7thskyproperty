@@ -49,9 +49,13 @@ export default function BulkRentCollection() {
       // pre-fill: select every not-paid row with its suggested amount
       const seed = {};
       list.forEach((r) => {
+        // Prefill the Collect box with the outstanding only. A fully-paid month
+        // has nothing due, so the box shows 0 (use ?? so a real 0 isn't replaced
+        // by the full charge).
+        const outstanding = r.status === 'paid' ? 0 : (r.suggested_amount ?? r.month_outstanding ?? r.month_charge ?? 0);
         seed[r.tenancy_id] = {
-          selected: r.status !== 'paid' && (r.suggested_amount || 0) > 0,
-          amount: r.suggested_amount || r.month_charge || 0,
+          selected: r.status !== 'paid' && outstanding > 0,
+          amount: outstanding,
           method: 'cash', reference: '',
         };
       });
