@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Home, Wrench, FileText, Receipt, ShieldCheck, MessageSquareWarning,
   Send, Download, Check, X, Droplets, Camera, ClipboardList, Clock,
-  CalendarDays, FolderOpen,
+  CalendarDays, FolderOpen, CreditCard,
 } from 'lucide-react';
 import api from '../../services/api';
 import { bdt, dateFmt, Pill, toast, errText, profileForLine } from './common';
@@ -424,9 +424,19 @@ function Invoices({ data, base }) {
             </>
           )}
 
-          <button className="wt-btn" style={{ marginTop: 14 }} onClick={() => openPdf(i)}>
-            <Download size={14} /> Download this invoice
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
+            {/* Pay Now appears only once SSLCommerz is connected AND there is a
+                balance — the backend supplies pay_url in exactly that case. */}
+            {i.pay_url && num(i.outstanding) > 0 && (
+              <a className="wt-btn primary" href={i.pay_url} target="_blank" rel="noreferrer"
+                style={{ background: 'var(--wt-green)', color: '#fff', borderColor: 'var(--wt-green)' }}>
+                <CreditCard size={14} /> Pay now — {bdt(i.outstanding)}
+              </a>
+            )}
+            <button className="wt-btn" onClick={() => openPdf(i)}>
+              <Download size={14} /> Download this invoice
+            </button>
+          </div>
         </Expandable>
       ))}
     </>
