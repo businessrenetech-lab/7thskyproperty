@@ -15,5 +15,7 @@ router.get('/:kind/meta', ctrl.getMeta);
 router.post('/:kind/preview', ctrl.preview);
 router.get('/:kind/agreements', ctrl.listAgreements);
 router.post('/:kind/agreements', ctrl.createAgreement);
+router.put('/:kind/agreements/:id', ctrl.updateAgreement);       // edit a draft in place
+router.post('/:kind/agreements/:id/send', ctrl.sendAgreement);   // send/re-send a draft
 
 module.exports = router;

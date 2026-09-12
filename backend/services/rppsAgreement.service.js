@@ -3,9 +3,10 @@
 // with the Buyer. Catalogue vertical: sale_purchase.
 const render = require('./salesAgreementRender');
 const CLAUSES = require('./rppsClauses'); // AUTO-GENERATED verbatim from the V0.2 docx
+const SCHED = require('./salesAgreementSchedules').purchase;
 
 const VERTICAL = 'sale_purchase';
-const CFG = { doc_no: 'SSPC-RPPS-01', version: '0.2', title: 'Residential Property Purchase Service Agreement', party: 'Buyer', clauses: CLAUSES };
+const CFG = { doc_no: 'SSPC-RPPS-01', version: '0.2', title: 'Residential Property Purchase Service Agreement', party: 'Buyer', clauses: CLAUSES, ...SCHED };
 
 async function getCatalog(branchId) { return render.getCatalog(VERTICAL, branchId); }
 async function computePricing(input, branchId) { return render.computePricing(VERTICAL, input, branchId); }

@@ -22,6 +22,10 @@ const principalRoleFor = (relatedType) => {
   const t = String(relatedType || '');
   if (t.endsWith('_customer_agreement')) return 'client';
   if (t.endsWith('_provider_agreement')) return 'provider';
+  // Residential sales service agreements (RPPS purchase / RPSS sale) — the
+  // client is the buyer/seller; they + Seventh Sky's countersigner receive the
+  // fully-executed PDF, exactly as the water-tank customer agreements do.
+  if (t === 'sale_purchase_agreement' || t === 'sale_sale_agreement') return 'client';
   return null;
 };
 

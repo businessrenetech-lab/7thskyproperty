@@ -56,18 +56,32 @@ async function computePricing(vertical, input = {}, branchId) {
   const third_party = Number(input.third_party_costs || 0);
   const admin = Number(input.admin_charges || 0);
   const discount = Number(input.discount || 0);
-  const preVat = professional + third_party + admin - discount;
+
+  // Commission / success fee — percent of the purchase/sale price OR a fixed
+  // amount (Schedule C row RPPS-013 / RPSS-013). Flows into the total, the
+  // payment schedule, the terms (for invoice drafting) and the fees report.
+  const cm = input.commission || {};
+  const commission_mode = cm.mode === 'fixed' ? 'fixed' : 'percent';
+  const commission_base = Number(cm.base_price || 0);
+  const commission_percent = Number(cm.percent || 0);
+  const commission = commission_mode === 'fixed'
+    ? Math.round(Number(cm.amount || 0))
+    : Math.round((commission_base * commission_percent) / 100);
+
+  const preVat = professional + third_party + admin + commission - discount;
   const vat = Math.round((preVat * Number(input.vat_percent || 0)) / 100);
   const total = preVat + vat;
 
   const summary = {
     professional_service_fees: professional, coordination_fees: 0,
     third_party_costs: third_party, administrative_charges: admin,
+    commission, commission_mode, commission_percent, commission_base,
     discount, vat_percent: Number(input.vat_percent || 0), vat, total_contract_value: total,
   };
   const payment_schedule = input.payment_overrides || [
     { stage: 'Deposit (on acceptance)', amount: Math.round(professional * 0.5), due: 'On acceptance' },
     { stage: 'Balance of professional fees', amount: professional - Math.round(professional * 0.5), due: 'On completion / settlement' },
+    ...(commission > 0 ? [{ stage: 'Commission / Success Fee', amount: commission, due: 'On completion / settlement' }] : []),
     { stage: 'Other approved charges', amount: third_party + admin, due: 'As incurred' },
   ];
   return { lines: selected, summary, payment_schedule };
@@ -85,9 +99,13 @@ function scheduleC(pricing) {
     <td style="padding:6px 8px;border:1px solid #d9dee6;font-size:12px;text-align:right;font-weight:700;">${l.price_type === 'included' ? 'Included' : l.price_type === 'percent' ? esc(l.price_label || 'As agreed') : money(l.agreed_price)}</td>
   </tr>`).join('');
   const s = pricing.summary;
+  const commissionLabel = s.commission_mode === 'percent' && s.commission_percent
+    ? `Professional Success Fee / Commission (${s.commission_percent}%)`
+    : 'Professional Success Fee / Commission';
   const sumRows = [
     ['Professional Service Fees', money(s.professional_service_fees)],
     ['Coordination Fees', money(s.coordination_fees)],
+    [commissionLabel, money(s.commission)],
     ['Third-Party Costs (if applicable)', money(s.third_party_costs)],
     ['Administrative Charges', money(s.administrative_charges)],
     ['Discount', '– ' + money(s.discount)],
@@ -107,6 +125,22 @@ function scheduleC(pricing) {
   </table>
   <div style="font-weight:700;font-size:13px;color:#003768;margin:16px 0 4px;">Payment Schedule</div>
   <table style="width:100%;border-collapse:collapse;"><thead><tr>${['Payment Stage', 'Amount (BDT)', 'Due Date'].map((h) => `<th style="padding:6px 10px;border:1px solid #d9dee6;background:#eef3f8;font-size:11.5px;text-align:${h.includes('Amount') ? 'right' : 'left'};">${h}</th>`).join('')}</tr></thead><tbody>${payRows}</tbody></table>`;
+}
+
+// A grouped checkbox list (Schedule A services / Schedule D checklist). Every
+// taxonomy item renders with a ticked box (☑, bold) when its label is in the
+// selected set, otherwise an empty box (☐) — so the signed agreement shows
+// exactly what was chosen.
+function checkboxGroups(groups, selected) {
+  const set = new Set((selected || []).map((s) => String(s).trim().toLowerCase()));
+  return (groups || []).map(([group, items]) => `
+    <div style="margin:12px 0 4px;font-weight:700;font-size:12.5px;color:#003768;">${esc(group)}</div>
+    <div style="columns:2;column-gap:28px;font-size:12.5px;line-height:2;">
+      ${items.map((it) => {
+    const on = set.has(String(it).trim().toLowerCase());
+    return `<div style="break-inside:avoid;">${on ? '☑' : '☐'} <span style="${on ? 'font-weight:700;color:#0f172a;' : 'color:#4b5563;'}">${esc(it)}</span></div>`;
+  }).join('')}
+    </div>`).join('');
 }
 
 const signSlot = (label) => `
@@ -137,15 +171,17 @@ function buildAgreement(cfg, data = {}) {
       <li><a href="#sched-a" style="color:#1e3a8a;text-decoration:none;">Schedule A — Selected Services</a></li>
       <li><a href="#sched-b" style="color:#1e3a8a;text-decoration:none;">Schedule B — Engagement Summary</a></li>
       <li><a href="#sched-c" style="color:#1e3a8a;text-decoration:none;">Schedule C — Price Schedule</a></li>
+      ${cfg.schedule_d ? `<li><a href="#sched-d" style="color:#1e3a8a;text-decoration:none;">${esc((cfg.schedule_d_title || 'Schedule D').replace(/^SCHEDULE /, 'Schedule '))}</a></li>` : ''}
     </ol>
   </div>`;
 
   const parties = `
   <p style="margin:14px 0 6px;">This Agreement is made on: <b>${or(data.effective_date)}</b></p>
-  <div style="font-weight:700;color:#003768;margin-top:8px;">BETWEEN</div>
-  ${kvTable([['Seventh Sky Private Limited', org.name || 'Seventh Sky Residential Property Services'], ['Address', org.address], ['Phone', org.phone], ['Email', org.email], ['Represented by', org.represented_by], ['Position', org.position]])}
-  <div style="font-weight:700;color:#003768;margin-top:8px;">AND — ${esc(cfg.party)} (Client)</div>
-  ${kvTable([['Full Name', c.full_name], ['National ID / Passport No.', c.nid], ['Address', c.property_address || c.address], ['Phone', c.phone], ['Email', c.email], ['Authorised Representative (if applicable)', c.rep]])}`;
+  <div style="font-weight:700;color:#003768;margin-top:8px;">BETWEEN — SEVENTH SKY PRIVATE LIMITED</div>
+  ${kvTable([['Trading Name', org.name || 'Seventh Sky Property Care'], ['Address', org.address], ['Phone', org.phone], ['Email', org.email], ['Represented by', org.represented_by], ['Position', org.position]])}
+  <div style="font-weight:700;color:#003768;margin-top:8px;">AND — ${esc(cfg.client_heading || `${cfg.party} (Client)`)}</div>
+  ${kvTable([['Full Name', c.full_name], ['National ID / Passport No.', c.nid], ['Current Address', c.property_address || c.address], ['Phone', c.phone], ['Email', c.email], ['Represented by (if applicable)', c.rep], ['Relationship / Position', c.rep_position]])}
+  <p style="font-size:12px;color:#4b5563;margin:6px 0 0;">(${esc(cfg.client_footer || 'the Client')}.) Together referred to as "the Parties."</p>`;
 
   const clausesHtml = CLAUSES.map(([t, body], i) => `
     <div style="margin:16px 0;">
@@ -153,14 +189,25 @@ function buildAgreement(cfg, data = {}) {
       <div style="font-size:13px;">${body}</div>
     </div>`).join('');
 
-  const schedA = `<h2 id="sched-a" style="font-size:15px;color:#003768;margin:22px 0 6px;">SCHEDULE A — Selected Services</h2><div style="font-size:12.5px;">${(data.services && data.services.length) ? esc(data.services.join(', ')) : 'As selected in Schedule C and the approved Work Order.'}</div>`;
-  const schedB = `<h2 id="sched-b" style="font-size:15px;color:#003768;margin:22px 0 6px;">SCHEDULE B — Engagement Summary</h2>${kvTable([
-    ['Work Order No.', b.work_order_no], ['Quotation No.', b.quotation_no], ['Client', c.full_name],
-    ['Property / Address', c.property_address || b.property_address], ['Property Type', data.property_type],
-    ['Engagement Type', b.engagement_type], ['Budget / Target Value', b.target_value], ['Expected Timeframe', b.timeframe],
-    ['Commencement Date', b.commencement_date], ['Special Requirements', b.special_requirements],
-  ])}`;
+  const schedA = `<h2 id="sched-a" style="font-size:15px;color:#003768;margin:22px 0 6px;">${esc(cfg.schedule_a_title || 'SCHEDULE A — Selected Services')}</h2>
+    <p style="font-size:12px;color:#4b5563;margin:0 0 4px;">Only the services ticked below form part of this Agreement.</p>
+    ${cfg.schedule_a ? checkboxGroups(cfg.schedule_a, data.services) : `<div style="font-size:12.5px;">${(data.services && data.services.length) ? esc(data.services.join(', ')) : 'As selected in Schedule C and the approved Work Order.'}</div>`}`;
+
+  // Schedule B — summary field list is per-kind; values come from schedule_b +
+  // the client/property context, with a computed selected-services string.
+  const bValues = {
+    ...b,
+    client_name: c.full_name, property_address: c.property_address || b.property_address,
+    property_type: data.property_type || b.property_type,
+    selected_services_text: (data.services && data.services.length) ? data.services.join(', ') : null,
+  };
+  const schedB = `<h2 id="sched-b" style="font-size:15px;color:#003768;margin:22px 0 6px;">${esc(cfg.schedule_b_title || 'SCHEDULE B — Engagement Summary')}</h2>${kvTable(
+    (cfg.schedule_b_fields || [['Client', 'client_name'], ['Special Requirements', 'special_requirements']]).map(([label, key]) => [label, bValues[key]]),
+  )}`;
   const schedC = scheduleC(pricing);
+
+  const schedD = cfg.schedule_d ? `<h2 id="sched-d" style="font-size:15px;color:#003768;margin:22px 0 6px;">${esc(cfg.schedule_d_title || 'SCHEDULE D — Checklist')}</h2>
+    ${checkboxGroups(cfg.schedule_d, data.checklist)}` : '';
 
   const signatures = `
   <h2 style="font-size:15px;color:#003768;margin:26px 0 6px;">Signatures</h2>
@@ -185,14 +232,17 @@ function buildAgreement(cfg, data = {}) {
     ${schedA}
     ${schedB}
     ${schedC}
+    ${schedD}
     ${signatures}
     <div style="margin-top:22px;padding-top:10px;border-top:1px solid #d1d5db;font-size:11px;color:#6b7280;">This Agreement becomes effective when signed by both Parties through the Seventh Sky electronic signing system. The electronic record, audit trail and content hash constitute proof of execution.</div>
   </div>`;
 
   const terms = {
     doc_no: cfg.doc_no, version: cfg.version, party: cfg.party,
-    selected_services: data.services || [], schedule_b: b,
+    selected_services: data.services || [], checklist: data.checklist || [], schedule_b: b,
     pricing_summary: pricing.summary, payment_schedule: pricing.payment_schedule,
+    commission: pricing.summary.commission || 0,
+    commission_mode: pricing.summary.commission_mode, commission_percent: pricing.summary.commission_percent,
     agreed_lines: pricing.lines.map((l) => ({ code: l.code, name: l.name, agreed_price: l.agreed_price, price_type: l.price_type })),
   };
   return { title: cfg.title, doc_no: cfg.doc_no, html, terms };
