@@ -17,6 +17,9 @@ const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = requ
 const num = (v) => Number(v || 0);
 const clientInc = { model: Client, as: 'client', include: [{ model: Contact, attributes: ['id', 'full_name'] }] };
 const contactInc = { model: Contact, as: 'contact', attributes: ['id', 'full_name'] };
+const Property = require('../models/Property');
+// Property (with its owner) so income rows can show the property title + owner.
+const propertyInc = { model: Property, as: 'property', attributes: ['id', 'title'], include: [{ model: Contact, as: 'owner', attributes: ['id', 'full_name'] }] };
 const providerInc = { model: ServiceProvider, as: 'provider', attributes: ['id', 'company_name'] };
 const categoryInc = { model: AccountCategory, as: 'category', attributes: ['id', 'name', 'code'] };
 const folioInc = { model: Folio, as: 'folio', attributes: ['id', 'folio_code', 'folio_type'] };
@@ -439,7 +442,7 @@ exports.agencyIncome = asyncHandler(async (req, res) => {
     required: !!scopeRelated, ...(scopeRelated ? { where: { related_type: { [Op.in]: scopeRelated } } } : {}),
   };
   const rows = await PropertyInvoice.findAll({
-    where, include: [contactInc, envInclude], order: [['created_at', 'DESC']], limit: 500,
+    where, include: [contactInc, propertyInc, envInclude], order: [['created_at', 'DESC']], limit: 500,
   });
   const n = (v) => Math.round(Number(v || 0) * 100) / 100;
   const summary = { billed: 0, received: 0, dues: 0, drafted: 0, count: rows.length, draft_count: 0, paid_count: 0, outstanding_count: 0 };
@@ -452,7 +455,9 @@ exports.agencyIncome = asyncHandler(async (req, res) => {
     }
     return {
       id: r.id, invoice_code: r.invoice_code, title: r.title, status: r.status,
-      property_id: r.property_id, contact_id: r.contact_id, contact_name: r.contact?.full_name || null,
+      property_id: r.property_id, property_title: r.property?.title || null,
+      owner_name: r.property?.owner?.full_name || r.contact?.full_name || null,
+      contact_id: r.contact_id, contact_name: r.contact?.full_name || null,
       agreement_type: r.agreementEnvelope?.related_type || null,
       total, amount_paid: paid, balance, issue_date: r.issue_date, due_date: r.due_date, created_at: r.created_at,
     };

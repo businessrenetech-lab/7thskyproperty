@@ -61,5 +61,9 @@ PropertyInvoice.belongsTo(AccountCategory, { as: 'category', foreignKey: 'accoun
 // views scope by the agreement kind (PM/tenancy vs sale/purchase).
 const SigningEnvelope = require('./SigningEnvelope');
 PropertyInvoice.belongsTo(SigningEnvelope, { as: 'agreementEnvelope', foreignKey: 'agreement_envelope_id' });
+// The property this invoice is for — lets income views show the property title
+// (and its owner) alongside the fee line.
+const Property = require('./Property');
+PropertyInvoice.belongsTo(Property, { as: 'property', foreignKey: 'property_id' });
 
 module.exports = PropertyInvoice;

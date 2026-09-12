@@ -130,7 +130,14 @@ export default function AgencyIncome() {
                   {filtered.map((i) => (
                     <tr key={i.id}>
                       <td><strong style={{ color: 'var(--navy)' }}>{i.invoice_code}</strong></td>
-                      <td style={{ fontSize: 12.5 }}>{i.title}</td>
+                      <td style={{ fontSize: 12.5 }}>
+                        <div>{i.title}</div>
+                        {(i.property_title || i.owner_name || i.property_id) && (
+                          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                            {i.property_title || 'Property'}{i.property_id ? ` (#${i.property_id})` : ''}{i.owner_name ? ` · ${i.owner_name}` : ''}
+                          </div>
+                        )}
+                      </td>
                       <td style={{ fontSize: 12.5 }}>{i.contact_name || '—'}</td>
                       <td style={{ textAlign: 'right' }}>{bdt(i.total)}</td>
                       <td style={{ textAlign: 'right', color: '#16a34a' }}>{bdt(i.amount_paid)}</td>
