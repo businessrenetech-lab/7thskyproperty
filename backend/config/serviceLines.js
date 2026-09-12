@@ -908,11 +908,11 @@ const SERVICE_LINES = {
   // agreement packs + config entries under the same `parent`.
   residential_interior_design: {
     key: 'residential_interior_design',
-    label: 'Interior Service Solutions',
+    label: 'Residential Interior Design',
     short: 'RIDS',
-    accent: '#9333ea',              // purple — Interior Service Solutions
+    accent: '#9333ea',              // purple — Interior Design group
     api_base: 'wt',                 // shared /api/wt-* mount, scoped by the header
-    route_base: 'interior-service-solutions',
+    route_base: 'residential-interior-design',
     env_tag: 'RIDS',                // ENV-RIDSCSA-…
     catalogue_vertical: 'residential_interior_design_csa',
     parent: { key: 'interior_design', label: 'Interior Design Solutions' },
@@ -965,20 +965,56 @@ const SERVICE_LINES = {
         source_label: 'Design Style',
         source_options: ['Modern', 'Contemporary', 'Minimalist', 'Classic', 'Scandinavian', 'Industrial', 'Traditional', 'Mixed', 'Client to advise'],
       },
-      // Interior "site visit" checklist (replaces WT tank-access checks).
-      assess_materials: ['Concrete', 'Brick', 'Wood', 'Gypsum', 'Tiles', 'Marble', 'Glass', 'Metal', 'Other'],
-      assess_sources: ['Modern', 'Contemporary', 'Minimalist', 'Classic', 'Scandinavian', 'Industrial', 'Traditional', 'Mixed'],
+      // The "assessment" here is the SOP Phase 1 — Consultation & Design
+      // Assessment + Property Inspection Procedure (SOP §5, §7). It is a design
+      // consultation + site measurement + feasibility review, NOT a tank check.
+      // Grouped as the SOP structures it: Consultation & Requirement Analysis,
+      // Site Inspection, Design Assessment, Preliminary Feasibility Review.
+      assess_materials: ['Concrete', 'Brick', 'Wood', 'Gypsum Board', 'Tiles', 'Marble', 'Glass', 'Metal', 'Existing Finishes', 'Other'],
+      assess_sources: ['Modern', 'Contemporary', 'Minimalist', 'Classic', 'Scandinavian', 'Industrial', 'Traditional', 'Luxury', 'Mixed', 'Client to advise'],
       assess_checks: [
-        { key: 'access_confirmed', label: 'Site access and working hours confirmed', group: 'Access' },
-        { key: 'measurements_taken', label: 'Room measurements taken', group: 'Survey' },
-        { key: 'existing_condition', label: 'Existing condition photographed', group: 'Survey' },
-        { key: 'electrical_points', label: 'Electrical points / load noted', group: 'Systems' },
-        { key: 'plumbing_points', label: 'Plumbing points noted (kitchen / bath)', group: 'Systems' },
-        { key: 'client_brief', label: 'Client design brief and budget captured', group: 'Brief' },
-        { key: 'style_preference', label: 'Style preference / references collected', group: 'Brief' },
-        { key: 'structural_constraints', label: 'Structural constraints / no-touch areas identified', group: 'Risk' },
+        // Consultation & Requirement Analysis (SOP Step 2)
+        { key: 'design_vision', label: 'Design vision & style preference captured', group: 'Consultation' },
+        { key: 'renovation_scope', label: 'Renovation / design scope discussed', group: 'Consultation' },
+        { key: 'furnishing_expectation', label: 'Furnishing & styling expectation captured', group: 'Consultation' },
+        { key: 'budget_captured', label: 'Project budget captured', group: 'Consultation' },
+        { key: 'timeline_expectation', label: 'Timeline expectation agreed', group: 'Consultation' },
+        // Property Inspection Procedure (SOP §5)
+        { key: 'site_inspection', label: 'Site inspection carried out', group: 'Site Inspection' },
+        { key: 'measurements_taken', label: 'Room measurements recorded', group: 'Site Inspection' },
+        { key: 'photography', label: 'Existing condition photographed', group: 'Site Inspection' },
+        { key: 'electrical_plumbing', label: 'Electrical & plumbing points noted', group: 'Site Inspection' },
+        // Design Assessment
+        { key: 'design_assessment', label: 'Design assessment completed', group: 'Design Assessment' },
+        { key: 'renovation_feasibility', label: 'Renovation feasibility reviewed', group: 'Design Assessment' },
+        { key: 'structural_constraints', label: 'Structural constraints / no-touch areas identified', group: 'Design Assessment' },
+        // Preliminary Feasibility Review (SOP Step 3)
+        { key: 'practicality', label: 'Project practicality assessed', group: 'Feasibility Review' },
+        { key: 'budget_alignment', label: 'Budget alignment reviewed', group: 'Feasibility Review' },
+        { key: 'operational_complexity', label: 'Operational complexity & risk factors reviewed', group: 'Feasibility Review' },
       ],
-      assess_equipment: ['Measuring Tape / Laser', 'Camera', 'Moisture Meter', 'Sample Kit', 'Laptop / CAD'],
+      // Common residential scopes — extra items layered onto the standard checklist.
+      assess_templates: [
+        { key: 'standard', label: 'Standard (all scopes)', extra: [] },
+        { key: 'full_home', label: 'Full Home Design', extra: [
+          { key: 'room_by_room', label: 'Room-by-room requirements captured', group: 'Consultation' },
+          { key: 'phasing', label: 'Phasing / staged execution discussed', group: 'Feasibility Review' },
+        ] },
+        { key: 'renovation', label: 'Renovation & Fit-Out', extra: [
+          { key: 'demolition_scope', label: 'Demolition / removal scope noted', group: 'Site Inspection' },
+          { key: 'services_reroute', label: 'Electrical / plumbing re-routing assessed', group: 'Design Assessment' },
+          { key: 'building_permission', label: 'Building / society permissions needed?', group: 'Feasibility Review' },
+        ] },
+        { key: 'kitchen_bath', label: 'Kitchen / Bathroom', extra: [
+          { key: 'wet_area_waterproofing', label: 'Wet-area waterproofing considered', group: 'Design Assessment' },
+          { key: 'appliance_fit', label: 'Appliance / fixture dimensions captured', group: 'Site Inspection' },
+        ] },
+        { key: 'furniture_styling', label: 'Furniture & Styling only', extra: [
+          { key: 'existing_furniture', label: 'Existing furniture to retain noted', group: 'Consultation' },
+          { key: 'delivery_access', label: 'Delivery / lift access for furniture checked', group: 'Site Inspection' },
+        ] },
+      ],
+      assess_equipment: ['Measuring Tape / Laser Meter', 'Camera', 'Moisture Meter', 'Material & Finish Samples', 'Laptop / CAD', 'Mood Board / Reference Deck'],
       recommended_services: ['Design Consultation', 'Space Planning', '3D Visualisation', 'Full Home Renovation', 'Kitchen Fit-Out', 'Custom Furniture', 'Home Styling', 'Project Management'],
       report_types: ['Site Visit', 'Design Concept', 'Progress', 'Handover', 'Completion Sign-Off'],
       // From CSA Schedule D (Warranty Summary).

@@ -15,7 +15,7 @@ import { Spinner } from '../../ui/kit';
 // Every non-default console base, matched against the URL. Water Tank is the
 // default. Add a service line by giving it a SERVICE_UI entry (below) and, if its
 // base isn't one of these, listing it here — keeping one N-way source of truth.
-const SVC_BASES = ['/air-conditioning', '/land-property-assessment', '/loan-financial-support', '/property-documentation-verification', '/property-will-succession', '/removal-relocation', '/property-care-concierge'];
+const SVC_BASES = ['/air-conditioning', '/land-property-assessment', '/loan-financial-support', '/property-documentation-verification', '/property-will-succession', '/removal-relocation', '/property-care-concierge', '/residential-interior-design'];
 export const svcBase = () => {
   try {
     const p = window.location.pathname || '';
@@ -377,6 +377,53 @@ export const SERVICE_UI = {
       warranty_scope: 'completed care, maintenance and concierge work',
       incident_log: 'property damage, security breaches, theft/loss, injuries and equipment failures',
       direct_cost_examples: 'Cleaning/garden supplies, repair materials, call-out and disposal charges',
+    },
+  },
+
+  '/residential-interior-design': {
+    label: 'Residential Interior Design',
+    full_label: 'Residential Interior Design',
+    short: 'Interior Design',
+    doc_code: 'RIDS', // SSPC-RIDS-… document numbers
+    internal_team: true, // Seventh Sky coordinates in-house; no external provider
+    wo_consumables_label: 'Materials & Finishes Required',
+    accent: '#9333ea', accent_ink: '#6b21a8', accent_soft: '#f3e8ff', // portal theming (purple)
+    equipment: {
+      section_label: 'Space Details',
+      type_label: 'Property Type',
+      type_options: ['Apartment', 'House', 'Duplex', 'Villa', 'Studio', 'Penthouse', 'Other'],
+      count_label: 'Number of Rooms / Zones',
+      capacity_label: 'Approximate Area',
+      capacity_placeholder: 'e.g. 1,800 sq ft',
+      source_label: 'Design Style',
+      source_options: ['Modern', 'Contemporary', 'Minimalist', 'Classic', 'Scandinavian', 'Industrial', 'Traditional', 'Luxury', 'Mixed', 'Client to advise'],
+      unit_word: 'space',
+    },
+    // The "assessment" is the SOP Phase 1 — Consultation & Design Assessment +
+    // site inspection. No tank/water wording: profile is the space & brief,
+    // "quality" step is the design assessment, readings are site measurements.
+    assess: {
+      profile_label: 'Space & brief', profile_hint: 'Property, style, scope',
+      quality_label: 'Design assessment', quality_hint: 'Feasibility & requirements',
+      obs1_label: 'Design observations', obs1_ph: 'Existing layout issues, natural light, storage needs…',
+      obs2_label: 'Constraints / risks', obs2_ph: 'Structural walls, low ceiling, damp, building rules…',
+      readings_label: 'On-site measurements',
+      readings: [
+        { key: 'total_area', ph: 'Total area (sq ft)' }, { key: 'ceiling_height', ph: 'Ceiling height (ft)' },
+        { key: 'rooms', ph: 'Number of rooms / zones' }, { key: 'budget', ph: 'Indicative budget (৳)' },
+        { key: 'timeline', ph: 'Target timeline (weeks)' },
+      ],
+    },
+    report_types: ['Site Visit', 'Design Concept', 'Progress', 'Handover', 'Completion Sign-Off'],
+    report_placeholder: 'e.g. Completed the design consultation and site measurement, agreed the concept and material palette, and prepared the space plan for client approval.',
+    registers: {
+      incident_types: ['Property Damage', 'Injury', 'Fire', 'Electrical Incident', 'Water Damage', 'Material Defect', 'Other'],
+      warranty_hint: 'e.g. Workmanship, Fit-Out & Renovation, Custom Furniture, Installation.',
+      location_placeholder: 'Room / area of the property…',
+      incident_blurb: 'Property damage, injury, electrical or water damage during the works',
+      warranty_scope: 'completed design, renovation, fit-out and furniture installation work',
+      incident_log: 'property damage, injuries, electrical/water damage and material defects',
+      direct_cost_examples: 'Materials & finishes, custom furniture, transport, day labour and permits',
     },
   },
 };
