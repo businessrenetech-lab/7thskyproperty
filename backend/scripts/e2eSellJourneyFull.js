@@ -171,6 +171,43 @@ function finish() {
     ok(sub.status === 200, 'assessment submitted', `HTTP ${sub.status} items=${items.length} ${sub.status !== 200 ? short(sub.body) : ''}`);
     const appr = await req('POST', `/api/sales/assessments/${asmtId}/approve`, { body: {} });
     ok(appr.status === 200, 'assessment approved (assessment_status complete)', `HTTP ${appr.status} ${appr.status !== 200 ? short(appr.body) : ''}`);
+
+    // ── Full assessment SOP: Appraisal (values + comparable + submit + approve + report) ──
+    const apr = await req('POST', `/api/sales/assessments/${asmtId}/appraisal`, { body: {
+      currency: 'BDT', market_value_min: 9500000, recommended_value: 10000000, market_value_max: 10500000,
+      reserve_value: 9500000, quick_sale_value: 9000000, expected_days: 60, confidence_score: 80,
+      valuation_method: 'comparable', market_summary: 'E2E market appraisal', strengths: ['location'], weaknesses: ['older fit-out'],
+    } });
+    const aprId = apr.body?.data?.id;
+    if (ok(!!aprId, 'appraisal created (assessment approved gate)', `#${aprId} ${apr.status} ${!aprId ? short(apr.body) : ''}`)) {
+      const comp = await req('POST', `/api/sales/appraisals/${aprId}/comparables`, { body: { title: 'Nearby 3-bed apartment', address: 'Gulshan Ave', transaction_type: 'sale', sale_price: 9800000, bedrooms: 3, source: 'market' } });
+      ok([200, 201].includes(comp.status), 'appraisal comparable added', `HTTP ${comp.status}`);
+      const asub = await req('POST', `/api/sales/appraisals/${aprId}/submit`, { body: {} });
+      ok(asub.status === 200, 'appraisal submitted (complete market values)', `HTTP ${asub.status} ${asub.status !== 200 ? short(asub.body) : ''}`);
+      const aapp = await req('POST', `/api/sales/appraisals/${aprId}/approve`, { body: {} });
+      ok(aapp.status === 200, 'appraisal approved', `HTTP ${aapp.status} ${aapp.status !== 200 ? short(aapp.body) : ''}`);
+      const rep = await req('POST', `/api/sales/appraisals/${aprId}/generate-report`, { body: {} });
+      ok([200, 201].includes(rep.status), 'appraisal report generated', `HTTP ${rep.status} ${rep.status >= 400 ? short(rep.body) : ''}`);
+
+      // ── Proposal (create needs approved appraisal → generate → send → accept) ──
+      const prp = await req('POST', `/api/sales/assessments/${asmtId}/proposals`, { body: {
+        appraisal_id: aprId, vendor_contact_id: vendorId, proposed_asking_price: 10000000, proposed_reserve_price: 9500000,
+        agency_type: 'exclusive', commission_percent: PCT, marketing_budget: 50000, summary: 'E2E agency proposal',
+      } });
+      const prpId = prp.body?.data?.id;
+      if (ok(!!prpId, 'sale proposal created (approved-appraisal gate)', `#${prpId} ${prp.status} ${!prpId ? short(prp.body) : ''}`)) {
+        const gen = await req('POST', `/api/sales/proposals/${prpId}/generate`, { body: {} });
+        ok([200, 201].includes(gen.status), 'proposal generated (PDF)', `HTTP ${gen.status} ${gen.status >= 400 ? short(gen.body) : ''}`);
+        const snd = await req('POST', `/api/sales/proposals/${prpId}/send`, { body: {} });
+        if (snd.status === 200) {
+          ok(true, 'proposal sent to vendor', 'emailed');
+          const acc = await req('POST', `/api/sales/proposals/${prpId}/accept`, { body: {} });
+          ok(acc.status === 200 && acc.body?.data?.status === 'accepted', 'proposal accepted', `HTTP ${acc.status} status=${acc.body?.data?.status}`);
+        } else {
+          console.log(`\x1b[33mNOTE\x1b[0m\tproposal send is email-dependent — HTTP ${snd.status} ${short(snd.body)} (accept skipped)`);
+        }
+      }
+    }
   }
 
   // 5. Compliance cleared + trust/operating banks linked — real profile API
