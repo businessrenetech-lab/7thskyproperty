@@ -294,6 +294,9 @@ const WtProject = sequelize.define('WtProject', {
   // closure (Sec. 9, Sec. 12)
   handover_at: D.DATEONLY, warranty_code: D.STRING(30), warranty_period: D.STRING(60),
   satisfaction_score: D.INTEGER, closure_checklist: D.JSON, risk_flags: D.JSON,
+  // Internal cost budget/estimate per category (migration 0125) — drives the
+  // cost sheet's budget-vs-actual.
+  cost_budget: D.JSON,
   closed_at: D.DATE, archived_at: D.DATE, cancel_reason: D.TEXT, notes: D.TEXT,
 }, { tableName: 'wt_projects' });
 

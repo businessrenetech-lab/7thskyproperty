@@ -462,6 +462,18 @@ exports.closure = asyncHandler(async (req, res) => {
   res.json({ project, checklist: merged });
 });
 
+// POST /wt-projects/:code/budget  { budget: { category: amount, … } }
+// Set the internal cost estimate per category (drives budget-vs-actual on the
+// cost sheet). Replaces the stored budget with the supplied map.
+exports.setBudget = asyncHandler(async (req, res) => {
+  const project = await loadProject(req, res); if (!project) return;
+  const raw = req.body?.budget || {};
+  const budget = {};
+  for (const [k, v] of Object.entries(raw)) { const n = Number(v); if (n > 0) budget[k] = Math.round(n * 100) / 100; }
+  await project.update({ cost_budget: budget });
+  res.json({ project, cost_budget: budget, message: 'Cost budget saved.' });
+});
+
 /* ────────────────────────────────────────────────────────────────────────────
  * Disbursements — money out of the door on this project
  * ──────────────────────────────────────────────────────────────────────────── */

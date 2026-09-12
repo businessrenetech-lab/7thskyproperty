@@ -29,6 +29,7 @@ router.get('/:code/quotation-draft', canRead, ctrl.quotationDraft);
 router.post('/:code/link-agreement', canBind, ctrl.linkAgreement);
 router.post('/:code/stage', canOperate, ctrl.setStage);
 router.post('/:code/closure', canOperate, ctrl.closure);
+router.post('/:code/budget', canOperate, ctrl.setBudget);
 router.get('/:code', canRead, ctrl.detail);
 router.patch('/:code', canOperate, ctrl.update);
 router.delete('/:code', canAdminister, ctrl.remove);

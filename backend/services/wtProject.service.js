@@ -698,14 +698,91 @@ async function projectDossier(key, scope) {
   p.stage = normaliseStage(p.stage, lineStages);
   const financials = computeFinancials(p, invoices, workOrders, disbursements);
 
+  // Supplier bills + approved variations for the project cost sheet.
+  const [supplierBills, variations] = await Promise.all([
+    (() => { try { return require('../models/WtSupplierBill').findAll({ where: { ...scope, project_code: p.code }, order: [['id', 'DESC']], raw: true }); } catch { return []; } })(),
+    (() => { try { return require('../models/InteriorVariation').findAll({ where: { branch_id: p.branch_id, service_line: p.service_line, project_id: p.code }, raw: true }); } catch { return []; } })(),
+  ]);
+
   return {
     project: p,
     stage: { ...stageMeta(p.stage, lineStages), index: stageIndex(p.stage, lineStages), stages: lineStages },
     client, property, provider, amc,
     financials,
+    costing: buildCosting(p, invoices, disbursements, workOrders, supplierBills, variations),
+    supplier_bills: supplierBills,
     disbursements: buildDisbursementLedger(disbursements, workOrders),
     related: { workOrders, invoices, quotations, assessments, requests, warranties, incidents, comms },
     closure_checklist: mergeChecklist(p.closure_checklist, p.service_line),
+  };
+}
+
+/**
+ * Project cost sheet / P&L. Income from client invoices (+ approved variations),
+ * costs grouped by category from paid disbursements + supplier bills (committed vs
+ * paid), budget-vs-actual from the project's cost_budget, then net cost → gross
+ * profit → margin. Provider payouts (WT) are folded in as a 'Provider Payout'
+ * category so nothing is missed.
+ */
+function buildCosting(project, invoices, disbursements, workOrders, supplierBills, variations) {
+  const invoiced = invoices.reduce((s, i) => s + num(i.amount), 0);
+  const collected = invoices.reduce((s, i) => s + (num(i.paid_amount) || (eq(i.status, 'paid') ? num(i.amount) : 0)), 0);
+  // Variations are billed as their own invoices (inv_type 'Variation'); exclude
+  // them from the base-contract fallback so adding approved_variations below does
+  // not double-count them.
+  const baseInvoiced = invoices.filter((i) => !eq(i.inv_type, 'Variation')).reduce((s, i) => s + num(i.amount), 0);
+  const contractValue = num(project.contract_value) || baseInvoiced;
+  const approvedVariations = asArray(variations).filter((v) => eq(v.status, 'approved')).reduce((s, v) => s + num(v.amount_delta), 0);
+
+  // Category rollup: committed (billed/owed) vs actual (paid out).
+  const cats = {};
+  const bump = (cat, committed, actual) => {
+    const k = cat || 'Misc';
+    if (!cats[k]) cats[k] = { category: k, committed: 0, actual: 0 };
+    cats[k].committed = round2(cats[k].committed + num(committed));
+    cats[k].actual = round2(cats[k].actual + num(actual));
+  };
+  // Supplier bills: total = committed, amount_paid = actual.
+  asArray(supplierBills).filter((b) => !eq(b.status, 'void')).forEach((b) => bump(b.category, b.total, b.amount_paid));
+  // Direct disbursements NOT already tied to a supplier bill (avoid double count):
+  // a bill payment created a disbursement with reference = bill_code, so skip those.
+  const billCodes = new Set(asArray(supplierBills).map((b) => b.bill_code));
+  asArray(disbursements)
+    .filter((d) => !eq(d.status, 'rejected') && !billCodes.has(d.reference))
+    .forEach((d) => bump(d.category, d.amount, eq(d.status, 'paid') ? d.amount : 0));
+  // Provider payouts (WT lines): committed = fee, actual = paid.
+  asArray(workOrders).filter((w) => num(w.provider_fee) > 0).forEach((w) => bump('Provider Payout', w.provider_fee, w.provider_paid_amount));
+
+  // cost_budget may come back as a JSON string from the DB — parse defensively.
+  let budget = project.cost_budget || {};
+  if (typeof budget === 'string') { try { budget = JSON.parse(budget); } catch { budget = {}; } }
+  if (!budget || typeof budget !== 'object') budget = {};
+  const categories = Object.values(cats).map((c) => ({
+    ...c, budget: round2(budget[c.category]), variance: round2(num(budget[c.category]) - c.committed),
+  })).sort((a, b) => b.committed - a.committed);
+
+  const totalCommitted = round2(categories.reduce((s, c) => s + c.committed, 0));
+  const totalActual = round2(categories.reduce((s, c) => s + c.actual, 0));
+  const totalBudget = round2(Object.values(budget).reduce((s, v) => s + num(v), 0));
+  const income = round2(contractValue + approvedVariations);
+
+  return {
+    income: {
+      contract_value: round2(contractValue), invoiced: round2(invoiced),
+      collected: round2(collected), approved_variations: round2(approvedVariations),
+      total_income: income,
+    },
+    categories,
+    totals: {
+      budget: totalBudget, committed: totalCommitted, actual: totalActual,
+      budget_variance: round2(totalBudget - totalCommitted),
+    },
+    // Profit on committed cost (what the job will cost), and cash profit on actual spend.
+    net_cost: totalCommitted,
+    gross_profit: round2(income - totalCommitted),
+    margin_pct: income > 0 ? Math.round(((income - totalCommitted) / income) * 100) : 0,
+    cash_profit: round2(collected - totalActual),
+    supplier_payables: round2(asArray(supplierBills).filter((b) => !eq(b.status, 'void')).reduce((s, b) => s + num(b.balance), 0)),
   };
 }
 
