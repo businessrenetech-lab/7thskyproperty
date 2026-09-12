@@ -872,7 +872,20 @@ exports.createSettlement = asyncHandler(async (req, res) => {
     const quote = await agencyFees.quoteForSale({ property_id: saleTransaction.property_id, branch_id: saleTransaction.branch_id, sale_value: purchasePrice }, { transaction });
     const commissionMinor = toMinor(quote.commission.amount);
     const marketingMinor = toMinor(quote.marketing_fee);
-    const vendorTotalMinor = purchaseMinor - commissionMinor - marketingMinor;
+    // Everything else selected in Schedule C of the signed sale agreement —
+    // professional service fees, third-party costs, admin charges, VAT — seeded
+    // as adjustable settlement deduction lines so the settlement (and the vendor
+    // invoice drafted from it) reflects the full agreement. Zeros when no signed
+    // agreement exists, keeping legacy settlements unchanged.
+    const scheduleC = await agencyFees.scheduleCFor({ property_id: saleTransaction.property_id, branch_id: saleTransaction.branch_id }, { transaction });
+    const scheduleCLines = [
+      { line_type: 'agency_fee', amount: scheduleC.professional, description: 'Professional service fees (Schedule C)' },
+      { line_type: 'third_party', amount: scheduleC.third_party, description: 'Third-party costs (Schedule C)' },
+      { line_type: 'admin_fee', amount: scheduleC.admin, description: 'Administrative charges (Schedule C)' },
+      { line_type: 'vat_tax', amount: scheduleC.vat, description: 'VAT (Schedule C)' },
+    ].map((f) => ({ ...f, minor: toMinor(f.amount) })).filter((f) => f.minor > 0);
+    const scheduleCMinor = scheduleCLines.reduce((sum, f) => sum + f.minor, 0);
+    const vendorTotalMinor = purchaseMinor - commissionMinor - marketingMinor - scheduleCMinor;
     if (vendorTotalMinor < 0) fail(409, 'Agency fees cannot exceed the accepted purchase price');
     const lines = [{ line_type: 'purchase_price', direction: 'debit', amount: decimalFromMinor(purchaseMinor), description: 'Accepted property purchase price' }];
     if (commissionMinor > 0) lines.push({
@@ -883,6 +896,10 @@ exports.createSettlement = asyncHandler(async (req, res) => {
     if (marketingMinor > 0) lines.push({
       line_type: 'advertising', direction: 'debit', amount: decimalFromMinor(marketingMinor), description: 'Agreed marketing fee',
       fee_basis: 'fixed', fee_basis_amount: purchasePrice, auto_amount: decimalFromMinor(marketingMinor), terms: quote.marketing_terms,
+    });
+    for (const f of scheduleCLines) lines.push({
+      line_type: f.line_type, direction: 'debit', amount: decimalFromMinor(f.minor), description: f.description,
+      auto_amount: decimalFromMinor(f.minor), terms: `Per Schedule C of the signed agreement ${scheduleC.envelope_code}.`,
     });
     let allocatedMinor = 0;
     vendorParties.forEach((party, index) => {
@@ -1838,8 +1855,11 @@ exports.issueVendorInvoice = asyncHandler(async (req, res) => {
     const saleTransaction = await SaleTransaction.findOne({ where: { id: locked.transaction_id, branch_id: locked.branch_id }, transaction });
     if (!saleTransaction) fail(404, 'Sale transaction not found');
     const lines = await SaleSettlementLine.findAll({ where: { settlement_id: locked.id, branch_id: locked.branch_id }, transaction });
-    const feeLines = lines.filter((line) => agencyFees.AGENCY_LINE_TYPES.includes(line.line_type));
-    if (!feeLines.length) fail(400, 'This settlement has no agency commission or marketing fee to invoice');
+    // Bill EVERY Schedule C fee on the settlement — commission + marketing +
+    // professional/admin/VAT/third-party — so the vendor invoice reflects the
+    // full agreement, not just commission + marketing.
+    const feeLines = lines.filter((line) => agencyFees.VENDOR_INVOICE_LINE_TYPES.includes(line.line_type));
+    if (!feeLines.length) fail(400, 'This settlement has no agency fees to invoice');
     const figures = agencyFees.invoiceFigures(lines);
     const vendorParty = await SaleTransactionParty.findOne({ where: { transaction_id: saleTransaction.id, party_type: 'vendor', status: 'active' }, transaction });
     const existing = await SaleVendorInvoice.findOne({ where: { settlement_id: locked.id, branch_id: locked.branch_id, status: { [Op.ne]: 'void' } }, transaction, lock: transaction.LOCK.UPDATE });
