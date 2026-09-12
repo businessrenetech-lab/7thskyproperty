@@ -16,7 +16,7 @@ cd website-mock
 npm install
 npm run dev
 ```
-Open **`http://localhost:3050`** in your browser to interact with the website mock.
+Open **`http://localhost:3005`** in your browser to interact with the website mock.
 
 ### 2. (Optional) Run the Standalone Mock REST Server
 In a separate terminal, to serve real HTTP JSON endpoints on port `5050`:
