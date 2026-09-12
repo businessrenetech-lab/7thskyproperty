@@ -2538,6 +2538,23 @@ export default function SalesAssessmentWorkspace({
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         <Button
                           size="sm"
+                          variant="secondary"
+                          onClick={async () => {
+                            try {
+                              const response = await api.post(`/party-role-profiles/${entry.id}/registration-link`);
+                              const link = response.data?.data?.link;
+                              if (link) { try { await navigator.clipboard.writeText(link); } catch { /* clipboard optional */ } }
+                              toast.success(response.data?.message || "KYC request link created and copied");
+                              loadWorkspace(true);
+                            } catch (error) {
+                              toast.error(error.response?.data?.error || "Could not create the KYC request");
+                            }
+                          }}
+                        >
+                          Request KYC
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="ghost"
                           onClick={() =>
                             setKycInlineId((current) =>

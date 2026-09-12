@@ -206,6 +206,7 @@ export default function Clients() {
   }), [rows]);
 
   if (selectedId) {
+    const isResidential = location.pathname.startsWith('/residential');
     return (
       <ClientWorkspace
         detail={detail}
@@ -213,10 +214,15 @@ export default function Clients() {
         onBack={() => {
           setSelectedId(null);
           setDetail(null);
-          navigate('/clients', { replace: true });
+          if (isResidential) {
+            navigate('/residential/contacts', { replace: true });
+          } else {
+            navigate('/clients', { replace: true });
+          }
           load();
         }}
         reload={() => loadDetail(selectedId)}
+        isResidential={isResidential}
       />
     );
   }
@@ -528,7 +534,7 @@ function CreateClientDrawer({ onClose, onSuccess }) {
   );
 }
 
-function ClientWorkspace({ detail, loading, onBack, reload }) {
+function ClientWorkspace({ detail, loading, onBack, reload, isResidential }) {
   const toast = useToast();
   const navigate = useNavigate();
   const [tab, setTab] = useState('overview');
@@ -735,7 +741,7 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
             cursor: 'pointer'
           }}
         >
-          <ArrowLeft size={13} /> Back to Directory
+          <ArrowLeft size={13} /> {isResidential ? 'Back to Contacts' : 'Back to Directory'}
         </button>
       </div>
 
@@ -1233,8 +1239,17 @@ function ClientWorkspace({ detail, loading, onBack, reload }) {
                       <div>
                         <b style={{ fontSize: 13 }}>{doc.title || doc.doc_type || doc.document_type}</b>
                         <div className="cell-sub" style={{ textTransform: 'capitalize', fontSize: 11 }}>
-                          {(doc.doc_type || doc.document_type || '').replace('_', ' ')}
+                          {(doc.doc_type || doc.document_type || '').replace(/_/g, ' ')}
                         </div>
+                        {doc.party_role_profile_id && (
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 5 }}>
+                            <StatusBadge status={doc.status || 'submitted'} />
+                            {doc.role && <Badge tone="blue" style={{ textTransform: 'capitalize' }}>{String(doc.role).replace(/_/g, ' ')}</Badge>}
+                          </div>
+                        )}
+                        {doc.reference_no && (
+                          <div className="cell-sub" style={{ fontSize: 11, marginTop: 3 }}>Ref: {doc.reference_no}</div>
+                        )}
                       </div>
                       {!doc.party_role_profile_id && (
                         <button

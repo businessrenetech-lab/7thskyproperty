@@ -16,6 +16,7 @@ import {
   LayoutGrid,
   Link2,
   Lock,
+  Mail,
   Plus,
   Receipt,
   RotateCcw,
@@ -967,6 +968,20 @@ export default function SalesPropertyFile({
     detail.agreement?.status ||
     detail.onboarding?.agreement_status ||
     "not_started";
+  // Email the party a public KYC-intake link (vendor: also property documents —
+  // ownership deed, mutation/tax; buyer: proof/source of funds). Copies the link
+  // too, for WhatsApp/SMS. Reuses the existing party-role registration-link.
+  const requestKyc = async (role) => {
+    try {
+      const response = await api.post(`/party-role-profiles/${role.id}/registration-link`);
+      const link = response.data?.data?.link;
+      if (link) { try { await navigator.clipboard.writeText(link); } catch { /* clipboard optional */ } }
+      toast.success(response.data?.message || "KYC request link created and copied");
+      await load();
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Could not create the KYC request");
+    }
+  };
   // Route a party straight to their e-signature agreement builder (vendor → RPSS
   // sale, buyer → RPPS purchase), prefilled with their contact.
   const goToSignatures = (role) => {
@@ -3127,6 +3142,9 @@ export default function SalesPropertyFile({
                             <StatusBadge status={bProfile.kyc_status} />
                           </div>
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            <Button size="sm" variant="secondary" icon={Mail} onClick={() => requestKyc(bProfile)}>
+                              Request KYC
+                            </Button>
                             <Button size="sm" variant="ghost" onClick={() => setOfferKycProfileId(open ? null : bProfile.id)}>
                               {open ? "Hide KYC" : "Verify KYC"}
                             </Button>
@@ -3321,6 +3339,14 @@ export default function SalesPropertyFile({
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                             <Button
                               size="sm"
+                              variant="secondary"
+                              icon={Mail}
+                              onClick={() => requestKyc(role)}
+                            >
+                              Request KYC by email / link
+                            </Button>
+                            <Button
+                              size="sm"
                               disabled={!roleComplete}
                               onClick={() => goToSignatures(role)}
                             >
@@ -3335,6 +3361,15 @@ export default function SalesPropertyFile({
                             </Button>
                           </div>
                         </div>
+                        {role.registration_submitted_at ? (
+                          <div className="cell-sub" style={{ marginBottom: 8 }}>
+                            ✓ Registrant submitted their KYC on {dateOnly(role.registration_submitted_at)} — verify the documents below.
+                          </div>
+                        ) : role.registration_token ? (
+                          <div className="cell-sub" style={{ marginBottom: 8 }}>
+                            KYC request sent — awaiting the {title(role.role_type).toLowerCase()}'s submission. You can also verify uploads manually below.
+                          </div>
+                        ) : null}
                         <RoleKycManager profile={role} onChanged={load} />
                       </div>
                     );
