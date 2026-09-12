@@ -7,7 +7,7 @@
 // boxes on the signed document match exactly.
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Plus, Copy, Eye, Send, Pencil, FileText } from 'lucide-react';
+import { Plus, Copy, Eye, Send, Pencil, FileText, Download } from 'lucide-react';
 import api from '../../services/api';
 import { Spinner } from '../../ui/kit';
 import { Combo } from '../../ui/pickers';
@@ -157,6 +157,7 @@ export default function SalesAgreementScreen({ kind }) {
                         <button className="pm-btn" style={aBtn} onClick={() => reissue(a)}><Pencil size={13} /> Edit &amp; reissue</button>
                       </>}
                       {done && <button className="pm-btn" style={aBtn} onClick={() => viewSigned(a, toast)}><FileText size={13} /> Signed copy</button>}
+                      {done && <button className="pm-btn" style={aBtn} onClick={() => downloadSigned(a, toast)}><Download size={13} /> Download</button>}
                     </td>
                   </tr>
                 );
@@ -188,6 +189,15 @@ async function viewSigned(a, toast) {
     if (!doc) return toast.error('No signed copy available yet');
     window.open(doc, '_blank');
   } catch { toast.error('Could not open the signed copy'); }
+}
+
+async function downloadSigned(a, toast) {
+  try {
+    const r = await api.get(`/signing/envelopes/${a.id}/links`);
+    const doc = r.data?.data?.signed_document;
+    if (!doc) return toast.error('No signed copy available yet');
+    window.open(`${doc}${doc.includes('?') ? '&' : '?'}download=1`, '_blank');
+  } catch { toast.error('Could not download the signed copy'); }
 }
 
 function Builder({ kind, prefill, editId, onDone, onCancel }) {

@@ -138,7 +138,12 @@ function checkboxGroups(groups, selected) {
     <div style="columns:2;column-gap:28px;font-size:12.5px;line-height:2;">
       ${items.map((it) => {
     const on = set.has(String(it).trim().toLowerCase());
-    return `<div style="break-inside:avoid;">${on ? '☑' : '☐'} <span style="${on ? 'font-weight:700;color:#0f172a;' : 'color:#4b5563;'}">${esc(it)}</span></div>`;
+    // CSS-drawn box (filled navy tick when selected) — reliable in PDF/print
+    // where the ☑/☐ glyphs are missing or indistinguishable.
+    const box = on
+      ? '<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #003768;background:#003768;color:#fff;text-align:center;line-height:12px;font-size:11px;font-weight:700;vertical-align:middle;margin-right:6px;">&#10003;</span>'
+      : '<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #9aa4b2;background:#fff;vertical-align:middle;margin-right:6px;"></span>';
+    return `<div style="break-inside:avoid;">${box}<span style="${on ? 'font-weight:700;color:#0f172a;' : 'color:#4b5563;'}">${esc(it)}</span></div>`;
   }).join('')}
     </div>`).join('');
 }
@@ -254,8 +259,8 @@ function buildAgreement(cfg, data = {}) {
     ${schedB}
     ${schedC}
     ${schedD}
+    <div style="margin-top:22px;padding-top:10px;border-top:1px solid #d1d5db;font-size:11px;color:#6b7280;">This Agreement becomes effective when signed by all Parties through the Seventh Sky electronic signing system. The electronic record, audit trail and content hash constitute proof of execution.</div>
     ${signatures}
-    <div style="margin-top:22px;padding-top:10px;border-top:1px solid #d1d5db;font-size:11px;color:#6b7280;">This Agreement becomes effective when signed by both Parties through the Seventh Sky electronic signing system. The electronic record, audit trail and content hash constitute proof of execution.</div>
   </div>`;
 
   const terms = {

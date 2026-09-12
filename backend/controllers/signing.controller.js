@@ -280,6 +280,11 @@ exports.signedByToken = asyncHandler(async (req, res) => {
   if (env.status !== 'completed') return res.status(409).send('This agreement is not fully signed yet.');
   const built = await require('../services/wtSignedDocument.service').buildSignedDocument(env.get({ plain: true }));
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  // ?download=1 → save the signed copy as a file instead of opening inline.
+  if (req.query.download) {
+    const safe = String(env.envelope_code || 'signed-agreement').replace(/[^A-Za-z0-9_-]+/g, '-');
+    res.setHeader('Content-Disposition', `attachment; filename="${safe}-signed.html"`);
+  }
   return res.send(built.html);
 });
 

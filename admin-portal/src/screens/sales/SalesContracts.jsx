@@ -6,7 +6,7 @@
 // GET /sales-agreements/contracts; actions reuse the signing endpoints.
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Bell, Ban, Copy, Eye, GitBranch } from 'lucide-react';
+import { Bell, Ban, Copy, Eye, GitBranch, Download } from 'lucide-react';
 import api from '../../services/api';
 import { Spinner } from '../../ui/kit';
 import { useToast } from '../../context/ToastContext';
@@ -62,6 +62,15 @@ export default function SalesContracts() {
       else toast.error('Signed document is not available yet');
     } catch { toast.error('Could not open the signed document'); }
   };
+  const downloadDoc = async (it) => {
+    if (it.final_pdf_url) { window.open(it.final_pdf_url, '_blank'); return; }
+    try {
+      const r = await api.get(`/signing/envelopes/${it.id}/links`);
+      const doc = r.data?.data?.signed_document;
+      if (doc) window.open(`${doc}${doc.includes('?') ? '&' : '?'}download=1`, '_blank');
+      else toast.error('Signed document is not available yet');
+    } catch { toast.error('Could not download the signed document'); }
+  };
   const vary = async (it) => {
     try { const r = await api.post(`/sales-agreements/contracts/${it.id}/variation`); toast.success('Original voided — complete the variation'); navigate(`/residential/agreements/${r.data.kind}`, { state: { prefill: r.data.prefill } }); }
     catch (e) { toast.error(e.response?.data?.error || 'Could not start variation'); }
@@ -76,7 +85,7 @@ export default function SalesContracts() {
     const out = [];
     if (open) { out.push(btn(remind, Bell, 'Remind'), btn(copyLink, Copy, 'Link'), btn(voidIt, Ban, 'Void')); }
     if (key === 'expired') { out.push(btn(voidIt, Ban, 'Void'), btn(vary, GitBranch, 'Vary')); }
-    if (key === 'completed') { out.push(btn(openDoc, Eye, 'Open'), btn(vary, GitBranch, 'Vary')); }
+    if (key === 'completed') { out.push(btn(openDoc, Eye, 'Open'), btn(downloadDoc, Download, 'Download'), btn(vary, GitBranch, 'Vary')); }
     if (key === 'declined_voided') { out.push(btn(vary, GitBranch, 'Vary')); }
     return <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>{out}</div>;
   };

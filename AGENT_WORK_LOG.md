@@ -5883,3 +5883,93 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Confirmed the KYC gate works via the real path: onKycChange flips PartyRoleProfile.kyc_status→complete when all required docs are verified; settlement lock enforces party_kyc_not_verified until then. Buyer needs KYC but no agreement — exactly as required.
 - One minor limitation noted (not in scope to fix): a witness with no email 500s (EnvelopeSigner.email is notNull) — witnesses currently require an email.
 - No product code changes were needed for the sell settlement journey — it is fully functional. Fresh dataset left in place for review: prop=108, vendor=266, buyer=267, deal=94, settlement=82, agreement env=268 (run 890709).
+
+### 2026-09-12 15:45 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Align Interior Service Content with Real SOPs & Agreements
+- Request: "C:\Users\ADMIN\Downloads\Interior Design-20260912T091604Z-1-001\Interior Design here our interior design related sops....services,.......make sure the interior service http://localhost:3005/services/interior-design should write the content based on the content services available here C:\Users\ADMIN\Downloads\Interior Design-20260912T091604Z-1-001\Interior Design"
+- Scope: `website-mock/src/components/InteriorDesignLanding.jsx`, `website/src/components/InteriorDesignLanding.jsx`, `website-mock/src/data/servicesData.js`, `website/src/lib/servicesData.js`.
+- Changes Made:
+  1. Extracted & Codified All 7 Official Interior Disciplines from Customer Service Agreements & SOPs:
+     - Residential Interior Design Solutions (Salons, Ergonomic Kitchens, Master Dressing Suites, Private Studies)
+     - Commercial Interior Design Solutions (Workspaces, Boardrooms, Retail Showrooms, Cafés, Brand Integration, MEP/HVAC)
+     - Custom Design & Fit-Out Solutions (Bespoke Joinery, 100% BWR Marine Plywood Cores, Sintered Quartz, Blum Motion Systems)
+     - Space Planning & Renovation Solutions (Circulation Audits, Non-Loadbearing Reconfiguration, Wet-Area Plumbing & Waterproofing)
+     - Furniture & Styling Consultation (Custom Walnut/Oak Furniture, Belgian Linens, Motorized Drapery, Art Advisory)
+     - Fitness Room Interior Design Solutions (High-Density Vulcanized Rubber Flooring, 40-Inch Clear Buffers, Specialized HVAC Airflow)
+     - Muslim Prayer Room (Musallah) Interior Design Solutions (Astronomical Qibla Calibration, Dedicated Wudu Facilities, Acoustic Carpeting)
+  2. Aligned the 4-Phase Turnkey Execution Lifecycle with Official Client Management SOPs:
+     - Phase 01: Consultation & Spatial Feasibility (Laser audit, lifestyle brief, risk assessment, moodboards)
+     - Phase 02: Design Development & Fixed BOQ (3D VR renders, 2D architectural drawings, itemized zero-escalation BOQ)
+     - Phase 03: Off-Site CNC Fabrication & Coordination (80% dust-free CNC factory fabrication, dedicated site engineer)
+     - Phase 04: Final Styling, Snagging & Handover (White-glove styling, 100% defect snagging rectification, deep HEPA cleaning, warranty handover)
+  3. Interactive Spatial Disciplines Showcase:
+     - Added dynamic interactive discipline selector allowing users to explore all 7 divisions with verified technical deliverables and scopes.
+     - Curated 8-photo architectural portfolio gallery with deep bulleted specifications covering all service domains.
+     - Codified 4 technical engineering pillars (Spatial Ergonomics, Material Science & Substrates, 3-Layer Architectural Lighting, Cabinetry Precision).
+  4. Preserved Aesthetic & User Rules:
+     - Full-screen first-viewport minimalist hero image (`h-screen min-h-screen`) with short headline ("Refined Spaces. / Crafted for Living.") and single consultation button.
+     - Light background palette (`bg-white text-[#012a4e]`, light slate sections, crisp bordered cards).
+     - ZERO city or neighborhood mentions (verified 0 occurrences of Dhaka, Gulshan, Banani, etc.).
+     - ZERO internal operational jargon (no "12 portals", no internal SOP mentions on nav items).
+- Verification:
+  - `website-mock/`: `npm run build` passed in 4.26s (0 errors).
+  - `website/`: `npm run build` passed in 3.2s with all 23 static pages generated in 512ms.
+  - Node fetch verification on `http://localhost:3005/services/interior-design` returned HTTP 200 OK.
+  - Automated script confirmed zero forbidden location names across both components and service datasets.
+- Handoff: The interior service landing page and master service data are now fully synchronized with the official SOPs and Customer Service Agreements.
+
+### 2026-09-12 15:30 | Antigravity (Gemini 3.8 Flash) | STARTED | Standardize Full-Screen Hero Across All Service Detail Pages
+- Request: "each services hero section similar to http://localhost:3005/services/interior-design with the service relevant images"
+- Scope: `website-mock/src/pages/ServiceDetailPage.jsx`, `website/src/app/services/[slug]/page.jsx`, `servicesData.js`.
+- Intended outcome:
+  - Redesign the hero section on all service detail pages to match the minimalist full-viewport structure of `http://localhost:3005/services/interior-design`:
+    1. Full-viewport height (`h-screen min-h-screen`) spanning the entire first viewport on initial load.
+    2. High-resolution service-relevant background photography (`object-cover object-center w-full h-full`).
+    3. Dark gradient overlay (`bg-gradient-to-t from-black/85 via-black/40 to-black/25`) for sharp contrast.
+    4. Punchy 2-line centered headline (`text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-white`) with the 2nd line highlighted in `#00AEEF`.
+    5. Single elegant CTA button linking directly to `#book-service`.
+### 2026-09-12 15:35 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Standardize Full-Screen Hero Across All Service Detail Pages
+- Request: "each services hero section similar to http://localhost:3005/services/interior-design with the service relevant images"
+- Scope: `website-mock/src/pages/ServiceDetailPage.jsx`, `website/src/app/services/[slug]/page.jsx`, `website-mock/src/data/servicesData.js`, `website/src/lib/servicesData.js`.
+- Changes Made:
+  1. Centralized Hero Configuration (`SERVICE_HERO_CONFIG`):
+     - Added to both `website-mock/src/data/servicesData.js` and `website/src/lib/servicesData.js`.
+     - Mapped all 12 services with hand-curated 2200px Unsplash photography, punchy 2-line headlines (with line 2 in `#00AEEF`), and customized action CTA labels.
+  2. Full-Screen First Viewport Hero Section:
+     - Implemented `relative w-full h-screen min-h-screen flex items-center justify-center overflow-hidden` across both `ServiceDetailPage.jsx` and Next.js `[slug]/page.jsx`.
+     - Added dark ambient gradient overlay `bg-gradient-to-t from-black/85 via-black/40 to-black/25` for contrast.
+     - Centered large typography (`text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-white leading-tight`) with line 2 highlighted in `#00AEEF`.
+     - Single rounded pill CTA button linking directly to `#book-service`.
+  3. Sticky Sub-Header Navigation & Breadcrumbs Bar:
+     - Positioned immediately below the full-screen hero (`sticky top-16 sm:top-20 z-30 border-y border-slate-200 bg-white/95 backdrop-blur-md`).
+     - Added breadcrumbs (`Home / Services / [Short Title]`) and anchor quick-links (`Overview`, `Scope & Standards`, `Process SOP`, `Packages`, `FAQs`, `Book Service`).
+  4. Design System & Palette Parity:
+     - Unified `website/src/app/services/[slug]/page.jsx` with the clean light background theme (`bg-white text-[#012a4e]`, light slate alternate sections, clean bordered cards).
+     - Verified zero forbidden location mentions across all components and service datasets.
+- Verification:
+  - `website-mock/`: `npm run build` passed in 4.20s (0 errors).
+  - `website/`: `npm run build` passed in 2.5s with all 23 static pages generated in 531ms.
+  - Live HTTP fetch tests on `http://localhost:3005/services/:slug` returned 200 OK across multiple service lines.
+  - Next.js static HTML inspection confirmed `h-screen`, custom headlines, sticky subheader bar, and anchor targets are present.
+- Handoff: All 12 service detail pages now share the full-viewport minimalist hero layout, service-relevant imagery, and sticky sub-header navigation.
+
+### 2026-09-12 15:37 | Antigravity (Gemini 3.8 Flash) | STARTED | Make Interior Service Copywriting Easy to Understand & Marketing-Friendly
+- Request: "on interior services your writings is hard to understand for mass people ....make the writing easy to catch markeeting friendly writing that focus on our servicesa and what we delivering......."
+- Scope: `website-mock/src/components/InteriorDesignLanding.jsx`, `website/src/components/InteriorDesignLanding.jsx`, and `servicesData.js`.
+- Intended outcome:
+  - Rewrite overly technical/complex architectural jargon into clear, punchy, benefit-focused marketing copy that anyone can instantly grasp.
+  - Clearly state what we deliver (custom kitchens, full home interiors, office fit-outs, space renovations, styling & furniture, gym rooms, prayer rooms).
+  - Highlight real customer benefits: zero hidden costs, fixed transparent pricing, 3D visualization before starting, factory-made dust-free cabinets, on-time delivery, and full warranty.
+  - Keep the clean design, light palette (`bg-white text-[#012a4e]`), full-screen hero, and zero location mentions.
+
+
+
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED | Signed agreement copy fixes (checkboxes, download, signature order, multi-party)
+- Request: on signed purchase/sale agreement copies — selected Schedule A services weren't shown as ticked; no download button; signatures should sit at the very bottom; multi-vendor signed agreements weren't visible.
+- Root causes + fixes:
+  1. Checkboxes: Schedule A/D used the ☑/☐ Unicode glyphs, which render as missing/identical boxes in the serif PDF/print view. Replaced with a CSS-drawn box (filled navy with ✓ when selected, empty otherwise) in services/salesAgreementRender.js checkboxGroups — verified in-browser: exactly the 3 selected services render a filled box, 0 legacy glyphs.
+  2. Download: signedByToken now honours ?download=1 (Content-Disposition: attachment; <ENV>-signed.html). Added "Download" buttons in SalesContracts.jsx (completed actions) and SalesAgreementScreen.jsx (Signed copy row), fetching /signing/envelopes/:id/links → signed_document + ?download=1.
+  3. Signature order: moved the "becomes effective when signed" closing note ABOVE the signatures block so the Signatures section is the last content of the contract (verified: signatures render below the note).
+  4. Multi-vendor: confirmed already working end-to-end — signed doc carries Client 1 + Client 2 anchors and 4 placed signatures; the "Add seller/buyer" builder UI is deployed (rebuilt dist), so multi-party agreements are creatable and their signed copies show every party's signature.
+- Note: fixes apply to NEWLY generated agreements (document_html is snapshotted at creation); pre-existing agreements keep their stored HTML.
+- Backend restarted; admin-portal dist rebuilt. Untouched: parallel Gemini/Antigravity website work. Test data left in place per instruction.
