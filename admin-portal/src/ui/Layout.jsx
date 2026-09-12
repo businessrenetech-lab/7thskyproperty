@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Home, Building2, KeyRound, Hotel, Layers, ChevronDown,
   Users, UserCheck, Filter, HardHat, ScrollText, FileText, FileSignature,
-  Receipt, Wallet, BarChart3, Settings, ShieldCheck, LogOut, Bell, Menu, Briefcase, Wrench, ClipboardCheck, Trees, BookOpen, Tags,
+  Receipt, Wallet, BarChart3, Settings, ShieldCheck, LogOut, Bell, Menu, Briefcase, Wrench, ClipboardCheck, Trees, BookOpen, Tags, Globe,
 } from 'lucide-react';
 
 // Hierarchical nav. Items with `children` are collapsible groups.
@@ -16,7 +16,10 @@ const NAV = [
    * a single destination. Commercial and Rural still use the shared screens and
    * keep their grouped entries below.
    */
-  { to: '/residential/sell', label: 'Residential', icon: Home },
+  { key: 'residential', label: 'Residential', to: '/residential/sell', icon: Home, children: [
+    { to: '/residential/sell', label: 'Sell' },
+    { to: '/residential/buyer-service', label: 'Buy' },
+  ] },
   /*
    * Property Management is its own operations console now, so it appears here as
    * a single destination — as Water Tank Services and Short Term Stay do. Its
@@ -112,11 +115,13 @@ const NAV = [
   { to: '/payments', label: 'Payments', icon: Wallet },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { section: 'Administration' },
+  { to: '/website-management', label: 'Website Management', icon: Globe },
   { to: '/users', label: 'Users & Roles', icon: ShieldCheck },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
 const TITLES = {
+  '/website-management': 'Website Management',
   '/dashboard': 'Dashboard', '/residential/buy': 'Residential · Buy', '/residential/sell': 'Residential · Sell',
   '/property-management': 'Property Management', '/property-management/rentals': 'Rentals', '/property-management/global-invoicing': 'Global Tenant Invoicing', '/property-management/collect-rent': 'Bulk Rent Collection', '/property-management/disburse-owners': 'Bulk Owner Disbursement', '/property-management/rent-reminders': 'Bulk Rent Reminders', '/property-management/inbox': 'Communication — Inbox',
   '/property-management/applications': 'Tenant Applications', '/property-management/enquiries': 'Rental Enquiries', '/property-management/assessments': 'Rental Assessments', '/property-management/statements': 'Owner Statements', '/property-management/renewals': 'Renewals', '/property-management/vacancies': 'Vacancy Notices', '/property-management/settlements': 'Deposit Settlements', '/property-management/disbursements': 'Disbursements & Payouts', '/property-management/utilities': 'Utilities & Bills', '/property-management/tenant-requests': 'Tenant Requests', '/property-management/arrears': 'Arrears Actions', '/property-management/marketing': 'Rental Marketing', '/property-management/expense-approvals': 'Expense Approvals', '/property-management/risks': 'Risk Register', '/property-management/reports': 'Rental Reports',

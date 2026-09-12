@@ -38,6 +38,10 @@ const PropertyDeal = sequelize.define('PropertyDeal', {
   risk_flags: DataTypes.JSON,
   risk_acknowledged: { type: DataTypes.BOOLEAN, defaultValue: false },
   risk_ack_at: DataTypes.DATE,
+  // Buyer service stage 8 — closure & post-purchase follow-up
+  buyer_feedback: DataTypes.TEXT,
+  financial_closure_confirmed: { type: DataTypes.BOOLEAN, defaultValue: false },
+  closed_at: DataTypes.DATE,
   created_by: DataTypes.INTEGER,
 }, { tableName: 'property_deals', underscored: true });
 

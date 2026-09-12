@@ -6,7 +6,7 @@
 // fee-for-coordination — no trust settlement (stage 7 is coordination only).
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ClipboardCheck, Users, HandCoins, FileSignature, ShieldCheck, Trash2 } from 'lucide-react';
+import { ArrowLeft, ClipboardCheck, Users, HandCoins, FileSignature, ShieldCheck, Trash2, CheckCircle2 } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { PageHead, Button, Spinner, StatusBadge, Badge, Field, Input, Textarea, Select } from '../../ui/kit';
@@ -20,6 +20,7 @@ const TABS = [
   { key: 'diligence', label: 'Documents & Risk', icon: ShieldCheck },
   { key: 'agreement', label: 'Agreement & Fees', icon: FileSignature },
   { key: 'settlement', label: 'Settlement coordination', icon: HandCoins },
+  { key: 'closure', label: 'Closure', icon: CheckCircle2 },
 ];
 const REG_STATUS = ['not_started', 'in_progress', 'registered', 'delayed'];
 
@@ -75,6 +76,11 @@ export default function BuyerDealFile() {
   const saveCoordination = async (patch) => {
     try { await api.put(`/sales/deals/${dealId}/coordination`, patch); toast.success('Saved'); loadFile(); }
     catch (e) { toast.error(e.response?.data?.error || 'Could not save'); }
+  };
+  // Stage 8 — close / reopen the deal.
+  const closeDeal = async (body) => {
+    try { const { data } = await api.post(`/sales/deals/${dealId}/close`, body); toast.success(data.message); loadFile(); }
+    catch (e) { toast.error(e.response?.data?.error || 'Could not close the deal'); }
   };
 
   if (file === undefined) return <div className="card-pad" style={{ padding: 48, textAlign: 'center' }}><Spinner /></div>;
@@ -205,7 +211,50 @@ export default function BuyerDealFile() {
 
       {/* SETTLEMENT COORDINATION (stage 7 — non-trust) */}
       {tab === 'settlement' && <CoordinationPanel coordination={file.coordination} fees={file.fees} onSave={saveCoordination} />}
+
+      {/* CLOSURE (stage 8) */}
+      {tab === 'closure' && <ClosurePanel deal={deal} fees={file.fees} onClose={closeDeal} />}
     </div>
+  );
+}
+
+// Stage 8 — closure & post-purchase follow-up. Financial closure = fees fully collected.
+function ClosurePanel({ deal, fees, onClose }) {
+  const [feedback, setFeedback] = useState(deal.buyer_feedback || '');
+  const feesClear = Number(fees.outstanding) <= 0;
+  const closed = !!deal.closed_at;
+  return (
+    <div className="pm-card"><div className="pm-card-body" style={{ padding: 16 }}>
+      <div className="between" style={{ marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+        <strong style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><CheckCircle2 size={16} /> Closure &amp; post-purchase follow-up (Stage 8)</strong>
+        {closed ? <Badge tone="green">Closed{deal.closed_at ? ` · ${String(deal.closed_at).slice(0, 10)}` : ''}</Badge> : <Badge tone="grey">Open</Badge>}
+      </div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div style={{ flex: '1 1 180px', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
+          <div className="cell-sub">Financial closure</div>
+          <strong style={{ color: feesClear ? '#166534' : '#b45309' }}>{feesClear ? 'All fees collected' : `${bdt(fees.outstanding)} outstanding`}</strong>
+        </div>
+        <div style={{ flex: '1 1 180px', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
+          <div className="cell-sub">Confirmed</div>
+          <strong>{deal.financial_closure_confirmed ? 'Yes' : 'No'}</strong>
+        </div>
+      </div>
+      <Field label="Buyer feedback"><Textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Post-purchase feedback…" /></Field>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+        {!closed ? (
+          <>
+            <Button disabled={!feesClear} onClick={() => onClose({ close: true, buyer_feedback: feedback })}>Close deal (fees collected)</Button>
+            {!feesClear && <Button variant="ghost" onClick={() => onClose({ close: true, override: true, buyer_feedback: feedback })}>Close anyway (override)</Button>}
+          </>
+        ) : (
+          <>
+            <Button variant="ghost" onClick={() => onClose({ close: true, buyer_feedback: feedback })}>Save feedback</Button>
+            <Button variant="ghost" onClick={() => onClose({ close: false })}>Reopen deal</Button>
+          </>
+        )}
+      </div>
+      {!feesClear && !closed && <p className="cell-sub" style={{ marginTop: 8 }}>Collect the outstanding fees in the Agreement &amp; Fees tab (or the Accounting → Invoices tab) to enable clean financial closure.</p>}
+    </div></div>
   );
 }
 

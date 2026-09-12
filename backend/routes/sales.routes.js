@@ -43,6 +43,7 @@ router.post('/deals/:dealId/sop', roleMiddleware(PREPARE), buyerSopCtrl.ensureSo
 router.put('/deals/:dealId/risk', roleMiddleware(PREPARE), buyerDealCtrl.saveDealRisk);
 router.get('/deals/:dealId/coordination', roleMiddleware(READ), buyerDealCtrl.getCoordination);
 router.put('/deals/:dealId/coordination', roleMiddleware(PREPARE), buyerDealCtrl.saveCoordination);
+router.post('/deals/:dealId/close', roleMiddleware(PREPARE), buyerDealCtrl.closeDeal);
 // Lead automation: routing rules + follow-up sequences (config = admin) and
 // per-enquiry sequence actions (prepare).
 router.get('/lead-rules', roleMiddleware(READ), autoCtrl.listRules);

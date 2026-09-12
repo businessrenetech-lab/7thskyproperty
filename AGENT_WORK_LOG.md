@@ -5484,3 +5484,39 @@ used "the last line starting with `import`", which landed inside a multi-line
 - BuyerDealFile: new 'Documents & Risk' tab (RiskPanel — add/level/note risk flags + buyer-acknowledgement gate) and the 'Settlement coordination' tab now functional (CoordinationPanel — agreement date, registration status, external settlement date, payment-tracking notes, handover confirmed; states the no-trust model + links fee collection).
 - Verified live on deal 32: risk flags + ack saved; coordination saved (registration in_progress, settlement date); getBuyerDeal reflects both; QA data cleaned. npm test 7+5+12+27 + test:full 28/0.
 - Next: Phase D (closure = all fees collected + dashboard worklists + finishing gate). Not merged; no PR.
+
+### 2026-09-12 13:00 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Toast UI Design Upgrade & Dedicated Toast CSS Module
+- Request: "yes top right corner visible but not properly designed...add a nice ui to toast notifications"
+- Root Cause Identified:
+  - `GlobalStyles.css` was previously only imported inside select legacy pages (e.g. `CRM.jsx`, `AdminInvoices.jsx`) and was NEVER imported globally in `main.jsx` or `App.jsx`.
+  - Consequently, modern consoles (Residential Sales `/residential/*`, Contacts, Property Management, Water Tank, Short-Term Stay) lacked any compiled CSS rules for `.sspc-toast`, resulting in raw unstyled text elements.
+- Files Changed:
+  - `admin-portal/src/styles/toast.css` (NEW):
+    - Created dedicated, modular executive toast stylesheet containing complete micro-UI specifications.
+    - Floating modern card geometry (`13px 16px` padding, 14px border-radius, crisp borders, subtle 4px left accent indicator).
+    - Multi-layer ambient luxury shadows (`0 4px 6px -1px rgba(15,23,42,0.05), 0 12px 28px -4px rgba(15,23,42,0.12)`).
+    - Soft tinted status icon pills (emerald for success, rose for error, amber for warning, sky blue for info, indigo for loading) with matching 1px border.
+    - Crisp typography (`font-weight: 600` for single-line notifications, `font-weight: 700` for titles, slate `#475569` for descriptions).
+    - Micro-progress bar (2.5px height, smooth width tracking, pausing on hover).
+    - Refined dismiss button with smooth hover feedback.
+    - Smooth spring-like slide-down entrance (`translateY(-16px) scale(0.95)` -> `translateY(0) scale(1)`) and collapse slide-up exit.
+    - Full dark mode and mobile responsive support.
+  - `admin-portal/src/main.jsx`:
+    - Globally imported `./styles/toast.css`, guaranteeing that every route and screen in the application bundles and renders the toast styles.
+  - `admin-portal/src/context/ToastContext.jsx`:
+    - Imported `../styles/toast.css` directly as well.
+    - Swapped `CheckCircle2` for a clean, sharp `Check` icon (`strokeWidth: 2.6`) inside the emerald pill badge.
+    - Added `--toast-icon-border` support to dynamically tint the badge borders.
+- Verification:
+  - Executed `npm run build` in `admin-portal/`: compiled cleanly in 8.90s.
+  - Verified `dist/assets/index-dZFkTHOQ.css` directly bundles `.sspc-toast`, `.sspc-toast-icon`, and `.sspc-toast-container`.
+  - Verified `http://localhost:50001/admin/` responds with `200 OK` and references `index-dZFkTHOQ.css`.
+- Handoff: Toast notifications now render with a sleek, polished, executive CRM aesthetic across all pages.
+
+### 2026-09-12 | Claude Code (Opus 4.8) | COMPLETED | Buyer Service — Phase D (closure) + Residential Sell/Buy submenu (BUYER SERVICE COMPLETE)
+- Committed on air-conditioning/phase-0-duplicate. Stage 8 (closure & post-purchase follow-up) + the requested main-nav Residential → Sell / Buy submenu.
+- Migration 0119: property_deals += buyer_feedback, financial_closure_confirmed, closed_at. closeDeal endpoint (POST /api/sales/deals/:id/close) — financial closure requires all buyer agreement-fee invoices collected (409 unless override); close → status completed + financial_closure_confirmed + closed_at; reopen supported. Records buyer feedback.
+- BuyerDealFile: new Closure tab (ClosurePanel — financial-closure status tile, buyer feedback, Close deal / Close-anyway-override / Reopen).
+- Main sidebar (ui/Layout.jsx): Residential is now a collapsible group with Sell (/residential/sell) and Buy (/residential/buyer-service) — mirroring Commercial/Rural.
+- Verified live: close deal 32 (no fees → financially closed, status completed) + reopen; QA restored. npm test 7+5+12+27 + test:full 28/0.
+- BUYER SERVICE subsystem COMPLETE: Phase A (dashboard + deal file + 8-stage workflow), B (planning + inspection), C (doc-review/risk + non-trust settlement coordination), D (closure). Not merged; no PR.

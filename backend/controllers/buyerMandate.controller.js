@@ -182,6 +182,37 @@ exports.saveDealRisk = asyncHandler(async (req, res) => {
   res.json({ data: deal, message: 'Risk review saved.' });
 });
 
+// ── Stage 8 — closure & post-purchase follow-up ────────────────────────────
+exports.closeDeal = asyncHandler(async (req, res) => {
+  const deal = await PropertyDeal.findOne({ where: { id: req.params.dealId, deal_type: 'buy', ...branchScope(req) } });
+  if (!deal) return res.status(404).json({ error: 'Buy deal not found.' });
+
+  // Financial closure = every buyer agreement-fee invoice is fully paid.
+  const PropertyInvoice = require('../models/PropertyInvoice');
+  const Client = require('../models/Client');
+  const buyer = deal.buyer_client_id ? await Client.findByPk(deal.buyer_client_id) : null;
+  const buyerContactId = buyer?.contact_id || null;
+  const invoices = buyerContactId ? await PropertyInvoice.findAll({ where: { ...branchScope(req), contact_id: buyerContactId, invoice_type: 'agreement_fee' }, raw: true }) : [];
+  const outstanding = invoices.reduce((s, i) => s + Number(i.balance || 0), 0);
+  const fullyCollected = outstanding <= 0;
+
+  const wantClose = req.body?.close !== false;
+  if (wantClose && !fullyCollected && !req.body?.override) {
+    return res.status(409).json({ error: `Financial closure requires all fees collected — ${outstanding.toLocaleString('en-BD')} still outstanding. Pass override to close anyway.` });
+  }
+  const patch = { buyer_feedback: req.body?.buyer_feedback ?? deal.buyer_feedback };
+  if (wantClose) {
+    patch.financial_closure_confirmed = fullyCollected;
+    patch.closed_at = new Date();
+    patch.status = 'completed';
+  } else {
+    patch.closed_at = null;
+    patch.status = deal.status === 'completed' ? 'settlement' : deal.status;
+  }
+  await deal.update(patch);
+  res.json({ data: deal, message: wantClose ? (fullyCollected ? 'Deal closed — financially closed.' : 'Deal closed (fees still outstanding — override used).') : 'Deal reopened.', outstanding });
+});
+
 // ── Stage 7 — settlement COORDINATION (non-trust) ──────────────────────────
 exports.getCoordination = asyncHandler(async (req, res) => {
   const BuyerSettlementCoordination = require('../models/BuyerSettlementCoordination');
