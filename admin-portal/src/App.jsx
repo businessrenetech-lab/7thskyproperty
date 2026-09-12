@@ -956,6 +956,7 @@ export default function App() {
               <Route path="/residential/buyer/work-queue" element={<SalesWorkQueue dealScope="buy" />} />
               <Route path="/residential/buyer/calendar" element={<SalesCalendar category="residential" scope="buy" />} />
               <Route path="/residential/buyer/contacts" element={<SalesContacts scope="buy" />} />
+              <Route path="/residential/buyer/clients" element={<Clients />} />
               <Route path="/residential/buyer-invoices" element={<BuyerInvoices />} />
               <Route path="/residential/buy" element={<DealsBoard category="residential" dealType="buy" title="Residential · Buy" desc="Buyer service — deals, buyers, agreements, fees and status." />} />
               <Route path="/residential/buy/:dealId" element={<BuyerDealFile />} />

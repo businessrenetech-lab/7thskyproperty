@@ -63,7 +63,7 @@ export default function SalesContacts({ scope }) {
   const [staff, setStaff] = useState([]);
 
   // Sub-filters
-  const [leadTypeFilter, setLeadTypeFilter] = useState('all'); // 'all' | 'buyer' | 'vendor'
+  const [leadTypeFilter, setLeadTypeFilter] = useState(scope === 'buy' ? 'buyer' : 'all'); // 'all' | 'buyer' | 'vendor'
   const [leadStageFilter, setLeadStageFilter] = useState('all');
   const [contactTypeFilter, setContactTypeFilter] = useState('all'); // 'all' | 'individual' | 'company'
 
@@ -332,6 +332,8 @@ export default function SalesContacts({ scope }) {
   // Filtered Leads
   const filteredLeads = useMemo(() => {
     return unifiedLeads.filter((l) => {
+      // The buy console shows buyer leads only, whatever the filter.
+      if (scope === 'buy' && l.lead_type !== 'buyer') return false;
       if (leadTypeFilter !== 'all' && l.lead_type !== leadTypeFilter) return false;
       if (leadStageFilter !== 'all' && l.stage !== leadStageFilter) return false;
       if (search.trim()) {
@@ -344,7 +346,7 @@ export default function SalesContacts({ scope }) {
       }
       return true;
     });
-  }, [unifiedLeads, leadTypeFilter, leadStageFilter, search]);
+  }, [unifiedLeads, leadTypeFilter, leadStageFilter, search, scope]);
 
   // Filtered Contacts
   const filteredContacts = useMemo(() => {
@@ -715,13 +717,15 @@ export default function SalesContacts({ scope }) {
   };
 
   // ── Open Client Dashboard ──────────────────────────────────────────────────
+  // In the buy console the client dashboard opens inside the buyer section.
+  const clientsBase = scope === 'buy' ? '/residential/buyer/clients' : '/residential/contacts/clients';
   const openClientDashboard = (clientId, contactId) => {
     if (clientId) {
-      navigate(`/residential/contacts/clients?client=${clientId}`);
+      navigate(`${clientsBase}?client=${clientId}`);
     } else if (contactId) {
-      navigate(`/residential/contacts/clients?contact=${contactId}`);
+      navigate(`${clientsBase}?contact=${contactId}`);
     } else {
-      navigate('/residential/contacts/clients');
+      navigate(clientsBase);
     }
   };
 
@@ -841,8 +845,9 @@ export default function SalesContacts({ scope }) {
         <div style={{ display: 'flex', gap: 6 }}>
           {[
             { key: 'contacts', label: 'All Contacts', count: counters.contacts, icon: Users },
-            { key: 'leads', label: 'Leads', count: counters.leads, icon: Sparkles },
-            { key: 'vendors', label: 'Vendors', count: counters.vendors, icon: Building2 },
+            { key: 'leads', label: scope === 'buy' ? 'Buyer Leads' : 'Leads', count: counters.leads, icon: Sparkles },
+            // The buy console never lists vendors (sellers).
+            ...(scope === 'buy' ? [] : [{ key: 'vendors', label: 'Vendors', count: counters.vendors, icon: Building2 }]),
             { key: 'buyers', label: 'Buyers', count: counters.buyers, icon: Briefcase },
             { key: 'automations', label: 'Automations', icon: Send },
           ].map((t) => {
@@ -1101,11 +1106,13 @@ export default function SalesContacts({ scope }) {
           {/* Subfilter Pills */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {[
-                { key: 'all', label: 'All Leads' },
-                { key: 'buyer', label: 'Buyer Enquiries (Website)' },
-                { key: 'vendor', label: 'Vendor / Seller Leads' },
-              ].map((f) => (
+              {(scope === 'buy'
+                ? [{ key: 'buyer', label: 'Buyer Enquiries (Website)' }]
+                : [
+                    { key: 'all', label: 'All Leads' },
+                    { key: 'buyer', label: 'Buyer Enquiries (Website)' },
+                    { key: 'vendor', label: 'Vendor / Seller Leads' },
+                  ]).map((f) => (
                 <button
                   key={f.key}
                   type="button"

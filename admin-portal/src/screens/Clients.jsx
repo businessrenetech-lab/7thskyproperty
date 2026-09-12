@@ -206,6 +206,7 @@ export default function Clients() {
   }), [rows]);
 
   if (selectedId) {
+    const isBuyer = location.pathname.startsWith('/residential/buyer/');
     const isResidential = location.pathname.startsWith('/residential');
     return (
       <ClientWorkspace
@@ -214,7 +215,9 @@ export default function Clients() {
         onBack={() => {
           setSelectedId(null);
           setDetail(null);
-          if (isResidential) {
+          if (isBuyer) {
+            navigate('/residential/buyer/contacts', { replace: true });
+          } else if (isResidential) {
             navigate('/residential/contacts', { replace: true });
           } else {
             navigate('/clients', { replace: true });
