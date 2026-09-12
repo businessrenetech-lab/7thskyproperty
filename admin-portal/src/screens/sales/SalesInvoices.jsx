@@ -5,7 +5,7 @@
 // lets staff edit lines, email the invoice (PDF), and download it. Mirrors the
 // services (water-tank) invoice section's features.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Download, Mail, Plus, Trash2, Save, RefreshCw, Eye } from 'lucide-react';
+import { Download, Mail, Plus, Trash2, Save, RefreshCw, Eye, HandCoins } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { Button, Spinner, StatusBadge, Drawer, Field, Input, Textarea, Select, EmptyState } from '../../ui/kit';
@@ -80,6 +80,7 @@ function InvoiceDrawer({ id, onClose, onSaved }) {
   const [inv, setInv] = useState(null);
   const [form, setForm] = useState({ title: '', due_date: '', notes: '', items: [] });
   const [busy, setBusy] = useState('');
+  const [pay, setPay] = useState(null); // { amount, method, reference } when collecting
 
   const load = useCallback(async () => {
     try {
@@ -108,6 +109,15 @@ function InvoiceDrawer({ id, onClose, onSaved }) {
     setBusy('send');
     try { const r = await api.post(`/invoices/${id}/send`, {}); toast.success(r.data?.message || 'Invoice sent'); await load(); onSaved?.(); }
     catch (e) { toast.error(e.response?.data?.error || 'Could not send the invoice'); } finally { setBusy(''); }
+  };
+  const collect = async () => {
+    const amount = Number(pay?.amount);
+    if (!amount || amount <= 0) { toast.error('Enter an amount greater than zero'); return; }
+    setBusy('pay');
+    try {
+      await api.post(`/invoices/${id}/payments`, { amount, method: pay.method || 'cash', reference: pay.reference || null });
+      toast.success('Payment recorded'); setPay(null); await load(); onSaved?.();
+    } catch (e) { toast.error(e.response?.data?.error || 'Could not record the payment'); } finally { setBusy(''); }
   };
   const download = async () => {
     setBusy('pdf');
@@ -157,6 +167,23 @@ function InvoiceDrawer({ id, onClose, onSaved }) {
           </div>
           {editable && <Button size="sm" variant="ghost" icon={Plus} onClick={addItem} style={{ marginTop: 8 }}>Add line</Button>}
           <div style={{ textAlign: 'right', fontWeight: 700, marginTop: 10 }}>Total: {bdt(total)}</div>
+
+          {/* Collect the fee — record a payment against the invoice balance. */}
+          {Number(inv.balance) > 0 && inv.status !== 'cancelled' && (
+            <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+              {!pay ? (
+                <Button size="sm" icon={HandCoins} onClick={() => setPay({ amount: Number(inv.balance) || '', method: 'cash', reference: '' })}>Record payment</Button>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <Field label="Amount"><Input type="number" style={{ width: 130 }} value={pay.amount} onChange={(e) => setPay((p) => ({ ...p, amount: e.target.value }))} /></Field>
+                  <Field label="Method"><Select value={pay.method} onChange={(e) => setPay((p) => ({ ...p, method: e.target.value }))}>{['cash', 'bank_transfer', 'cheque', 'card', 'mobile_banking'].map((m) => <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>)}</Select></Field>
+                  <Field label="Reference"><Input value={pay.reference} onChange={(e) => setPay((p) => ({ ...p, reference: e.target.value }))} /></Field>
+                  <Button size="sm" disabled={busy === 'pay'} onClick={collect}>{busy === 'pay' ? <Spinner /> : 'Confirm'}</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setPay(null)}>Cancel</Button>
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ marginTop: 12 }}><Field label="Notes"><Textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} disabled={!editable} /></Field></div>
           {!editable && <p className="cell-sub" style={{ marginTop: 8 }}>This invoice is {inv.status}{Number(inv.amount_paid) > 0 ? ' / partly paid' : ''} — lines can no longer be edited. You can still send or download it.</p>}
