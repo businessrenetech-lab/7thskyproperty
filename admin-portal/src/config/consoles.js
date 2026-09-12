@@ -286,11 +286,11 @@ export const PROPERTY_MGMT_NAV = [
       { to: '/property-management/agency-income', label: 'Agency Income (Our Fees)', icon: Wallet, roles: PM_FINANCE_ROLES },
       { to: '/property-management/invoices?kind=client', label: 'Tenant Invoices', icon: Receipt, roles: PM_FINANCE_ROLES },
       { to: '/property-management/collect-rent', label: 'Collect Rent (Bulk)', icon: Banknote, roles: PM_FINANCE_ROLES },
-      { to: '/property-management/rent-reminders', label: 'Rent Reminders (Bulk)', icon: AlertCircle, roles: PM_FINANCE_ROLES },
       { to: '/property-management/receipts', label: 'Rental Receipts', icon: Banknote, roles: PM_FINANCE_ROLES },
       { to: '/property-management/folios', label: 'Folios', icon: BookOpen, roles: PM_FINANCE_ROLES },
-      { to: '/property-management/arrears', label: 'Arrears Actions', icon: AlertCircle, roles: PM_FINANCE_ROLES },
-      { to: '/property-management/global-invoicing', label: 'Global Tenant Invoicing', icon: FileText, roles: PM_FINANCE_ROLES },
+      // Merged: arrears actions + bulk rent reminders live on one screen (both
+      // chase overdue rent). Global tenant invoicing folded into Collect Rent.
+      { to: '/property-management/arrears', label: 'Arrears & Rent Reminders', icon: AlertCircle, roles: PM_FINANCE_ROLES },
     ],
   },
   {

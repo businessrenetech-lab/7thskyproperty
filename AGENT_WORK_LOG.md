@@ -6480,3 +6480,31 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Not duplicates (verified): the residential/sell + buyer-service routes that appeared twice are intentional cross-console Switch links (RESIDENTIAL_NAV ↔ BUYER_NAV), not a single-sidebar duplicate. No PM-nav route is duplicated.
 - Sidebar clutter: no aggressive deletions (removing nav items hides real screens and is the user's call). Candidates to confirm with the user before removing: PM "Money In" has both "Tenant Invoices" (list) and "Global Tenant Invoicing" (bulk) which overlap; "Rent Reminders (Bulk)" vs "Arrears Actions" are adjacent. Flagged, not removed.
 - admin-portal rebuilt clean.
+
+### 2026-09-12 19:02 | Antigravity | COMPLETED | Transparent background AI & 3D visual assets for service cards
+- Request: Keep service card size and UI unchanged. Add transparent background visuals with relevant AI generated images so viewers can instantly relate to each service.
+- Files Changed:
+  - `website-mock/src/pages/HomePage.jsx`: Updated Section 4 ("What We Do For You" / "We Solve Your Property Headaches"). Preserved 100% of card size, padding (`p-6 sm:p-7`), rounded corners (`rounded-3xl`), typography, pills, badges, checkmark bullets, and action links. Added subtle transparent background illustration container (`opacity-15 group-hover:opacity-25 group-hover:scale-105 pointer-events-none select-none z-0`) positioned at bottom-right of each card.
+  - `website-mock/src/pages/ServicesPage.jsx`: Added `serviceBgMap` and embedded matching transparent watermark graphics inside card bodies (`opacity-10 group-hover:opacity-20 pointer-events-none`) while keeping filter tabs strictly under 1 single line and zero prices on cards.
+  - `website-mock/public/assets/services/`: Created transparent 3D glassmorphic assets for all services:
+    - `rent-collection-bg.png`: AI-generated isometric building, keys, and payment coin with transparent background.
+    - `verified-property-bg.png`: AI-generated isometric luxury flat building, verified shield, and ribbon with transparent background.
+    - `short-stay-bg.png`: AI-generated isometric luxury furnished suite with WiFi and luggage with transparent background.
+    - `legal-deed-bg.svg`: 3D isometric government title deed, AC Land mutation stamp, gold seal, magnifying glass, and gavel.
+    - `water-tank-bg.svg`: 3D isometric water reservoir tank, pressure wash lance, sparkling water droplets, and safety shield.
+    - `interior-design-bg.svg`: 3D isometric designer lounge armchair, glass coffee table, CAD blueprint roll, and floor lamp.
+    - `air-conditioning-bg.svg`: 3D isometric split AC unit with cold airflow waves and frost snowflake shield.
+- Verification:
+  - Production build `npm run build` in `website-mock` passed cleanly (vite v5.4.21, 0 errors, 3.61s).
+  - Verified `http://localhost:3005` (HomePage) and `http://localhost:3005/services` (ServicesPage) return HTTP 200 OK.
+  - Verified all 7 assets in `/assets/services/` return HTTP 200 OK and are packaged into `dist/assets/services/`.
+  - Verified 0 occurrences of prohibited location names across all modified files.
+- Handoff: Production build passed and live mock server running. Card sizes and UI structure are 100% preserved with elegant, transparent background visuals that immediately convey service context.
+
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED | Sidebar merge + ID-prefill pickers + inspections/portal second pass
+- Sidebar declutter (consoles.js PM Money In): removed "Global Tenant Invoicing" (folded into Collect Rent / Tenant Invoices) and the separate "Rent Reminders (Bulk)"; relabelled "Arrears Actions" → "Arrears & Rent Reminders" (both chase overdue rent = one screen).
+- Manual-ID prefill audit: the main create forms (owner statements, agreements, tenant applications, landlord bills, disbursements) ALREADY use the Combo picker + context prefill; the property-file operations tabs already auto-inject property_id/tenancy_id/owner/tenant from context. The remaining raw-ID inputs were the operations secondary fields. FIXED PropertyOperationsTabs: added a shared useStaff() + StaffSelect; replaced "Assigned User ID" (tenant requests) and "Assigned Review User ID" (risk register) number inputs with a staff picker (pick a person, value is their id); removed the raw "Work Order ID (if linked)" input. admin-portal built clean.
+- Second-pass harness (NEW backend/scripts/e2eInspectionsPortals.js, 12/0): rental assessment create→item→generate-work-orders→complete(override); inspection create→item→complete→read-back; landlord & tenant portal endpoints correctly refuse a non-portal admin (403) — role gate works. NOTE: full landlord/tenant portal JOURNEY (as a portal user) needs a provisioned portal account (role-gated) — probed the gate, not the full logged-in-as-tenant flow; can do that next if wanted.
+- Non-bugs confirmed: rental-assessment item field is `assessment_item` (frontend sends it correctly; only my first harness cut used the wrong name); "complete" requires resolved items or manager override (legit gate).
+- Test data kept.

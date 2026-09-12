@@ -14,6 +14,22 @@ import {
 const money = (v) => (v == null || v === '' ? '৳0.00' : '৳' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 const text = (v) => (v == null || v === '' ? '—' : String(v).replace(/_/g, ' '));
 
+// Shared staff list so "assign to" pickers show names, not raw user IDs.
+function useStaff() {
+  const [staff, setStaff] = useState([]);
+  useEffect(() => { api.get('/auth/staff').then((r) => setStaff(Array.isArray(r.data) ? r.data : (r.data?.data || []))).catch(() => {}); }, []);
+  return staff;
+}
+// A staff <Select> — pick a person; the value is their user id.
+function StaffSelect({ value, onChange, staff, placeholder = 'Unassigned / pick a staff member' }) {
+  return (
+    <Select value={value || ''} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{placeholder}</option>
+      {staff.map((s) => <option key={s.id} value={s.id}>{s.name}{s.role ? ` (${s.role})` : ''}</option>)}
+    </Select>
+  );
+}
+
 // ─── UTILITIES & BILLS PANEL ──────────────────────────────────────────
 export function PropertyUtilitiesTab({ propertyId, ownerContactId, tenantContactId, activeTenancyId, items = [], onReload }) {
   const toast = useToast();
@@ -249,6 +265,7 @@ export function PropertyUtilitiesTab({ propertyId, ownerContactId, tenantContact
 // ─── TENANT REQUESTS PANEL ────────────────────────────────────────────
 export function PropertyRequestsTab({ propertyId, tenantContactId, activeTenancyId, items = [], onReload }) {
   const toast = useToast();
+  const staff = useStaff();
   const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -454,11 +471,8 @@ export function PropertyRequestsTab({ propertyId, tenantContactId, activeTenancy
                 <option value="cancelled">Cancelled</option>
               </Select>
             </Field>
-            <Field label="Work Order ID (if linked)">
-              <Input type="number" value={form.work_order_id} onChange={(e) => setForm(s => ({ ...s, work_order_id: e.target.value }))} placeholder="e.g. 23" />
-            </Field>
-            <Field label="Assigned User ID">
-              <Input type="number" value={form.assigned_to} onChange={(e) => setForm(s => ({ ...s, assigned_to: e.target.value }))} placeholder="e.g. 5" />
+            <Field label="Assigned to">
+              <StaffSelect value={form.assigned_to} staff={staff} onChange={(v) => setForm(s => ({ ...s, assigned_to: v }))} />
             </Field>
             <Field label="Owner Approval Required?" full>
               <label className="row" style={{ gap: 8 }}>
@@ -1293,6 +1307,7 @@ export function PropertyMarketingTab({ propertyId, ownerContactId, items = [], o
 // ─── RISK REGISTER PANEL ──────────────────────────────────────────────
 export function PropertyRisksTab({ propertyId, tenancyId, tenantContactId, ownerContactId, items = [], onReload }) {
   const toast = useToast();
+  const staff = useStaff();
   const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -1500,8 +1515,8 @@ export function PropertyRisksTab({ propertyId, tenancyId, tenantContactId, owner
                 <option value="closed">Closed</option>
               </Select>
             </Field>
-            <Field label="Assigned Review User ID">
-              <Input type="number" value={form.owner_user_id} onChange={(e) => setForm(s => ({ ...s, owner_user_id: e.target.value }))} placeholder="e.g. 5" />
+            <Field label="Assigned reviewer">
+              <StaffSelect value={form.owner_user_id} staff={staff} onChange={(v) => setForm(s => ({ ...s, owner_user_id: v }))} placeholder="Pick a reviewer" />
             </Field>
             <Field label="Risk Description" required full>
               <Textarea value={form.description} onChange={(e) => setForm(s => ({ ...s, description: e.target.value }))} rows={3} placeholder="Describe the identified threat or issue..." />
