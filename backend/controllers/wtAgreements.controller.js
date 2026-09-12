@@ -81,8 +81,15 @@ const customer = {
     }).catch(() => []);
 
     const content = customerSvc.contentFor(catalogueVertical(req));
+    const sl = getServiceLine(resolveServiceLine(req));
     res.json({
       service_groups: content.service_groups,
+      // Service-line vocabulary so the builder never shows another line's wording
+      // (Schedule B field labels, page title) and hides modules a line doesn't run.
+      full_label: sl.ui?.full_label || sl.label,
+      equipment: sl.ui?.equipment || null,
+      no_amc: !!sl.no_amc,
+      no_provider: !!sl.no_provider,
       // The catalogue-code → Schedule A map, so a builder can show which Schedule A
       // services a priced line already covers (Clause 3) without re-deriving it.
       code_to_schedule_a: content.code_to_schedule_a,

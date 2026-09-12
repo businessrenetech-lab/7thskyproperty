@@ -154,7 +154,10 @@ export default function WtCustomerAgreements() {
   const [mode, setMode] = useState(projectCode ? 'build' : 'list');
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [lineLabel, setLineLabel] = useState('');
   useEffect(() => { if (projectCode) setMode('build'); }, [projectCode]);
+  // Title follows the active service line (Water Tank / Residential Interior Design / …).
+  useEffect(() => { api.get('/wt-agreements/customer/meta').then((r) => setLineLabel(r.data?.full_label || '')).catch(() => {}); }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -177,7 +180,7 @@ export default function WtCustomerAgreements() {
   return (
     <div className="pm-scope">
       <div className="pm-head">
-        <div><div className="pm-eyebrow">Agreements</div><h1>Water Tank — Customer Agreements</h1><div className="pm-meta">Water Tank Cleaning &amp; Maintenance Customer Service Agreements — build, price and send to customers for e-signature.</div></div>
+        <div><div className="pm-eyebrow">Agreements</div><h1>{lineLabel || 'Customer'} — Customer Agreements</h1><div className="pm-meta">{lineLabel || 'Customer'} Service Agreements — build, price and send to customers for e-signature.</div></div>
         <div className="pm-head-actions"><button className="pm-btn primary" onClick={() => setMode('build')}><Plus size={15} /> New agreement</button></div>
       </div>
       {loading ? <div style={{ padding: 48, textAlign: 'center' }}><Spinner /></div> : (
@@ -308,6 +311,8 @@ function Builder({ onDone, onCancel, projectCode }) {
   const onClient = (id, row) => { set('contact_id', id); if (row) setD((p) => ({ ...p, client: { ...p.client, full_name: row.full_name || '', phone: row.primary_phone || '', email: row.email || '', nid: row.national_id || row.passport_no || '' } })); };
 
   const grouped = useMemo(() => { const g = { service: [], material: [], labour: [] }; catalog.forEach((c) => (g[c.group] || g.service).push(c)); return g; }, [catalog]);
+  // Service-line vocabulary for Schedule B field labels (Tank/Property/etc.).
+  const eq = meta.equipment || {};
 
   if (sent) {
     const url = `${window.location.origin}${sent.signing_path}`;
@@ -419,11 +424,12 @@ function Builder({ onDone, onCancel, projectCode }) {
             {/* Seventh Sky's side of the execution block. Without the email there
                 is no countersigner, so that signature block would stay blank. */}
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
-              <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--navy)', marginBottom: 8 }}>Seventh Sky signatory</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
-                <div><label style={lbl}>Represented by</label><input style={sel} value={d.org.represented_by} onChange={(e) => set('org.represented_by', e.target.value)} /></div>
-                <div><label style={lbl}>Position</label><input style={sel} value={d.org.position} onChange={(e) => set('org.position', e.target.value)} /></div>
-                <div><label style={lbl}>Countersigner email</label><input style={sel} type="email" value={d.org.email} onChange={(e) => set('org.email', e.target.value)} placeholder="Blank = no countersignature" /></div>
+              <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--navy)', marginBottom: 8 }}>Seventh Sky signatory &amp; Representative</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div><label style={lbl}>Represented by *</label><input style={sel} value={d.org.represented_by} onChange={(e) => set('org.represented_by', e.target.value)} placeholder="Representative name" /></div>
+                <div><label style={lbl}>Position / Designation *</label><input style={sel} value={d.org.position} onChange={(e) => set('org.position', e.target.value)} placeholder="e.g. Managing Director" /></div>
+                <div><label style={lbl}>Countersigner email *</label><input style={sel} type="email" value={d.org.email} onChange={(e) => set('org.email', e.target.value)} placeholder="Official email (required to sign)" /></div>
+                <div><label style={lbl}>Official phone no *</label><input style={sel} value={d.org.phone || ''} onChange={(e) => set('org.phone', e.target.value)} placeholder="+880 1..." /></div>
               </div>
             </div>
           </div>
@@ -472,15 +478,21 @@ function Builder({ onDone, onCancel, projectCode }) {
             </div>
 
             <div>
-              <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--navy)', marginBottom: 8 }}>Site &amp; tanks</div>
+              {/* Schedule B field labels follow the service line (meta.equipment):
+                  Tank Type/Capacity/… for Water Tank, Property Type/Area/Design
+                  Style/Rooms for Interior Design, etc. The KEYS stay the same —
+                  each line's Schedule-B renderer reads them via fallback. */}
+              <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--navy)', marginBottom: 8 }}>{eq.section_label || 'Site & tanks'}</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div style={{ gridColumn: '1 / -1' }}><label style={lbl}>Property address</label><input style={sel} value={d.schedule_b.property_address} onChange={(e) => set('schedule_b.property_address', e.target.value)} /></div>
-                <div><label style={lbl}>Property type</label><input style={sel} value={d.schedule_b.property_type} onChange={(e) => set('schedule_b.property_type', e.target.value)} /></div>
-                <div><label style={lbl}>Tank type</label><input style={sel} value={d.schedule_b.tank_type} onChange={(e) => set('schedule_b.tank_type', e.target.value)} /></div>
-                <div><label style={lbl}>Tank capacity</label><input style={sel} value={d.schedule_b.tank_capacity} onChange={(e) => set('schedule_b.tank_capacity', e.target.value)} /></div>
-                <div><label style={lbl}>Number of tanks</label><input type="number" style={sel} value={d.schedule_b.tanks_count} onChange={(e) => set('schedule_b.tanks_count', e.target.value)} /></div>
-                <div><label style={lbl}>Water source</label><input style={sel} value={d.schedule_b.water_source} onChange={(e) => set('schedule_b.water_source', e.target.value)} /></div>
-                <div><label style={lbl}>Service provider</label><input style={sel} value={d.schedule_b.provider_name} onChange={(e) => set('schedule_b.provider_name', e.target.value)} /></div>
+                {/* Hide the generic "Property type" when the line's own type label
+                    already IS property type (Interior), to avoid a duplicate field. */}
+                {String(eq.type_label || '').toLowerCase() !== 'property type' && <div><label style={lbl}>Property type</label><input style={sel} value={d.schedule_b.property_type} onChange={(e) => set('schedule_b.property_type', e.target.value)} /></div>}
+                <div><label style={lbl}>{eq.type_label || 'Tank type'}</label><input style={sel} value={d.schedule_b.tank_type} onChange={(e) => set('schedule_b.tank_type', e.target.value)} /></div>
+                <div><label style={lbl}>{eq.capacity_label || 'Tank capacity'}</label><input style={sel} placeholder={eq.capacity_placeholder || ''} value={d.schedule_b.tank_capacity} onChange={(e) => set('schedule_b.tank_capacity', e.target.value)} /></div>
+                <div><label style={lbl}>{eq.count_label || 'Number of tanks'}</label><input style={sel} value={d.schedule_b.tanks_count} onChange={(e) => set('schedule_b.tanks_count', e.target.value)} /></div>
+                <div><label style={lbl}>{eq.source_label || 'Water source'}</label><input style={sel} value={d.schedule_b.water_source} onChange={(e) => set('schedule_b.water_source', e.target.value)} /></div>
+                {!meta.no_provider && <div><label style={lbl}>Service provider</label><input style={sel} value={d.schedule_b.provider_name} onChange={(e) => set('schedule_b.provider_name', e.target.value)} /></div>}
               </div>
             </div>
 
@@ -498,11 +510,12 @@ function Builder({ onDone, onCancel, projectCode }) {
             </div>
 
             <div>
-              <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--navy)', marginBottom: 8 }}>AMC, warranty &amp; conditions</div>
+              <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--navy)', marginBottom: 8 }}>{meta.no_amc ? 'Warranty & conditions' : 'AMC, warranty & conditions'}</div>
 
               {/* AMC is a yes/no question first — the package, cycle and dates
-                  only appear once the answer is yes. */}
-              <div style={{ marginBottom: 12 }}>
+                  only appear once the answer is yes. Hidden on lines with no AMC
+                  offering (e.g. Interior Design one-off projects). */}
+              {!meta.no_amc && <div style={{ marginBottom: 12 }}>
                 <label style={lbl}>Is this project under an Annual Maintenance Contract?</label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {['No', 'Yes'].map((opt) => {
@@ -519,9 +532,9 @@ function Builder({ onDone, onCancel, projectCode }) {
                     );
                   })}
                 </div>
-              </div>
+              </div>}
 
-              {d.schedule_b.under_amc && (
+              {!meta.no_amc && d.schedule_b.under_amc && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 12 }}>
                   <div><label style={lbl}>Existing AMC contract</label>
                     <select style={sel} value={d.schedule_b.amc_code}
