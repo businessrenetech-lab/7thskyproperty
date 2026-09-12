@@ -23,6 +23,7 @@ module.exports = [
   ['/api/invoices', './invoicing.routes'],
   ['/api/invoice-pay', './invoiceGateway.routes'],
   ['/api/wt-invoice-pay', './wtInvoiceGateway.routes'],
+  ['/api/interior-variations', './interiorVariation.routes'],
   ['/api/billing', './billing.routes'],
   ['/api/account-categories', './accountCategory.routes'],
   ['/api/folios', './folio.routes'],
