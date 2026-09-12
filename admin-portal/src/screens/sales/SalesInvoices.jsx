@@ -14,9 +14,10 @@ const bdt = (v) => '৳' + Number(v || 0).toLocaleString('en-BD', { minimumFract
 const th = { padding: '8px 10px', textAlign: 'left', fontSize: 11.5, textTransform: 'uppercase', color: 'var(--muted)', borderBottom: '1px solid var(--line)' };
 const td = { padding: '8px 10px', borderBottom: '1px solid var(--line)', fontSize: 13 };
 
-// `kind` optionally narrows to purchase (RPPS) or sale (RPSS) agreement fees —
-// the invoice title carries the doc no (SSPC-RPPS-01 / SSPC-RPSS-01).
-const KIND_DOC = { purchase: 'RPPS', sale: 'RPSS' };
+// `kind` narrows to purchase / sale agreement fees. Scoping is done reliably on
+// the backend by the source agreement kind (scope param joins the signing
+// envelope) — never by title text — so this list shows ONLY residential
+// sales/purchase fees, not PM or other sections.
 export default function SalesInvoices({ kind }) {
   const toast = useToast();
   const [rows, setRows] = useState(null);
@@ -27,14 +28,12 @@ export default function SalesInvoices({ kind }) {
   const load = useCallback(async () => {
     setRows(null);
     try {
-      const q = new URLSearchParams({ invoice_type: 'agreement_fee' });
+      // scope: a specific kind (purchase|sale) or the whole sales section.
+      const q = new URLSearchParams({ invoice_type: 'agreement_fee', scope: kind || 'sales' });
       if (status) q.set('status', status);
       if (search) q.set('search', search);
       const r = await api.get(`/invoices?${q}`);
-      let data = r.data.data || [];
-      const doc = KIND_DOC[kind];
-      if (doc) data = data.filter((x) => String(x.title || '').includes(doc));
-      setRows(data);
+      setRows(r.data.data || []);
     } catch { toast.error('Could not load invoices'); setRows([]); }
   }, [status, search, toast, kind]);
   useEffect(() => { load(); }, [load]);

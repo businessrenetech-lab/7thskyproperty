@@ -6539,3 +6539,13 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Root cause: /api/invoices/agency-income queried every invoice_type='agreement_fee' regardless of the source agreement kind.
 - FIX: added a `scope` param (pm | sales | omitted=all). Scoped by joining the source SigningEnvelope (new PropertyInvoice.belongsTo(SigningEnvelope, as 'agreementEnvelope')) and filtering related_type — pm = [property_management_agreement, tenancy_management_agreement], sales = [sale_purchase_agreement, sale_sale_agreement]. Recurring management fees only appear for pm/all (never sales), and honour property_id. Each row now carries agreement_type. AgencyIncome.jsx (PM console) requests scope=pm.
 - Verified: all=77 (10 PM + 12 purchase + 55 sale); pm=10 (PM only) + recurring; sales=67 (no recurring). PM view now shows only its own invoices. admin-portal rebuilt; backend restarted.
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED | Scope every section's invoice list to its own fees (audit + fix)
+- Audit of all invoice views for cross-section leakage:
+  - Residential Sales accounting (SalesInvoices, no kind) LEAKED: fetched ALL invoice_type=agreement_fee (PM + purchase + sale) and only narrowed by a fragile title-substring when kind was set. FIXED.
+  - Buyer Invoices (SalesInvoices kind=purchase): was title-substring; now reliable scope.
+  - PM Agency Income: already scoped to pm (previous fix).
+  - Water Tank Invoices: uses its own /wt-invoices table — correctly scoped, no change.
+  - PM "Tenant Invoices": uses /billing/tenant-invoices (invoice_type in tenant_invoice/rental_receipt) — no agreement-fee leak, no change.
+- FIX: extended the /api/invoices list endpoint with the same `scope` param (pm|sales|purchase|sale) — joins the source SigningEnvelope (agreementEnvelope assoc) and filters related_type; distinct:true. SalesInvoices.jsx now requests scope = kind||'sales' (purchase→scope=purchase, sale→scope=sale) instead of title matching.
+- Verified via /invoices?invoice_type=agreement_fee: none=77(all), sales=67, purchase=12, sale=55, pm=10 — each section sees only its own. admin-portal rebuilt; backend restarted.

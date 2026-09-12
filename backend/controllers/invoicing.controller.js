@@ -62,7 +62,15 @@ exports.list = asyncHandler(async (req, res) => {
   if (req.query.contact_id) where.contact_id = req.query.contact_id;
   if (req.query.property_id) where.property_id = req.query.property_id;
   if (req.query.search) where[Op.or] = [{ invoice_code: { [Op.like]: `%${req.query.search}%` } }, { title: { [Op.like]: `%${req.query.search}%` } }];
-  const { rows, count } = await PropertyInvoice.findAndCountAll({ where, include: [clientInc, contactInc, providerInc, categoryInc, folioInc], limit, offset, order: [['created_at', 'DESC']] });
+  // scope=pm|sales|purchase|sale → restrict agreement-fee invoices to the ones
+  // whose source agreement belongs to that section (join the signing envelope),
+  // so each section's invoice list shows only its own fees.
+  const includes = [clientInc, contactInc, providerInc, categoryInc, folioInc];
+  const scopeRelated = SCOPE_RELATED[String(req.query.scope || '').toLowerCase()];
+  if (scopeRelated) {
+    includes.push({ model: SigningEnvelope, as: 'agreementEnvelope', attributes: ['id', 'related_type'], required: true, where: { related_type: { [Op.in]: scopeRelated } } });
+  }
+  const { rows, count } = await PropertyInvoice.findAndCountAll({ where, include: includes, limit, offset, order: [['created_at', 'DESC']], distinct: true });
   res.json({ data: rows.map((r) => ({ ...r.toJSON(), payable_name: payableName(r) })), pagination: { page, limit, total: count, pages: Math.ceil(count / limit) } });
 });
 
@@ -406,6 +414,8 @@ const SigningEnvelope = require('../models/SigningEnvelope');
 const SCOPE_RELATED = {
   pm: ['property_management_agreement', 'tenancy_management_agreement'],
   sales: ['sale_purchase_agreement', 'sale_sale_agreement'],
+  purchase: ['sale_purchase_agreement'],
+  sale: ['sale_sale_agreement'],
 };
 exports.agencyIncome = asyncHandler(async (req, res) => {
   const where = { ...branchScope(req), invoice_type: 'agreement_fee' };
