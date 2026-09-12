@@ -21,6 +21,8 @@ import AccountingOverview from './screens/sales/AccountingOverview';
 import SalesWorkQueue from './screens/sales/SalesWorkQueue';
 import BuyerMandates from './screens/sales/BuyerMandates';
 import BuyerMandateDetail from './screens/sales/BuyerMandateDetail';
+import BuyerServiceDashboard from './screens/sales/BuyerServiceDashboard';
+import BuyerDealFile from './screens/sales/BuyerDealFile';
 import SalesIntroductions from './screens/sales/SalesIntroductions';
 import SalesCalendar from './screens/sales/SalesCalendar';
 import PurchaseAgreements from './screens/sales/PurchaseAgreements';
@@ -28,6 +30,8 @@ import SaleAgreements from './screens/sales/SaleAgreements';
 import SalesContracts from './screens/sales/SalesContracts';
 import SalesInbox from './screens/sales/SalesInbox';
 import SalesReports from './screens/sales/SalesReports';
+import SalesProperties from './screens/sales/SalesProperties';
+import SalesContacts from './screens/sales/SalesContacts';
 import LeadAutomation from './screens/sales/LeadAutomation';
 import RentalProperties from './screens/RentalProperties';
 import PropertyWizard from './screens/PropertyWizard';
@@ -920,6 +924,7 @@ export default function App() {
             <Route element={<RequireAuth><AdminGate><ResidentialConsole /></AdminGate></RequireAuth>}>
               <Route path="/residential" element={<Navigate to="/residential/sell" replace />} />
               <Route path="/residential/sell" element={<PropertySellDashboard category="residential" title="Residential · Sell" desc="Seller service — listings, owners, agreements, commission and settlement." />} />
+              <Route path="/residential/properties" element={<SalesProperties category="residential" title="Residential · Properties" desc="Manage sales listings, lifecycle stages, vendor representations, and property files." />} />
               <Route path="/residential/buy" element={<DealsBoard category="residential" dealType="buy" title="Residential · Buy" desc="Buyer service — properties, buyers, agreements, commission, expenses and status." />} />
               <Route path="/residential/enquiry" element={<SalesEnquiries category="residential" title="Residential · Buyer Enquiries" desc="Every buyer who enquired on a residential sale property." />} />
               {/* The deep workspace behind a listing, and the listing wizard. */}
@@ -933,6 +938,8 @@ export default function App() {
               <Route path="/residential/settlements" element={<SalesBulkSettlement />} />
               <Route path="/residential/accounting" element={<AccountingOverview />} />
               <Route path="/residential/work-queue" element={<SalesWorkQueue />} />
+              <Route path="/residential/buyer-service" element={<BuyerServiceDashboard />} />
+              <Route path="/residential/buy/:dealId" element={<BuyerDealFile />} />
               <Route path="/residential/mandates" element={<BuyerMandates />} />
               <Route path="/residential/mandates/:id" element={<BuyerMandateDetail />} />
               <Route path="/residential/introductions" element={<SalesIntroductions />} />
@@ -942,7 +949,10 @@ export default function App() {
               <Route path="/residential/contracts" element={<SalesContracts />} />
               <Route path="/residential/inbox" element={<SalesInbox />} />
               <Route path="/residential/reports" element={<SalesReports />} />
-              <Route path="/residential/lead-automation" element={<LeadAutomation />} />
+              <Route path="/residential/contacts" element={<SalesContacts />} />
+              <Route path="/residential/contacts/clients" element={<Clients />} />
+              <Route path="/residential/clients" element={<Navigate to="/residential/contacts/clients" replace />} />
+              <Route path="/residential/lead-automation" element={<Navigate to="/residential/contacts" replace />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />

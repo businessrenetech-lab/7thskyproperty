@@ -5,7 +5,7 @@ import {
   Inbox, CalendarDays, KeyRound,
   Hotel, CalendarRange, MessageSquareQuote, BookOpen, UserCheck, DoorOpen,
   Home, Sparkles, Wrench, HandCoins, Landmark, BarChart3, TrendingUp,
-  Ruler, FolderArchive, Boxes, Plug,
+  Ruler, FolderArchive, Boxes, Plug, Building2,
 } from 'lucide-react';
 
 /*
@@ -385,14 +385,14 @@ export const RESIDENTIAL_NAV = [
       { to: '/residential/inbox', label: 'Sales Inbox', icon: Inbox },
       { to: '/residential/calendar', label: 'Calendar', icon: CalendarDays },
       { to: '/residential/reports', label: 'Reports', icon: BarChart3 },
-      { to: '/residential/lead-automation', label: 'Lead Automation', icon: Sparkles },
+      { to: '/residential/contacts', label: 'Contacts', icon: Users },
     ],
   },
   {
     key: 'selling',
     label: 'Selling',
     items: [
-      { to: '/residential/properties/new?listing_type=sale&category=residential', label: 'New Listing', icon: Home },
+      { to: '/residential/properties', label: 'Properties', icon: Building2 },
       { to: '/residential/agreements/sale', label: 'Sale Agreements', icon: FileSignature },
     ],
   },
@@ -400,6 +400,7 @@ export const RESIDENTIAL_NAV = [
     key: 'buying',
     label: 'Buying',
     items: [
+      { to: '/residential/buyer-service', label: 'Buyer Service', icon: LayoutGrid, end: true },
       { to: '/residential/buy', label: 'Deals', icon: Briefcase },
       { to: '/residential/mandates', label: 'Buyer Mandates', icon: ClipboardList },
       { to: '/residential/enquiry', label: 'Buyer Enquiries', icon: MessageSquareQuote },

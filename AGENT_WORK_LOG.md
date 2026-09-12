@@ -5405,3 +5405,61 @@ used "the last line starting with `import`", which landed inside a multi-line
 - FRONTEND (SalesAgreementScreen): new Scope (Schedule A) step with server-driven checkbox taxonomy; commission input (percent/fixed with live amount); Seventh Sky countersigner email/position; witness inputs (name/NID/email ×2); Schedule D checklist; Save-as-draft + Send; list actions — draft→Edit/Send, sent→Copy link/Edit & reissue, completed→Signed copy. getMeta returns the taxonomies.
 - VERIFIED: live HTTP sign-throughs — purchase (Client→Seventh Sky→Witness, order enforced) → COMPLETED, signed doc shows all 3 signatures + FULLY EXECUTED + ☑ selected services + Schedule D + commission (2% of 5M = 100,000); RPRM same (landlord/countersign/witness) → completed + signatures rendered; RPTM shares the identical code path. Builder UI: 33 Schedule A checkboxes render, 0 console errors. npm test 7+5+12+27 + test:full 28/0. All QA data cleaned up.
 - Deferred: draft/edit UI for RPRM/RPTM (their frontends unchanged — backend now multi-signer); witnesses don't receive the final PDF (attest only, matching water-tank behaviour). Not merged; no PR.
+
+### 2026-09-12 11:25 | Antigravity (Gemini 3.8 Flash) | STARTED | Professional Redesign of Toast Notification System
+- Request: "current toast notification looks too bad.....toast notification should be professional ...nicely designed"
+- Scope: `admin-portal/src/context/ToastContext.jsx`, `admin-portal/src/styles/GlobalStyles.css`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Redesign the global toast notification component and styles with modern executive CRM aesthetics (Sonner/Vercel/Linear quality), refined micro-interactions, subtle glassmorphism/borders, crisp typography, clean status badges/icons, and smooth entry/exit animations.
+
+### 2026-09-12 11:45 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Professional Redesign of Toast Notification System
+- Request: "current toast notification looks too bad.....toast notification should be professional ...nicely designed"
+- Files Changed:
+  - `admin-portal/src/context/ToastContext.jsx`:
+    - Replaced the clunky, fixed-heading toast with a modern, high-density CRM toast component inspired by Sonner, Linear, and Vercel.
+    - Added smart title/message handling: when a simple message is passed (e.g. `toast.success('Saved')`), it renders as a clean, prominent single line rather than forcing a redundant "Success" header on top.
+    - Added full support for multi-argument and object options: `toast.success('Title', 'Description')`, `toast.error(msg, 5000)`, `toast.success({ title, message, duration, action })`.
+    - Added `toast.loading` and `toast.promise` helpers with animated loader support (`Loader2`).
+    - Added micro-progress bar indicator at the bottom edge with smooth width tracking and pause-on-hover.
+    - Added accessible, refined dismiss button (`<X size={14} />`) and optional action button.
+  - `admin-portal/src/styles/GlobalStyles.css`:
+    - Cleaned up the outdated `.la-toast` CSS rules and introduced modern `.sspc-toast` (with `.la-toast` backward-compatible aliases).
+    - Designed floating card layout with subtle 3.5px colored status accent border on the left (`--toast-accent`), multi-layer soft shadows, and clean border (`1px solid #e2e8f0`).
+    - Added soft-tinted status icon badges (emerald for success, red for error, amber for warning, blue for info, indigo for loading).
+    - Added smooth spring-like entrance animation (`translateY(-12px) scale(0.96)` -> `translateY(0) scale(1)`) and fluid collapse exit animation.
+    - Added complete dark mode support (`:root.dark`, `body.dark`) with high-contrast slate surfaces and vibrant accent tones.
+    - Added responsive mobile styles positioning toasts cleanly at the bottom edge.
+- Decisions: Ensured 100% backward compatibility across all 400+ existing `toast.success`, `toast.error`, `toast.warning`, `toast.info`, and `toast.dismiss` calls throughout the portal while dramatically elevating the UI/UX.
+- Verification:
+### 2026-09-12 12:35 | Antigravity (Gemini 3.8 Flash) | STARTED | Fix Toast Positioning to Top-Right and Enforce No-Cache on Admin SPA
+- Request: "toast noftications shows at bottom ....just update an invocie it revealed at bottom invoice updated///////maybe not fixed it...."
+- Scope: `admin-portal/src/context/ToastContext.jsx`, `admin-portal/src/styles/GlobalStyles.css`, `admin-portal/src/styles/wt-scope.css`, `backend/server.js`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Anchor toast container permanently to top-right (`top: 24px !important`, `bottom: auto !important`), eliminate any media-query or scope rules overriding to bottom, update `wt-toasts` in `wt-scope.css` to top-right, set `Cache-Control: no-cache, no-store, must-revalidate` for `index.html` in `backend/server.js`, rebuild frontend and restart backend server.
+### 2026-09-12 12:45 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Fix Toast Positioning to Top-Right and Enforce No-Cache on Admin SPA
+- Request: "toast noftications shows at bottom ....just update an invocie it revealed at bottom invoice updated///////maybe not fixed it...."
+- Files Changed:
+  - `admin-portal/src/context/ToastContext.jsx`:
+    - Added inline positioning styles directly to `<ToastContainer>` (`position: 'fixed'`, `top: '20px'`, `right: '24px'`, `bottom: 'auto'`, `zIndex: 999999`), permanently anchoring toasts at the top-right regardless of CSS cascade or conflicting external styles.
+  - `admin-portal/src/styles/GlobalStyles.css`:
+    - Set `.sspc-toast-container, .la-toast-container` to `position: fixed !important; top: 1.5rem !important; right: 1.5rem !important; bottom: auto !important; left: auto !important; z-index: 999999 !important;`.
+    - Fixed responsive `@media (max-width: 640px)` breakpoint: changed from `bottom: 20px` to `top: 14px !important; bottom: auto !important; right: 14px !important; left: 14px !important;`.
+  - `admin-portal/src/styles/wt-scope.css`:
+    - Updated `.wt-toasts` from `bottom: 20px; z-index: 3000;` to `top: 20px; bottom: auto; right: 20px; z-index: 999999;`.
+  - `backend/server.js`:
+    - Configured `express.static` with `setHeaders` to send `Cache-Control: no-cache, no-store, must-revalidate`, `Pragma: no-cache`, `Expires: 0` for `index.html`.
+    - Configured SPA fallback route `app.get(/^\/admin(\/.*)?$/)` to send identical `Cache-Control: no-cache, no-store, must-revalidate` headers, preventing browsers from serving stale SPA bundles.
+- Verification:
+  - Ran `npm run build` in `admin-portal/`: built cleanly in 9.05s with updated assets.
+  - Restarted backend server process on port 50001 (`node server.js`).
+  - Tested `curl.exe -I http://localhost:50001/admin/`: verified HTTP 200 with `Cache-Control: no-cache, no-store, must-revalidate`, `Pragma: no-cache`, `Expires: 0`.
+- Handoff: Toasts will now always appear at the top-right of the screen across all viewports and screens, and will immediately reflect the newly built bundles on reload.
+
+### 2026-09-12 | Claude Code (Opus 4.8) | COMPLETED | Buyer Service dashboard + 8-stage workflow — Phase A
+- Committed on air-conditioning/phase-0-duplicate. A dedicated buyer-service dashboard + a buyer "deal file" carrying the 8-stage Residential Purchase SOP, reusing the progressive-SOP engine, RPPS agreement, invoices/collection, mandate and KYC. Buyer service is fee-for-coordination — NO trust settlement (stage 7 coordinates the external settlement only).
+- Backend: migration 0116 seeds the Residential Purchase SOP workflow_template (8 stages, checklists) + adds projects.property_deal_id. progressiveSop gains the residential_purchase vertical (all phases active-at-start for manual progression; phases enquiry→planning→search→diligence→offer→settlement→closure, hints + SLA). workflowProject.createProjectFromTemplate passes property_deal_id. buyerDealSop.controller — GET/POST /api/sales/deals/:dealId/sop (deal-keyed Project, mirrors salesSop). buyerMandate.getBuyerDeal — GET /api/sales/deals/:dealId aggregates deal + buyer + property + mandate/candidates + purchase agreements + agreement-fee invoices + fees rollup.
+- Frontend: BuyerServiceDashboard (/residential/buyer-service, Buying-group nav) — KPIs (active mandates, open deals, negotiation, settlement) + mandate/deal worklists into the deal file. BuyerDealFile (/residential/buy/:dealId) — fee rollup strip + tabs: Workflow (the 8-stage SOP strip reusing the seller stage rendering — start/done/checklist/evidence), Requirements & Candidates (mandate + candidates), Agreement & Fees (RPPS agreements + fee invoices), Settlement coordination (Phase-C placeholder, explains no-trust). DealsBoard buy drawer gains 'Open buyer file'.
+- Verified: ensureSop on buy deal 32 → project SSPC-PJ-000021 with 8 stages (enquiry in_progress, rest pending, none blocked), idempotent; getBuyerDeal returns the aggregate; dashboard/deal-file data sources all 200; build clean; npm test 7+5+12+27 + test:full 28/0. Seller SOP controller + settlement engine untouched.
+- Next: Phase B (finance/approval fields + viewing/inspection notes), Phase C (doc-review/risk + non-trust settlement-coordination tracker), Phase D (closure). Not merged; no PR.

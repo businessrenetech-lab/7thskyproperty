@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Eye, Building2, FileSignature, Users2, Wallet, Handshake, MoreHorizontal, LayoutGrid, List as ListIcon, ShieldCheck } from 'lucide-react';
+import { Eye, Building2, FileSignature, Users2, Wallet, Handshake, MoreHorizontal, LayoutGrid, List as ListIcon, ShieldCheck, ClipboardList } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { PageHead, DataTable, StatusBadge, Drawer, SearchInput, KV, Spinner, Button, Badge, Select } from '../ui/kit';
@@ -209,6 +209,11 @@ export default function DealsBoard({ category, dealType, title, desc }) {
                 const pid = detail.property_id || detail.Property?.id || sel.property_id || sel.Property?.id;
                 return (
                   <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {dealType === 'buy' && (
+                      <Button icon={ClipboardList} onClick={() => navigate(`/residential/buy/${detail.id || sel.id}`)}>
+                        Open buyer file
+                      </Button>
+                    )}
                     <Button icon={ShieldCheck} variant="ghost" onClick={() => navigate(`/residential/property/${pid}?section=onboarding`)}>
                       {dealType === 'buy' ? 'Onboard buyer / KYC' : 'Onboard / KYC'}
                     </Button>
