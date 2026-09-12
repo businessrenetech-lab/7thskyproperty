@@ -5609,3 +5609,189 @@ used "the last line starting with `import`", which landed inside a multi-line
   - Contact→Client→PartyRoleProfile chain confirmed via curl (KYC reuse runs). All test data cleaned up (2 contacts/clients/profiles/leads removed).
   - `npm run build` (admin-portal): 2057 modules, 0 errors.
 - Handoff: Buyers/Vendors can now be created directly with full KYC from the Contacts hub and flow straight into the correct agreement. Untouched: parallel Gemini/Antigravity navbar work in website-mock/website.
+
+### 2026-09-12 14:35 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Navigation Hover Submenus & Mega-Menu with Deep Links to Dedicated Pages
+- Request: On navmenu hover on navmenu should show sub menues...from submenus link each dedicated pages.
+- Scope: `website-mock/src/components/Navbar.jsx`, `website/src/components/HeaderNav.jsx`, `website/src/app/layout.js`.
+- Changes Made:
+  1. `website-mock/src/components/Navbar.jsx`:
+     - Built desktop navigation bar with interactive hover dropdowns and a full-width Mega Menu.
+     - **Properties Submenu Dropdown**:
+       - Residential Sales (`/properties?purpose=Sale`)
+       - Residential Rentals (`/properties?purpose=Rent`)
+       - Short Stays & Serviced Living (`/services/short-stay`)
+       - Commercial Properties (`/properties?category=Commercial`)
+       - Rural Estates & Land (`/properties?category=Rural`)
+       - Direct link to "Explore All Properties".
+     - **Property Care Services Mega Menu Dropdown**:
+       - 4 structured columns with all 12 services categorized with custom Lucide icons, titles, short operational descriptions, and direct links to each dedicated page (`/services/:slug`):
+         - *Care & Maintenance*: Water Tank Cleaning (`/services/water-tank`), AC Care (`/services/air-conditioning`), Property Care & Concierge (`/services/property-care-concierge`).
+         - *Design & Relocation*: Interior Design & Fit-Out (`/services/interior-design`), Removal & Relocation (`/services/removal-relocation`), Short Stay Flats (`/services/short-stay`).
+         - *Legal & Land Advisory*: Title Search & Vetting (`/services/property-documentation-verification`), Land Survey & Valuation (`/services/land-property-assessment`), Property Will & Succession (`/services/property-will-succession`).
+         - *Tenancy & Management*: Residential Property Management (`/services/property-management`), Property Loan Advisory (`/services/loan-financial-support`), Residential Sales Brokerage (`/services/residential-sales`).
+       - Header bar with direct link to "Browse All 12 Services Directory" (`/services`).
+       - Footer bar with quality guarantee and quick links for Interior Design, Water Tank Care, and hotline call CTA.
+     - **NRB Dedicated Services Dropdown**:
+       - Expatriate Property Monitoring, 4K Video Walkthrough Audits, Remote RAJUK & Society Liaison, Overseas Financial Accounting (`/nrb`).
+     - **Direct Links**: Home, About Us, Careers, Contact Us, and "book an appraisal" CTA button.
+     - **Smooth Hover Mechanics**: 180ms debounce timeout to prevent flickering; auto-close on click or route change.
+     - **Mobile Drawer Upgraded**: Accordions expand into direct links for each dedicated service page.
+  2. `website/src/components/HeaderNav.jsx` & `website/src/app/layout.js`:
+     - Created client component `<HeaderNav />` featuring the synchronized hover mega-menu dropdown with all 12 dedicated service links in dark-theme styling (`slate-950`/`blue-400`).
+- Verification & Test Results:
+  - `website-mock/`: `npm run build` completed with 0 errors in 2.38s.
+  - `website/`: `npm run build` completed with 0 errors in 2.6s (all 23 static pages generated).
+  - HTTP checks on port 3005: `http://localhost:3005/src/components/Navbar.jsx` -> 200 OK.
+- Handoff: Desktop hover submenus and mega-menus are fully deployed on both `website-mock` (port 3005) and `website` (port 3000/3005), linking directly to each dedicated service page.
+
+### 2026-09-12 14:48 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Restore Minimalist Header (Logo + CTA + Hamburger) & Enable Navmenu Hover Submenus
+- Request: Keep the previous nav structure please with hamburger icon.
+- Scope: `website-mock/src/components/Navbar.jsx`.
+- Changes Made:
+  1. Restored the exact minimalist header bar structure matching original specification across all screens:
+     - Left: Seventh Sky Brand Logo (`7 SEVENTH SKY Property Management`).
+     - Right: Cyan rounded pill CTA button (`book an appraisal`) + Minimalist Hamburger menu icon button.
+     - Removed horizontal text links from the top bar so the header remains uncluttered and sleek.
+  2. Implemented luxury 2-pane navigation drawer on desktop:
+     - Left pane: Main navigation items (Home, Properties, Property Care Services, NRB Dedicated Services, About Us, Careers, Contact Us).
+     - Right pane: Submenus that dynamically update on hover!
+       - Hovering on **Property Care Services** reveals all 12 services categorized into 4 groups with icons, badges, descriptions, and direct links to each dedicated page (`/services/:slug`).
+       - Hovering on **Properties** reveals the 5 property channels with direct links.
+       - Hovering on **NRB Dedicated Services** reveals the 4 expatriate solutions with direct links.
+  3. Mobile drawer preserved with responsive accordion toggles linking directly to each dedicated service page.
+- Verification & Test Results:
+  - `website-mock/`: `npm run build` passed with 0 errors in 3.27s.
+  - `website/`: `npm run build` passed with 0 errors in 2.7s.
+  - Verified live on `http://localhost:3005`.
+### 2026-09-12 14:50 | Antigravity (Gemini 3.8 Flash) | STARTED | Clean Internal Operational Jargon from Navigation Menu Items
+- Request: "do not say 12 portals ...soppp...any internal matters on nab items...like the nav design"
+- Scope: `website-mock/src/components/Navbar.jsx` and `website/src/components/HeaderNav.jsx`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Removing SOP tags, "12 Portals" badges, internal operational phrasing while preserving the clean 2-pane hover navigation and minimalist header.
+
+### 2026-09-12 14:52 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Clean Internal Operational Jargon from Navigation Menu Items
+- Request: "do not say 12 portals ...soppp...any internal matters on nab items...like the nav design"
+- Scope: `website-mock/src/components/Navbar.jsx` and `website/src/components/HeaderNav.jsx`.
+- Changes Made:
+  1. `website-mock/src/components/Navbar.jsx`:
+     - Removed `badge: 'SOP-01'` and `badge: 'SOP-02'` from Water Tank Cleaning and Air Conditioning Care.
+     - Removed the `12 Portals` badge pill next to "Property Care Services" in the navigation links.
+     - Changed the sub-heading from `All 12 Dedicated Service Portals` to prestigious customer-facing `Property Care Solutions`.
+     - Updated link from `View All` to `View All Services`.
+     - In mobile menu, updated `All 12 Services Directory →` to `View All Services →`.
+  2. `website/src/components/HeaderNav.jsx`:
+     - Removed `badge: "SOP-01"` and `badge: "SOP-02"`.
+     - Changed `Browse All 12 Services & Protocols` to `Browse All Services`.
+     - Replaced internal SOP tagline in footer bar with: `"Quality guaranteed work, digital photo logs & certified inspections."`.
+- Verification & Test Results:
+  - `website-mock/`: `npm run build` passed with 0 errors in 3.63s.
+  - `website/`: `npm run build` passed with 0 errors in 3.7s (all 23 static pages generated).
+  - Grep confirmed zero occurrences of `SOP` or `portal` in navigation items.
+- Handoff: All navigation items and drawer submenus now use clean, prestigious customer-facing language with zero internal operational jargon, while preserving the minimalist header and hover submenus.
+
+### 2026-09-12 14:53 | Antigravity (Gemini 3.8 Flash) | STARTED | Remove Dhaka and Specific Location Mentions from Navigation & Service Pages
+- Request: "Do not mention about location Dhaka...etc remove location where you mentioned...name"
+- Scope: `website-mock/src/components/Navbar.jsx`, `website/src/components/HeaderNav.jsx`, `website-mock/src/data/servicesData.js`, `website/src/lib/servicesData.js`, `website-mock/src/pages/ServiceDetailPage.jsx`, `website/src/app/services/[slug]/page.jsx`, etc.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Audit all references to "Dhaka", "Gulshan", "Banani", "Uttara", "Dhanmondi" or specific location names in recently added code and replace with universal premium language.
+
+### 2026-09-12 15:02 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Remove Dhaka & Location Names from All Navigation, Forms, Services, and Pages
+- Request: "Do not mention about location Dhaka...etc remove location where you mentioned...name"
+- Scope:
+  - `website-mock/src/components/Navbar.jsx`
+  - `website/src/components/HeaderNav.jsx`
+  - `website-mock/src/components/ServiceStepForm.jsx`
+  - `website/src/components/ServiceStepForm.jsx`
+  - `website-mock/src/pages/ServiceDetailPage.jsx`
+  - `website/src/app/services/[slug]/page.jsx`
+  - `website/src/app/services/page.jsx`
+  - `website/src/app/services/ServicesDirectoryClient.jsx`
+  - `website/src/app/page.js`
+  - `website-mock/src/data/mockServices.js`
+  - `website-mock/src/data/servicesData.js`
+  - `website/src/lib/servicesData.js`
+- Changes Made:
+  1. Navigation (`Navbar.jsx`, `HeaderNav.jsx`):
+     - Short stays description: Replaced "Gulshan, Banani, Uttara & Dhanmondi" with "Fully furnished luxury suites for business & leisure stays".
+     - NRB item: Replaced "Remote RAJUK & Society Liaison" with "Remote Authority & Society Liaison".
+  2. Multi-Step Request Forms (`ServiceStepForm.jsx` in both apps):
+     - Replaced `DHAKA_AREAS` array with universal `SERVICE_ZONES` (e.g. Prime Residential Enclave, Diplomatic & Executive Sector, Central Metropolitan Hub, Northern Residential Zone, Suburban Estate, Corporate & Commercial District).
+     - Generalized Division/District dropdown to "Region / Territory" (Metropolitan Region, Central Sector, Northern Territory, Southern Zone, Suburban & Extended).
+     - Generalized neighborhood selector to "Service Sector / Neighborhood".
+     - Generalized address placeholders from "House 24, Road 11, Block D, Banani" to "Flat 4B, Building 12, Road 5".
+     - Removed all mentions of "across Dhaka" from dispatch notes.
+  3. Service Detail Pages (`ServiceDetailPage.jsx`, `[slug]/page.jsx`):
+     - Changed callout header from "Dhaka & Bangladesh Operational Reality" to "Operational Reality & Standards".
+     - Changed "Dhaka Operational Hubs" to "Operational Coverage Hubs".
+     - Changed regional notes from "outside Dhaka (Chittagong, Sylhet, Gazipur)" to "across extended regional zones".
+     - Generalized JSON-LD schema `areaServed` and office address.
+  4. Services Directory (`ServicesDirectoryClient.jsx`, `services/page.jsx`, `page.js`, `mockServices.js`):
+     - Removed Dhaka and specific neighborhood references from directory banners, features cards, and metadata.
+  5. Service Taxonomies (`servicesData.js` in both apps):
+     - Surgically removed all 99 location mentions across all 12 services (taglines, overviews, marketContext, capacityPlaceholders, FAQs, metaTitles, metaDescriptions, keywords).
+     - Replaced local coverage areas with universal high-end property sector classifications.
+- Verification & Test Results:
+  - `git grep` confirmed zero remaining occurrences of `dhaka`, `gulshan`, `banani`, `uttara`, `dhanmondi`, `baridhara`, `bashundhara`, `mirpur`, `purbachal`, `chittagong`, or `sylhet` across all service, navigation, form, and page files.
+  - `website-mock/`: `npm run build` passed with 0 errors (1502 modules, 3.49s).
+  - `website/`: `npm run build` passed with 0 errors (all 23 static pages generated in 338ms).
+- Handoff: All service pages, navigation items, interactive request forms, and directory components are 100% free of specific city or neighborhood names.
+
+### 2026-09-12 15:05 | Antigravity (Gemini 3.8 Flash) | STARTED | Dedicated Modern Classy Interior Landing Page Experience
+- Request: "For interior service page make it like a modern classy interior landing page....with more of organised interior service related images,,,,,need more professional ui that represents a interior things...more professinal and detailed ..content should have depth less text organised....use of bullet lists...short texts but each should have depth context..."
+- Scope: `website-mock/src/pages/InteriorLandingPage.jsx` or specialized interior template, `website-mock/src/pages/ServiceDetailPage.jsx`, `website/src/app/services/[slug]/page.jsx`, `website/src/app/services/interior-design/`, `servicesData.js`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Designing an editorial, luxury interior design landing experience with curated imagery, spatial portfolios (Living, Kitchen, Master Suite, Executive Workspaces, Material Palette), structured bullet insights with depth, and turnkey booking wizard without location names.
+
+### 2026-09-12 15:10 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Bespoke Modern Classy Interior Design Landing Page Experience
+- Request: "For interior service page make it like a modern classy interior landing page....with more of organised interior service related images,,,,,need more professional ui that represents a interior things...more professinal and detailed ..content should have depth less text organised....use of bullet lists...short texts but each should have depth context..."
+- Scope:
+  - `website-mock/src/components/InteriorDesignLanding.jsx`
+  - `website-mock/src/pages/ServiceDetailPage.jsx`
+  - `website/src/components/InteriorDesignLanding.jsx`
+  - `website/src/app/services/[slug]/page.jsx`
+  - `website/src/app/layout.js`
+- Changes Made:
+  1. Bespoke Editorial Interior Landing Page Component (`InteriorDesignLanding.jsx` in both Vite & Next.js):
+     - Architectural Sticky Sub-Header: Rapid anchor jumps to `#portfolio`, `#engineering`, `#process`, `#packages`, `#book-service`.
+     - High-Aesthetic Hero: Deep obsidian/slate aesthetic (`#0B0F17`), ambient radial glow, micro-spec badges (`100% Turnkey Delivery`, `3D VR Pre-Build Preview`, `Blum® Austrian Hardware`, `Zero-VOC Indoor Air Purity`), and featured penthouse visual showcase.
+     - Curated Spatial Portfolio & Dynamic Category Filter Tabs:
+       - Real architectural and interior photography across *Living & Lounges*, *Chef's Kitchens*, *Master Suites*, *Executive Studies*, and *Materials & Finishes*.
+       - Every collection card provides rich, itemized bullet specifications (e.g. fluted natural oak acoustic wall paneling, Calacatta quartz waterfall island, 3000K concealed perimeter cove lighting, Blum Legrabox motorized soft-close drawers).
+     - "The Engineering Behind the Aesthetics" (4 Architectural Pillars with Deep Contextual Bullet Lists):
+       - *Spatial Planning & Ergonomics*: 36" circulation pathways, mathematical sightline alignment, volumetric scaling, acoustic timber baffles.
+       - *Material Science & Moisture Engineering*: 100% BWR marine plywood substrate core, silky matte anti-fingerprint HPL, automated 2mm PVC edge-banding, zero-VOC hospital-grade finishes.
+       - *3-Layer Architectural Lighting*: 3000K warm ambient coves, 4000K CRI 95+ precision task strips, 15° magnetic track accent spots, multi-scene smart controls.
+       - *Cabinetry Precision & Hardware*: Austrian Blum motion systems (tested for 200,000 cycles under 40kg), book-matched natural walnut/oak veneers, concealed Hafele cam-lock joinery, felt-lined drawer organizers.
+     - Turnkey 4-Phase Execution Roadmap: Chronological milestone breakdown (*01 Spatial Audit & 3D Immersion*, *02 Material Curation & Fixed BOQ*, *03 Off-Site Factory CNC Fabrication*, *04 White-Glove On-Site Assembly & Handover*).
+     - Transparent Investment Tiers: Itemized square-foot packages (*Essential Modern Living*, *Executive Signature*, *Architectural Bespoke*) with detailed bullet inclusions.
+     - Interactive Consultation & Booking Wizard: Seamlessly integrates the 3-step `ServiceStepForm` with direct concierge hotline.
+  2. Integration & Route Wiring:
+     - `website-mock/src/pages/ServiceDetailPage.jsx`: Early return rendering `<InteriorDesignLanding service={service} />` when `service.slug === 'interior-design'`.
+     - `website/src/app/services/[slug]/page.jsx`: Early return rendering `<InteriorDesignLanding service={service} />` with injected JSON-LD schema.
+     - Fixed Next.js 16 asynchronous `params` resolution (`const { slug } = await params;` in `generateMetadata` and `ServiceDetailPage`) which was previously causing 404/blank page responses during static page generation.
+  3. Location & Jargon Enforcement:
+     - Cleaned `website/src/app/layout.js` metadata and footer, removing all mentions of Dhaka, Dhanmondi, Gulshan, Banani, and internal jargon ("12 Services").
+     - Replaced with universal luxury sectors ("Prime Residential Enclaves • Diplomatic Zones • Commercial Districts").
+- Verification & Test Results:
+  - `website-mock/`: `npm run build` passed with 0 errors (1503 modules transformed, 3.34s).
+  - `website/`: `npm run build` passed with 0 errors (all 23 static pages generated in 372ms). Static output `website/.next/server/app/services/interior-design.html` confirmed status 200 (115,078 bytes) with all custom sections and bullet specifications verified.
+  - HTTP checks to `http://localhost:3005/services/interior-design` return 200 OK.
+- Handoff: The `/services/interior-design` page is completely transformed into an editorial, high-aesthetic landing page experience matching modern architectural standards in both `website-mock` (Vite) and `website` (Next.js).
+
+
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED | E2E debug of sale + buyer-service agreement/KYC/signing + multi-party signing
+- Request: run an end-to-end debug of the sale flow (property→list→vendors→KYC by link or admin→verify→assessment→docs→agreement signed by ALL vendors w/ visible signatures + witness→edit/resend→invoices) and the buyer-service flow (multiple buyers→KYC→sign by all→invoices after "sale complete"); track+fix what's missing.
+- Harness: backend/scripts/e2eSalesAgreementFlow.js (KEPT) — drives the real API through both narratives, prints PASS/FAIL + a GAP list.
+- Gap found & FIXED — multi-vendor / multi-buyer signing (only the primary party could sign; co-owners/co-buyers had no signature anchor):
+  1. services/salesAgreementRender.js: `data.clients[]` renders one party block + one signature anchor ("Client 1".."Client N") per co-party; single `client` unchanged.
+  2. services/agreementSigners.service.js: buildSignerDefs accepts `clients[]` → one signer per party with matching "Client N" labels (order enforced), then Seventh Sky, then witnesses.
+  3. controllers/salesAgreement.controller.js: normalises `clients[]` (partyList), validates each party, passes them to render + signers; title lists all parties. create + update + preview.
+  4. admin-portal SalesAgreementScreen.jsx: "Add {party}" repeater on the Parties step (co-owners/co-buyers), payload sends `clients[]`, preview + edit-draft prefill reconstruct all parties from signers.
+- Verified (live): 28 PASS / 0 FAIL. Multi-vendor sale + multi-buyer purchase each: all parties sign in order → envelope completed → signed document places EACH party's signature at its own anchor (checked Client 1 & Client 2 both carry values) → fee invoices drafted. KYC via public link + admin both submit & verify. Assessment create→complete checklist→submit→approve works. Edit draft + resend works. "Sale complete" for buyer service = purchase agreement (RPPS) completion → salesAgreementCompletion drafts agency-fee invoices.
+- Non-bugs confirmed (were only harness-fixture gaps): KYC-link token is in data.link; commission must be in pricing_input.commission to build the payment schedule that seeds invoices; assessment auto-seeds a 9-item checklist that must all be completed before submit.
+- Note: an earlier test-data cleanup partially ran (removed most E2E fixtures across runs; contact rows survived a bank-account FK). A fresh full dataset was regenerated and LEFT IN PLACE for review — run stamp 962781, property #102, sale env #260 (ENV-RPSS-985258), draft #261, purchase env #262.
+- Admin-portal rebuilt (dist). Untouched: parallel Gemini/Antigravity website work.

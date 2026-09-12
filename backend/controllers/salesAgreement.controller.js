@@ -110,28 +110,36 @@ exports.listAgreements = asyncHandler(async (req, res) => {
 // Multi-party signer construction is shared (Client + Seventh Sky countersign +
 // witnesses, labels matching the document anchors, order enforced).
 const { buildSignerDefs, persistSigners, dispatchEnvelope, emailFirstSigner } = require('../services/agreementSigners.service');
+
+// Normalise the party set: prefer an explicit `clients` array (co-owners /
+// co-buyers), else the single `client`. The first party carries client_contact_id.
+function partyList(body) {
+  const arr = Array.isArray(body.clients) && body.clients.length ? body.clients : [body.client || {}];
+  return arr.map((c, i) => ({ ...(c || {}), contact_id: c?.contact_id || (i === 0 ? body.client_contact_id : null) || null }));
+}
 const signerDefsFor = (body, org, req) => buildSignerDefs({
-  client: { ...(body.client || {}), contact_id: body.client_contact_id || null },
-  org, witnesses: body.witnesses, user: req.user || {}, clientRole: 'client',
+  clients: partyList(body), org, witnesses: body.witnesses, user: req.user || {}, clientRole: 'client',
 });
 
 exports.createAgreement = asyncHandler(async (req, res) => {
   const k = K(req); if (!k) return res.status(404).json({ error: 'Unknown agreement kind' });
   const branchId = resolveBranchId(req); const body = req.body || {};
-  const client = body.client || {};
+  const parties = partyList(body);
+  const client = parties[0] || {};
   const asDraft = !!body.save_as_draft;
-  if (!client.full_name) return res.status(400).json({ error: `${k.party} full name is required.` });
-  if (!asDraft && !client.email) return res.status(400).json({ error: `${k.party} email is required to send for signature.` });
+  if (parties.some((p) => !p.full_name)) return res.status(400).json({ error: `Every ${k.party.toLowerCase()} needs a full name.` });
+  if (!asDraft && parties.some((p) => !p.email)) return res.status(400).json({ error: `Every ${k.party.toLowerCase()} needs an email to send for signature.` });
 
   const pricing = await k.svc.computePricing(body.pricing_input || {}, branchId);
-  const built = k.svc[k.build]({ ...body, pricing });
+  const built = k.svc[k.build]({ ...body, clients: parties, pricing });
+  const partyNames = parties.map((p) => p.full_name).filter(Boolean).join(' & ');
   const expires = new Date(Date.now() + 30 * 864e5);
   const org = body.org || {};
 
   const out = await sequelize.transaction(async (t) => {
     const env = await SigningEnvelope.create({
       branch_id: branchId, envelope_code: `ENV-${k.code}-${Date.now().toString().slice(-6)}`,
-      title: `${built.title} — ${client.full_name}`, document_html: built.html,
+      title: `${built.title} — ${partyNames || client.full_name}`, document_html: built.html,
       related_type: k.related_type, related_id: body.property_id || null,
       status: 'draft', expires_at: expires, signing_order_enforced: true,
       kyc_role: k.signer, terms: built.terms, created_by: req.user?.id || null,
@@ -159,14 +167,16 @@ exports.updateAgreement = asyncHandler(async (req, res) => {
   if (!env) return res.status(404).json({ error: 'Agreement not found.' });
   if (env.status !== 'draft') return res.status(409).json({ error: 'Only a draft agreement can be edited. Use "Edit & reissue" for a sent one.' });
   const body = req.body || {}; const org = body.org || {};
-  const client = body.client || {};
-  if (!client.full_name) return res.status(400).json({ error: `${k.party} full name is required.` });
+  const parties = partyList(body);
+  const client = parties[0] || {};
+  if (parties.some((p) => !p.full_name)) return res.status(400).json({ error: `Every ${k.party.toLowerCase()} needs a full name.` });
   const pricing = await k.svc.computePricing(body.pricing_input || {}, resolveBranchId(req));
-  const built = k.svc[k.build]({ ...body, pricing });
+  const built = k.svc[k.build]({ ...body, clients: parties, pricing });
+  const partyNames = parties.map((p) => p.full_name).filter(Boolean).join(' & ');
   await sequelize.transaction(async (t) => {
     await SignatureField.destroy({ where: { envelope_id: env.id }, transaction: t });
     await EnvelopeSigner.destroy({ where: { envelope_id: env.id }, transaction: t });
-    await env.update({ title: `${built.title} — ${client.full_name}`, document_html: built.html, terms: built.terms, related_id: body.property_id || env.related_id }, { transaction: t });
+    await env.update({ title: `${built.title} — ${partyNames || client.full_name}`, document_html: built.html, terms: built.terms, related_id: body.property_id || env.related_id }, { transaction: t });
     await persistSigners(env, signerDefsFor(body, org, req), t);
   });
   res.json({ id: env.id, status: env.status, message: 'Draft updated.' });

@@ -175,13 +175,26 @@ function buildAgreement(cfg, data = {}) {
     </ol>
   </div>`;
 
+  // A sale/purchase can have multiple co-owners (vendors) or co-buyers, each of
+  // whom must sign. `data.clients` (array) drives it; single `data.client` still
+  // works unchanged. Each party gets its own signature anchor "Client N".
+  const clients = (Array.isArray(data.clients) && data.clients.length) ? data.clients : [c];
+  const multiParty = clients.length > 1;
+  const clientAnchor = (i) => (multiParty ? `Client ${i + 1}` : 'Client');
+  const clientHeading = (i) => (multiParty
+    ? `${(cfg.party || 'Client').toUpperCase()} ${i + 1}`
+    : (cfg.client_heading || `${cfg.party} (Client)`));
+
+  const clientPartyBlocks = clients.map((cl, i) => `
+  <div style="font-weight:700;color:#003768;margin-top:8px;">${i === 0 ? 'AND — ' : ''}${esc(clientHeading(i))}</div>
+  ${kvTable([['Full Name', cl.full_name], ['National ID / Passport No.', cl.nid], ['Current Address', cl.property_address || cl.address], ['Phone', cl.phone], ['Email', cl.email], ['Represented by (if applicable)', cl.rep], ['Relationship / Position', cl.rep_position]])}`).join('');
+
   const parties = `
   <p style="margin:14px 0 6px;">This Agreement is made on: <b>${or(data.effective_date)}</b></p>
   <div style="font-weight:700;color:#003768;margin-top:8px;">BETWEEN — SEVENTH SKY PRIVATE LIMITED</div>
   ${kvTable([['Trading Name', org.name || 'Seventh Sky Property Care'], ['Address', org.address], ['Phone', org.phone], ['Email', org.email], ['Represented by', org.represented_by], ['Position', org.position]])}
-  <div style="font-weight:700;color:#003768;margin-top:8px;">AND — ${esc(cfg.client_heading || `${cfg.party} (Client)`)}</div>
-  ${kvTable([['Full Name', c.full_name], ['National ID / Passport No.', c.nid], ['Current Address', c.property_address || c.address], ['Phone', c.phone], ['Email', c.email], ['Represented by (if applicable)', c.rep], ['Relationship / Position', c.rep_position]])}
-  <p style="font-size:12px;color:#4b5563;margin:6px 0 0;">(${esc(cfg.client_footer || 'the Client')}.) Together referred to as "the Parties."</p>`;
+  ${clientPartyBlocks}
+  <p style="font-size:12px;color:#4b5563;margin:6px 0 0;">(${esc(cfg.client_footer || 'the Client')}${multiParty ? ', jointly and severally' : ''}.) Together referred to as "the Parties."</p>`;
 
   const clausesHtml = CLAUSES.map(([t, body], i) => `
     <div style="margin:16px 0;">
@@ -197,7 +210,8 @@ function buildAgreement(cfg, data = {}) {
   // the client/property context, with a computed selected-services string.
   const bValues = {
     ...b,
-    client_name: c.full_name, property_address: c.property_address || b.property_address,
+    client_name: clients.map((cl) => cl.full_name).filter(Boolean).join(' & ') || c.full_name,
+    property_address: (clients[0] || c).property_address || b.property_address,
     property_type: data.property_type || b.property_type,
     selected_services_text: (data.services && data.services.length) ? data.services.join(', ') : null,
   };
@@ -209,12 +223,19 @@ function buildAgreement(cfg, data = {}) {
   const schedD = cfg.schedule_d ? `<h2 id="sched-d" style="font-size:15px;color:#003768;margin:22px 0 6px;">${esc(cfg.schedule_d_title || 'SCHEDULE D — Checklist')}</h2>
     ${checkboxGroups(cfg.schedule_d, data.checklist)}` : '';
 
+  // Seventh Sky first, then one signature block per client (each with its own
+  // anchor so every co-owner / co-buyer signature is captured and rendered).
+  const sigCells = [
+    `<div style="border-top:1px solid #333;padding-top:6px;font-size:12px;"><b>Seventh Sky Private Limited</b><br/>Name: ${or(org.represented_by)}<br/>Position: ${or(org.position)}${signSlot('Seventh Sky')}</div>`,
+    ...clients.map((cl, i) => `<div style="border-top:1px solid #333;padding-top:6px;font-size:12px;"><b>${esc(multiParty ? `${cfg.party} ${i + 1}` : `Client (${cfg.party})`)}</b><br/>Name: ${or(cl.full_name)}${signSlot(clientAnchor(i))}</div>`),
+  ];
+  const sigRows = [];
+  for (let i = 0; i < sigCells.length; i += 2) {
+    sigRows.push(`<tr><td style="width:50%;vertical-align:top;padding:0 16px 12px;">${sigCells[i]}</td><td style="width:50%;vertical-align:top;padding:0 16px 12px;">${sigCells[i + 1] || ''}</td></tr>`);
+  }
   const signatures = `
   <h2 style="font-size:15px;color:#003768;margin:26px 0 6px;">Signatures</h2>
-  <table style="width:100%;margin-top:6px;"><tr>
-    <td style="width:50%;vertical-align:top;padding-right:16px;"><div style="border-top:1px solid #333;padding-top:6px;font-size:12px;"><b>Seventh Sky Private Limited</b><br/>Name: ${or(org.represented_by)}<br/>Position: ${or(org.position)}${signSlot('Seventh Sky')}</div></td>
-    <td style="width:50%;vertical-align:top;padding-left:16px;"><div style="border-top:1px solid #333;padding-top:6px;font-size:12px;"><b>Client (${esc(cfg.party)})</b><br/>Name: ${or(c.full_name)}${signSlot('Client')}</div></td>
-  </tr></table>
+  <table style="width:100%;margin-top:6px;">${sigRows.join('')}</table>
   <table style="width:100%;margin-top:14px;"><tr>
     ${(data.witnesses || [{}, {}]).slice(0, 2).map((w, i) => `<td style="width:50%;vertical-align:top;padding:0 16px;"><div style="border-top:1px solid #333;padding-top:6px;font-size:12px;"><b>Witness ${i + 1}</b><br/>Name: ${or(w.name)}<br/>NID / Passport: ${or(w.nid)}${signSlot(`Witness ${i + 1}`)}</div></td>`).join('')}
   </tr></table>`;

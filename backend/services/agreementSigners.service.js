@@ -17,9 +17,16 @@ const SignatureField = require('../models/SignatureField');
  * "Client" so it matches the document anchor. Seventh Sky countersigns;
  * witnesses (with a name) attest.
  */
-function buildSignerDefs({ client = {}, org = {}, witnesses = [], user = {}, clientRole = 'client' }) {
-  const defs = [{ role: clientRole, order: 1, label: 'Client', name: client.full_name, email: client.email, phone: client.phone || null, contact_id: client.contact_id || null }];
-  defs.push({ role: 'staff_countersign', order: 2, label: 'Seventh Sky', name: org.represented_by || user.name || 'Seventh Sky', email: org.email || user.email || null, user_id: user.id || null });
+function buildSignerDefs({ client = {}, clients = null, org = {}, witnesses = [], user = {}, clientRole = 'client' }) {
+  // One or more primary parties (co-owners / co-buyers). Labels must match the
+  // document anchors: single party → "Client", multiple → "Client 1".."Client N".
+  const list = (Array.isArray(clients) && clients.length) ? clients : [client];
+  const multi = list.length > 1;
+  const defs = list.map((cl, i) => ({
+    role: clientRole, order: i + 1, label: multi ? `Client ${i + 1}` : 'Client',
+    name: cl.full_name, email: cl.email, phone: cl.phone || null, contact_id: cl.contact_id || null,
+  }));
+  defs.push({ role: 'staff_countersign', order: defs.length + 1, label: 'Seventh Sky', name: org.represented_by || user.name || 'Seventh Sky', email: org.email || user.email || null, user_id: user.id || null });
   (witnesses || []).slice(0, 2).forEach((w, i) => {
     if (!w || !w.name) return;
     defs.push({ role: 'witness', order: defs.length + 1, label: `Witness ${i + 1}`, name: w.name, email: w.email || null });

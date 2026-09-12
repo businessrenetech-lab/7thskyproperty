@@ -28,6 +28,8 @@ const emptyState = () => ({
   org: { name: 'Seventh Sky Residential Property Services', address: '', phone: '', email: '', represented_by: '', position: '' },
   client_contact_id: '', property_id: '',
   client: { full_name: '', nid: '', property_address: '', phone: '', email: '', rep: '', rep_position: '' },
+  // Co-owners / co-buyers who each sign the same agreement (jointly & severally).
+  additional_clients: [],
   property_type: '',
   services: [],       // Schedule A — selected service labels (checkboxes)
   checklist: [],      // Schedule D — ticked checklist items
@@ -78,12 +80,14 @@ export default function SalesAgreementScreen({ kind }) {
       const r = await api.get(`/signing/envelopes/${a.id}`);
       const env = r.data?.data || {};
       const t = env.terms || {};
-      const client = (env.signers || []).find((s) => s.role === 'client') || {};
+      const clientSigners = (env.signers || []).filter((s) => s.role === 'client').sort((x, y) => (x.signer_order || 0) - (y.signer_order || 0));
+      const client = clientSigners[0] || {};
       const witnesses = (env.signers || []).filter((s) => s.role === 'witness').map((s) => ({ name: s.name || '', nid: '', email: s.email || '' }));
       const seventhSky = (env.signers || []).find((s) => s.role === 'staff_countersign') || {};
       const pf = {
         client: { full_name: client.name || '', email: client.email || '', phone: client.phone || '' },
         client_contact_id: client.contact_id || '',
+        additional_clients: clientSigners.slice(1).map((s) => ({ full_name: s.name || '', email: s.email || '', phone: s.phone || '', nid: '', contact_id: s.contact_id || '' })),
         services: t.selected_services || [],
         checklist: t.checklist || [],
         witnesses: witnesses.length ? witnesses : undefined,
@@ -209,6 +213,7 @@ function Builder({ kind, prefill, editId, onDone, onCancel }) {
         nid: prefill.client?.nid || prefill.nid || prefill.national_id || base.client.nid,
         property_address: prefill.client?.property_address || prefill.property_address || prefill.address || base.client.property_address,
       },
+      additional_clients: prefill.additional_clients || base.additional_clients,
       services: prefill.services || base.services,
       checklist: prefill.checklist || base.checklist,
       witnesses: prefill.witnesses || base.witnesses,
@@ -259,24 +264,38 @@ function Builder({ kind, prefill, editId, onDone, onCancel }) {
   });
   const setWitness = (i, key, v) => setD((prev) => { const next = structuredClone(prev); next.witnesses[i][key] = v; return next; });
 
+  // ── Additional parties (co-owners / co-buyers) ─────────────────────────────
+  const addParty = () => setD((prev) => ({ ...prev, additional_clients: [...(prev.additional_clients || []), { full_name: '', nid: '', phone: '', email: '', contact_id: '' }] }));
+  const removeParty = (i) => setD((prev) => ({ ...prev, additional_clients: (prev.additional_clients || []).filter((_, idx) => idx !== i) }));
+  const setParty = (i, key, v) => setD((prev) => { const next = structuredClone(prev); next.additional_clients[i][key] = v; return next; });
+  const onPartyContact = (i, id, row) => setD((prev) => { const next = structuredClone(prev); next.additional_clients[i].contact_id = id || ''; if (row) { next.additional_clients[i].full_name = row.full_name || ''; next.additional_clients[i].phone = row.primary_phone || ''; next.additional_clients[i].email = row.email || ''; next.additional_clients[i].nid = row.national_id || row.passport_no || ''; } return next; });
+  // The full ordered party set for the payload: primary + any co-parties with a name.
+  const allParties = () => [
+    { ...d.client, contact_id: d.client_contact_id || null },
+    ...((d.additional_clients || []).filter((p) => (p.full_name || '').trim())),
+  ];
+
   const refreshPreview = useCallback(async () => {
-    const r = await api.post(`${km.base}/preview`, d).catch(() => null);
+    const parties = [{ ...d.client, contact_id: d.client_contact_id || null }, ...((d.additional_clients || []).filter((p) => (p.full_name || '').trim()))];
+    const r = await api.post(`${km.base}/preview`, { ...d, clients: parties }).catch(() => null);
     if (r) setPreview(r.data);
   }, [d, km.base]);
   useEffect(() => { if (step === 2 || step === 4) refreshPreview(); /* eslint-disable-next-line */ }, [step]);
 
   const submit = async (asDraft) => {
     if (!d.client.full_name) { toast.error(`Enter the ${km.party.toLowerCase()} name (Step 1)`); setStep(0); return; }
-    if (!asDraft && !d.client.email) { toast.error(`Enter the ${km.party.toLowerCase()} email (Step 1)`); setStep(0); return; }
+    const parties = allParties();
+    if (!asDraft && parties.some((p) => !p.email)) { toast.error(`Every ${km.party.toLowerCase()} needs an email to send (Step 1)`); setStep(0); return; }
+    const payload = { ...d, clients: parties };
     setBusy(true);
     try {
       if (editId) {
-        await api.put(`${km.base}/agreements/${editId}`, d);
+        await api.put(`${km.base}/agreements/${editId}`, payload);
         if (!asDraft) await api.post(`${km.base}/agreements/${editId}/send`);
         toast.success(asDraft ? 'Draft updated' : 'Agreement sent for signature');
         onDone();
       } else {
-        const r = await api.post(`${km.base}/agreements`, { ...d, save_as_draft: asDraft });
+        const r = await api.post(`${km.base}/agreements`, { ...payload, save_as_draft: asDraft });
         if (asDraft) { toast.success('Draft saved'); onDone(); }
         else { setSent(r.data); toast.success(`Agreement sent to the ${km.party.toLowerCase()} for signature`); }
       }
@@ -325,6 +344,26 @@ function Builder({ kind, prefill, editId, onDone, onCancel }) {
             <div><label style={lbl}>Authorised representative (if applicable)</label><input style={sel} value={d.client.rep} onChange={(e) => set('client.rep', e.target.value)} /></div>
             <div><label style={lbl}>Relationship / position</label><input style={sel} value={d.client.rep_position} onChange={(e) => set('client.rep_position', e.target.value)} /></div>
             <div><label style={lbl}>Effective date</label><input type="date" style={sel} value={d.effective_date} onChange={(e) => set('effective_date', e.target.value)} /></div>
+
+            {/* Additional parties — co-owners (sale) / co-buyers (purchase). Each signs. */}
+            <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--line)', paddingTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontWeight: 700, color: 'var(--navy)', fontSize: 12.5 }}>Additional {km.party.toLowerCase()}s (co-signers — each signs the agreement)</div>
+              <button type="button" className="pm-btn" style={{ padding: '4px 10px', fontSize: 12 }} onClick={addParty}>+ Add {km.party.toLowerCase()}</button>
+            </div>
+            {(d.additional_clients || []).map((p, i) => (
+              <div key={i} style={{ gridColumn: '1 / -1', display: 'grid', gap: 10, gridTemplateColumns: '1fr 1fr', border: '1px solid var(--line)', borderRadius: 10, padding: 12, background: 'var(--surface-2, #f8fafc)' }}>
+                <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <strong style={{ fontSize: 12.5 }}>{km.party} {i + 2}</strong>
+                  <button type="button" className="pm-btn" style={{ padding: '3px 9px', fontSize: 12 }} onClick={() => removeParty(i)}>Remove</button>
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}><label style={lbl}>Find contact</label><Combo endpoint="/contacts" labelFn={(c) => `${c.full_name}${c.primary_phone ? ' · ' + c.primary_phone : ''}`} value={p.contact_id} onChange={(id, row) => onPartyContact(i, id, row)} placeholder="Search a contact…" /></div>
+                <div><label style={lbl}>Full name *</label><input style={sel} value={p.full_name} onChange={(e) => setParty(i, 'full_name', e.target.value)} /></div>
+                <div><label style={lbl}>Email *</label><input style={sel} value={p.email} onChange={(e) => setParty(i, 'email', e.target.value)} /></div>
+                <div><label style={lbl}>Phone</label><input style={sel} value={p.phone} onChange={(e) => setParty(i, 'phone', e.target.value)} /></div>
+                <div><label style={lbl}>NID / Passport</label><input style={sel} value={p.nid} onChange={(e) => setParty(i, 'nid', e.target.value)} /></div>
+              </div>
+            ))}
+
             <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--line)', paddingTop: 12, fontWeight: 700, color: 'var(--navy)', fontSize: 12.5 }}>Seventh Sky (countersigns after the {km.party.toLowerCase()})</div>
             <div><label style={lbl}>Represented by</label><input style={sel} value={d.org.represented_by} onChange={(e) => set('org.represented_by', e.target.value)} /></div>
             <div><label style={lbl}>Position</label><input style={sel} value={d.org.position} onChange={(e) => set('org.position', e.target.value)} /></div>
