@@ -103,11 +103,11 @@ exports.reference = asyncHandler(async (req, res) => {
   const ui = serviceUi(req);
   res.json({
     next_code: await svc.nextProjectCode(branchId),
-    stages: svc.STAGES,
+    stages: svc.stagesFor(resolveServiceLine(req)),
     // Vocabulary from the active service line (never Water Tank in the AC console).
     project_types: ui.project_types || svc.PROJECT_TYPES,
     disbursement_categories: svc.DISBURSEMENT_CATEGORIES,
-    closure_checklist: svc.CLOSURE_CHECKLIST,
+    closure_checklist: svc.closureFor(resolveServiceLine(req)),
     categories: ui.categories || ['Cleaning', 'Disinfection', 'Repairs', 'Water Quality', 'Maintenance', 'AMC', 'Inspection'],
     priorities: ['Low', 'Medium', 'High', 'Urgent'],
     tank_types: ui.equipment?.type_options || ['Rooftop', 'Underground', 'Overhead', 'Ground Level', 'Apartment Common', 'Industrial'],
@@ -421,7 +421,7 @@ exports.closure = asyncHandler(async (req, res) => {
   const actor = actorOf(req);
   const incoming = asArray(req.body?.checklist);
 
-  const merged = svc.mergeChecklist(project.closure_checklist).map((c) => {
+  const merged = svc.mergeChecklist(project.closure_checklist, project.service_line).map((c) => {
     const hit = incoming.find((i) => i.key === c.key);
     if (!hit) return c;
     const done = !!hit.done;

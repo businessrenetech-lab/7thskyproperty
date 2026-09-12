@@ -80,14 +80,16 @@ const LEGACY_STAGE_MAP = {
   inspection: 'Inspection & Reporting',
   completion: 'Completion',
 };
-const normaliseStage = (stage) => {
+const normaliseStage = (stage, stages = STAGES) => {
+  const labels = stages.map((s) => s.label);
   const raw = String(stage || '').trim();
-  const exact = STAGE_LABELS.find((l) => eq(l, raw));
+  const exact = labels.find((l) => eq(l, raw));
   if (exact) return exact;
-  return LEGACY_STAGE_MAP[raw.toLowerCase()] || STAGE_LABELS[0];
+  // Legacy map only applies to the Water Tank stage set.
+  return (stages === STAGES ? LEGACY_STAGE_MAP[raw.toLowerCase()] : null) || labels[0];
 };
-const stageIndex = (stage) => STAGE_LABELS.indexOf(normaliseStage(stage));
-const stageMeta = (stage) => STAGES[Math.max(0, stageIndex(stage))];
+const stageIndex = (stage, stages = STAGES) => stages.map((s) => s.label).indexOf(normaliseStage(stage, stages));
+const stageMeta = (stage, stages = STAGES) => stages[Math.max(0, stageIndex(stage, stages))];
 
 const PROJECT_TYPES = [
   'Cleaning & Maintenance', 'Tank Sanitisation', 'Repair & Waterproofing',
@@ -109,6 +111,44 @@ const CLOSURE_CHECKLIST = [
   { key: 'satisfaction_survey', label: 'Client satisfaction survey completed', sop: 'Sec. 12' },
   { key: 'file_archived', label: 'Project file archived', sop: 'Sec. 12' },
 ];
+
+/* ── Residential Interior Design — SOP-01 (Client). Four phases: Consultation &
+ * Design Assessment → Design Development → Execution & Project Coordination →
+ * Final Styling & Handover. No provider assignment, no AMC, no water test. ── */
+const RIDS_STAGES = [
+  { key: 'lead_intake', label: 'Lead Intake', sop: 'Step 1', phase: 'Phase 1 — Consultation & Design Assessment', pct: 6 },
+  { key: 'consultation', label: 'Consultation & Requirement Analysis', sop: 'Step 2', phase: 'Phase 1 — Consultation & Design Assessment', pct: 15 },
+  { key: 'design_assessment', label: 'Site Visit & Design Assessment', sop: 'Sec. 5', phase: 'Phase 1 — Consultation & Design Assessment', pct: 26, gate: 'assessment' },
+  { key: 'concept_development', label: 'Concept & Design Development', sop: 'Phase 2', phase: 'Phase 2 — Design Development', pct: 40 },
+  { key: 'quotation', label: 'Quotation & Costing', sop: 'Sec. 7', phase: 'Phase 2 — Design Development', pct: 50, gate: 'quotation' },
+  { key: 'agreement_signing', label: 'Agreement & Deposit', sop: 'Sec. 6', phase: 'Phase 2 — Design Development', pct: 60, gate: 'agreement' },
+  { key: 'procurement', label: 'Procurement & Scheduling', sop: 'Phase 3', phase: 'Phase 3 — Execution & Project Coordination', pct: 70 },
+  { key: 'execution', label: 'Execution & Fit-Out', sop: 'Phase 3', phase: 'Phase 3 — Execution & Project Coordination', pct: 82, gate: 'agreement' },
+  { key: 'final_styling', label: 'Final Styling', sop: 'Phase 4', phase: 'Phase 4 — Final Styling & Handover', pct: 92 },
+  { key: 'completion_handover', label: 'Completion & Handover', sop: 'Phase 4', phase: 'Phase 4 — Final Styling & Handover', pct: 100 },
+];
+/* Residential Interior closure — SOP Phase 4 handover. No water test, no provider,
+ * no AMC; completion is gated by the client Completion Sign-Off. */
+const RIDS_CLOSURE = [
+  { key: 'works_completed', label: 'All works completed to the approved scope', sop: 'Phase 3' },
+  { key: 'snag_cleared', label: 'Snag / defect list cleared', sop: 'Phase 4' },
+  { key: 'final_styling_done', label: 'Final styling and presentation done', sop: 'Phase 4' },
+  { key: 'site_cleaned', label: 'Site cleaned and handed over', sop: 'Phase 4' },
+  { key: 'handover_photos', label: 'Before & after / handover photos collected', sop: 'Phase 4' },
+  { key: 'completion_signoff', label: 'Project Completion Sign-Off signed by client', sop: 'Phase 4' },
+  { key: 'warranty_issued', label: 'Warranty summary issued and recorded', sop: 'Phase 4' },
+  { key: 'variations_settled', label: 'Approved variations invoiced and settled', sop: 'Sec. 12' },
+  { key: 'final_payment', label: 'Final payment confirmed', sop: 'Sec. 12' },
+  { key: 'satisfaction_survey', label: 'Client satisfaction survey completed', sop: 'Sec. 12' },
+  { key: 'file_archived', label: 'Project file archived', sop: 'Sec. 12' },
+];
+
+// Per-line stage machine + closure. Default is the Water Tank list, so every
+// existing line is unchanged; Interior Design gets its own SOP phases/closure.
+const STAGES_BY_LINE = { residential_interior_design: RIDS_STAGES };
+const CLOSURE_BY_LINE = { residential_interior_design: RIDS_CLOSURE };
+const stagesFor = (serviceLine) => STAGES_BY_LINE[serviceLine] || STAGES;
+const closureFor = (serviceLine) => CLOSURE_BY_LINE[serviceLine] || CLOSURE_CHECKLIST;
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Code generation
@@ -348,7 +388,8 @@ async function createProject(payload, ctx) {
       ? num(p.contract_value)
       : services.reduce((s, l) => s + num(l.price) * (Number(l.qty) || 1), 0);
 
-    const stage = normaliseStage(p.stage || 'Lead Enquiry');
+    const lineStages = stagesFor(p.service_line);
+    const stage = normaliseStage(p.stage || lineStages[0].label, lineStages);
     const timeline = [{
       title: 'Project opened',
       detail: `${code} created${p.origin && p.origin !== 'Direct' ? ` from ${p.origin}` : ''}`,
@@ -361,7 +402,7 @@ async function createProject(payload, ctx) {
       name: p.name || `${client.name} — ${p.project_type || 'Water Tank Service'}`,
       status: 'Open',
       stage,
-      progress_pct: stageMeta(stage).pct,
+      progress_pct: stageMeta(stage, lineStages).pct,
       health_index: 'Normal/Clear',
 
       client_id: client.id, client_code: client.code, client_name: client.name,
@@ -653,24 +694,25 @@ async function projectDossier(key, scope) {
       : [],
   ]);
 
-  p.stage = normaliseStage(p.stage);
+  const lineStages = stagesFor(p.service_line);
+  p.stage = normaliseStage(p.stage, lineStages);
   const financials = computeFinancials(p, invoices, workOrders, disbursements);
 
   return {
     project: p,
-    stage: { ...stageMeta(p.stage), index: stageIndex(p.stage), stages: STAGES },
+    stage: { ...stageMeta(p.stage, lineStages), index: stageIndex(p.stage, lineStages), stages: lineStages },
     client, property, provider, amc,
     financials,
     disbursements: buildDisbursementLedger(disbursements, workOrders),
     related: { workOrders, invoices, quotations, assessments, requests, warranties, incidents, comms },
-    closure_checklist: mergeChecklist(p.closure_checklist),
+    closure_checklist: mergeChecklist(p.closure_checklist, p.service_line),
   };
 }
 
 /** Keep the stored checklist aligned with the SOP list as it evolves. */
-function mergeChecklist(stored) {
+function mergeChecklist(stored, serviceLine) {
   const saved = asArray(stored);
-  return CLOSURE_CHECKLIST.map((c) => {
+  return closureFor(serviceLine).map((c) => {
     const hit = saved.find((s) => s.key === c.key) || {};
     return { ...c, done: !!hit.done, at: hit.at || null, by: hit.by || null };
   });
@@ -685,7 +727,7 @@ function mergeChecklist(stored) {
  * null. Advisory only — see the module note.
  */
 function stageWarning(stage, ctx) {
-  const meta = STAGES.find((s) => eq(s.label, stage));
+  const meta = stagesFor(ctx.project?.service_line).find((s) => eq(s.label, stage));
   if (!meta?.gate) return null;
   const { project, related } = ctx;
   switch (meta.gate) {
@@ -707,11 +749,12 @@ function stageWarning(stage, ctx) {
 }
 
 async function advanceStage(project, nextStage, ctx) {
-  const stage = normaliseStage(nextStage);
-  if (!STAGE_LABELS.includes(stage)) { const e = new Error('Unknown stage.'); e.status = 400; throw e; }
+  const lineStages = stagesFor(project.service_line);
+  const stage = normaliseStage(nextStage, lineStages);
+  if (!lineStages.map((s) => s.label).includes(stage)) { const e = new Error('Unknown stage.'); e.status = 400; throw e; }
 
-  const from = normaliseStage(project.stage);
-  const meta = stageMeta(stage);
+  const from = normaliseStage(project.stage, lineStages);
+  const meta = stageMeta(stage, lineStages);
   const timeline = asArray(project.timeline);
 
   const patch = {
@@ -879,6 +922,7 @@ async function quotationDraft(key, scope) {
 
 module.exports = {
   STAGES, STAGE_LABELS, PROJECT_TYPES, DISBURSEMENT_CATEGORIES, CLOSURE_CHECKLIST,
+  stagesFor, closureFor,
   agreementDraft, quotationDraft, advanceOf,
   resolveClient, resolveProperty, updateProject,
   normaliseStage, stageIndex, stageMeta, mergeChecklist,
