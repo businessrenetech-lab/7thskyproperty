@@ -130,6 +130,7 @@ mount('/api/payroll', './routes/payroll.routes');
 mount('/api/assets', './routes/asset.routes');
 mount('/api/expenses', './routes/expense.routes');
 mount('/api/invoices', './routes/invoicing.routes');
+mount('/api/invoice-pay', './routes/invoiceGateway.routes'); // public SSLCommerz callbacks for invoice payments
 mount('/api/billing', './routes/billing.routes');
 mount('/api/account-categories', './routes/accountCategory.routes');
 mount('/api/folios', './routes/folio.routes');

@@ -15,5 +15,8 @@ router.get('/:id/document', ctrl.document);      // HTML / PDF download
 router.post('/:id/send', ctrl.sendInvoice);      // email with PDF
 router.patch('/:id/status', ctrl.setStatus);
 router.post('/:id/payments', ctrl.recordPayment);
+// Online collection: create an SSLCommerz pay-link for this invoice (manual
+// recording via /:id/payments stays available alongside it).
+router.post('/:id/pay-link', require('../controllers/invoiceGateway.controller').payLink);
 
 module.exports = router;

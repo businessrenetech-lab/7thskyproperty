@@ -5,7 +5,7 @@
 // rolled up into billed / received / dues / drafts, the invoice list, and the
 // recurring management fees. Reads GET /invoices/agency-income.
 import React, { useEffect, useState, useCallback } from 'react';
-import { Wallet, RefreshCw, FileText, Eye, Download } from 'lucide-react';
+import { Wallet, RefreshCw, FileText, Eye, Download, Link2 } from 'lucide-react';
 import api from '../services/api';
 import { Spinner } from '../ui/kit';
 import { useToast } from '../context/ToastContext';
@@ -39,6 +39,22 @@ export default function AgencyIncome() {
       window.open(url, '_blank');
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch { toast.error('Could not open the invoice'); }
+  };
+
+  // Online collection: generate an SSLCommerz pay-link and copy it (manual
+  // recording stays available). Until the store keys are set in Settings →
+  // Integrations, the backend returns a clear "not configured" message.
+  const payLink = async (id) => {
+    try {
+      const r = await api.post(`/invoices/${id}/pay-link`);
+      const url = r.data?.data?.gateway_url;
+      if (!url) return toast.error('Could not create the pay-link');
+      try { await navigator.clipboard.writeText(url); } catch { /* ignore */ }
+      window.open(url, '_blank');
+      toast.success('Pay-link created and copied');
+    } catch (e) {
+      toast.error(e.response?.data?.error || 'Could not create the pay-link');
+    }
   };
 
   const s = data?.summary || {};
@@ -116,6 +132,7 @@ export default function AgencyIncome() {
                       <td style={{ fontSize: 12, color: 'var(--muted)' }}>{dateFmt(i.due_date)}</td>
                       <td style={{ textAlign: 'right' }}>
                         <button className="pm-btn" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => openInvoice(i.id)}><Eye size={13} /> Open</button>
+                        {i.status !== 'draft' && i.balance > 0 && <button className="pm-btn" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => payLink(i.id)} title="Create an online SSLCommerz pay-link"><Link2 size={13} /> Pay link</button>}
                       </td>
                     </tr>
                   ))}

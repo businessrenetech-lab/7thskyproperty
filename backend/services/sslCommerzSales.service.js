@@ -98,4 +98,4 @@ async function queryRefund(refundReference) {
   return response.data || {};
 }
 
-module.exports = { initiateCollection, validateCollection, initiateRefund, queryRefund };
+module.exports = { initiateCollection, validateCollection, initiateRefund, queryRefund, config };
