@@ -939,23 +939,26 @@ export default function SalesPropertyFile({
         ? "draft"
         : null;
   // NEW sale/purchase service agreements (RPPS/RPSS) for this property — these
-  // are the current agreement method; the onboarding Agreement step reflects and
-  // links to them, falling back to the legacy role/profile status only if none.
+  // are the current agreement method; the onboarding Agreement steps reflect and
+  // link to them, falling back to the legacy role/profile status only if none.
   const saleAgreements = array(detail.sale_agreements);
-  const activeAgreement =
-    saleAgreements.find((a) => !["voided", "declined"].includes(a.status)) ||
-    saleAgreements[0] ||
-    null;
   const AGREEMENT_STATUS_MAP = {
     draft: "draft", sent: "sent", viewed: "sent", partially_signed: "sent",
     completed: "signed", declined: "declined", voided: "voided",
   };
-  const newAgreementStatus = activeAgreement
-    ? AGREEMENT_STATUS_MAP[activeAgreement.status] || activeAgreement.status
-    : null;
+  // Latest non-terminal (or latest) agreement of a given kind, plus its status.
+  const agreementOfKind = (kind) => {
+    const rows = saleAgreements.filter((a) => a.kind === kind);
+    const a = rows.find((r) => !["voided", "declined"].includes(r.status)) || rows[0] || null;
+    return { a, status: a ? AGREEMENT_STATUS_MAP[a.status] || a.status : null };
+  };
+  const saleAg = agreementOfKind("sale");       // vendor RPSS
+  const purchaseAg = agreementOfKind("purchase"); // buyer RPPS
+  const buyerRoleProfile = salesRoleProfiles.find((role) => role.role_type === "buyer");
   const vendorContactId = vendorRoleProfile?.contact_id || null;
+  const buyerContactId = buyerRoleProfile?.contact_id || null;
   const agreementStatus =
-    newAgreementStatus ||
+    saleAg.status ||
     roleAgreementStatus ||
     profile.agreement_status ||
     detail.agreement?.status ||
@@ -3181,19 +3184,38 @@ export default function SalesPropertyFile({
               label="Sale agreement (RPSS)"
               status={agreementStatus}
               sub={
-                activeAgreement
-                  ? `${activeAgreement.envelope_code} · ${activeAgreement.signed_count}/${activeAgreement.total_signers} signed`
-                  : "Residential Property Sale Service Agreement — build, send and e-sign"
+                saleAg.a
+                  ? `${saleAg.a.envelope_code} · ${saleAg.a.signed_count}/${saleAg.a.total_signers} signed`
+                  : "Residential Property Sale Service Agreement — vendor · build, send and e-sign"
               }
-              actionLabel={activeAgreement ? "Manage" : "Create"}
+              actionLabel={saleAg.a ? "Manage" : "Create"}
               onAction={() =>
                 navigate(
-                  activeAgreement
+                  saleAg.a
                     ? `/residential/agreements/sale`
                     : `/residential/agreements/sale?property_id=${propertyId}${vendorContactId ? `&contact_id=${vendorContactId}` : ""}`,
                 )
               }
             />
+            {(buyerRoleProfile || purchaseAg.a) && (
+              <OnboardingRow
+                label="Purchase agreement (RPPS)"
+                status={purchaseAg.status || "not_started"}
+                sub={
+                  purchaseAg.a
+                    ? `${purchaseAg.a.envelope_code} · ${purchaseAg.a.signed_count}/${purchaseAg.a.total_signers} signed`
+                    : "Residential Property Purchase Service Agreement — buyer · build, send and e-sign"
+                }
+                actionLabel={purchaseAg.a ? "Manage" : "Create"}
+                onAction={() =>
+                  navigate(
+                    purchaseAg.a
+                      ? `/residential/agreements/purchase`
+                      : `/residential/agreements/purchase?property_id=${propertyId}${buyerContactId ? `&contact_id=${buyerContactId}` : ""}`,
+                  )
+                }
+              />
+            )}
             <OnboardingRow
               label={`KYC${salesRoleProfiles.length ? ` (${salesRoleProfiles.length} parties)` : ""}`}
               status={kycStatus}
