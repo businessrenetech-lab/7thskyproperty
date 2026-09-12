@@ -94,6 +94,7 @@ import { ForgotPassword, ResetPassword, ChangePassword } from './screens/Passwor
 import WTClients from './screens/watertank/Clients';
 import InteriorVariations from './screens/watertank/InteriorVariations';
 import InteriorServiceConsole from './screens/watertank/InteriorServiceConsole';
+import WtSuppliers from './screens/watertank/WtSuppliers';
 import WTClientDetail from './screens/watertank/clients/ClientDashboard';
 import WTClientCreate from './screens/watertank/clients/ClientCreate';
 import WTServiceRequests from './screens/watertank/ServiceRequests';
@@ -516,6 +517,7 @@ export default function App() {
               <Route path="/residential-interior-design/projects/:code" element={<WTProjectDetail />} />
               <Route path="/residential-interior-design/projects/:code/edit" element={<WTProjectForm />} />
               <Route path="/residential-interior-design/variations" element={<InteriorVariations />} />
+              <Route path="/residential-interior-design/suppliers" element={<WtSuppliers />} />
               <Route path="/residential-interior-design/agreements/customer" element={<WtCustomerAgreements />} />
               <Route path="/residential-interior-design/agreements" element={<WTAgreementsHub />} />
               <Route path="/residential-interior-design/reports" element={<WTReports />} />

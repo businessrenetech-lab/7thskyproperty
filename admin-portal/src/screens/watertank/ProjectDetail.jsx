@@ -24,7 +24,7 @@ const money = (v) => bdt(Number(v || 0));
 const pct = (v) => `${Math.round(Number(v || 0))}%`;
 
 // Timeline folded into Overview (recent activity) rather than its own tab.
-const TABS = ['Overview', 'Lifecycle', 'Work Orders', 'Billing', 'Documents', 'Closure'];
+const TABS = ['Overview', 'Lifecycle', 'Work Orders', 'Billing', 'Costing', 'Documents', 'Closure'];
 
 export default function ProjectDetail() {
   const { code } = useParams();
@@ -145,6 +145,7 @@ export default function ProjectDetail() {
         {tab === 'Lifecycle' && <Lifecycle stage={stage} stages={stages} busy={busy} onSet={setStage} project={p} />}
         {tab === 'Work Orders' && <WorkOrders rows={related.workOrders} nav={nav} />}
         {tab === 'Billing' && <Billing d={d} reload={load} />}
+        {tab === 'Costing' && <Costing d={d} reload={load} />}
         {tab === 'Documents' && <Documents d={d} nav={nav} />}
         {tab === 'Closure' && <Closure d={d} reload={load} />}
       </div>
@@ -874,6 +875,156 @@ function Closure({ d, reload }) {
             )}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Costing — project cost sheet / P&L (income − costs = profit), supplier
+ * bills (A/P) for this project, and a per-category budget editor. ─────────── */
+function Costing({ d, reload }) {
+  const { project: p, costing: c, supplier_bills: bills = [] } = d;
+  const [suppliers, setSuppliers] = useState([]);
+  const [addBill, setAddBill] = useState(false);
+  const [payFor, setPayFor] = useState(null);
+  const [editBudget, setEditBudget] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [bill, setBill] = useState({ supplier_id: '', category: '', description: '', total: '' });
+  const [pay, setPay] = useState({ amount: '', method: 'bank_transfer', reference: '' });
+  const [budget, setBudget] = useState({});
+  const [cats, setCats] = useState([]);
+
+  useEffect(() => {
+    api.get('/wt-suppliers').then((r) => setSuppliers(r.data?.data || [])).catch(() => {});
+    api.get('/wt-supplier-bills', { params: { project_code: p.code } }).then((r) => setCats(r.data?.categories || [])).catch(() => {});
+    setBudget((c?.categories || []).reduce((m, x) => ((m[x.category] = x.budget || ''), m), {}));
+  }, [p.code]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!c) return <EmptyState title="No cost data" hint="Costing appears once the project has a contract value or costs." />;
+
+  const saveBill = async () => {
+    if (!bill.supplier_id || !Number(bill.total)) { toast.err('Choose a supplier and enter an amount.'); return; }
+    setBusy(true);
+    try {
+      await api.post('/wt-supplier-bills', { ...bill, project_code: p.code, total: Number(bill.total) });
+      toast.ok('Bill recorded'); setAddBill(false); setBill({ supplier_id: '', category: '', description: '', total: '' }); await reload();
+    } catch (e) { toast.err(errText(e, 'Could not record the bill')); } finally { setBusy(false); }
+  };
+  const doPay = async () => {
+    if (!Number(pay.amount)) { toast.err('Enter an amount.'); return; }
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/wt-supplier-bills/${payFor.bill_code}/pay`, { ...pay, amount: Number(pay.amount) });
+      toast.ok(data.message || 'Paid'); setPayFor(null); setPay({ amount: '', method: 'bank_transfer', reference: '' }); await reload();
+    } catch (e) { toast.err(errText(e, 'Could not record the payment')); } finally { setBusy(false); }
+  };
+  const saveBudget = async () => {
+    setBusy(true);
+    try { await api.post(`/wt-projects/${p.code}/budget`, { budget }); toast.ok('Budget saved'); setEditBudget(false); await reload(); }
+    catch (e) { toast.err(errText(e, 'Could not save the budget')); } finally { setBusy(false); }
+  };
+
+  const profitTone = c.gross_profit >= 0 ? 'var(--wt-green)' : 'var(--wt-red)';
+  const billChip = (s) => ({ paid: 'green', partial: 'amber', unpaid: 'slate', void: 'red' }[s] || 'slate');
+
+  return (
+    <div style={{ display: 'grid', gap: 16 }}>
+      <div className="wt-kpigrid">
+        <Kpi icon={TrendingUp} label="Project income" value={bdt(c.income.total_income)} sub={`contract + ${bdt(c.income.approved_variations)} variations`} />
+        <Kpi icon={ArrowDownRight} label="Net cost (committed)" value={bdt(c.net_cost)} sub={`${bdt(c.totals.actual)} paid so far`} tone="amber" />
+        <Kpi icon={Wallet} label="Gross profit" value={bdt(c.gross_profit)} sub={`${c.margin_pct}% margin`} tone={c.gross_profit >= 0 ? 'green' : 'red'} />
+        <Kpi icon={Banknote} label="Supplier payables" value={bdt(c.supplier_payables)} sub="outstanding to suppliers" tone={c.supplier_payables > 0 ? 'amber' : 'slate'} />
+      </div>
+
+      <div className="wt-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px' }}>
+          <div className="wt-sec-title">Cost sheet by category</div>
+          <button className="wt-btn sm" onClick={() => setEditBudget((v) => !v)}><Pencil size={13} /> {editBudget ? 'Close' : 'Set budget'}</button>
+        </div>
+        <table className="wt-tbl">
+          <thead><tr><th>Category</th><th style={{ textAlign: 'right' }}>Budget</th><th style={{ textAlign: 'right' }}>Committed</th><th style={{ textAlign: 'right' }}>Paid</th><th style={{ textAlign: 'right' }}>Variance</th></tr></thead>
+          <tbody>
+            {(c.categories || []).map((x) => (
+              <tr key={x.category}>
+                <td>{x.category}</td>
+                <td style={{ textAlign: 'right' }}>{editBudget
+                  ? <input className="wt-input" style={{ width: 110, textAlign: 'right' }} type="number" value={budget[x.category] ?? ''} onChange={(e) => setBudget((b) => ({ ...b, [x.category]: e.target.value }))} />
+                  : (x.budget ? bdt(x.budget) : '—')}</td>
+                <td style={{ textAlign: 'right', fontWeight: 600 }}>{bdt(x.committed)}</td>
+                <td style={{ textAlign: 'right', color: 'var(--wt-green)' }}>{bdt(x.actual)}</td>
+                <td style={{ textAlign: 'right', color: x.variance < 0 ? 'var(--wt-red)' : 'var(--wt-muted)' }}>{x.budget ? (x.variance < 0 ? `over ${bdt(-x.variance)}` : bdt(x.variance)) : '—'}</td>
+              </tr>
+            ))}
+            {!(c.categories || []).length && <tr><td colSpan={5} style={{ textAlign: 'center', padding: 22, color: 'var(--wt-muted)' }}>No costs recorded yet.</td></tr>}
+          </tbody>
+          <tfoot><tr style={{ fontWeight: 700, borderTop: '2px solid var(--wt-line)' }}>
+            <td>Totals</td>
+            <td style={{ textAlign: 'right' }}>{bdt(c.totals.budget)}</td>
+            <td style={{ textAlign: 'right' }}>{bdt(c.totals.committed)}</td>
+            <td style={{ textAlign: 'right', color: 'var(--wt-green)' }}>{bdt(c.totals.actual)}</td>
+            <td style={{ textAlign: 'right', color: c.totals.budget_variance < 0 ? 'var(--wt-red)' : 'var(--wt-muted)' }}>{c.totals.budget ? (c.totals.budget_variance < 0 ? `over ${bdt(-c.totals.budget_variance)}` : bdt(c.totals.budget_variance)) : '—'}</td>
+          </tr></tfoot>
+        </table>
+        {editBudget && <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '10px 16px' }}>
+          <button className="wt-btn" onClick={() => setEditBudget(false)}>Cancel</button>
+          <button className="wt-btn primary" onClick={saveBudget} disabled={busy}>Save budget</button>
+        </div>}
+        <div style={{ padding: '10px 16px', fontSize: 12.5, color: 'var(--wt-muted)', borderTop: '1px solid var(--wt-line)' }}>
+          Income <strong style={{ color: 'var(--wt-ink)' }}>{bdt(c.income.total_income)}</strong> − net cost <strong style={{ color: 'var(--wt-ink)' }}>{bdt(c.net_cost)}</strong> = <strong style={{ color: profitTone }}>{bdt(c.gross_profit)} gross profit ({c.margin_pct}%)</strong>. Cash profit (collected − paid): <strong style={{ color: 'var(--wt-ink)' }}>{bdt(c.cash_profit)}</strong>.
+        </div>
+      </div>
+
+      <div className="wt-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px' }}>
+          <div className="wt-sec-title">Supplier bills (this project)</div>
+          <button className="wt-btn sm primary" onClick={() => setAddBill((v) => !v)}><Plus size={13} /> Add bill</button>
+        </div>
+        {addBill && (
+          <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', padding: '0 16px 12px' }}>
+            <label>Supplier<select className="wt-input" value={bill.supplier_id} onChange={(e) => setBill((b) => ({ ...b, supplier_id: e.target.value }))}>
+              <option value="">Select…</option>{suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select></label>
+            <label>Category<select className="wt-input" value={bill.category} onChange={(e) => setBill((b) => ({ ...b, category: e.target.value }))}>
+              <option value="">Select…</option>{cats.map((x) => <option key={x} value={x}>{x}</option>)}
+            </select></label>
+            <label>Amount (BDT)<input className="wt-input" type="number" value={bill.total} onChange={(e) => setBill((b) => ({ ...b, total: e.target.value }))} /></label>
+            <label style={{ gridColumn: '1 / -1' }}>Description<input className="wt-input" value={bill.description} onChange={(e) => setBill((b) => ({ ...b, description: e.target.value }))} /></label>
+            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="wt-btn" onClick={() => setAddBill(false)}>Cancel</button>
+              <button className="wt-btn primary" onClick={saveBill} disabled={busy}>Save bill</button>
+            </div>
+          </div>
+        )}
+        <table className="wt-tbl">
+          <thead><tr><th>Bill</th><th>Supplier</th><th>Category</th><th style={{ textAlign: 'right' }}>Total</th><th style={{ textAlign: 'right' }}>Paid</th><th style={{ textAlign: 'right' }}>Balance</th><th>Status</th><th style={{ textAlign: 'right' }} /></tr></thead>
+          <tbody>
+            {bills.map((b) => (
+              <tr key={b.bill_code}>
+                <td><strong>{b.bill_code}</strong></td>
+                <td>{b.supplier_name}</td>
+                <td>{b.category}{b.description ? <div className="muted" style={{ fontSize: 11.5 }}>{b.description}</div> : null}</td>
+                <td style={{ textAlign: 'right' }}>{bdt(b.total)}</td>
+                <td style={{ textAlign: 'right', color: 'var(--wt-green)' }}>{bdt(b.amount_paid)}</td>
+                <td style={{ textAlign: 'right', color: b.balance > 0 ? 'var(--wt-amber)' : 'var(--wt-muted)' }}>{bdt(b.balance)}</td>
+                <td><span className={`wt-pill ${billChip(b.status)}`}>{b.status}</span></td>
+                <td style={{ textAlign: 'right' }}>{b.status !== 'paid' && b.status !== 'void' && <button className="wt-btn sm" onClick={() => { setPayFor(b); setPay({ amount: String(b.balance), method: 'bank_transfer', reference: '' }); }}><Banknote size={13} /> Pay</button>}</td>
+              </tr>
+            ))}
+            {!bills.length && <tr><td colSpan={8} style={{ textAlign: 'center', padding: 22, color: 'var(--wt-muted)' }}>No supplier bills on this project.</td></tr>}
+          </tbody>
+        </table>
+        {payFor && (
+          <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', padding: '12px 16px', borderTop: '1px solid var(--wt-line)', background: 'var(--wt-card-2, #f8fafc)' }}>
+            <div style={{ gridColumn: '1 / -1', fontWeight: 700 }}>Pay {payFor.bill_code} — {payFor.supplier_name} (balance {bdt(payFor.balance)})</div>
+            <label>Amount<input className="wt-input" type="number" value={pay.amount} onChange={(e) => setPay((x) => ({ ...x, amount: e.target.value }))} /></label>
+            <label>Method<select className="wt-input" value={pay.method} onChange={(e) => setPay((x) => ({ ...x, method: e.target.value }))}>{['bank_transfer', 'cash', 'bkash', 'nagad', 'cheque', 'card'].map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
+            <label>Reference<input className="wt-input" value={pay.reference} onChange={(e) => setPay((x) => ({ ...x, reference: e.target.value }))} /></label>
+            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="wt-btn" onClick={() => setPayFor(null)}>Cancel</button>
+              <button className="wt-btn primary" onClick={doPay} disabled={busy}>Record payment</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

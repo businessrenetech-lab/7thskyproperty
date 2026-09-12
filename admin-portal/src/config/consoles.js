@@ -751,13 +751,17 @@ export const propertyCareConciergeConsole = {
  * screen to Delivery. Rebased onto /residential-interior-design/* with a purple
  * accent. Every other screen is the shared console, scoped by the header. */
 export const RESIDENTIAL_INTERIOR_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/residential-interior-design')
-  .map((g) => ({
-    ...g,
+  .map((g) => {
     // drop AMC (no annual maintenance for one-off projects); add Variations
-    items: g.key.endsWith('delivery')
-      ? [...g.items.filter((it) => !/\/amc$/.test(it.to)), { to: '/residential-interior-design/variations', label: 'Variations', icon: FileSignature }]
-      : g.items,
-  }))
+    if (g.key.endsWith('delivery')) {
+      return { ...g, items: [...g.items.filter((it) => !/\/amc$/.test(it.to)), { to: '/residential-interior-design/variations', label: 'Variations', icon: FileSignature }] };
+    }
+    // Finance group gains Suppliers & Payables (accounts payable / project costing).
+    if (g.key.endsWith('finance')) {
+      return { ...g, items: [...g.items, { to: '/residential-interior-design/suppliers', label: 'Suppliers & Payables', icon: Truck }] };
+    }
+    return g;
+  })
   // drop the whole Providers & Compliance group — no provider on this line
   .filter((g) => !g.key.endsWith('providers'));
 
