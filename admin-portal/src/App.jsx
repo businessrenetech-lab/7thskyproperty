@@ -23,6 +23,7 @@ import BuyerMandates from './screens/sales/BuyerMandates';
 import BuyerMandateDetail from './screens/sales/BuyerMandateDetail';
 import BuyerServiceDashboard from './screens/sales/BuyerServiceDashboard';
 import BuyerDealFile from './screens/sales/BuyerDealFile';
+import BuyerInvoices from './screens/sales/BuyerInvoices';
 import BuyerConsole from './screens/BuyerConsole';
 import SalesIntroductions from './screens/sales/SalesIntroductions';
 import SalesCalendar from './screens/sales/SalesCalendar';
@@ -952,6 +953,7 @@ export default function App() {
             {/* Residential BUYER Service — its own console (buyer-only sidebar). */}
             <Route element={<RequireAuth><AdminGate><BuyerConsole /></AdminGate></RequireAuth>}>
               <Route path="/residential/buyer-service" element={<BuyerServiceDashboard />} />
+              <Route path="/residential/buyer-invoices" element={<BuyerInvoices />} />
               <Route path="/residential/buy" element={<DealsBoard category="residential" dealType="buy" title="Residential · Buy" desc="Buyer service — deals, buyers, agreements, fees and status." />} />
               <Route path="/residential/buy/:dealId" element={<BuyerDealFile />} />
               <Route path="/residential/mandates" element={<BuyerMandates />} />

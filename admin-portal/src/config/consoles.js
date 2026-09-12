@@ -447,6 +447,13 @@ export const BUYER_NAV = [
     ],
   },
   {
+    key: 'money',
+    label: 'Money',
+    items: [
+      { to: '/residential/buyer-invoices', label: 'Buyer Invoices', icon: Landmark },
+    ],
+  },
+  {
     key: 'switch',
     label: 'Switch',
     items: [

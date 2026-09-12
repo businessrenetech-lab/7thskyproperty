@@ -196,7 +196,7 @@ export default function BuyerDealFile() {
           )}
           <div className="between" style={{ margin: '16px 0 8px' }}>
             <strong>Fee invoices</strong>
-            <Button size="sm" variant="ghost" onClick={() => navigate('/residential/accounting')}>Open Invoices tab</Button>
+            <Button size="sm" variant="ghost" onClick={() => navigate('/residential/buyer-invoices')}>Open Buyer Invoices</Button>
           </div>
           {file.invoices.length === 0 ? <p className="cell-sub">No fee invoices yet — they draft when the RPPS agreement is signed.</p> : (
             <table className="tbl"><thead><tr><th>Invoice</th><th>Title</th><th>Status</th><th style={{ textAlign: 'right' }}>Total</th><th style={{ textAlign: 'right' }}>Balance</th></tr></thead><tbody>

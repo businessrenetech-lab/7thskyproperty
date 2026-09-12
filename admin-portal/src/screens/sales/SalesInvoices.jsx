@@ -14,7 +14,10 @@ const bdt = (v) => '৳' + Number(v || 0).toLocaleString('en-BD', { minimumFract
 const th = { padding: '8px 10px', textAlign: 'left', fontSize: 11.5, textTransform: 'uppercase', color: 'var(--muted)', borderBottom: '1px solid var(--line)' };
 const td = { padding: '8px 10px', borderBottom: '1px solid var(--line)', fontSize: 13 };
 
-export default function SalesInvoices() {
+// `kind` optionally narrows to purchase (RPPS) or sale (RPSS) agreement fees —
+// the invoice title carries the doc no (SSPC-RPPS-01 / SSPC-RPSS-01).
+const KIND_DOC = { purchase: 'RPPS', sale: 'RPSS' };
+export default function SalesInvoices({ kind }) {
   const toast = useToast();
   const [rows, setRows] = useState(null);
   const [status, setStatus] = useState('');
@@ -28,9 +31,12 @@ export default function SalesInvoices() {
       if (status) q.set('status', status);
       if (search) q.set('search', search);
       const r = await api.get(`/invoices?${q}`);
-      setRows(r.data.data || []);
+      let data = r.data.data || [];
+      const doc = KIND_DOC[kind];
+      if (doc) data = data.filter((x) => String(x.title || '').includes(doc));
+      setRows(data);
     } catch { toast.error('Could not load invoices'); setRows([]); }
-  }, [status, search, toast]);
+  }, [status, search, toast, kind]);
   useEffect(() => { load(); }, [load]);
 
   return (
