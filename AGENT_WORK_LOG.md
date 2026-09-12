@@ -5973,3 +5973,58 @@ used "the last line starting with `import`", which landed inside a multi-line
   4. Multi-vendor: confirmed already working end-to-end — signed doc carries Client 1 + Client 2 anchors and 4 placed signatures; the "Add seller/buyer" builder UI is deployed (rebuilt dist), so multi-party agreements are creatable and their signed copies show every party's signature.
 - Note: fixes apply to NEWLY generated agreements (document_html is snapshotted at creation); pre-existing agreements keep their stored HTML.
 - Backend restarted; admin-portal dist rebuilt. Untouched: parallel Gemini/Antigravity website work. Test data left in place per instruction.
+
+### 2026-09-12 15:44 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Make Interior Service Copywriting Easy to Understand & Marketing-Friendly
+- Request: "on interior services your writings is hard to understand for mass people ....make the writing easy to catch markeeting friendly writing that focus on our servicesa and what we delivering......."
+- Files Changed:
+  - `website-mock/src/components/InteriorDesignLanding.jsx`
+  - `website/src/components/InteriorDesignLanding.jsx`
+  - `website-mock/src/data/servicesData.js`
+  - `website/src/lib/servicesData.js`
+- What was simplified & delivered:
+  1. Plain-Language Services & Deliverables:
+     - Division 1: "Full Home & Apartment Interiors" (Living, modular kitchens, master suites, smart storage & lighting).
+     - Division 2: "Office & Commercial Interiors" (Open desks, private cabins, soundproof meeting rooms & clean hidden wiring).
+     - Division 3: "Custom Cabinets & Modular Kitchens" (Factory-built, 100% waterproof marine wood & German soft-close hinges).
+     - Division 4: "Home Renovation & Remodeling" (Wall changes, daylight flow, modern bathrooms, leak-proofing & damp repair).
+     - Division 5: "Furniture, Curtains & Home Styling" (Handcrafted solid teak/oak, stain-proof fabrics, custom drapes & white-glove setup).
+     - Division 6: "Private Home & Office Gyms" (Shock-absorbing rubber floors protecting tiles, full mirrors & cooling ventilation).
+     - Division 7: "Dedicated Prayer Rooms (Musallah)" (Verified Qibla alignment, soft carpeting, Wudu station & Quran shelves).
+  2. The 4 Seventh Sky Promises (Replaced academic engineering jargon with customer benefits):
+     - Smart Space & Effortless Living (3-foot clear walkways, natural daylight, right-sized furniture, quiet rooms).
+     - 100% Moisture-Proof Materials (100% waterproof marine plywood, scratch-proof surfaces, machine edge-seals, safe zero-VOC paints).
+     - 3-Layer Mood Lighting (Warm ceiling coves, bright kitchen/desk task lights, art spotlights, one-touch phone presets).
+     - Smooth Hardware Built for 20+ Years (Tested for 200,000 silent opens/closes, natural grain matching, hidden screws, smart organizers).
+  3. Simple 4-Step Process:
+     - 01: Free Consultation & 3D Plan (Laser measurements, lifestyle discussion, 3D picture previews, fixed quote).
+     - 02: Material Choice & Agreement (Touch real samples, approve 2D layouts, signed transparent contract).
+     - 03: Dust-Free Factory Fabrication (80% pre-built in factory, zero home dust/noise, weekly WhatsApp video updates).
+     - 04: Fast Setup & Key Handover (Clean 10-14 day install, full styling, joint walkthrough, written warranty).
+  4. Intuitive Sub-Nav & Headings:
+     - Anchors renamed: "What We Deliver", "Our Work", "Why Choose Us", "How It Works", "Pricing Plans", "Book Free Consult".
+     - Header taglines and consultation cards updated to welcoming, friendly, benefit-driven messaging.
+  5. Strict Rule Compliance:
+     - Zero forbidden location names (0 occurrences of Dhaka or other restricted city names).
+     - Light background palette preserved (`bg-white text-[#012a4e]`).
+     - Full-screen hero section retained.
+- Verification & Test Results:
+  - `website-mock/`: `npm run build` passed in 8.83s (0 errors).
+  - `website/`: `npm run build` passed in 3.7s with all 23 static pages generated in 485ms (including static generation of `/services/interior-design`).
+  - Live page test on `http://localhost:3005/services/interior-design` verified via HTTP fetch.
+  - Zero location leaks verified across all modified files.
+- Handoff: The interior design landing page and service datasets now present clear, marketing-friendly, and high-converting copy that mass audiences and prospective clients immediately understand.
+
+### 2026-09-12 15:47 | Antigravity (Gemini 3.8 Flash) | STARTED | Transform Water Tank Cleaning Service into Visual, Marketing-Friendly Landing Page
+- Request: "now make the water tanks servce similar to this...... easy to understand for mass people ....make the writing easy to catch markeeting friendly writing that focus on our servicesa and what we delivering.......less texts visualise more.. please..."
+- Scope: `website-mock/src/components/WaterTankLanding.jsx`, `website/src/components/WaterTankLanding.jsx`, `website-mock/src/pages/ServiceDetailPage.jsx`, `website/src/app/services/[slug]/page.jsx`, `website-mock/src/data/servicesData.js`, `website/src/lib/servicesData.js`.
+- Intended Outcome:
+  - Create a dedicated, highly visual landing experience for Water Tank cleaning (`WaterTankLanding.jsx`), matching the engaging, high-conversion architecture of `InteriorDesignLanding.jsx`.
+  - Dramatically cut down dense paragraphs of text ("less texts, visualise more") and replace with visual cards, badges, icons, before/after operational photos, and clear visual metric pills.
+  - Plain, easy-to-catch language focusing on *what we deliver* (rooftop tank cleaning, underground reservoir de-sludging, whole-building complex packages, food-safe sanitisation, crack/leak repairs, lab water testing, yearly AMC).
+  - Highlight real customer benefits: 100% germ & algae-free drinking water, food-grade safe chemicals (zero bleach smell or chemical taste), high-pressure 150-bar jet scrub, fast 2-3 hour service, video proof on WhatsApp.
+  - Strict compliance with user rules: ZERO location names and clean light background palette (`bg-white text-[#012a4e]`).
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED | AGENT_GUIDE.md — onboarding/contribution guide for other agents
+- Request: write instructions for other agents — how to analyse the codebase & workflow, how/what to modify (do's & don'ts), how to submit to the Lead for review, how to add a new service via the Water Tank/AC dashboard pattern, how to extend residential buy/sell and add new verticals (commercial/rural/business buy-sell, commercial property management), and that they must always report their work to the Lead for review.
+- Delivered: AGENT_GUIDE.md at repo root. Sections: 0 golden rules; 1 analyse codebase/workflow (layout, the 3 core engines — consoles/service-line core/progressive-SOP, cross-cutting subsystems, how to explore); 2 do's & don'ts (route in server.js AND manifest.js, migrations not sync, UploadButton, rebuild dist, keep e2e green); 3 handing work to the Lead + what the Lead checks; 4 Recipe A add a new service line (rebaseNav clone of Water Tank + config/serviceLines.js + service_line param); 5 Recipe B residential buy/sell + new deal verticals (SOP REGISTRY + console + scope/kind props + PropertyDeal deal_type); 6 Recipe C new property-management vertical (vertical_key filter reuse); 7 Definition of Done + report template.
+- All cited APIs verified in-tree: rebaseNav (consoles.js:503), config/serviceLines.js (getServiceLine/codePrefix), progressiveSop REGISTRY, PROPERTY_MGMT_NAV ?vertical_key filters, residential scope/kind props.
