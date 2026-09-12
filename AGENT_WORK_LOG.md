@@ -6328,3 +6328,66 @@ used "the last line starting with `import`", which landed inside a multi-line
 - BUG 2 (offers): the public offer endpoint recorded a SalesEnquiry, so website offers never appeared in the OFFERS section. FIX: submitPropertyOffer now creates a real SaleOffer (status 'submitted', source 'website', amount, notes with buyer contact/msg) + SaleOfferParty (buyer contact+client, 100% primary) + SaleOfferVersion v1 (buyer side), and fires sale_offer_received on the SOP. Availability guard kept (409 on sold).
 - Verified live: website offer on #118 → SSPC-OF-000092 (amount 9,750,000, submitted, source website, 1 buyer party, version v1) shows in the property file's offers section. Final filter matrix: available 17 / under_offer 2 / sold 39 / under_application 6 / leased 4.
 - Note: frontend tabs are the website agent's UI; backend now supports every filter + the offers flow. Backend restarted; test offer + tenant app kept for review.
+
+### 2026-09-12 18:09 | Antigravity | STARTED | Hero search button functionality & detail popup filter modal
+- Request: Make the search button functional while keeping the existing search button design; add a detail popup filter button; support filters for Buy, Rent, Short Term Stay, Business Buy; Residential, Commercial, Rural, Business; Beds, Baths, Balcony, Size, Price, Available, Under Offer / Under Application, Sold / Leased, plus Short Term Stay criteria (guests, furnishing, amenities), keeping the UI as minimalist as possible.
+- Scope: Update `website-mock/src/components/Hero.jsx`, create `website-mock/src/components/DetailFilterModal.jsx` (or integrate inside Hero/pages), update `website-mock/src/pages/HomePage.jsx`, `website-mock/src/pages/PropertiesPage.jsx`, and `website-mock/src/services/api.js` to propagate and filter all parameters seamlessly.
+- Changes: None yet.
+- Verification: Pending build and manual testing.
+- Handoff: In progress.
+
+### 2026-09-12 18:15 | Antigravity | COMPLETED | Hero search button functionality & detail popup filter modal
+- Request: Make search button functional while strictly keeping existing search button design; add detail popup filter button with minimalist criteria:
+  - Purpose: Buy, Rent, Short Term Stay, Business Buy
+  - Category / Sector: Residential, Commercial, Rural, Business
+  - Specs: Beds, Baths, Balcony, Size (sqft min/max), Price (৳ min/max)
+  - Lifecycle Status: Available, Under Offer / Under Application, Sold / Leased
+  - Short Term Stay criteria: Guest capacity (1-2, 3-4, 5+), Furnishing (Furnished, Executive Serviced), Key amenities (WiFi, Power Backup, AC, Kitchen, Housekeeping, Airport Pickup)
+- Scope: `website-mock/src/components/DetailFilterModal.jsx`, `website-mock/src/components/Hero.jsx`, `website-mock/src/pages/HomePage.jsx`, `website-mock/src/pages/PropertiesPage.jsx`, `website-mock/src/services/api.js`, and `backend/controllers/publicWebsite.controller.js`.
+- Changes:
+  1. `website-mock/src/components/DetailFilterModal.jsx`:
+     - Created a minimalist modal with glassmorphism backdrop (`bg-black/60 backdrop-blur-sm`).
+     - Includes intuitive pill switches for Purpose (Buy, Rent, Short Stay, Business Buy), Sector (Residential, Commercial, Rural, Business), Status (Available, Under Offer/Under Application, Sold/Leased), Beds/Baths/Balconies counter selectors, Size sqft range, Price range (adapts placeholder for Rent vs Sale), and dedicated Short Term Stay criteria (guests, furnishing tiers, amenity pills).
+     - Provides "Reset all" and "Apply Filters" actions.
+  2. `website-mock/src/components/Hero.jsx`:
+     - Strictly preserved existing search button design (cyan pill with exact hover, padding, font styling, and drop shadow).
+     - Added a minimalist "Filters" icon button directly inside the floating search pill with an active filter badge counter.
+     - Integrated `DetailFilterModal` with bi-directional filter state synchronization.
+     - Made form submission collect purpose, keyword query, and all detailed filters, passing them to `onSearchSubmit`.
+  3. `website-mock/src/pages/HomePage.jsx`:
+     - Updated `handleHeroSearch` to serialize all filter criteria (`purpose`, `category`, `status`, `bedrooms`, `bathrooms`, `balconies`, `min_price`, `max_price`, `min_size`, `max_size`, `guests`, `furnishing`, `amenities`, `query`) into URL query parameters when navigating to `/properties`.
+  4. `website-mock/src/pages/PropertiesPage.jsx`:
+     - Reads all detailed parameters from URL search params.
+     - Connected `DetailFilterModal` accessible via header search bar Filters button.
+     - Added an active filter chips strip below the category row with individual removal ('×') buttons and a "Clear all" action.
+     - Passes all parameters to `websiteApi.getProperties(...)`.
+  5. `website-mock/src/services/api.js`:
+     - Updated `websiteApi.getProperties` to format and forward `business buy` (maps to `listing_type=sale&category=business`), `bedrooms`, `bathrooms`, `balconies`, `min_price`, `max_price` to backend.
+     - Enriched fallback filtering logic for all criteria (beds, baths, balconies, size, price, guests).
+  6. `backend/controllers/publicWebsite.controller.js`:
+     - Added backend support for `bathrooms`, `balconies`, and dual price/approved_monthly_rent filtering.
+- Verification:
+  - `website-mock` built cleanly via `npm run build` (vite v5.4.21, 0 errors, 2.79s).
+  - Restarted backend on port 50001; verified `/api/health` 200 OK.
+  - Tested live endpoint `/api/public-website/properties?bedrooms=3&bathrooms=2` -> returns 11 matching properties.
+  - Tested live endpoint `/api/public-website/properties?bedrooms=4` -> returns 5 matching properties.
+  - Verified zero prohibited location names across all modified files.
+- Handoff: Production build passed and live backend queries working. The hero search button and detail popup filter modal are fully functional.
+
+### 2026-09-12 18:23 | Antigravity | STARTED | Homepage redesign with minimalist corporate aesthetic, Featured Properties tabs & deep context
+- Request: Redesign homepage while keeping the Hero section untouched and the section after hero (SolutionsOverview) untouched. Change "Curated Portfolio / Prime Properties & Short Stays" to "Featured Properties" with dynamic filters (Buy, Rent, Short Term Stay, Business - shown in two rows on mobile). Rewrite landing page content to be mass-friendly, marketing-friendly, concise with deep context, presented dynamically with modern minimalist Figma UI/UX corporate aesthetic.
+- Scope: Update `website-mock/src/pages/HomePage.jsx` and supporting homepage components (`website-mock/src/components/WhyChooseUs.jsx`, `website-mock/src/components/Testimonials.jsx`, `website-mock/src/components/FaqSection.jsx`). Ensure build succeeds and zero prohibited location names.
+- Changes: None yet.
+- Verification: In progress.
+- Handoff: In progress.
+
+
+### 2026-09-12 | Claude Opus 4.8 | IN PROGRESS | Property Management (RPRM) agreement parity with residential — backend
+- Request: PM fees/invoicing must follow the agreement price schedule; every agreement form follows the schedule; no duplicates; tenant-app→agreement alignment; add edit/resend + download (parity w/ residential); email works; parties' signatures placed; pricing correct; a PM invoices/income view (received/dues/drafts/paid + recurring).
+- BACKEND done + verified (new e2ePmAgreement.js, 15/0):
+  1. Invoicing follows the price schedule: NEW services/pmAgreementCompletion.service.js — on RPRM completion, drafts an agency-fee PropertyInvoice per ONE-TIME payment-schedule stage (idempotent, keyed by envelope); the RECURRING management fee is intentionally NOT invoiced (it stays as OwnerFeeSchedule → owner-statement deduction, so no double-count). Wired into partyRoleActivation.handleEnvelopeCompleted (best-effort, never rolls back a signature).
+  2. Edit/resend + draft parity: rprm.controller createAgreement now supports save_as_draft; added updateAgreement (rebuild draft in place) + sendAgreement (send/re-send a draft); routes PUT /rprm/agreements/:id and POST /rprm/agreements/:id/send.
+  3. Render fixes (parity w/ sales): Schedule A/D checkboxes now CSS-drawn filled navy box (☑/☐ glyphs rendered blank in PDF); closing note moved ABOVE the Signatures block so signatures are last; confirmed NO duplicate static SIGNATURES block (RPRM clauses are inline, clean).
+  4. Verified: pricing (one-time 20,000; recurring 5% min 3,000 = 3,000), draft→edit→send→sign(landlord+SeventhSky+witness all placed)→completed, 2 one-time fee invoices drafted (total 20,000), recurring not invoiced, checkboxes filled (3), signatures last, no dup block. Download works via existing /signing/envelopes/:id/links → signed_document (same as residential).
+- STILL TO DO (frontend parity, flagged for next): RPRM builder UI needs Edit/Resend + Download buttons and a draft state (backend now supports them); a PM "Agency income" view (our fees: received/dues/drafts/paid + recurring) over PropertyInvoices(agreement_fee) + OwnerFeeSchedule; tenant-application → agreement input-alignment review.
+- Test data kept (property #120, agreement env #283).

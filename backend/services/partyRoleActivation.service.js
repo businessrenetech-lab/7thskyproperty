@@ -390,6 +390,23 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
       }
     }
 
+    // Property-management service agreement signed (RPRM) → draft agency-fee
+    // invoices for the ONE-TIME leasing/setup stages of the signed price schedule
+    // (the recurring management fee stays on the owner statement, handled above).
+    if (envelope.related_type === 'property_management_agreement') {
+      try {
+        const pmBilling = require('./pmAgreementCompletion.service');
+        const { invoices } = await pmBilling.onCompleted(envelope, { transaction: tx });
+        if (invoices.length && envelope.related_id) {
+          await logPropertyEvent(envelope.related_id, envelope.branch_id,
+            `Management agreement signed — ${envelope.envelope_code}`,
+            `${invoices.length} draft fee invoice(s) raised from the signed ${terms.doc_no || 'agreement'} (recurring fee tracked on owner statements).`);
+        }
+      } catch (e) {
+        console.warn('[pm-agreement] billing on sign:', e.message);
+      }
+    }
+
     // Customer agreement signed → raise the work order (SOP-01 Sec. 7 Step 6 into
     // Sec. 8 Step 7). Suffix-matched so every service line's customer agreement
     // (water_tank_*, air_conditioning_*, …) triggers it. Idempotent inside the service.
