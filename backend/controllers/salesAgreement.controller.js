@@ -81,7 +81,13 @@ exports.getCatalog = asyncHandler(async (req, res) => {
 
 exports.getMeta = asyncHandler(async (req, res) => {
   const k = K(req); if (!k) return res.status(404).json({ error: 'Unknown agreement kind' });
-  res.json({ party: k.party, code: k.code, signer: k.signer });
+  const sched = require('../services/salesAgreementSchedules')[req.params.kind] || {};
+  res.json({
+    party: k.party, code: k.code, signer: k.signer,
+    client_heading: sched.client_heading, commission_label: sched.commission_label,
+    schedule_a: sched.schedule_a || [], schedule_d: sched.schedule_d || [],
+    schedule_b_fields: sched.schedule_b_fields || [],
+  });
 });
 
 exports.preview = asyncHandler(async (req, res) => {
