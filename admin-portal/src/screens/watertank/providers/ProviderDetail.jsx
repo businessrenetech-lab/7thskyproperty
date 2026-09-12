@@ -211,6 +211,7 @@ export default function ProviderDetail() {
   const [tab, setTab] = useState('Overview');
   const [docDrawer, setDocDrawer] = useState(null);
   const [action, setAction] = useState(null);
+  const [showBlockers, setShowBlockers] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true); setError('');
@@ -284,6 +285,18 @@ export default function ProviderDetail() {
     ],
     onSubmit: async (f) => { await post('/territory-briefing', f, 'Territory briefing recorded'); setAction(null); },
   });
+
+  // One place that maps a readiness gate to the action that clears it, so both
+  // the readiness card and the "not assignable" banner deep-link the same way.
+  const resolveGate = (key) => {
+    if (key === 'capability') return openCapability();
+    if (key === 'compliance') return setTab('Compliance');
+    if (key === 'insurance') return setTab('Insurance');
+    if (key === 'agreement') return openAgreement();
+    if (key === 'payment') return setTab('Agreement & Territory');
+    if (key === 'territory') return openBriefing();
+    return setTab('Overview');
+  };
 
   const openSanction = (which) => setAction({
     title: which === 'suspend' ? 'Suspend Provider' : 'Terminate Provider',
@@ -385,7 +398,10 @@ export default function ProviderDetail() {
         <span className="wt-pill cyan">{p.onboarding_stage}</span>
         {d.assignable
           ? <span className="wt-pill green"><Check size={11} /> Assignable</span>
-          : <span className="wt-pill amber"><Ban size={11} /> Not assignable — {d.blocking.length || 'agreement/status'} outstanding</span>}
+          : <button type="button" className="wt-pill amber" style={{ cursor: 'pointer', border: 'none' }}
+              onClick={() => setShowBlockers((v) => !v)} title="Show what is blocking assignment">
+              <Ban size={11} /> Not assignable — {d.blocking.length || 'agreement/status'} outstanding
+            </button>}
         {p.cumilla_exclusive && <span className="wt-pill blue"><MapPin size={11} /> Cumilla exclusive</span>}
         {(k.territory_breaches > 0 || k.circumvention_breaches > 0) && (
           <span className="wt-pill red"><AlertTriangle size={11} /> {k.territory_breaches + k.circumvention_breaches} breach(es)</span>
@@ -394,6 +410,20 @@ export default function ProviderDetail() {
           Applied {dateFmt(p.application_date)}{p.approved_date ? ` · approved ${dateFmt(p.approved_date)}` : ''}
         </span>
       </div>
+
+      {/* Deep-link blockers: each outstanding gate is a clickable fix, not just a
+          count — clicking opens the exact tab/modal that clears it. */}
+      {showBlockers && !d.assignable && d.blocking.length > 0 && (
+        <div className="wt-note" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', background: 'var(--wt-amber-bg)', borderColor: '#fde68a' }}>
+          <strong style={{ fontSize: 12.5, color: 'var(--wt-amber)' }}>Fix to assign:</strong>
+          {d.blocking.map((g) => (
+            <button key={g.key} type="button" className="wt-btn sm" onClick={() => { resolveGate(g.key); setShowBlockers(false); }}
+              title={`${g.stage} · ${g.sop}`}>
+              {g.label} →
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Sec. 4 workflow stepper ── */}
       <div className="wt-stepper">
@@ -423,15 +453,7 @@ export default function ProviderDetail() {
                   <span className="ic">{g.ok ? <Check size={13} /> : <X size={13} />}</span>
                   <div className="tx"><span className="l">{g.label}</span><span className="s">{g.stage} · {g.sop}</span></div>
                   {!g.ok && (
-                    <button className="wt-btn sm" onClick={() => {
-                      if (g.key === 'capability') openCapability();
-                      else if (g.key === 'compliance') setTab('Compliance');
-                      else if (g.key === 'insurance') setTab('Insurance');
-                      else if (g.key === 'agreement') openAgreement();
-                      else if (g.key === 'payment') setTab('Agreement & Territory');
-                      else if (g.key === 'territory') openBriefing();
-                      else setTab('Overview');
-                    }}>Resolve</button>
+                    <button className="wt-btn sm" onClick={() => resolveGate(g.key)}>Resolve</button>
                   )}
                 </div>
               ))}
