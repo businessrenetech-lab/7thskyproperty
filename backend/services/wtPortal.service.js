@@ -497,6 +497,24 @@ async function clientDossier(client) {
     return shaped;
   };
 
+  // Interior-design variations the client can approve from the portal. Drafts are
+  // withheld (not yet sent); the client sees sent/approved/rejected ones.
+  let variations = [];
+  try {
+    const InteriorVariation = require('../models/InteriorVariation');
+    variations = (await InteriorVariation.findAll({
+      where: { branch_id: client.branch_id, client_name: client.name },
+      order: [['id', 'DESC']], raw: true,
+    }).catch(() => []))
+      .filter((v) => v.status !== 'draft')
+      .map((v) => ({
+        code: v.variation_code, description: v.description, reason: v.reason,
+        amount_delta: round2(v.amount_delta), timeline_impact: v.timeline_impact,
+        status: v.status, invoice_code: v.invoice_code,
+        can_decide: v.status === 'sent',
+      }));
+  } catch { /* non-fatal */ }
+
   return {
     client: {
       code: client.code,
@@ -507,6 +525,7 @@ async function clientDossier(client) {
       service_address: client.service_address,
     },
     quotations: liveQuotes.map(clientQuotation),
+    variations,
     work_orders: workOrders.filter((w) => lower(w.status) !== 'draft').map(clientWorkOrder),
     invoices: liveInvoices.map(withPayUrl),
     amc: amcs.map((a) => ({

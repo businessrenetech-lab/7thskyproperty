@@ -15,5 +15,6 @@ router.post('/', canTransact, ctrl.create);
 router.get('/:code', canRead, ctrl.detail);
 router.patch('/:code', canTransact, ctrl.update);
 router.post('/:code/decision', canTransact, ctrl.decision);
+router.post('/:code/send', canTransact, ctrl.sendForApproval);
 
 module.exports = router;

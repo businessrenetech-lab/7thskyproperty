@@ -43,6 +43,7 @@ router.post('/:token/work-orders/:code/photos', writeLimit,
 
 // Customer — accepting their own quotation rather than telling someone to.
 router.post('/:token/quotations/:code/decision', writeLimit, ctrl.quotationDecision);
+router.post('/:token/variations/:code/decision', writeLimit, ctrl.variationDecision);
 
 // Either party, writing back without needing an email thread.
 router.post('/:token/message', writeLimit, ctrl.message);

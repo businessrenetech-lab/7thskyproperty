@@ -480,10 +480,44 @@ async function createFromWorkOrder(wo, { branchId, actor, transaction } = {}) {
   }, { branchId: bid, actor: actor || 'System' }, transaction);
 }
 
+/**
+ * Draft an invoice for an APPROVED interior-design variation — the re-priced
+ * scope change the client accepted. One line for the price delta, on the
+ * variation's own service line. Idempotent: a variation already invoiced returns
+ * the existing invoice.
+ */
+async function createFromVariation(v, { branchId, actor, transaction } = {}) {
+  const bid = branchId || v.branch_id || 1;
+  if (v.invoice_code) {
+    const existing = await M.WtInvoice.findOne({ where: { branch_id: bid, code: v.invoice_code }, transaction });
+    if (existing) return existing;
+  }
+  const sl = v.service_line || 'residential_interior_design';
+  let client = null;
+  if (v.client_name) client = await M.WtClient.findOne({ where: { branch_id: bid, name: v.client_name }, transaction, raw: true });
+  return persistDraft({
+    service_line: sl,
+    client_name: v.client_name || client?.name || null,
+    client_code: client?.code || null,
+    client_id: client?.id || null,
+    bill_to_name: v.client_name || client?.name || null,
+    bill_to_email: client?.email || null,
+    bill_to_phone: client?.mobile || null,
+    bill_to_address: client?.service_address || null,
+    site_address: client?.service_address || null,
+    project_id: v.project_id || null,
+    work_order_code: v.work_order_code || null,
+    inv_type: 'Variation',
+    lines: [{ code: v.variation_code, name: `Variation — ${v.description || v.variation_code}`, qty: 1, unit_price: num(v.amount_delta), group: 'service' }],
+    source_type: 'Variation',
+    notes: `Approved variation ${v.variation_code}${v.reason ? ` — ${v.reason}` : ''}.`,
+  }, { branchId: bid, actor: actor || 'System' }, transaction);
+}
+
 module.exports = {
   INVOICE_STATUSES, INVOICE_TYPES, EDITABLE_STATUSES,
   computeTotals, deriveStatus, lineTotal, nextInvoiceCode,
   buildFromAgreement, buildAmcSchedule, createFromWorkOrder,
-  persistDraft, createFromSignedAgreement, createFromAmc,
+  persistDraft, createFromSignedAgreement, createFromAmc, createFromVariation,
   num, round2, today, eq, asArray, asObject, addDays,
 };

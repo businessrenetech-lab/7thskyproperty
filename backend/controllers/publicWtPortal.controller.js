@@ -284,6 +284,46 @@ exports.quotationDecision = asyncHandler(async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
+/**
+ * POST /:token/variations/:code/decision  { decision: 'approved'|'rejected', note? }
+ *
+ * The client approving (or declining) a project variation from their portal. On
+ * approval the price is auto-drafted as an invoice — same path as the admin
+ * decision, so both behave identically.
+ */
+exports.variationDecision = asyncHandler(async (req, res) => {
+  try {
+    const ctx = await open(req, 'client');
+    const decision = String(req.body?.decision || '').trim().toLowerCase();
+    if (!['approved', 'rejected'].includes(decision)) {
+      throw new portal.PortalError(400, 'Choose whether you approve or decline this variation.');
+    }
+    const InteriorVariation = require('../models/InteriorVariation');
+    const v = await InteriorVariation.findOne({
+      where: { branch_id: ctx.row.branch_id, variation_code: String(req.params.code), client_name: ctx.row.name },
+    });
+    if (!v) throw new portal.PortalError(404, 'That variation was not found.');
+    if (['approved', 'rejected'].includes(v.status)) throw new portal.PortalError(409, `This variation is already ${v.status}.`);
+
+    const { applyDecision } = require('./interiorVariation.controller');
+    const invoice = await applyDecision(v, decision, `${ctx.row.name} (portal)`);
+
+    await M.WtCommLog.create({
+      branch_id: v.branch_id, client_name: v.client_name, channel: 'portal', direction: 'inbound',
+      summary: `Client ${decision} variation ${v.variation_code} through the customer portal${req.body?.note ? ` — ${req.body.note}` : ''}`,
+      ref_type: 'interior-variations', ref_code: v.variation_code, logged_at: new Date(),
+    }).catch(() => {});
+    await auditOf(req, ctx, `variation_${decision}`, { subject_type: 'variation', subject_code: v.variation_code, detail: req.body?.note || null });
+
+    res.json({
+      variation: { code: v.variation_code, status: v.status, amount_delta: Number(v.amount_delta), invoice_code: v.invoice_code },
+      message: decision === 'approved'
+        ? 'Thank you — the variation is approved and Seventh Sky will proceed.'
+        : 'Noted. Seventh Sky will follow up.',
+    });
+  } catch (e) { fail(res, e); }
+});
+
 /** GET /:token/invoices/:code/pdf — the client's own invoice. */
 exports.invoicePdf = asyncHandler(async (req, res) => {
   try {

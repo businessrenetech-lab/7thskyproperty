@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FileSignature, Plus, Check, X, RefreshCw } from 'lucide-react';
+import { FileSignature, Plus, Check, X, RefreshCw, Send } from 'lucide-react';
 import api from '../../services/api';
 import { bdt, toast, errText } from './common';
 
@@ -36,8 +36,13 @@ export default function InteriorVariations() {
   };
 
   const decide = async (code, decision) => {
-    try { await api.post(`/interior-variations/${code}/decision`, { decision }); toast.ok(`Variation ${decision}`); load(); }
+    try { const { data } = await api.post(`/interior-variations/${code}/decision`, { decision }); toast.ok(decision === 'approved' && data.invoice_code ? `Approved — invoice ${data.invoice_code} drafted` : `Variation ${decision}`); load(); }
     catch (e) { toast.err(errText(e, 'Could not update the variation')); }
+  };
+
+  const send = async (code) => {
+    try { const { data } = await api.post(`/interior-variations/${code}/send`); toast.ok(data.message || 'Sent for approval'); load(); }
+    catch (e) { toast.err(errText(e, 'Could not send the variation')); }
   };
 
   return (
@@ -71,7 +76,7 @@ export default function InteriorVariations() {
 
       <div className="wt-card" style={{ padding: 0 }}>
         <table className="wt-tbl">
-          <thead><tr><th>Code</th><th>Project</th><th>Description</th><th style={{ textAlign: 'right' }}>Price change</th><th>Status</th><th style={{ textAlign: 'right' }}>Actions</th></tr></thead>
+          <thead><tr><th>Code</th><th>Project</th><th>Description</th><th style={{ textAlign: 'right' }}>Price change</th><th>Status</th><th>Invoice</th><th style={{ textAlign: 'right' }}>Actions</th></tr></thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.variation_code}>
@@ -79,18 +84,20 @@ export default function InteriorVariations() {
                 <td>{r.project_id || '—'}{r.client_name ? <div className="muted" style={{ fontSize: 12 }}>{r.client_name}</div> : null}</td>
                 <td style={{ maxWidth: 320 }}>{r.description}{r.timeline_impact ? <div className="muted" style={{ fontSize: 12 }}>Timeline: {r.timeline_impact}</div> : null}</td>
                 <td style={{ textAlign: 'right', fontWeight: 700 }}>{bdt(r.amount_delta)}</td>
-                <td><span className={`wt-pill ${chip(r.status)}`}>{r.status}</span></td>
-                <td style={{ textAlign: 'right' }}>
+                <td><span className={`wt-pill ${chip(r.status)}`}>{r.status}</span>{r.status === 'sent' && r.sent_at ? <div className="muted" style={{ fontSize: 11 }}>awaiting client</div> : null}</td>
+                <td>{r.invoice_code ? <span className="wt-pill green">{r.invoice_code}</span> : <span className="muted" style={{ fontSize: 12 }}>—</span>}</td>
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                   {['draft', 'sent'].includes(r.status) && (
                     <>
-                      <button className="wt-btn sm" onClick={() => decide(r.variation_code, 'approved')}><Check size={13} /> Approve</button>
+                      {r.status === 'draft' && <button className="wt-btn sm" onClick={() => send(r.variation_code)}><Send size={13} /> Send for approval</button>}
+                      <button className="wt-btn sm" onClick={() => decide(r.variation_code, 'approved')} style={{ marginLeft: 6 }}><Check size={13} /> Approve</button>
                       <button className="wt-btn sm" onClick={() => decide(r.variation_code, 'rejected')} style={{ marginLeft: 6 }}><X size={13} /> Reject</button>
                     </>
                   )}
                 </td>
               </tr>
             ))}
-            {!rows.length && !loading && <tr><td colSpan={6} style={{ textAlign: 'center', padding: 28, color: 'var(--wt-muted, #64748b)' }}>No variations yet.</td></tr>}
+            {!rows.length && !loading && <tr><td colSpan={7} style={{ textAlign: 'center', padding: 28, color: 'var(--wt-muted, #64748b)' }}>No variations yet.</td></tr>}
           </tbody>
         </table>
       </div>

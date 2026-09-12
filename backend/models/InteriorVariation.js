@@ -17,8 +17,11 @@ const InteriorVariation = sequelize.define('InteriorVariation', {
   amount_delta: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
   timeline_impact: DataTypes.STRING(255),
   status: { type: DataTypes.ENUM('draft', 'sent', 'approved', 'rejected'), defaultValue: 'draft' },
+  sent_at: DataTypes.DATE,
   decided_at: DataTypes.DATE,
   decided_by: DataTypes.STRING(120),
+  // The invoice auto-drafted for this variation's price once approved.
+  invoice_code: DataTypes.STRING(30),
   created_by: DataTypes.INTEGER,
 }, { tableName: 'interior_variations', underscored: true });
 

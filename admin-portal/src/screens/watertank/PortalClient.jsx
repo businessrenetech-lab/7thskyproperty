@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Home, Wrench, FileText, Receipt, ShieldCheck, MessageSquareWarning,
   Send, Download, Check, X, Droplets, Camera, ClipboardList, Clock,
-  CalendarDays, FolderOpen, CreditCard,
+  CalendarDays, FolderOpen, CreditCard, FileSignature,
 } from 'lucide-react';
 import api from '../../services/api';
 import { bdt, dateFmt, Pill, toast, errText, profileForLine } from './common';
@@ -351,6 +351,54 @@ function Quotations({ data, base, reload }) {
           </Expandable>
         );
       })}
+    </>
+  );
+}
+
+/* ── variations ────────────────────────────────────────────────────────── */
+
+function Variations({ data, base, reload }) {
+  const [busy, setBusy] = useState('');
+  const list = data.variations || [];
+  const decide = async (v, decision) => {
+    setBusy(v.code);
+    try {
+      const r = await api.post(`${base}/variations/${v.code}/decision`, { decision });
+      toast.ok(r.data.message);
+      reload();
+    } catch (e) { toast.err(errText(e, 'Could not record that')); }
+    finally { setBusy(''); }
+  };
+  return (
+    <>
+      <SectionTitle count={list.length} hint="A variation is a change to your project's scope or price. Approving one here is your decision and is recorded as such.">
+        Variations
+      </SectionTitle>
+      {list.length === 0 ? (
+        <Nothing icon={FileSignature} title="No variations" hint="If your project scope changes, the re-priced variation appears here for you to approve." />
+      ) : list.map((v) => (
+        <Expandable key={v.code} title={v.code} defaultOpen={v.can_decide}
+          subtitle={v.timeline_impact ? `Timeline impact: ${v.timeline_impact}` : null}
+          badge={<Pill value={v.status} sm />}
+          right={<b style={{ fontSize: 15 }}>+{bdt(v.amount_delta)}</b>}>
+          <p style={{ fontSize: 13.5, margin: '10px 0' }}>{v.description}</p>
+          <Facts items={[
+            ['Additional cost', bdt(v.amount_delta)],
+            ['Reason', v.reason || null],
+            ['Invoice', v.invoice_code || null],
+          ]} />
+          {v.can_decide && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+              <button className="wt-btn primary" disabled={busy === v.code} onClick={() => decide(v, 'approved')}>
+                <Check size={14} /> Approve variation
+              </button>
+              <button className="wt-btn" disabled={busy === v.code} onClick={() => decide(v, 'rejected')}>
+                <X size={14} /> Decline
+              </button>
+            </div>
+          )}
+        </Expandable>
+      ))}
     </>
   );
 }
@@ -728,6 +776,8 @@ export default function PortalClient({ data, base, reload, eq }) {
     { value: 'jobs', label: 'Jobs', icon: Wrench, count: (data.work_orders || []).length },
     { value: 'reports', label: 'Reports & photos', icon: Camera, count: (data.reports || []).length },
     { value: 'quotations', label: 'Quotations', icon: FileText, count: t.open_quotations, tone: 'bad' },
+    // Variations tab only when the client actually has variations (interior lines).
+    ...((data.variations || []).length ? [{ value: 'variations', label: 'Variations', icon: FileSignature, count: (data.variations || []).filter((v) => v.can_decide).length, tone: 'bad' }] : []),
     { value: 'invoices', label: 'Invoices', icon: Receipt, count: overdue.length, tone: 'bad' },
     { value: 'amc', label: 'AMC & warranty', icon: ShieldCheck, count: (data.amc || []).length },
     { value: 'issues', label: 'Requests & complaints', icon: MessageSquareWarning, count: t.open_complaints, tone: 'bad' },
@@ -747,6 +797,12 @@ export default function PortalClient({ data, base, reload, eq }) {
       detail: 'work cannot be scheduled until it is accepted',
       action: <button className="wt-btn sm" onClick={() => setTab('quotations')}>Review</button>,
     },
+    (data.variations || []).some((v) => v.can_decide) && {
+      key: 'variations', tone: 'warn',
+      title: `${(data.variations || []).filter((v) => v.can_decide).length} variation${(data.variations || []).filter((v) => v.can_decide).length === 1 ? '' : 's'} waiting on you`,
+      detail: 'approve to let Seventh Sky proceed with the change',
+      action: <button className="wt-btn sm" onClick={() => setTab('variations')}>Review</button>,
+    },
     t.expiring_warranties > 0 && {
       key: 'warranty', tone: 'warn',
       title: `${t.expiring_warranties} warrant${t.expiring_warranties === 1 ? 'y expires' : 'ies expire'} within 60 days`,
@@ -765,6 +821,7 @@ export default function PortalClient({ data, base, reload, eq }) {
       {tab === 'jobs' && <Jobs data={data} />}
       {tab === 'reports' && <Reports data={data} />}
       {tab === 'quotations' && <Quotations data={data} base={base} reload={reload} />}
+      {tab === 'variations' && <Variations data={data} base={base} reload={reload} />}
       {tab === 'invoices' && <Invoices data={data} base={base} />}
       {tab === 'amc' && <Care data={data} />}
       {tab === 'issues' && <Issues data={data} base={base} reload={reload} />}
