@@ -46,12 +46,22 @@ export default function SalesContracts() {
     try { await api.post(`/signing/envelopes/${it.id}/void`, { reason }); toast.success('Agreement voided'); load(); } catch (e) { toast.error(e.response?.data?.error || 'Could not void'); }
   };
   const copyLink = async (it) => {
-    try { const r = await api.get(`/signing/envelopes/${it.id}`); const signers = r.data?.data?.signers || []; const s = signers.find((x) => ['sent', 'viewed', 'pending'].includes(x.status)) || signers[0];
-      if (!s?.access_token) return toast.error('No active signing link'); const url = `${window.location.origin}/admin/sign/${s.access_token}`;
+    try {
+      const r = await api.get(`/signing/envelopes/${it.id}/links`);
+      const url = r.data?.data?.active_link;
+      if (!url) return toast.error('No active signing link');
       try { await navigator.clipboard.writeText(url); toast.success('Signing link copied'); } catch { window.prompt('Signing link:', url); }
     } catch { toast.error('Could not fetch link'); }
   };
-  const openDoc = (it) => { const url = it.final_pdf_url || it.certificate_url; if (url) window.open(url, '_blank'); else copyLink(it); };
+  const openDoc = async (it) => {
+    if (it.final_pdf_url || it.certificate_url) { window.open(it.final_pdf_url || it.certificate_url, '_blank'); return; }
+    try {
+      const r = await api.get(`/signing/envelopes/${it.id}/links`);
+      const doc = r.data?.data?.signed_document;
+      if (doc) window.open(doc, '_blank');
+      else toast.error('Signed document is not available yet');
+    } catch { toast.error('Could not open the signed document'); }
+  };
   const vary = async (it) => {
     try { const r = await api.post(`/sales-agreements/contracts/${it.id}/variation`); toast.success('Original voided — complete the variation'); navigate(`/residential/agreements/${r.data.kind}`, { state: { prefill: r.data.prefill } }); }
     catch (e) { toast.error(e.response?.data?.error || 'Could not start variation'); }

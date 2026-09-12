@@ -170,20 +170,19 @@ const aBtn = { padding: '4px 10px', fontSize: 12, marginLeft: 6 };
 
 async function copyLink(a, toast) {
   try {
-    const r = await api.get(`/signing/envelopes/${a.id}`);
-    const s = (r.data?.data?.signers || []).find((x) => ['sent', 'viewed', 'pending'].includes(x.status)) || (r.data?.data?.signers || [])[0];
-    if (!s?.access_token) return toast.error('No active signing link');
-    const url = `${window.location.origin}/admin/sign/${s.access_token}`;
+    const r = await api.get(`/signing/envelopes/${a.id}/links`);
+    const url = r.data?.data?.active_link;
+    if (!url) return toast.error('No active signing link');
     try { await navigator.clipboard.writeText(url); toast.success('Signing link copied'); } catch { window.prompt('Signing link:', url); }
   } catch { toast.error('Could not fetch link'); }
 }
 
 async function viewSigned(a, toast) {
   try {
-    const r = await api.get(`/signing/envelopes/${a.id}`);
-    const s = (r.data?.data?.signers || []).find((x) => x.access_token) || {};
-    if (!s.access_token) return toast.error('No signed copy link available');
-    window.open(`${window.location.origin}/api/sign/${s.access_token}/signed-document`, '_blank');
+    const r = await api.get(`/signing/envelopes/${a.id}/links`);
+    const doc = r.data?.data?.signed_document;
+    if (!doc) return toast.error('No signed copy available yet');
+    window.open(doc, '_blank');
   } catch { toast.error('Could not open the signed copy'); }
 }
 

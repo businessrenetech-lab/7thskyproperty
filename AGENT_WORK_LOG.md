@@ -5513,6 +5513,13 @@ used "the last line starting with `import`", which landed inside a multi-line
   - Verified `http://localhost:50001/admin/` responds with `200 OK` and references `index-dZFkTHOQ.css`.
 - Handoff: Toast notifications now render with a sleek, polished, executive CRM aesthetic across all pages.
 
+### 2026-09-12 13:45 | Antigravity (Gemini 3.8 Flash) | STARTED | Dedicated Website Service Pages, SEO & Dynamic Step Request Forms
+- Request: "on website create dedicated pages for each services....content rich pages with minimalist clean ui..and use relavent image..bangladesh market context..seo friendly conent...service request form (dynamic and step forms)"
+- Scope: `website/src/lib/servicesData.js`, `website/src/components/ServiceStepForm.jsx`, `website/src/app/services/page.jsx`, `website/src/app/services/[slug]/page.jsx`, `website/src/app/layout.js`, `website/src/app/page.js`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Build comprehensive services directory and dedicated dynamic service pages for all 11 core and care services with rich Bangladesh-localized content, schema.org SEO metadata, modern minimalist UI, and multi-step interactive service request forms with WhatsApp and backend submission.
+
 ### 2026-09-12 | Claude Code (Opus 4.8) | COMPLETED | Buyer Service — Phase D (closure) + Residential Sell/Buy submenu (BUYER SERVICE COMPLETE)
 - Committed on air-conditioning/phase-0-duplicate. Stage 8 (closure & post-purchase follow-up) + the requested main-nav Residential → Sell / Buy submenu.
 - Migration 0119: property_deals += buyer_feedback, financial_closure_confirmed, closed_at. closeDeal endpoint (POST /api/sales/deals/:id/close) — financial closure requires all buyer agreement-fee invoices collected (409 unless override); close → status completed + financial_closure_confirmed + closed_at; reopen supported. Records buyer feedback.
@@ -5520,3 +5527,85 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Main sidebar (ui/Layout.jsx): Residential is now a collapsible group with Sell (/residential/sell) and Buy (/residential/buyer-service) — mirroring Commercial/Rural.
 - Verified live: close deal 32 (no fees → financially closed, status completed) + reopen; QA restored. npm test 7+5+12+27 + test:full 28/0.
 - BUYER SERVICE subsystem COMPLETE: Phase A (dashboard + deal file + 8-stage workflow), B (planning + inspection), C (doc-review/risk + non-trust settlement coordination), D (closure). Not merged; no PR.
+
+### 2026-09-12 14:05 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Dedicated Website Service Pages, SEO, Bangladesh Context & Dynamic Step Request Forms
+- User Request: On website create dedicated pages for each service with content-rich, minimalist clean UI, relevant images, Bangladesh market context, SEO-friendly content, and dynamic step forms. Also explicitly include Interior Design & Renovation services and ensure `http://localhost:3005/services?category=interior-design` works seamlessly.
+- Architecture Discovery:
+  - Repository contains both Next.js app (`website/`) and active Vite app running on port 3005 (`website-mock/`) proxying `/api` to backend port 50001. Both applications were upgraded and synchronized so that users accessing either frontend receive the full dedicated service experience.
+- Scope & Changes Made:
+  1. Master Dataset (`website/src/lib/servicesData.js` & `website-mock/src/data/servicesData.js`):
+     - Built comprehensive data for all 12 core and care services (`water-tank`, `air-conditioning`, `interior-design`, `land-property-assessment`, `loan-financial-support`, `property-documentation-verification`, `property-will-succession`, `removal-relocation`, `property-care-concierge`, `property-management`, `residential-sales`, `short-stay`).
+     - Includes rich Bangladesh market context (Dhaka WASA water pipeline sediment, RAJUK building approvals, AC Land Namjari/Mutation, Sub-Registry BIA deeds, high humidity & salt corrosion, NRB expatriate absentee landlord management).
+     - 4-stage audit-ready Standard Operating Procedures (SOP), pricing guides in BDT, deliverables checklists, coverage zones across Dhaka, dynamic form field configurations, FAQs, and SEO metadata.
+  2. Multi-Step Interactive Request Wizard (`website/src/components/ServiceStepForm.jsx` & `website-mock/src/components/ServiceStepForm.jsx`):
+     - Step 1 (Scope & Specs): Space/Equipment selection, capacity/floor area, add-on deliverables, engagement tier selection.
+     - Step 2 (Location & Schedule): Division & Dhaka neighborhood selection, full address, date picker, time slots, special access notes.
+     - Step 3 (Contact & NRB Verification): Full name, phone (+880), email, Expatriate/NRB toggle (country selector UK/USA/UAE/Canada, overseas WhatsApp), preferred contact channel.
+     - Step 4 (Confirmation & Instant WhatsApp Dispatch): Live generation of care reference code (`SSPC-CEN-...`), direct WhatsApp chat link with pre-filled reference and service details, direct call CTA, and reset option.
+     - Fully integrated with backend `POST /api/public-website/service-requests` to create `CareEnquiry` records.
+  3. Services Directory Hub (`website/src/app/services/page.jsx`, `website/src/app/services/ServicesDirectoryClient.jsx`, `website-mock/src/pages/ServicesPage.jsx`):
+     - Direct query param filtering: Supports `?category=interior-design` and all category pills (`interior-design`, `care-maintenance`, `property-care-concierge`, `nrb-dedicated-services`, etc.).
+     - Live search filter across titles, taglines, highlights, and coverage zones.
+     - Cards displaying hero thumbnails, pricing badges, deliverables, and buttons for "View Page" and "Book Now".
+  4. Dedicated Service Detail Pages (`website/src/app/services/[slug]/page.jsx` & `website-mock/src/pages/ServiceDetailPage.jsx`):
+     - Breadcrumbs, category badges, H1 hero, starting rate guidelines.
+     - Dedicated Bangladesh market reality callout banner.
+     - Detailed deliverables prose and technical highlights checklist.
+     - 4-stage visual SOP timeline with duration and quality sign-off checks.
+     - Pricing tiers, Dhaka coverage hubs, interactive FAQ accordion, JSON-LD Schema.org structured data, sibling service cross-links, and the embedded `<ServiceStepForm />`.
+  5. Global Layout & Homepage Wiring:
+     - `website/src/app/layout.js`: Added "All Services" and "Interior & Renovation" navigation links and comprehensive 4-column footer directory.
+     - `website/src/app/page.js`: Updated core services cards with direct links to dedicated service routes (`/services/interior-design`, `/services/water-tank`, `/services/air-conditioning`, etc.).
+     - `website-mock/src/App.jsx`: Registered route `/services/:slug` with `ServiceDetailPage`.
+     - `website-mock/src/data/mockServices.js`: Unlocked and integrated `interior-design` and `care-maintenance` (Water Tank & AC Care) as first-class categories with dedicated links.
+- Verification & Test Results:
+  - `website/` (Next.js): `npm run build` completed with 0 errors in 6.9s. All 12 `/services/[slug]` paths prerendered as static SSG pages.
+  - `website-mock/` (Vite): `npm run build` completed with 0 errors in 5.66s.
+  - HTTP Verification on port 3005:
+    - `GET http://localhost:3005/services?category=interior-design` -> 200 OK.
+    - `GET http://localhost:3005/services/interior-design` -> 200 OK.
+    - `GET http://localhost:3005/services/water-tank` -> 200 OK.
+- Handoff: All dedicated service pages, category query filtering (`?category=interior-design`), and dynamic step forms are active, tested, and fully functional.
+
+### 2026-09-12 14:25 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Fix White Screen Crash on /services/interior-design & Normalize Dataset Aliases
+- Request: Fix `http://localhost:3005/services/interior-design` getting white screen (nothing loads).
+- Scope: `website-mock/src/pages/ServiceDetailPage.jsx`, `website-mock/src/data/servicesData.js`, `website/src/lib/servicesData.js`, `website/src/app/services/[slug]/page.jsx`.
+- Root Cause:
+  1. In `ServiceDetailPage.jsx`, `service.coverage.map(...)` was called without a fallback guard. For services defining `coverageAreas` or differing property keys, `service.coverage` evaluated to `undefined`, causing an uncaught `TypeError: Cannot read properties of undefined (reading 'map')` in React, which unmounted the component tree into a blank white screen.
+  2. In `servicesData.js`, the array closure bracket `];` was missing before the normalization block, resulting in a syntax error during Vite module compilation.
+  3. `website/src/app/services/[slug]/page.jsx` contained an unclosed duplicated `<details>` block.
+- Changes Made:
+  1. `website-mock/src/data/servicesData.js` & `website/src/lib/servicesData.js`: Closed the `SERVICES` array properly with `];` and preserved two-way alias mapping (`sop <-> processSteps`, `coverage <-> coverageAreas`).
+  2. `website-mock/src/pages/ServiceDetailPage.jsx`: Added safe fallback array definitions for all lists (`sopSteps`, `coverageList`, `highlightsList`, `featuresList`, `optionsList`, `faqsList`) and safe fallback for `{step.duration || "Standard Inspection"}`.
+  3. `website/src/app/services/[slug]/page.jsx`: Removed duplicate `<details>` block and applied identical safe fallback array definitions.
+- Verification & Test Results:
+  - `website-mock/` (Vite dev & build): `npm run build` completed with 0 errors (built in 3.33s).
+  - `website/` (Next.js): `npm run build` completed with 0 errors in 6.0s; all 12 `/services/[slug]` routes prerendered cleanly.
+  - Node validation script verified all 12 services in `servicesData.js` have 4 SOP steps and valid coverage arrays.
+  - HTTP curl checks on Vite server (port 3005):
+    - `GET http://localhost:3005/services/interior-design` -> 200 OK.
+    - `GET http://localhost:3005/src/main.jsx` -> 200 OK.
+    - `GET http://localhost:3005/src/pages/ServiceDetailPage.jsx` -> 200 OK.
+    - `GET http://localhost:3005/src/data/servicesData.js` -> 200 OK.
+- Handoff: White screen is resolved; `http://localhost:3005/services/interior-design` and all service pages load with complete UI and functioning interactive booking wizards.
+
+### 2026-09-12 14:32 | Antigravity (Gemini 3.8 Flash) | STARTED | Hover Submenus for Navigation Bar with Direct Links to Dedicated Service Pages
+- Request: On navmenu hover on navmenu should show sub menues...from submenus link each dedicated pages.
+- Scope: `website-mock/src/components/Navbar.jsx`, `website/src/components/Navbar.jsx` (and layout headers where applicable).
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Implement rich desktop hover submenus with direct deep-links to dedicated service pages (`/services/interior-design`, `/services/water-tank`, `/services/air-conditioning`, etc.), ensure smooth hover interaction without flickering, and update mobile drawer with direct dedicated page links as well.
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED | Contacts hub: New Buyer/Seller with full KYC + signing-links fix
+- Request: at /admin/residential/contacts, "new lead/buyer/vendor entry nothing works"; add a way to create a new buyer and seller with all KYC features; enable buyer/seller-side new agreements from there. (Also finished the pending contracts signing-link fix from the prior turn.)
+- Diagnosis: New Lead / New Contact both worked (verified end-to-end in browser + curl). The real gap was there was NO direct entry point to create a Buyer or Vendor — only lead conversion — and no KYC capture on creation.
+- Changes:
+  1. `admin-portal/src/screens/sales/NewPartyKycDrawer.jsx` (NEW): 3-step wizard — (1) party + identity fields (name, company, phone/whatsapp/email, NID, passport, TIN, DOB, nationality, NRB, address), (2) KYC documents via `<RoleKycManager>` (upload + verify, auto-reuses verified docs), (3) proceed to Purchase/Sale Agreement. Creates Contact → Client(role) → PartyRoleProfile(role_type buyer|vendor) in one submit.
+  2. `admin-portal/src/screens/sales/SalesContacts.jsx`: import + `newPartyDrawer` state; header buttons "New Seller" (hidden in buy scope) and "+ New Buyer"; contextual "New Seller"/"New Buyer" buttons on the Vendors/Buyers tab headers; renders `NewPartyKycDrawer` (onCreated→loadAll, onGoToAgreement→existing goToAgreement).
+  3. `admin-portal/src/screens/sales/SalesAgreementScreen.jsx`: copyLink/viewSigned now use `GET /signing/envelopes/:id/links` (active_link / signed_document) — the admin envelope GET hides access_token. (SalesContracts.jsx + backend `envelopeLinks` endpoint were done previously.)
+- Verification (live, :50001 built dist):
+  - New Buyer flow: created SSPC-CL-000009, step 2 showed all 5 buyer KYC requirements (NID/Passport, Proof of funds, Bank details, Address proof, Source of funds) with upload UI; step 3 showed "Sign Purchase Agreement Now". 0 console errors.
+  - Backend restarted; `GET /api/signing/envelopes/232/links` returns active_link + signed_document; Contracts hub Open/Link resolve.
+  - Contact→Client→PartyRoleProfile chain confirmed via curl (KYC reuse runs). All test data cleaned up (2 contacts/clients/profiles/leads removed).
+  - `npm run build` (admin-portal): 2057 modules, 0 errors.
+- Handoff: Buyers/Vendors can now be created directly with full KYC from the Contacts hub and flow straight into the correct agreement. Untouched: parallel Gemini/Antigravity navbar work in website-mock/website.

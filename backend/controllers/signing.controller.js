@@ -60,6 +60,32 @@ exports.getEnvelope = asyncHandler(async (req, res) => {
   res.json({ data: env });
 });
 
+// GET /envelopes/:id/links — staff-only. Returns each signer's signing link and,
+// for a completed envelope, a link to the fully-signed document. The general
+// getEnvelope hides access_token; this is the staff seam for "copy link" and
+// "open signed agreement" (used by the Contracts hub, agreement screens, deal
+// files) — gated to the same signing ROLES on the route.
+exports.envelopeLinks = asyncHandler(async (req, res) => {
+  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req) }, include: [{ model: EnvelopeSigner, as: 'signers' }] });
+  if (!env) return res.status(404).json({ error: 'Envelope not found.' });
+  const base = process.env.SIGN_BASE_URL || `${req.protocol}://${req.get('host')}/admin/sign`;
+  const ordered = [...(env.signers || [])].sort((a, b) => a.signer_order - b.signer_order);
+  const links = ordered.map((s) => ({
+    name: s.name, email: s.email, role: s.role, status: s.status,
+    link: s.access_token ? `${base}/${s.access_token}` : null,
+    signed_document: env.status === 'completed' && s.access_token ? `/api/sign/${s.access_token}/signed-document` : null,
+  }));
+  const firstToken = ordered.find((s) => s.access_token)?.access_token || null;
+  res.json({ data: {
+    status: env.status, envelope_code: env.envelope_code, links,
+    // The active signing link (first outstanding signer) and — once completed —
+    // the signed document, ready to copy/open without exposing tokens elsewhere.
+    active_link: (ordered.find((s) => ['sent', 'viewed', 'pending'].includes(s.status)) || ordered[0])?.access_token
+      ? `${base}/${(ordered.find((s) => ['sent', 'viewed', 'pending'].includes(s.status)) || ordered[0]).access_token}` : null,
+    signed_document: env.status === 'completed' && firstToken ? `/api/sign/${firstToken}/signed-document` : null,
+  } });
+});
+
 exports.createEnvelope = asyncHandler(async (req, res) => {
   const { title, template_id, agreement_id, related_type, related_id, message, signing_order_enforced = true, signers = [], fields = [] } = req.body;
   if (!title || !signers.length) return res.status(400).json({ error: 'title and at least one signer are required.' });

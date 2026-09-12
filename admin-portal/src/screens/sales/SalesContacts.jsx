@@ -22,6 +22,7 @@ import { useToast } from '../../context/ToastContext';
 import {
   Button, Spinner, Badge, StatusBadge, Drawer, Field, Input, Select, Textarea
 } from '../../ui/kit';
+import NewPartyKycDrawer from './NewPartyKycDrawer';
 
 const money = (v) => '৳' + Number(v || 0).toLocaleString('en-BD');
 const dateFmt = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
@@ -70,6 +71,7 @@ export default function SalesContacts({ scope }) {
   // Modals & Drawers
   const [newLeadDrawer, setNewLeadDrawer] = useState(false);
   const [newContactDrawer, setNewContactDrawer] = useState(false);
+  const [newPartyDrawer, setNewPartyDrawer] = useState(null); // null | 'buyer' | 'vendor'
   const [dossierDrawer, setDossierDrawer] = useState(null); // contact or client
   const [convertModal, setConvertModal] = useState(null); // lead to convert
   const [convertRole, setConvertRole] = useState('seller'); // 'seller' | 'buyer'
@@ -761,11 +763,30 @@ export default function SalesContacts({ scope }) {
 
           <button
             type="button"
-            className="pm-btn primary"
+            className="pm-btn"
             onClick={() => setNewLeadDrawer(true)}
-            style={{ background: 'var(--navy, #003768)', color: '#ffffff' }}
           >
-            <UserPlus size={14} /> + New Lead
+            <UserPlus size={14} /> New Lead
+          </button>
+
+          {scope !== 'buy' && (
+            <button
+              type="button"
+              className="pm-btn"
+              onClick={() => setNewPartyDrawer('vendor')}
+              style={{ borderColor: '#d97706', color: '#b45309' }}
+            >
+              <Building2 size={14} /> New Seller
+            </button>
+          )}
+
+          <button
+            type="button"
+            className="pm-btn primary"
+            onClick={() => setNewPartyDrawer('buyer')}
+            style={{ background: '#4f46e5', color: '#ffffff' }}
+          >
+            <Briefcase size={14} /> + New Buyer
           </button>
         </div>
       </div>
@@ -1393,12 +1414,17 @@ export default function SalesContacts({ scope }) {
          ══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'vendors' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 13, color: 'var(--muted)' }}>
               Property sellers verified and ready to execute residential <strong>Sale Agreements</strong>.
             </div>
-            <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-              Showing {filteredVendors.length} vendors
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                Showing {filteredVendors.length} vendors
+              </div>
+              <button type="button" className="pm-btn primary" onClick={() => setNewPartyDrawer('vendor')} style={{ background: '#d97706', color: '#fff' }}>
+                <Plus size={14} /> New Seller
+              </button>
             </div>
           </div>
 
@@ -1593,12 +1619,17 @@ export default function SalesContacts({ scope }) {
          ══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'buyers' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 13, color: 'var(--muted)' }}>
               Qualified residential buyers ready to execute <strong>Purchase Agreements</strong> and review listings.
             </div>
-            <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-              Showing {filteredBuyers.length} buyers
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                Showing {filteredBuyers.length} buyers
+              </div>
+              <button type="button" className="pm-btn primary" onClick={() => setNewPartyDrawer('buyer')} style={{ background: '#4f46e5', color: '#fff' }}>
+                <Plus size={14} /> New Buyer
+              </button>
             </div>
           </div>
 
@@ -2093,6 +2124,17 @@ export default function SalesContacts({ scope }) {
             </div>
           </form>
         </Drawer>
+      )}
+
+      {/* ── New Buyer / New Seller (full KYC) Drawer ──────────────────────── */}
+      {newPartyDrawer && (
+        <NewPartyKycDrawer
+          role={newPartyDrawer}
+          properties={properties}
+          onClose={() => setNewPartyDrawer(null)}
+          onCreated={loadAll}
+          onGoToAgreement={goToAgreement}
+        />
       )}
 
       {/* ── + New Contact Drawer ──────────────────────────────────────────── */}
