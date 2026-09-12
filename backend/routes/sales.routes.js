@@ -40,6 +40,9 @@ router.get('/reports', roleMiddleware(READ), reportsCtrl.report);
 router.get('/deals/:dealId', roleMiddleware(READ), buyerDealCtrl.getBuyerDeal);
 router.get('/deals/:dealId/sop', roleMiddleware(READ), buyerSopCtrl.getSop);
 router.post('/deals/:dealId/sop', roleMiddleware(PREPARE), buyerSopCtrl.ensureSop);
+router.put('/deals/:dealId/risk', roleMiddleware(PREPARE), buyerDealCtrl.saveDealRisk);
+router.get('/deals/:dealId/coordination', roleMiddleware(READ), buyerDealCtrl.getCoordination);
+router.put('/deals/:dealId/coordination', roleMiddleware(PREPARE), buyerDealCtrl.saveCoordination);
 // Lead automation: routing rules + follow-up sequences (config = admin) and
 // per-enquiry sequence actions (prepare).
 router.get('/lead-rules', roleMiddleware(READ), autoCtrl.listRules);

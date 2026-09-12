@@ -163,5 +163,40 @@ exports.getBuyerDeal = asyncHandler(async (req, res) => {
     outstanding: invoices.reduce((s, i) => s + Number(i.balance || 0), 0),
   };
 
-  res.json({ data: { deal, mandate, candidates: mandate?.candidates || [], agreements, invoices, fees } });
+  const BuyerSettlementCoordination = require('../models/BuyerSettlementCoordination');
+  const coordination = await BuyerSettlementCoordination.findOne({ where: { property_deal_id: deal.id, ...branchScope(req) } });
+
+  res.json({ data: { deal, mandate, candidates: mandate?.candidates || [], agreements, invoices, fees, coordination } });
+});
+
+// ── Stage 5 — documentation review & risk ──────────────────────────────────
+exports.saveDealRisk = asyncHandler(async (req, res) => {
+  const deal = await PropertyDeal.findOne({ where: { id: req.params.dealId, deal_type: 'buy', ...branchScope(req) } });
+  if (!deal) return res.status(404).json({ error: 'Buy deal not found.' });
+  const patch = pick(req.body, ['risk_flags']);
+  if (req.body.acknowledge !== undefined) {
+    patch.risk_acknowledged = !!req.body.acknowledge;
+    patch.risk_ack_at = req.body.acknowledge ? new Date() : null;
+  }
+  await deal.update(patch);
+  res.json({ data: deal, message: 'Risk review saved.' });
+});
+
+// ── Stage 7 — settlement COORDINATION (non-trust) ──────────────────────────
+exports.getCoordination = asyncHandler(async (req, res) => {
+  const BuyerSettlementCoordination = require('../models/BuyerSettlementCoordination');
+  res.json({ data: await BuyerSettlementCoordination.findOne({ where: { property_deal_id: req.params.dealId, ...branchScope(req) } }) });
+});
+
+exports.saveCoordination = asyncHandler(async (req, res) => {
+  const BuyerSettlementCoordination = require('../models/BuyerSettlementCoordination');
+  const deal = await PropertyDeal.findOne({ where: { id: req.params.dealId, deal_type: 'buy', ...branchScope(req) } });
+  if (!deal) return res.status(404).json({ error: 'Buy deal not found.' });
+  const fields = pick(req.body, ['agreement_date', 'registration_status', 'external_settlement_date', 'payment_tracking_notes', 'handover_confirmed', 'notes']);
+  const [row] = await BuyerSettlementCoordination.findOrCreate({
+    where: { property_deal_id: deal.id, branch_id: deal.branch_id },
+    defaults: { ...fields, property_deal_id: deal.id, branch_id: deal.branch_id, created_by: req.user?.id || null },
+  });
+  await row.update(fields);
+  res.json({ data: row, message: 'Settlement coordination saved.' });
 });

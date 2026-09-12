@@ -6,7 +6,7 @@
 // fee-for-coordination — no trust settlement (stage 7 is coordination only).
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ClipboardCheck, Users, HandCoins, FileSignature, ShieldCheck, Wrench } from 'lucide-react';
+import { ArrowLeft, ClipboardCheck, Users, HandCoins, FileSignature, ShieldCheck, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { PageHead, Button, Spinner, StatusBadge, Badge, Field, Input, Textarea, Select } from '../../ui/kit';
@@ -17,9 +17,11 @@ const SOP_TIER = { on_track: null, due_soon: ['amber', 'Due soon'], overdue: ['r
 const TABS = [
   { key: 'workflow', label: 'Workflow', icon: ClipboardCheck },
   { key: 'requirements', label: 'Requirements & Candidates', icon: Users },
+  { key: 'diligence', label: 'Documents & Risk', icon: ShieldCheck },
   { key: 'agreement', label: 'Agreement & Fees', icon: FileSignature },
   { key: 'settlement', label: 'Settlement coordination', icon: HandCoins },
 ];
+const REG_STATUS = ['not_started', 'in_progress', 'registered', 'delayed'];
 
 export default function BuyerDealFile() {
   const { dealId } = useParams();
@@ -62,6 +64,16 @@ export default function BuyerDealFile() {
   // Stage 4 — save per-candidate viewing / inspection.
   const saveCandidate = async (cid, patch) => {
     try { await api.patch(`/buyer-mandates/candidates/${cid}`, patch); toast.success('Saved'); loadFile(); }
+    catch (e) { toast.error(e.response?.data?.error || 'Could not save'); }
+  };
+  // Stage 5 — save risk flags / toggle acknowledgement.
+  const saveRisk = async (patch) => {
+    try { await api.put(`/sales/deals/${dealId}/risk`, patch); toast.success('Saved'); loadFile(); }
+    catch (e) { toast.error(e.response?.data?.error || 'Could not save'); }
+  };
+  // Stage 7 — save the non-trust settlement coordination.
+  const saveCoordination = async (patch) => {
+    try { await api.put(`/sales/deals/${dealId}/coordination`, patch); toast.success('Saved'); loadFile(); }
     catch (e) { toast.error(e.response?.data?.error || 'Could not save'); }
   };
 
@@ -188,14 +200,73 @@ export default function BuyerDealFile() {
         </div></div>
       )}
 
-      {/* SETTLEMENT COORDINATION — placeholder (Phase C) */}
-      {tab === 'settlement' && (
-        <div className="pm-card"><div className="pm-card-body" style={{ padding: 16 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 700, marginBottom: 8 }}><HandCoins size={16} /> Settlement coordination</div>
-          <p className="cell-sub">Buyer service coordinates the <strong>external</strong> settlement — Seventh Sky does not hold the purchase funds, so there is no trust settlement here. Registration status, settlement date, payment tracking and handover confirmation are added in the next phase. Our service fees are collected via the fee invoices (Agreement &amp; Fees tab).</p>
-        </div></div>
-      )}
+      {/* DOCUMENTS & RISK (stage 5) */}
+      {tab === 'diligence' && <RiskPanel deal={deal} onSave={saveRisk} />}
+
+      {/* SETTLEMENT COORDINATION (stage 7 — non-trust) */}
+      {tab === 'settlement' && <CoordinationPanel coordination={file.coordination} fees={file.fees} onSave={saveCoordination} />}
     </div>
+  );
+}
+
+// Stage 5 — documentation review & risk flags + buyer acknowledgement.
+function RiskPanel({ deal, onSave }) {
+  const flags = Array.isArray(deal.risk_flags) ? deal.risk_flags : [];
+  const [rows, setRows] = useState(flags.length ? flags : [{ label: '', level: 'medium', note: '' }]);
+  const set = (i, k, v) => setRows((p) => p.map((r, idx) => (idx === i ? { ...r, [k]: v } : r)));
+  return (
+    <div className="pm-card"><div className="pm-card-body" style={{ padding: 16 }}>
+      <div className="between" style={{ marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+        <strong style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><ShieldCheck size={16} /> Documentation review &amp; risk (Stage 5)</strong>
+        {deal.risk_acknowledged
+          ? <Badge tone="green">Buyer acknowledged{deal.risk_ack_at ? ` · ${String(deal.risk_ack_at).slice(0, 10)}` : ''}</Badge>
+          : <Badge tone="amber">Not acknowledged</Badge>}
+      </div>
+      <p className="cell-sub" style={{ marginBottom: 10 }}>Record document/ownership risks found during review. Seventh Sky coordinates verification in good faith — the buyer obtains independent legal advice and acknowledges the disclaimer.</p>
+      {rows.map((r, i) => (
+        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 130px 1fr auto', gap: 8, alignItems: 'end', marginBottom: 8 }}>
+          <Field label="Risk"><Input value={r.label} onChange={(e) => set(i, 'label', e.target.value)} placeholder="e.g. Mutation pending" /></Field>
+          <Field label="Level"><Select value={r.level} onChange={(e) => set(i, 'level', e.target.value)}>{['low', 'medium', 'high'].map((l) => <option key={l} value={l}>{l}</option>)}</Select></Field>
+          <Field label="Note"><Input value={r.note} onChange={(e) => set(i, 'note', e.target.value)} /></Field>
+          <Button size="sm" variant="ghost" icon={Trash2} onClick={() => setRows((p) => p.filter((_, idx) => idx !== i))} />
+        </div>
+      ))}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+        <Button size="sm" variant="ghost" onClick={() => setRows((p) => [...p, { label: '', level: 'medium', note: '' }])}>Add risk</Button>
+        <Button size="sm" onClick={() => onSave({ risk_flags: rows.filter((r) => r.label.trim()) })}>Save risks</Button>
+        <div style={{ flex: 1 }} />
+        <Button size="sm" variant={deal.risk_acknowledged ? 'ghost' : 'primary'} onClick={() => onSave({ acknowledge: !deal.risk_acknowledged })}>
+          {deal.risk_acknowledged ? 'Withdraw acknowledgement' : 'Mark buyer acknowledged'}
+        </Button>
+      </div>
+    </div></div>
+  );
+}
+
+// Stage 7 — settlement COORDINATION (Seventh Sky does not hold funds).
+function CoordinationPanel({ coordination, fees, onSave }) {
+  const [f, setF] = useState({
+    agreement_date: coordination?.agreement_date ? String(coordination.agreement_date).slice(0, 10) : '',
+    registration_status: coordination?.registration_status || 'not_started',
+    external_settlement_date: coordination?.external_settlement_date ? String(coordination.external_settlement_date).slice(0, 10) : '',
+    payment_tracking_notes: coordination?.payment_tracking_notes || '',
+    handover_confirmed: !!coordination?.handover_confirmed,
+    notes: coordination?.notes || '',
+  });
+  return (
+    <div className="pm-card"><div className="pm-card-body" style={{ padding: 16 }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 700, marginBottom: 6 }}><HandCoins size={16} /> Settlement coordination (Stage 7)</div>
+      <p className="cell-sub" style={{ marginBottom: 12 }}>Seventh Sky coordinates the <strong>external</strong> settlement — it does <strong>not</strong> hold the purchase funds, so there is no trust settlement. Track milestones here; our service fees are collected via the fee invoices (Agreement &amp; Fees tab · outstanding {bdt(fees.outstanding)}).</p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Field label="Agreement date"><Input type="date" value={f.agreement_date} onChange={(e) => setF((p) => ({ ...p, agreement_date: e.target.value }))} /></Field>
+        <Field label="Registration status"><Select value={f.registration_status} onChange={(e) => setF((p) => ({ ...p, registration_status: e.target.value }))}>{REG_STATUS.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}</Select></Field>
+        <Field label="External settlement date"><Input type="date" value={f.external_settlement_date} onChange={(e) => setF((p) => ({ ...p, external_settlement_date: e.target.value }))} /></Field>
+        <Field label="Handover"><label style={{ display: 'inline-flex', gap: 8, alignItems: 'center', paddingTop: 8 }}><input type="checkbox" checked={f.handover_confirmed} onChange={(e) => setF((p) => ({ ...p, handover_confirmed: e.target.checked }))} /> Handover confirmed</label></Field>
+        <div style={{ gridColumn: '1 / -1' }}><Field label="Payment tracking notes"><Textarea value={f.payment_tracking_notes} onChange={(e) => setF((p) => ({ ...p, payment_tracking_notes: e.target.value }))} /></Field></div>
+        <div style={{ gridColumn: '1 / -1' }}><Field label="Notes"><Textarea value={f.notes} onChange={(e) => setF((p) => ({ ...p, notes: e.target.value }))} /></Field></div>
+      </div>
+      <div style={{ marginTop: 10 }}><Button size="sm" onClick={() => onSave(f)}>Save coordination</Button></div>
+    </div></div>
   );
 }
 

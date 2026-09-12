@@ -5470,4 +5470,17 @@ used "the last line starting with `import`", which landed inside a multi-line
 - buyerMandate.controller: MANDATE_FIELDS + candidate patch whitelist the new fields; new approveToProceed action (POST /api/buyer-mandates/:id/approve-to-proceed, toggle-able, records who/when).
 - BuyerDealFile Requirements & Candidates tab: PlanningPanel (finance readiness / intended use / search strategy / risk notes + Approve-to-proceed gate with status badge) and CandidateRow per shortlisted property (viewing date, buyer feedback, inspection notes, inspection-photo UploadButton).
 - Verified live: planning fields save (pre_approved / Owner-occupier), approve-to-proceed sets approved + timestamp; QA restored. npm test 7+5+12+27 + test:full 28/0.
-- Next: Phase C (doc-review & risk + non-trust settlement-coordination tracker), Phase D (closure). Not merged; no PR.
+### 2026-09-12 12:52 | Antigravity (Gemini 3.8 Flash) | STARTED | Toast UI Design Upgrade & Dedicated Toast CSS Module
+- Request: "yes top right corner visible but not properly designed...add a nice ui to toast notifications"
+- Scope: `admin-portal/src/context/ToastContext.jsx`, `admin-portal/src/styles/toast.css`, `admin-portal/src/main.jsx`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Create dedicated self-contained `toast.css` imported directly by `ToastContext.jsx` and `main.jsx` ensuring rich visual styling is always present across all screens. Design high-polish, modern executive UI (glassmorphism/crisp cards, refined typography, luxury micro-shadows, soft status-accent badges, and micro-interactions). Rebuild bundle and verify.
+
+### 2026-09-12 | Claude Code (Opus 4.8) | COMPLETED | Buyer Service — Phase C (doc review/risk + settlement coordination)
+- Committed on air-conditioning/phase-0-duplicate. Stage 5 (documentation review & risk) + stage 7 (agreement & settlement COORDINATION — non-trust).
+- Migration 0118: property_deals += risk_flags JSON, risk_acknowledged, risk_ack_at; new buyer_settlement_coordination table (property_deal_id, agreement_date, registration_status ENUM, external_settlement_date, payment_tracking_notes, handover_confirmed, notes) — NON-trust, one per buy deal. BuyerSettlementCoordination model + PropertyDeal fields.
+- buyerMandate.controller: saveDealRisk (PUT /api/sales/deals/:id/risk — risk flags + toggle acknowledgement) + getCoordination/saveCoordination (GET/PUT /api/sales/deals/:id/coordination, find-or-create). getBuyerDeal now returns coordination. Routes added to sales.routes.
+- BuyerDealFile: new 'Documents & Risk' tab (RiskPanel — add/level/note risk flags + buyer-acknowledgement gate) and the 'Settlement coordination' tab now functional (CoordinationPanel — agreement date, registration status, external settlement date, payment-tracking notes, handover confirmed; states the no-trust model + links fee collection).
+- Verified live on deal 32: risk flags + ack saved; coordination saved (registration in_progress, settlement date); getBuyerDeal reflects both; QA data cleaned. npm test 7+5+12+27 + test:full 28/0.
+- Next: Phase D (closure = all fees collected + dashboard worklists + finishing gate). Not merged; no PR.

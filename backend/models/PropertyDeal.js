@@ -34,6 +34,10 @@ const PropertyDeal = sequelize.define('PropertyDeal', {
   deductions_total: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
   settlement_approved_by: DataTypes.INTEGER,
   settlement_approved_at: DataTypes.DATE,
+  // Buyer service stage 5 — documentation review & risk
+  risk_flags: DataTypes.JSON,
+  risk_acknowledged: { type: DataTypes.BOOLEAN, defaultValue: false },
+  risk_ack_at: DataTypes.DATE,
   created_by: DataTypes.INTEGER,
 }, { tableName: 'property_deals', underscored: true });
 
