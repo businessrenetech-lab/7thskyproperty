@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Eye, Building2, FileSignature, Users2, Wallet, Handshake, MoreHorizontal, LayoutGrid, List as ListIcon } from 'lucide-react';
+import { Eye, Building2, FileSignature, Users2, Wallet, Handshake, MoreHorizontal, LayoutGrid, List as ListIcon, ShieldCheck } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { PageHead, DataTable, StatusBadge, Drawer, SearchInput, KV, Spinner, Button, Badge, Select } from '../ui/kit';
@@ -205,14 +205,20 @@ export default function DealsBoard({ category, dealType, title, desc }) {
               <div className="form-section-title"><Handshake size={13} /> Settlement</div>
               <KV k="Settlement date" v={detail.settlement_date} />
               <KV k="Notes" v={detail.notes} />
-              {(detail.property_id || detail.Property?.id || sel.property_id || sel.Property?.id) && (
-                <div style={{ marginTop: 12 }}>
-                  <Button icon={Wallet} onClick={() => navigate(settlementDeskPath(category, detail.property_id || detail.Property?.id || sel.property_id || sel.Property?.id))}>
-                    Open Settlement Desk
-                  </Button>
-                  <p className="cell-sub" style={{ marginTop: 6 }}>Prepare, approve, record money, match the bank and complete this deal's settlement.</p>
-                </div>
-              )}
+              {(detail.property_id || detail.Property?.id || sel.property_id || sel.Property?.id) && (() => {
+                const pid = detail.property_id || detail.Property?.id || sel.property_id || sel.Property?.id;
+                return (
+                  <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <Button icon={ShieldCheck} variant="ghost" onClick={() => navigate(`/residential/property/${pid}?section=onboarding`)}>
+                      {dealType === 'buy' ? 'Onboard buyer / KYC' : 'Onboard / KYC'}
+                    </Button>
+                    <Button icon={Wallet} onClick={() => navigate(settlementDeskPath(category, pid))}>
+                      Open Settlement Desk
+                    </Button>
+                    <p className="cell-sub" style={{ marginTop: 6, flexBasis: "100%" }}>Verify {dealType === 'buy' ? 'buyer' : 'party'} KYC inline in the onboarding tab, then send the agreement for signature. Or open the Settlement Desk to complete this deal.</p>
+                  </div>
+                );
+              })()}
             </>
           )}
         </Drawer>

@@ -346,6 +346,7 @@ export default function SalesPropertyFile({
   const [assessmentDirty, setAssessmentDirty] = useState(false);
   const [activityTab, setActivityTab] = useState("activity");
   const [inlineKyc, setInlineKyc] = useState(false); // KYC verified inline in the onboarding tab (no reroute)
+  const [offerKycProfileId, setOfferKycProfileId] = useState(null); // buyer KYC verified inline on an offer (no reroute)
   const [drawer, setDrawer] = useState(null);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
@@ -972,6 +973,15 @@ export default function SalesPropertyFile({
     const kind = role.role_type === "buyer" ? "purchase" : "sale";
     navigate(
       `/residential/agreements/${kind}?property_id=${propertyId}${role.contact_id ? `&contact_id=${role.contact_id}` : ""}`,
+    );
+  };
+  // The buyer role profile (with KYC) matching an offer's buyer party, if the
+  // buyer has been onboarded (created on offer acceptance).
+  const buyerProfileFor = (party) => {
+    const cid = party?.contact_id || party?.Contact?.id || party?.contact?.id || party?.client?.contact_id;
+    if (!cid) return null;
+    return salesRoleProfiles.find(
+      (role) => role.role_type === "buyer" && Number(role.contact_id) === Number(cid),
     );
   };
   const kycStatus = !salesRoleProfiles.length
@@ -3098,6 +3108,44 @@ export default function SalesPropertyFile({
                       ))}
                     </div>
                   )}
+
+                  {/* Buyer KYC — verified inline here (no reroute), then straight to
+                      the purchase agreement signatures. Available once the buyer is
+                      onboarded (a role profile exists, created on acceptance). */}
+                  {array(offer.buyers, offer.parties).map((buyer, bi) => {
+                    const bProfile = buyerProfileFor(buyer);
+                    if (!bProfile) return null;
+                    const open = offerKycProfileId === bProfile.id;
+                    const complete =
+                      bProfile.kyc_status === "complete" &&
+                      bProfile.documents_status === "complete";
+                    return (
+                      <div key={bProfile.id || bi} style={{ marginTop: 10, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+                        <div className="between" style={{ flexWrap: "wrap", gap: 8 }}>
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                            <ShieldCheck size={14} /> Buyer KYC — {PartyName({ party: buyer })}
+                            <StatusBadge status={bProfile.kyc_status} />
+                          </div>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            <Button size="sm" variant="ghost" onClick={() => setOfferKycProfileId(open ? null : bProfile.id)}>
+                              {open ? "Hide KYC" : "Verify KYC"}
+                            </Button>
+                            <Button size="sm" disabled={!complete} onClick={() => goToSignatures(bProfile)}>
+                              Go to signatures
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => goToSignatures(bProfile)}>
+                              Skip → signatures
+                            </Button>
+                          </div>
+                        </div>
+                        {open && (
+                          <div style={{ marginTop: 10 }}>
+                            <RoleKycManager profile={bProfile} onChanged={load} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
             </div>
