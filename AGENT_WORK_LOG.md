@@ -6508,3 +6508,9 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Second-pass harness (NEW backend/scripts/e2eInspectionsPortals.js, 12/0): rental assessment create→item→generate-work-orders→complete(override); inspection create→item→complete→read-back; landlord & tenant portal endpoints correctly refuse a non-portal admin (403) — role gate works. NOTE: full landlord/tenant portal JOURNEY (as a portal user) needs a provisioned portal account (role-gated) — probed the gate, not the full logged-in-as-tenant flow; can do that next if wanted.
 - Non-bugs confirmed: rental-assessment item field is `assessment_item` (frontend sends it correctly; only my first harness cut used the wrong name); "complete" requires resolved items or manager override (legit gate).
 - Test data kept.
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED (BUG FIXED) | Bulk rent collection failing — "Invalid authentication token"
+- Report: /admin/property-management/collect-rent showed every row FAILED.
+- Root cause: authMiddleware.getRequestToken prefers the `la_admin_token` COOKIE over the bearer, so admin sessions authenticate by cookie. But tenancy.collectRent orchestrates via internal loopback HTTP calls (raise-invoice + record-payment) forwarding ONLY req.headers.authorization (the bearer). When the outer request authed by cookie and the bearer was stale/absent, every internal call was rejected with "Invalid authentication token" → all rows failed. Reproduced: tenancy #2 → failed "Invalid authentication token".
+- FIX: collectRent (and the same pattern in disbursement.controller bulk pay-owners) now also forward `Cookie: req.headers.cookie` on the internal calls, so they authenticate exactly as the outer request did.
+- Verified live (:3005, cookie session): the same tenancy #2 now returns status=paid, payment SSPC-PY-000049, summary {paid:1, failed:0, collected 8000}. Bulk owner disbursement shares the fix.

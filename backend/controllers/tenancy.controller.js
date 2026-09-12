@@ -393,8 +393,18 @@ exports.collectRent = asyncHandler(async (req, res) => {
 
   const base = `http://127.0.0.1:${process.env.PORT || 50001}`;
   const auth = req.headers.authorization;
+  // The admin authenticates via the `la_admin_token` cookie (preferred over the
+  // bearer). Forward BOTH so the internal loopback calls authenticate exactly as
+  // the outer request did — forwarding only the bearer fails when it is stale or
+  // absent (cookie-based sessions), which broke bulk rent collection.
+  const cookie = req.headers.cookie;
   const branch = req.headers['x-branch-id'] || String(resolveBranchId(req) || '');
-  const H = { 'Content-Type': 'application/json', ...(auth ? { Authorization: auth } : {}), ...(branch ? { 'X-Branch-Id': branch } : {}) };
+  const H = {
+    'Content-Type': 'application/json',
+    ...(auth ? { Authorization: auth } : {}),
+    ...(cookie ? { Cookie: cookie } : {}),
+    ...(branch ? { 'X-Branch-Id': branch } : {}),
+  };
   const call = async (method, path, body) => {
     const r = await fetch(base + path, { method, headers: H, body: body ? JSON.stringify(body) : undefined });
     let data = {}; try { data = await r.json(); } catch { /* non-json */ }
