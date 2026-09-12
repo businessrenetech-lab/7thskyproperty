@@ -47,7 +47,7 @@ import {
 import { Combo } from "../../ui/pickers";
 import FileUpload, { fileSrc } from "../../ui/FileUpload";
 import SalesAssessmentWorkspace from "./SalesAssessmentWorkspace";
-import { settlementDeskPath } from "./paths";
+import { settlementDeskPath, clientProfilePath } from "./paths";
 import UploadButton from "../../ui/UploadButton";
 
 const unwrap = (response) =>
@@ -241,10 +241,13 @@ function Panel({ icon: Icon, heading, sub, action, children }) {
   );
 }
 
-function OnboardingRow({ label, status, actionLabel, onAction }) {
+function OnboardingRow({ label, status, actionLabel, onAction, sub }) {
   return (
-    <div className="kv">
-      <span className="k">{label}</span>
+    <div className="kv" style={sub ? { alignItems: "flex-start" } : undefined}>
+      <span className="k">
+        {label}
+        {sub && <div className="cell-sub" style={{ fontWeight: 400, marginTop: 2 }}>{sub}</div>}
+      </span>
       <span
         className="v"
         style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
@@ -935,7 +938,24 @@ export default function SalesPropertyFile({
       : vendorRoleProfile?.status === "agreement_pending"
         ? "draft"
         : null;
+  // NEW sale/purchase service agreements (RPPS/RPSS) for this property — these
+  // are the current agreement method; the onboarding Agreement step reflects and
+  // links to them, falling back to the legacy role/profile status only if none.
+  const saleAgreements = array(detail.sale_agreements);
+  const activeAgreement =
+    saleAgreements.find((a) => !["voided", "declined"].includes(a.status)) ||
+    saleAgreements[0] ||
+    null;
+  const AGREEMENT_STATUS_MAP = {
+    draft: "draft", sent: "sent", viewed: "sent", partially_signed: "sent",
+    completed: "signed", declined: "declined", voided: "voided",
+  };
+  const newAgreementStatus = activeAgreement
+    ? AGREEMENT_STATUS_MAP[activeAgreement.status] || activeAgreement.status
+    : null;
+  const vendorContactId = vendorRoleProfile?.contact_id || null;
   const agreementStatus =
+    newAgreementStatus ||
     roleAgreementStatus ||
     profile.agreement_status ||
     detail.agreement?.status ||
@@ -2845,11 +2865,9 @@ export default function SalesPropertyFile({
                     <button
                       type="button"
                       onClick={() =>
-                        row.client_id
-                          ? navigate(`/clients?client=${row.client_id}`)
-                          : row.contact_id
-                            ? navigate(`/contacts?contact=${row.contact_id}`)
-                            : toast.error("No linked buyer record.")
+                        row.client_id || row.contact_id
+                          ? navigate(clientProfilePath(property?.category || 'residential', { clientId: row.client_id, contactId: row.contact_id }))
+                          : toast.error("No linked buyer record.")
                       }
                       style={{
                         background: "none",
@@ -3160,12 +3178,19 @@ export default function SalesPropertyFile({
               onAction={canPrepare ? () => openDrawer("profile", { ...profile }) : null}
             />
             <OnboardingRow
-              label="Agreement"
+              label="Sale agreement (RPSS)"
               status={agreementStatus}
-              actionLabel="Manage"
+              sub={
+                activeAgreement
+                  ? `${activeAgreement.envelope_code} · ${activeAgreement.signed_count}/${activeAgreement.total_signers} signed`
+                  : "Residential Property Sale Service Agreement — build, send and e-sign"
+              }
+              actionLabel={activeAgreement ? "Manage" : "Create"}
               onAction={() =>
                 navigate(
-                  `/role-onboarding?property_id=${propertyId}&sales_roles=1${vendorRoleProfile ? `&profile_id=${vendorRoleProfile.id}` : ""}`,
+                  activeAgreement
+                    ? `/residential/agreements/sale`
+                    : `/residential/agreements/sale?property_id=${propertyId}${vendorContactId ? `&contact_id=${vendorContactId}` : ""}`,
                 )
               }
             />
@@ -3256,8 +3281,8 @@ export default function SalesPropertyFile({
               >
                 <Users size={15} /> Agreements and KYC profiles
               </Button>
-              <Button variant="ghost" onClick={() => navigate("/agreements")}>
-                <FileCheck2 size={15} /> Agreements
+              <Button variant="ghost" onClick={() => navigate("/residential/agreements/sale")}>
+                <FileCheck2 size={15} /> Sale agreements
               </Button>
               <Button
                 variant="ghost"

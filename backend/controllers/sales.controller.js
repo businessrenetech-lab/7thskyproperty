@@ -10,6 +10,8 @@ const BankAccount = require('../models/BankAccount');
 const BankStatementLine = require('../models/BankStatementLine');
 const { PartyBankAccount, accountNumberHash, publicBankAccount } = require('../models/PartyBankAccount');
 const PartyRoleProfile = require('../models/PartyRoleProfile');
+const SigningEnvelope = require('../models/SigningEnvelope');
+const EnvelopeSigner = require('../models/EnvelopeSigner');
 const Contact = require('../models/Contact');
 const Client = require('../models/Client');
 const { generateCode } = require('../utils/codeGenerator');
@@ -526,6 +528,23 @@ exports.getPropertyFile = asyncHandler(async (req, res) => {
     order: [['created_at', 'ASC']],
   });
   const kycDocuments = roleProfiles.length ? await KycDocument.findAll({ where: { branch_id: property.branch_id, party_role_profile_id: { [Op.in]: roleProfiles.map((item) => item.id) } }, order: [['created_at', 'DESC']] }) : [];
+  // Sale/purchase service agreements (RPPS/RPSS) for this property — the NEW
+  // multi-signer agreement method. Surfaced so onboarding reflects and links to
+  // them rather than the legacy party_role flow.
+  const saleAgreementEnvelopes = await SigningEnvelope.findAll({
+    where: { branch_id: property.branch_id, related_id: property.id, related_type: { [Op.in]: ['sale_purchase_agreement', 'sale_sale_agreement'] } },
+    include: [{ model: EnvelopeSigner, as: 'signers', attributes: ['id', 'name', 'email', 'role', 'status'] }],
+    order: [['created_at', 'DESC']],
+  });
+  const saleAgreements = saleAgreementEnvelopes.map((e) => {
+    const p = plain(e);
+    const signers = (p.signers || []).map((s) => ({ id: s.id, name: s.name, role: s.role, status: s.status }));
+    return {
+      id: p.id, envelope_code: p.envelope_code, kind: p.related_type === 'sale_sale_agreement' ? 'sale' : 'purchase',
+      status: p.status, sent_at: p.sent_at, completed_at: p.completed_at, expires_at: p.expires_at,
+      signers, signed_count: signers.filter((s) => s.status === 'signed').length, total_signers: signers.length,
+    };
+  });
   const events = await SaleEvent.findAll({ where: { property_id: property.id, branch_id: property.branch_id }, order: [['created_at', 'DESC']] });
   const nextAction = !settlement || !['approved', 'locked'].includes(settlement.status)
     ? settlement?.status === 'draft' || settlement?.status === 'returned' ? 'submit_settlement' : settlement?.status === 'submitted' ? 'review_settlement' : settlement?.status === 'reviewed' ? 'approve_settlement' : blockers.length ? `clear:${blockers[0]}` : 'complete'
@@ -550,7 +569,7 @@ exports.getPropertyFile = asyncHandler(async (req, res) => {
   const visibleKycDocuments = canRevealBank ? kycDocuments : kycDocuments.map((document) => ({ id: document.id, party_role_profile_id: document.party_role_profile_id, role: document.role, document_type: document.document_type, status: document.status, is_required: document.is_required, verified_at: document.verified_at }));
   const visibleEvents = canRevealBank ? events : events.map((event) => ({ ...plain(event), old_value: null, new_value: null }));
   const visibleDocuments = canRevealBank ? documents : documents.filter((document) => document.entity_type !== 'settlement');
-  res.json({ property, profile, sale_profile: profile, assessment_summary: assessmentSummary, parties, offers, transaction: fileTransaction, active_transaction: activeTransaction, transaction_history: transactionHistory, settlement: settlementPlain ? { ...settlementPlain, calculations, summary: calculations, trust, funding_requests: fundingRequests } : null, role_profiles: roleProfiles, documents: visibleDocuments, kyc_documents: visibleKycDocuments, events: visibleEvents, activity: visibleEvents, audit: visibleEvents, blockers: [...new Set(blockers)], next_action: nextAction });
+  res.json({ property, profile, sale_profile: profile, assessment_summary: assessmentSummary, parties, offers, transaction: fileTransaction, active_transaction: activeTransaction, transaction_history: transactionHistory, settlement: settlementPlain ? { ...settlementPlain, calculations, summary: calculations, trust, funding_requests: fundingRequests } : null, role_profiles: roleProfiles, sale_agreements: saleAgreements, documents: visibleDocuments, kyc_documents: visibleKycDocuments, events: visibleEvents, activity: visibleEvents, audit: visibleEvents, blockers: [...new Set(blockers)], next_action: nextAction });
 });
 
 exports.upsertProfile = asyncHandler(async (req, res) => {
