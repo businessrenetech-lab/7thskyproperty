@@ -90,7 +90,10 @@ async function applyOwnerFeesOnRent({ tenancy, rentReceived, period_label, sourc
       if (existing) continue;
     }
 
-    // 1. Deduct from the owner: credit the landlord folio (reduces owner balance).
+    // 1. Deduct from the owner: DEBIT the landlord folio (money-out reduces the
+    // owner balance). The owner statement rolls landlord_fee up from the debit
+    // column (credit = money-in to the owner, debit = deductions) — posting it as
+    // a credit both hid it from management_fee and inflated the owner's balance.
     const folioTxn = await postFolioTransaction({
       folio_id: landlordFolio.id,
       transaction_type: 'charge',
@@ -99,7 +102,7 @@ async function applyOwnerFeesOnRent({ tenancy, rentReceived, period_label, sourc
       property_id: tenancy.property_id,
       tenancy_id: tenancy.id,
       description: `${fee.fee_name} on rent ${period_label || ''}`.trim(),
-      credit: amount,
+      debit: amount,
       created_by: user_id,
     }, { transaction: tx });
 
