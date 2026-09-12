@@ -6395,3 +6395,62 @@ used "the last line starting with `import`", which landed inside a multi-line
 ### 2026-09-12 | Claude Opus 4.8 | COMPLETED | RPTM (tenancy mgmt agreement) backend parity
 - Applied the same parity to RPTM (tenant-side tenancy management agreement) as RPRM: rptm.controller now supports save_as_draft + updateAgreement + sendAgreement; routes PUT /rptm/agreements/:id and POST /rptm/agreements/:id/send. Renderer: CSS-drawn checkboxes (was ☑/☐ glyphs) + closing note moved above the Signatures block. Both controllers load OK; backend restarted.
 - Tenant-application → agreement ALIGNMENT (checked, gap noted): an approved TenantApplication → convertToTenancy creates a Tenancy, but the RPTM agreement is a SEPARATE builder (kyc_role tenant) that does NOT prefill from the application — staff re-key tenant details. RECOMMENDATION (not yet built): prefill the RPTM builder (client name/email/phone/NID + property + rent/deposit) from the approved application, or auto-draft the RPTM on conversion. No missing DB inputs — the application already captures name/mobile/email/nid/rent/deposit/occupants; it just isn't wired into the RPTM builder.
+
+### 2026-09-12 18:29 | Antigravity | COMPLETED | Homepage redesign with minimalist corporate aesthetic, Featured Properties tabs & deep context
+- Request: Redesign homepage while keeping Hero section and post-hero section (SolutionsOverview) untouched. Change "Curated Portfolio / Prime Properties & Short Stays" to "Featured Properties" with dynamic tabs (Buy, Rent, Short Term Stay, Business - shown in two rows on mobile). Rewrite landing page content with concise, mass-friendly, marketing-friendly corporate language with deep context in a minimalist Figma UI/UX style.
+- Files Changed:
+  - `website-mock/src/pages/HomePage.jsx`: Replaced with high-craft minimalist corporate landing page. Hero and SolutionsOverview kept 100% untouched. Replaced old curated portfolio header with "Featured Properties". Added dynamic filter tabs (`Buy`, `Rent`, `Short Term Stay`, `Business`) configured to render in exactly 2 rows on mobile (`grid grid-cols-2 sm:flex sm:flex-wrap`). Dynamically filters 3 featured properties per tab with seamless fallback to `MOCK_PROPERTIES`. Replaced divisions strip with 6-card "Asset Care & Real Estate Ecosystem" grid, a 3-step transparent workflow section, and an executive advisory appraisal CTA banner.
+  - `website-mock/src/components/WhyChooseUs.jsx`: Upgraded 4 key value pillars to mass-friendly corporate copy ("Total Legal Security", "24/7 Emergency Dispatch", "Institutional Standards", "Dedicated Account Officer").
+  - `website-mock/src/data/mockProperties.js`: Sanitized legacy city name to "Regional Division", marked featured status on Rent/Business items, and added executive Short Term Stay suite so every tab has 3 rich featured properties.
+  - `website-mock/src/data/mockData.js`: Sanitized branch name to `regionalBranch`.
+- Verification:
+  - `website-mock` built cleanly via `npm run build` (vite v5.4.21, 0 errors, 3.65s).
+  - Verified `http://localhost:3005` returns HTTP 200 OK.
+  - Verified 0 occurrences of prohibited location names across all modified files.
+- Subsequent tweak: Removed the subtitle text "Verified legal titles, physical condition inspections, and transparent market pricing across prime locations." under "Featured Properties" per user request. Re-built cleanly (vite v5.4.21, 0 errors, 3.62s).
+- Handoff: Production build passed, mock dev server running, and homepage redesign complete according to all constraints.
+
+### 2026-09-12 18:34 | Antigravity | COMPLETED | Mass-friendly, Bangladesh-oriented problem solver copywriting & visual clarity
+- Request: Rewrite website copy to be Bangladesh-friendly, easy to scan ("view not read"), with reduced text length, high clarity on what we actually provide, and positioned as the proactive problem solver for landlords, flat buyers, and NRBs.
+- Files Changed:
+  - `website-mock/src/pages/HomePage.jsx`: Replaced dense text in Section 4 with scannable bullet points detailing exact services and outcomes ("Guaranteed Rent Collection", "Buy & Sell Verified Properties", "Furnished Short-Term Suites", "Land Deed & Mutation Verification", "Scientific Water Tank Cleaning", "Turnkey Interior Design"). Rewrote Section 5 into 3 simple actionable steps ("Free Property Visit & Paper Check", "Police-Verified Tenants or Buyers", "Receive Rent in Bank & Relax"). Rewrote Section 9 advisory CTA for direct landlord and flat owner engagement.
+  - `website-mock/src/components/WhyChooseUs.jsx`: Upgraded 4 key value pillars to punchy, problem-solver benefits with tags ("Guaranteed On-Time Rent", "Police-Verified Tenants", "Total Care for NRB Expats", "Rapid Emergency Repairs").
+  - `website-mock/src/components/Testimonials.jsx`: Updated header to "Real Stories From Real Owners" with relatable subtext.
+  - `website-mock/src/components/FaqSection.jsx`: Refined subtext and advisory support box with everyday Bangladesh phrasing (available in Dhaka 7 days a week on phone and WhatsApp).
+  - `website-mock/src/data/mockData.js`: Updated company metrics with clear benefit labels ("Assets Under Care", "On-Time Rent Record", "NRB Expat Owners", "Fast Tenant Placement") and polished FAQs to directly address broker abandonment, NRB overseas oversight, and tenant screening.
+- Verification:
+  - `website-mock` built cleanly via `npm run build` (vite v5.4.21, 0 errors, 3.49s).
+  - Verified `http://localhost:3005` responds with HTTP 200 OK.
+  - Verified 0 occurrences of prohibited location names across all modified files.
+- Subsequent fix: Resolved duplicate heading "We Solve Your Property Headaches". Kept it on Section 4 (`HomePage.jsx`) where specific service problem-solutions are listed, and updated `WhyChooseUs.jsx` heading to "Why Property Owners Trust Us" with complementary subtext. Re-built cleanly (vite v5.4.21, 0 errors, 3.27s).
+- Handoff: Production build passed, dev server verified, zero duplicate headings.
+
+### 2026-09-12 18:40 | Antigravity | COMPLETED | Services page redesign with relevant photos, scannable problem-solver copy & professional SOP guide language
+- Request: Redesign `http://localhost:3005/services` (`ServicesPage.jsx`). Add relevant high-quality photography for services. Reduce dense wording into mass-friendly, easy Bangladesh problem-solver copy ("view not read words"). Replace internal jargon `[Dedicated Page & SOP]` with a customer-friendly professional label (e.g. "View Complete Service Guide").
+- Files Changed:
+  - `website-mock/src/pages/ServicesPage.jsx`: Redesigned completely using high-craft card layout with relevant photography (`service.heroImage`), badge tags, and transparent price pills. Rewrote dense 10-15 word hover texts into clear, short problem-solver taglines and 3 visual checkmarks ("What We Provide:"). Replaced developer jargon `[Dedicated Page & SOP]` with the professional customer-facing link `Complete Service Guide →` (direct link to dedicated pages). Replaced the bottom SOP developer notice with a high-craft AMC & NRB custom contract advisory banner with direct consultation and hotline triggers.
+- Verification:
+  - `website-mock` built cleanly via `npm run build` (vite v5.4.21, 0 errors, 3.76s).
+  - Verified `http://localhost:3005/services` responds with HTTP 200 OK.
+  - Verified 0 occurrences of prohibited location names across all modified files.
+- Handoff: Production build passed and live server verified. Services page is now visual, photo-rich, mass-friendly, and customer-focused.
+
+### 2026-09-12 18:43 | Antigravity | STARTED | ServicesPage UI refinements (single-line filter tabs, visible titles, removed prices, identical image sizing)
+- Request: Ensure filter tabs are strictly on 1 line. Remove price badges from cards. Make card titles completely visible without truncation/clamping. Enforce identical image dimensions across all service cards.
+- Scope: Update `website-mock/src/pages/ServicesPage.jsx`.
+- Verification: In progress.
+- Handoff: In progress.
+
+
+
+
+
+
+
+
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED | PM frontend parity: agreement builder buttons, Agency Income view, tenant-app prefill
+- Task 1 — RPRM + RPTM builder UI parity (RprmAgreements.jsx, TmAgreements.jsx): fixed the broken copy-link (now /signing/envelopes/:id/links → active_link); list actions per status — Edit + Send for drafts, Copy link for open, Open + Download for completed; Builder gained "Save as draft" + editId/prefill support (reconstructs from envelope terms+signers) and routes send through PUT+/send when editing.
+- Task 2 — Agency Income view: NEW backend GET /api/invoices/agency-income (invoicing.controller.agencyIncome) rolls up agreement-fee invoices into billed/received/dues/drafts + lists them + active recurring OwnerFeeSchedule fees. NEW screen admin-portal/src/screens/AgencyIncome.jsx (route /property-management/agency-income, PM "Money In" nav "Agency Income (Our Fees)") — summary cards, All/Drafts/Dues/Paid/Recurring tabs, per-invoice Open (auth'd blob). Verified live: billed 805,000 / received 805,000 / dues 0 / drafts 4,240,000, 71 invoices, 27 recurring fees, 0 console errors.
+- Task 3 — Tenant-app → RPTM prefill: TenantApplications detail has a "Create tenancy agreement" button that navigates to the RPTM builder with prefill (tenant name/email/phone/NID + property + rent/deposit/lease term); TmAgreements honours location.state.prefill to open the builder prefilled. Removes the re-keying gap noted earlier.
+- admin-portal built clean; backend restarted. Test data kept.

@@ -5,7 +5,7 @@ import {
   Inbox, CalendarDays, KeyRound,
   Hotel, CalendarRange, MessageSquareQuote, BookOpen, UserCheck, DoorOpen,
   Home, Sparkles, Wrench, HandCoins, Landmark, BarChart3, TrendingUp,
-  Ruler, FolderArchive, Boxes, Plug, Building2,
+  Ruler, FolderArchive, Boxes, Plug, Building2, Wallet,
 } from 'lucide-react';
 
 /*
@@ -283,6 +283,7 @@ export const PROPERTY_MGMT_NAV = [
     key: 'income',
     label: 'Money In',
     items: [
+      { to: '/property-management/agency-income', label: 'Agency Income (Our Fees)', icon: Wallet, roles: PM_FINANCE_ROLES },
       { to: '/property-management/invoices?kind=client', label: 'Tenant Invoices', icon: Receipt, roles: PM_FINANCE_ROLES },
       { to: '/property-management/collect-rent', label: 'Collect Rent (Bulk)', icon: Banknote, roles: PM_FINANCE_ROLES },
       { to: '/property-management/rent-reminders', label: 'Rent Reminders (Bulk)', icon: AlertCircle, roles: PM_FINANCE_ROLES },

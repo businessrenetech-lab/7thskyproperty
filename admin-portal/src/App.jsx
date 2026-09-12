@@ -143,6 +143,7 @@ import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
 import Signing from './screens/Signing';
 import RprmAgreements from './screens/RprmAgreements';
 import TmAgreements from './screens/TmAgreements';
+import AgencyIncome from './screens/AgencyIncome';
 import StsAgreements from './screens/StsAgreements';
 import WtCustomerAgreements from './screens/WtCustomerAgreements';
 import WtProviderAgreements from './screens/WtProviderAgreements';
@@ -911,6 +912,7 @@ export default function App() {
               <Route path="/property-management/inbox" element={<Communication />} />
               <Route path="/property-management/folios" element={<Folios />} />
               <Route path="/property-management/landlord-bills" element={<LandlordBills />} />
+              <Route path="/property-management/agency-income" element={<AgencyIncome />} />
               <Route path="/property-management/agreements" element={<RprmAgreements />} />
               <Route path="/property-management/tenancy-agreements" element={<TmAgreements />} />
             </Route>

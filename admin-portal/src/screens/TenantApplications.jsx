@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, FileCheck2, UserCheck, Users, ShieldCheck, ArrowRight, Check, X, KeyRound, Upload } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, FileCheck2, UserCheck, Users, ShieldCheck, ArrowRight, Check, X, KeyRound, Upload, FileSignature } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { PageHead, DataTable, StatusBadge, Drawer, SearchInput, Spinner, Badge, Button, Field, Input, Select, Textarea, KV } from '../ui/kit';
@@ -327,7 +328,35 @@ export default function TenantApplications({ propertyId = null, embedded = false
 // ── Detail body: header, status workflow, verification checklist, occupants, docs, convert ──
 function ApplicationDetail({ app, onPatch, onPatchVerification, onReload }) {
   const toast = useToast();
+  const navigate = useNavigate();
   const [tab, setTab] = useState('overview');
+
+  // Prefill the Tenancy Management (RPTM) agreement builder from this application,
+  // so the agreement aligns with the captured tenant details (no re-keying).
+  const buildTenancyAgreement = () => {
+    navigate('/property-management/tenancy-agreements', {
+      state: {
+        prefill: {
+          client_contact_id: app.contact_id || '',
+          client: {
+            full_name: app.applicant_name || '',
+            email: app.email || '',
+            phone: app.mobile || '',
+            nid: app.nid_number || '',
+            property_address: app.property?.address || app.property?.title || '',
+          },
+          property_id: app.property_id || '',
+          property_type: app.property?.property_type || '',
+          schedule_b: {
+            monthly_rent: app.proposed_monthly_rent || app.approved_rent || app.property?.approved_monthly_rent || '',
+            expected_rent: app.proposed_monthly_rent || app.approved_rent || '',
+            security_deposit: app.proposed_security_deposit || '',
+            lease_term: app.proposed_lease_term_months ? `${app.proposed_lease_term_months} months` : '12 months',
+          },
+        },
+      },
+    });
+  };
   const [convert, setConvert] = useState(false);
   const [convForm, setConvForm] = useState({
     lease_start: app.proposed_lease_start || app.lease_start_target || '',
@@ -379,6 +408,9 @@ function ApplicationDetail({ app, onPatch, onPatchVerification, onReload }) {
             <div style={{ fontWeight: 800, fontSize: 17, marginTop: 6 }}>{app.applicant_name}</div>
             <div className="cell-sub">{app.mobile || '—'} · {app.email || '—'}</div>
             {app.property && <div className="cell-sub" style={{ marginTop: 2 }}>Property: <strong>{app.property.title}</strong> ({app.property.property_code})</div>}
+            <div style={{ marginTop: 10 }}>
+              <Button size="sm" icon={FileSignature} onClick={buildTenancyAgreement}>Create tenancy agreement</Button>
+            </div>
           </div>
           <div style={{ minWidth: 200 }}>
             <Field label="Status">

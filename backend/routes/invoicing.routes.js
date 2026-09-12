@@ -7,6 +7,7 @@ const ROLES = ['super_admin', 'branch_admin', 'accounts', 'property_manager'];
 router.use(authMiddleware, roleMiddleware(ROLES));
 
 router.get('/', ctrl.list);
+router.get('/agency-income', ctrl.agencyIncome);  // agency fee income summary (before /:id)
 router.post('/', ctrl.create);
 router.get('/:id', ctrl.getOne);
 router.put('/:id', ctrl.update);                 // edit header + line items

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { FileSignature, Plus, ArrowLeft, ArrowRight, Check, Send, Copy, Eye } from 'lucide-react';
+import { FileSignature, Plus, ArrowLeft, ArrowRight, Check, Send, Copy, Eye, Download, Pencil } from 'lucide-react';
 import api from './../services/api';
 import { Spinner } from '../ui/kit';
 import { Combo } from '../ui/pickers';
@@ -25,6 +25,7 @@ const EMPTY = {
 export default function RprmAgreements() {
   const toast = useToast();
   const [mode, setMode] = useState('list'); // list | build
+  const [editState, setEditState] = useState(null); // { id, prefill } when editing a draft
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,30 +36,55 @@ export default function RprmAgreements() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  if (mode === 'build') return <Builder onDone={() => { setMode('list'); load(); }} onCancel={() => setMode('list')} />;
+  const done = () => { setMode('list'); setEditState(null); load(); };
+  if (mode === 'build') return <Builder editId={editState?.id} prefill={editState?.prefill} onDone={done} onCancel={done} />;
 
   const chip = (s) => ({ completed: 'good', active: 'good', sent: 'warn', viewed: 'info', partially_signed: 'warn', declined: 'bad', voided: 'grey', draft: 'grey' }[s] || 'grey');
+
+  const editDraft = async (a) => {
+    try {
+      const r = await api.get(`/signing/envelopes/${a.id}`);
+      setEditState({ id: a.id, prefill: prefillFromEnvelope(r.data?.data || {}) });
+      setMode('build');
+    } catch { toast.error('Could not open the draft'); }
+  };
+  const resend = async (a) => {
+    try { await api.post(`/rprm/agreements/${a.id}/send`); toast.success('Agreement sent for signature'); load(); }
+    catch (e) { toast.error(e.response?.data?.error || 'Could not send'); }
+  };
 
   return (
     <div className="pm-scope">
       <div className="pm-head">
         <div><div className="pm-eyebrow">Agreements</div><h1>Property Management Agreements</h1><div className="pm-meta">Residential Property Rental Management Service Agreements — build, price and send to landlords for e-signature.</div></div>
-        <div className="pm-head-actions"><button className="pm-btn primary" onClick={() => setMode('build')}><Plus size={15} /> New agreement</button></div>
+        <div className="pm-head-actions"><button className="pm-btn primary" onClick={() => { setEditState(null); setMode('build'); }}><Plus size={15} /> New agreement</button></div>
       </div>
       {loading ? <div style={{ padding: 48, textAlign: 'center' }}><Spinner /></div> : (
         <div className="pm-card"><div className="pm-card-body" style={{ padding: 0 }}>
           <table className="pm-tbl">
-            <thead><tr><th>Reference</th><th>Landlord</th><th>Contract value</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
+            <thead><tr><th>Reference</th><th>Landlord</th><th>Contract value</th><th>Status</th><th style={{ textAlign: 'right' }}>Actions</th></tr></thead>
             <tbody>
-              {list.map((a) => (
-                <tr key={a.id}>
-                  <td><strong style={{ color: 'var(--navy)' }}>{a.envelope_code}</strong></td>
-                  <td>{a.signer?.name || '—'}<div className="ph" style={{ fontSize: 11.5, color: 'var(--muted)' }}>{a.signer?.email || ''}</div></td>
-                  <td>{a.total_contract_value != null ? bdt(a.total_contract_value) : '—'}</td>
-                  <td><span className={`pm-chip ${chip(a.status)}`}><span className="d" />{a.status}</span></td>
-                  <td style={{ textAlign: 'right' }}>{a.signer?.status !== 'signed' && <button className="pm-btn" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => copyLink(a, toast)}><Copy size={13} /> Copy link</button>}</td>
-                </tr>
-              ))}
+              {list.map((a) => {
+                const open = ['sent', 'viewed', 'partially_signed'].includes(a.status);
+                const completed = a.status === 'completed' || a.status === 'active';
+                return (
+                  <tr key={a.id}>
+                    <td><strong style={{ color: 'var(--navy)' }}>{a.envelope_code}</strong></td>
+                    <td>{a.signer?.name || '—'}<div className="ph" style={{ fontSize: 11.5, color: 'var(--muted)' }}>{a.signer?.email || ''}</div></td>
+                    <td>{a.total_contract_value != null ? bdt(a.total_contract_value) : '—'}</td>
+                    <td><span className={`pm-chip ${chip(a.status)}`}><span className="d" />{a.status}</span></td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        {a.status === 'draft' && <button className="pm-btn" style={aBtn} onClick={() => editDraft(a)}><Pencil size={13} /> Edit</button>}
+                        {a.status === 'draft' && <button className="pm-btn primary" style={aBtn} onClick={() => resend(a)}><Send size={13} /> Send</button>}
+                        {open && <button className="pm-btn" style={aBtn} onClick={() => copyLink(a, toast)}><Copy size={13} /> Copy link</button>}
+                        {completed && <button className="pm-btn" style={aBtn} onClick={() => openDoc(a, toast)}><Eye size={13} /> Open</button>}
+                        {completed && <button className="pm-btn" style={aBtn} onClick={() => downloadDoc(a, toast)}><Download size={13} /> Download</button>}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {!list.length && <tr><td colSpan={5} style={{ textAlign: 'center', padding: 30, color: 'var(--muted)' }}>No agreements yet. Click “New agreement”.</td></tr>}
             </tbody>
           </table>
@@ -68,21 +94,62 @@ export default function RprmAgreements() {
   );
 }
 
+const aBtn = { padding: '4px 9px', fontSize: 12 };
+
+// Reconstruct the builder inputs from a draft envelope (terms + signers).
+function prefillFromEnvelope(env) {
+  const t = env.terms || {};
+  const client = (env.signers || []).find((s) => s.role === 'landlord') || (env.signers || [])[0] || {};
+  const witnesses = (env.signers || []).filter((s) => s.role === 'witness').map((s) => ({ name: s.name || '', nid: '' }));
+  return {
+    client_contact_id: client.contact_id || '',
+    client: { full_name: client.name || '', email: client.email || '', phone: client.phone || '', nid: '', property_address: (t.schedule_b || {}).property_address || '' },
+    property_id: env.related_id || '',
+    services: t.selected_services || [],
+    checklist: t.checklist || [],
+    schedule_b: t.schedule_b || {},
+    witnesses: witnesses.length ? witnesses : undefined,
+    pricing_input: t.pricing_input || { selected: (t.pricing_summary?.lines || []).map((l) => ({ code: l.code, agreed_price: l.agreed_price })), monthly_rent: (t.schedule_b || {}).expected_rent },
+  };
+}
+
 async function copyLink(a, toast) {
-  // agreements list doesn't carry the token; re-fetch envelope for the signer token via signing API
   try {
-    const r = await api.get(`/signing/envelopes/${a.id}`);
-    const s = (r.data?.data?.signers || []).find((x) => ['sent', 'viewed', 'pending'].includes(x.status)) || (r.data?.data?.signers || [])[0];
-    if (!s?.access_token) return toast.error('No active signing link');
-    const url = `${window.location.origin}/admin/sign/${s.access_token}`;
+    const r = await api.get(`/signing/envelopes/${a.id}/links`);
+    const url = r.data?.data?.active_link;
+    if (!url) return toast.error('No active signing link');
     try { await navigator.clipboard.writeText(url); toast.success('Signing link copied'); } catch { window.prompt('Signing link:', url); }
   } catch { toast.error('Could not fetch link'); }
 }
+async function openDoc(a, toast) {
+  try {
+    const r = await api.get(`/signing/envelopes/${a.id}/links`);
+    const doc = r.data?.data?.signed_document;
+    if (doc) window.open(doc, '_blank'); else toast.error('Signed copy not available yet');
+  } catch { toast.error('Could not open the signed document'); }
+}
+async function downloadDoc(a, toast) {
+  try {
+    const r = await api.get(`/signing/envelopes/${a.id}/links`);
+    const doc = r.data?.data?.signed_document;
+    if (doc) window.open(`${doc}${doc.includes('?') ? '&' : '?'}download=1`, '_blank'); else toast.error('Signed copy not available yet');
+  } catch { toast.error('Could not download the signed document'); }
+}
 
-function Builder({ onDone, onCancel }) {
+function Builder({ editId, prefill, onDone, onCancel }) {
   const toast = useToast();
   const [step, setStep] = useState(0);
-  const [d, setD] = useState(EMPTY);
+  const [d, setD] = useState(() => {
+    if (!prefill) return EMPTY;
+    return {
+      ...EMPTY, ...prefill,
+      org: { ...EMPTY.org, ...(prefill.org || {}) },
+      client: { ...EMPTY.client, ...(prefill.client || {}) },
+      schedule_b: { ...EMPTY.schedule_b, ...(prefill.schedule_b || {}) },
+      pricing_input: { ...EMPTY.pricing_input, ...(prefill.pricing_input || {}), selected: (prefill.pricing_input || {}).selected || [] },
+      witnesses: prefill.witnesses || EMPTY.witnesses,
+    };
+  });
   const [meta, setMeta] = useState({ service_groups: {}, checklist_groups: {} });
   const [catalog, setCatalog] = useState([]);
   const [preview, setPreview] = useState(null);
@@ -121,15 +188,24 @@ function Builder({ onDone, onCancel }) {
   }, [d]);
   useEffect(() => { if (step === 3 || step === 5) refreshPreview(); /* eslint-disable-next-line */ }, [step]);
 
-  const send = async () => {
+  // asDraft=true → save without sending; false → create/update then send.
+  const submit = async (asDraft) => {
     if (!d.client.full_name) return toast.error('Enter the landlord name (Step 1)');
-    if (!d.client.email) return toast.error('Enter the landlord email (Step 1)');
+    if (!asDraft && !d.client.email) return toast.error('Enter the landlord email (Step 1)');
     setBusy(true);
     try {
       const body = { ...d, pricing_input: { ...d.pricing_input, monthly_rent: d.schedule_b.expected_rent } };
-      const r = await api.post('/rprm/agreements', body);
-      setSent(r.data); toast.success('Agreement sent to landlord for signature');
-    } catch (err) { toast.error(err.response?.data?.error || 'Could not send'); } finally { setBusy(false); }
+      if (editId) {
+        await api.put(`/rprm/agreements/${editId}`, body);
+        if (!asDraft) await api.post(`/rprm/agreements/${editId}/send`);
+        toast.success(asDraft ? 'Draft updated' : 'Agreement sent for signature');
+        onDone();
+      } else {
+        const r = await api.post('/rprm/agreements', { ...body, save_as_draft: asDraft });
+        if (asDraft) { toast.success('Draft saved'); onDone(); }
+        else { setSent(r.data); toast.success('Agreement sent to landlord for signature'); }
+      }
+    } catch (err) { toast.error(err.response?.data?.error || 'Could not save'); } finally { setBusy(false); }
   };
 
   const onClient = (id, row) => { set('client_contact_id', id); if (row) setD((p) => ({ ...p, client: { ...p.client, full_name: row.full_name || '', phone: row.primary_phone || '', email: row.email || '', nid: row.national_id || row.passport_no || '' } })); };
@@ -156,7 +232,7 @@ function Builder({ onDone, onCancel }) {
   return (
     <div className="pm-scope">
       <div className="pm-head">
-        <div><div className="pm-eyebrow">Agreements</div><h1>New Property Management Agreement</h1><div className="pm-meta">Step {step + 1} of {STEPS.length} · {STEPS[step]}</div></div>
+        <div><div className="pm-eyebrow">Agreements</div><h1>{editId ? 'Edit draft agreement' : 'New Property Management Agreement'}</h1><div className="pm-meta">Step {step + 1} of {STEPS.length} · {STEPS[step]}</div></div>
         <div className="pm-head-actions"><button className="pm-btn" onClick={onCancel}>Cancel</button></div>
       </div>
 
@@ -277,7 +353,10 @@ function Builder({ onDone, onCancel }) {
           <div>
             <p style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 0 }}>Review the full agreement exactly as the landlord will see it, then send.</p>
             {preview?.html ? <div style={{ border: '1px solid var(--line)', borderRadius: 10, maxHeight: 460, overflow: 'auto', padding: 16, background: '#fff' }} dangerouslySetInnerHTML={{ __html: preview.html }} /> : <div style={{ padding: 40, textAlign: 'center' }}><Spinner /></div>}
-            <button className="pm-btn primary" disabled={busy} style={{ marginTop: 14 }} onClick={send}><Send size={15} /> {busy ? 'Sending…' : 'Send to landlord for signature'}</button>
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              <button className="pm-btn" disabled={busy} onClick={() => submit(true)}><Check size={15} /> {editId ? 'Update draft' : 'Save as draft'}</button>
+              <button className="pm-btn primary" disabled={busy} onClick={() => submit(false)}><Send size={15} /> {busy ? 'Working…' : (editId ? 'Send for signature' : 'Send to landlord for signature')}</button>
+            </div>
           </div>
         )}
       </div></div>
