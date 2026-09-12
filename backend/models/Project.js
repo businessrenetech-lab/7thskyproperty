@@ -13,6 +13,7 @@ const Project = sequelize.define('Project', {
   client_id: DataTypes.INTEGER,
   contact_id: DataTypes.INTEGER,
   property_id: DataTypes.INTEGER,
+  property_deal_id: DataTypes.INTEGER, // buy-deal-keyed SOP (residential_purchase vertical)
   service_id: DataTypes.INTEGER,
   status: { type: DataTypes.ENUM('lead', 'assessment', 'quote', 'agreement', 'delivery', 'completion', 'feedback', 'closed', 'cancelled', 'on_hold'), defaultValue: 'lead' },
   current_stage_key: DataTypes.STRING(60),

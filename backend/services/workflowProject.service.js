@@ -14,6 +14,7 @@ async function createProjectFromTemplate(meta, transaction) {
     branch_id: meta.branch_id,
     vertical_key: meta.vertical_key,
     property_id: meta.property_id || null,
+    property_deal_id: meta.property_deal_id || null,
     client_id: meta.client_id || null,
     contact_id: meta.contact_id || null,
     service_id: meta.service_id || null,

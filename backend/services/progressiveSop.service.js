@@ -94,11 +94,45 @@ const SALE_HINTS = {
 // Per-phase SLA in BUSINESS DAYS, measured from when a stage becomes in_progress.
 const SALE_PHASE_SLA = { engagement: 3, marketing: 7, offer: 3, settlement: 14, closure: 7 };
 
+// --- purchase (residential_purchase, buyer service) ---
+// The buyer 8-stage SOP. Keys are slugs of migration 0116's stage names. All
+// phases are active at start (manual progression; the buyer lifecycle events are
+// wired in later phases), so every stage seeds workable rather than blocked.
+const PURCHASE_STAGE_PHASE = {
+  enquiry_consultation: 'enquiry',
+  requirement_assessment_planning: 'planning',
+  property_search_shortlisting: 'search',
+  inspection_coordination: 'search',
+  documentation_review_risk: 'diligence',
+  negotiation_offer_coordination: 'offer',
+  agreement_settlement_coordination: 'settlement',
+  closure_post_purchase_follow_up: 'closure',
+};
+const PURCHASE_EVENT_UNLOCKS = {
+  purchase_agreement_signed: ['planning'],
+  purchase_approved_to_proceed: ['search'],
+  purchase_offer_made: ['offer'],
+  purchase_agreement_executed: ['settlement'],
+  purchase_fees_collected: ['closure'],
+};
+const PURCHASE_HINTS = {
+  enquiry: 'active from the start',
+  planning: 'requirement assessment & finance readiness',
+  search: 'property search, shortlisting & inspections',
+  diligence: 'documentation review & risk coordination',
+  offer: 'negotiation & offer coordination',
+  settlement: 'agreement & settlement coordination',
+  closure: 'closure & post-purchase follow-up',
+};
+const PURCHASE_PHASE_SLA = { enquiry: 3, planning: 5, search: 10, diligence: 5, offer: 5, settlement: 14, closure: 7 };
+const PURCHASE_PHASES = ['enquiry', 'planning', 'search', 'diligence', 'offer', 'settlement', 'closure'];
+
 // Vertical-keyed registry. Leasing preserved verbatim; sale added. A vertical
 // with NO entry here has no phase gating (initialStatusFor returns null).
 const REGISTRY = {
   leasing: { stagePhase: STAGE_PHASE, eventUnlocks: EVENT_UNLOCKS, hints: PHASE_UNLOCK_HINT, activeAtStart: ['property'], ownerPhase: 'owner', fallbackPhase: 'ongoing', phaseSla: null },
   properties_sale: { stagePhase: SALE_STAGE_PHASE, eventUnlocks: SALE_EVENT_UNLOCKS, hints: SALE_HINTS, activeAtStart: ['engagement'], ownerPhase: null, fallbackPhase: 'engagement', phaseSla: SALE_PHASE_SLA },
+  residential_purchase: { stagePhase: PURCHASE_STAGE_PHASE, eventUnlocks: PURCHASE_EVENT_UNLOCKS, hints: PURCHASE_HINTS, activeAtStart: PURCHASE_PHASES, ownerPhase: null, fallbackPhase: 'enquiry', phaseSla: PURCHASE_PHASE_SLA },
 };
 
 const phaseOf = (stageKey, vertical = 'leasing') => {
