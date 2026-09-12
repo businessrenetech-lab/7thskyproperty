@@ -12,13 +12,15 @@ import { useToast } from '../context/ToastContext';
 
 const bdt = (v) => '৳' + Number(v || 0).toLocaleString('en-BD');
 const dateFmt = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
-const chip = (s) => ({ paid: 'good', sent: 'warn', partial: 'warn', pending: 'warn', draft: 'grey', void: 'grey', overdue: 'bad' }[s] || 'grey');
+const chip = (s) => ({ paid: 'good', collected: 'good', sent: 'warn', partial: 'warn', pending: 'warn', accrued: 'warn', draft: 'grey', void: 'grey', overdue: 'bad' }[s] || 'grey');
 
 export default function AgencyIncome() {
   const toast = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('all'); // all | draft | outstanding | paid | recurring
+  const [type, setType] = useState('all'); // all | agreement | fee_income
+  const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,13 +61,25 @@ export default function AgencyIncome() {
 
   const s = data?.summary || {};
   const invoices = data?.invoices || [];
+  const feeEntries = data?.fee_entries || [];
   const recurring = data?.recurring || [];
-  const filtered = invoices.filter((i) => {
-    if (tab === 'draft') return i.status === 'draft';
-    if (tab === 'paid') return i.status === 'paid' || i.balance <= 0 && i.status !== 'draft';
-    if (tab === 'outstanding') return i.status !== 'draft' && i.balance > 0;
+  // One list: agreement-fee invoices + realized/pending management-fee income.
+  // The fee-income rows carry kind:'fee_income' and a status of paid (collected)
+  // or accrued (earned, owner not yet paid), so they filter into the tabs.
+  const rows = [...invoices, ...feeEntries];
+  const q = search.trim().toLowerCase();
+  const filtered = rows.filter((i) => {
+    if (type === 'agreement' && i.kind === 'fee_income') return false;
+    if (type === 'fee_income' && i.kind !== 'fee_income') return false;
+    if (tab === 'draft') { if (i.status !== 'draft') return false; }
+    else if (tab === 'paid') { if (!(i.status === 'paid' || (i.balance <= 0 && i.status !== 'draft' && i.status !== 'accrued'))) return false; }
+    else if (tab === 'outstanding') { if (!(i.status !== 'draft' && i.balance > 0)) return false; }
+    if (q && ![i.invoice_code, i.title, i.contact_name, i.owner_name, i.property_title, i.property_id]
+      .some((v) => String(v ?? '').toLowerCase().includes(q))) return false;
     return true;
   });
+  // Total of what's on screen — makes "all paid to agency" legible at a glance.
+  const filteredTotal = filtered.reduce((sum, i) => sum + Number(tab === 'paid' ? i.amount_paid : i.total || 0), 0);
 
   const Stat = ({ label, value, hint, accent }) => (
     <div className="card stat" style={{ padding: '12px 16px', borderRadius: 12, borderLeft: accent ? `4px solid ${accent}` : undefined }}>
@@ -98,10 +112,23 @@ export default function AgencyIncome() {
             </div>
           )}
 
-          <div className="pm-segment" style={{ marginBottom: 14, flexWrap: 'wrap' }}>
-            {[['all', 'All'], ['draft', 'Drafts'], ['outstanding', 'Dues'], ['paid', 'Paid'], ['recurring', 'Recurring fees']].map(([k, l]) => (
-              <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>
-            ))}
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
+            <div className="pm-segment" style={{ flexWrap: 'wrap', margin: 0 }}>
+              {[['all', 'All'], ['draft', 'Drafts'], ['outstanding', 'Dues'], ['paid', 'Paid'], ['recurring', 'Recurring fees']].map(([k, l]) => (
+                <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>
+              ))}
+            </div>
+            {tab !== 'recurring' && (
+              <>
+                <select value={type} onChange={(e) => setType(e.target.value)} style={{ padding: '6px 10px', fontSize: 12.5, border: '1px solid var(--line, #e2e8f0)', borderRadius: 8, background: 'var(--card, #fff)', color: 'var(--ink)' }}>
+                  <option value="all">All income</option>
+                  <option value="agreement">Agreement fees</option>
+                  <option value="fee_income">Management fees (paid to us)</option>
+                </select>
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search property / owner / code…" style={{ padding: '6px 10px', fontSize: 12.5, minWidth: 220, flex: '1 1 220px', border: '1px solid var(--line, #e2e8f0)', borderRadius: 8, background: 'var(--card, #fff)', color: 'var(--ink)' }} />
+                <span style={{ fontSize: 12.5, color: 'var(--muted)', marginLeft: 'auto' }}>{filtered.length} row(s) · <strong style={{ color: 'var(--ink)' }}>{bdt(filteredTotal)}</strong> {tab === 'paid' ? 'received' : 'total'}</span>
+              </>
+            )}
           </div>
 
           {tab === 'recurring' ? (
@@ -131,7 +158,7 @@ export default function AgencyIncome() {
                     <tr key={i.id}>
                       <td><strong style={{ color: 'var(--navy)' }}>{i.invoice_code}</strong></td>
                       <td style={{ fontSize: 12.5 }}>
-                        <div>{i.title}</div>
+                        <div>{i.title}{i.kind === 'fee_income' && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#16a34a', background: 'rgba(22,163,74,.10)', padding: '1px 6px', borderRadius: 6, textTransform: 'uppercase' }}>Our fee</span>}</div>
                         {(i.property_title || i.owner_name || i.property_id) && (
                           <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
                             {i.property_title || 'Property'}{i.property_id ? ` (#${i.property_id})` : ''}{i.owner_name ? ` · ${i.owner_name}` : ''}
@@ -143,19 +170,24 @@ export default function AgencyIncome() {
                       <td style={{ textAlign: 'right', color: '#16a34a' }}>{bdt(i.amount_paid)}</td>
                       <td style={{ textAlign: 'right', color: i.balance > 0 ? '#d97706' : 'var(--muted)' }}>{bdt(i.balance)}</td>
                       <td><span className={`pm-chip ${chip(i.status)}`}><span className="d" />{i.status}</span></td>
-                      <td style={{ fontSize: 12, color: 'var(--muted)' }}>{dateFmt(i.due_date)}</td>
+                      <td style={{ fontSize: 12, color: 'var(--muted)' }}>{i.kind === 'fee_income' ? (i.collected_at ? dateFmt(i.collected_at) : (i.period_label || '—')) : dateFmt(i.due_date)}</td>
                       <td style={{ textAlign: 'right' }}>
-                        <button className="pm-btn" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => openInvoice(i.id)}><Eye size={13} /> Open</button>
-                        {i.status !== 'draft' && i.balance > 0 && <button className="pm-btn" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => payLink(i.id)} title="Create an online SSLCommerz pay-link"><Link2 size={13} /> Pay link</button>}
+                        {i.kind === 'fee_income'
+                          ? <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>{i.status === 'paid' ? 'Collected on payout' : 'Accrues until owner paid'}</span>
+                          : <>
+                              <button className="pm-btn" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => openInvoice(i.id)}><Eye size={13} /> Open</button>
+                              {i.status !== 'draft' && i.balance > 0 && <button className="pm-btn" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => payLink(i.id)} title="Create an online SSLCommerz pay-link"><Link2 size={13} /> Pay link</button>}
+                            </>}
                       </td>
                     </tr>
                   ))}
                   {!filtered.length && <tr><td colSpan={9} style={{ textAlign: 'center', padding: 28, color: 'var(--muted)' }}>{
-                    invoices.length === 0 ? 'No agreement-fee invoices yet — they are drafted when a sales or management agreement is signed.'
-                      : tab === 'paid' ? `No paid fee invoices yet. ${s.draft_count || 0} draft and ${s.outstanding_count || 0} outstanding — record a payment to see it here.`
-                      : tab === 'outstanding' ? 'No outstanding fee invoices — nothing sent is awaiting payment.'
-                      : tab === 'draft' ? 'No drafts — every fee invoice has been sent.'
-                      : 'No invoices in this view.'
+                    search ? 'No income matches your search.'
+                      : rows.length === 0 ? 'No agency income yet — agreement fees are drafted when an agreement is signed; management fees appear as they are earned on rent.'
+                      : tab === 'paid' ? 'No fees received yet. Management fees show here once you pay the owner (they are collected on disbursement); agreement fees once a payment is recorded.'
+                      : tab === 'outstanding' ? 'Nothing outstanding — no sent invoice or accrued fee is awaiting payment.'
+                      : tab === 'draft' ? 'No draft invoices in this view.'
+                      : 'No income in this view.'
                   }</td></tr>}
                 </tbody>
               </table>

@@ -481,17 +481,40 @@ exports.agencyIncome = asyncHandler(async (req, res) => {
   // collected (owner paid out → our fee is realized/collected). Shown for the PM
   // / all views. This is the "collect our fees" picture tied to disbursements.
   let fee_income = null;
+  let fee_entries = [];
   if (req.query.scope !== 'sales') {
     try {
       const PmIncomeEntry = require('../models/PmIncomeEntry');
       const feeWhere = { ...branchScope(req) };
       if (req.query.property_id) feeWhere.property_id = req.query.property_id;
-      const entries = await PmIncomeEntry.findAll({ where: feeWhere, attributes: ['status', 'amount'], raw: true, limit: 5000 });
+      const entries = await PmIncomeEntry.findAll({
+        where: feeWhere,
+        include: [
+          { model: Property, as: 'property', attributes: ['id', 'title'] },
+          { model: Contact, as: 'owner', attributes: ['id', 'full_name'] },
+        ],
+        order: [['created_at', 'DESC']], limit: 2000,
+      });
       const acc = { accrued: 0, collected: 0 };
       for (const e of entries) acc[e.status === 'collected' ? 'collected' : 'accrued'] += n(e.amount);
       fee_income = { accrued: n(acc.accrued), collected: n(acc.collected), total: n(acc.accrued + acc.collected) };
+      // Line items so the UI can list realized (collected) and pending (accrued)
+      // fees, not just the totals. Shaped like an invoice row so the same table
+      // + tabs render them: collected → a "paid" row, accrued → an open row.
+      fee_entries = entries.map((e) => ({
+        id: `inc-${e.id}`, kind: 'fee_income', entry_code: e.entry_code,
+        title: e.fee_name || (e.category || '').replace(/_/g, ' '),
+        category: e.category,
+        property_id: e.property_id, property_title: e.property?.title || null,
+        owner_name: e.owner?.full_name || null, contact_name: e.owner?.full_name || null,
+        period_label: e.period_label,
+        total: n(e.amount), amount_paid: e.status === 'collected' ? n(e.amount) : 0,
+        balance: e.status === 'collected' ? 0 : n(e.amount),
+        status: e.status === 'collected' ? 'paid' : 'accrued',
+        collected_at: e.collected_at, due_date: null,
+      }));
     } catch { /* non-fatal */ }
   }
 
-  res.json({ summary, invoices, recurring, fee_income });
+  res.json({ summary, invoices, recurring, fee_income, fee_entries });
 });
