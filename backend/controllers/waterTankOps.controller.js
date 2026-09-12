@@ -941,14 +941,29 @@ exports.issuePortalLink = asyncHandler(async (req, res) => {
       ).then(() => true).catch(() => false);
     }
 
+    // Also send by SMS/WhatsApp when a mobile is on file and the gateway is
+    // configured — techs and clients miss email far more than a text. Best-effort
+    // and non-blocking: a failure here never fails the link issuance.
+    let texted = null;
+    if (req.body?.sms !== false && shape.phone) {
+      const sms = require('../services/smsGateway.service');
+      const what = req.params.partyType === 'provider' ? 'Provider Portal' : 'Customer Portal';
+      const r = await sms.sendSms(shape.phone,
+        `Seventh Sky ${what}: your private link (valid to ${out.expires_at.toISOString().slice(0, 10)}) — ${url}`,
+      ).catch(() => ({ sent: false }));
+      texted = r?.sent ? shape.phone : null;
+    }
+
     res.json({
       url,
       expires_at: out.expires_at,
       party: out.party,
       emailed_to: mailed ? shape.email : null,
       email_sent: mailed,
-      message: mailed
-        ? `Link emailed to ${shape.email}. It is shown here once as a fallback and cannot be recovered later.`
+      texted_to: texted,
+      sms_sent: !!texted,
+      message: mailed || texted
+        ? `Link sent${mailed ? ` to ${shape.email}` : ''}${texted ? `${mailed ? ' and' : ''} by SMS to ${texted}` : ''}. It is shown here once as a fallback and cannot be recovered later.`
         : `Copy this link now — it cannot be shown again.${shape.email ? ' The email did not send.' : ' No email address is on file for this party.'}`,
     });
   } catch (e) {

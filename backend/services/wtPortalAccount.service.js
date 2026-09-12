@@ -58,8 +58,8 @@ const partyModel = (type) => (type === 'provider' ? M.WtProvider : M.WtClient);
 
 /** Everything the two party types name differently, in one place. */
 const partyShape = (type, row) => (type === 'provider'
-  ? { name: row.business_name || row.contact_person, email: row.contact_email, contact: row.contact_person }
-  : { name: row.name, email: row.email, contact: row.name });
+  ? { name: row.business_name || row.contact_person, email: row.contact_email, contact: row.contact_person, phone: row.contact_phone }
+  : { name: row.name, email: row.email, contact: row.name, phone: row.mobile });
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Provisioning
