@@ -6520,3 +6520,9 @@ used "the last line starting with `import`", which landed inside a multi-line
 - BUG FOUND + FIXED (our income invisible): ownerFees.applyOwnerFeesOnRent posted the management fee to the landlord folio as a CREDIT, but the owner statement's rollup treats credit=money-in-to-owner and reads landlord_fee from the DEBIT column. So the fee (a deduction) was booked with the wrong sign — it never counted as management_fee (statement showed 0) AND wrongly inflated the owner's balance. The fee was computed correctly (PmIncomeEntry 1875 = 5%) but mis-posted. FIX: post the management fee as a DEBIT (money-out). Verified: owner statement now shows mgmt_fee=3750 (the 5% fees in the period); before it was 0.
 - Both prior fixes reconfirmed under cookie session: bulk rent collection works; RPRM management-fee schedule established (rental_receipt trigger).
 - Test data kept.
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED (BUG FIXED) | Invoice document mojibake (৳ → "à§³") on blob open
+- Report: opening an invoice document (blob:http://localhost:3005/…) showed garbled "à§³" instead of the ৳ Taka sign.
+- Root cause: invoicing.controller.document served renderInvoiceHtml output as a bare <div> (no <meta charset>). Direct requests were saved by the response charset header, but the Agency Income screen opens it via fetch→Blob→createObjectURL, and a blob text/html with no <meta charset> makes the browser default to Latin-1 → the 3-byte UTF-8 ৳ (E0 A7 B3) renders as "à§³".
+- FIX: wrap the served invoice document in a full HTML doc with <meta charset="utf-8"> (+viewport+title). Verified: document now starts with <!doctype html>…<meta charset="utf-8">, ৳ bytes intact, and the fetched blob renders ৳ with no mojibake.
+- Audited other blob-opened docs: owner-statement printable + landlord statement (delegates to it) already include <meta charset="utf-8">; only the invoice document lacked it.

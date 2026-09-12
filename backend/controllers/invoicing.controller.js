@@ -227,7 +227,10 @@ exports.document = asyncHandler(async (req, res) => {
     } catch { /* fall through to HTML */ }
   }
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(html);
+  // Wrap in a full document with an explicit charset meta. Without it, when the
+  // admin opens this via a blob URL (fetch → createObjectURL) the browser guesses
+  // Latin-1 and the ৳ Taka sign renders as mojibake ("à§³").
+  res.send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${inv.invoice_code || 'Invoice'}</title></head><body>${html}</body></html>`);
 });
 
 // POST /api/invoices/:id/send — email the invoice (PDF attached when available).
