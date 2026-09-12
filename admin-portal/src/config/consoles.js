@@ -745,9 +745,44 @@ export const propertyCareConciergeConsole = {
   exitTo: '/dashboard',
 };
 
+/* ── Residential Interior Design ────────────────────────────────────────────
+ * Seventh Sky coordinates the project in-house — NO service provider and NO AMC.
+ * Drop the Providers/Compliance group and the AMC item entirely, add a Variations
+ * screen to Delivery. Rebased onto /residential-interior-design/* with a purple
+ * accent. Every other screen is the shared console, scoped by the header. */
+export const RESIDENTIAL_INTERIOR_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/residential-interior-design')
+  .map((g) => ({
+    ...g,
+    // drop AMC (no annual maintenance for one-off projects); add Variations
+    items: g.key.endsWith('delivery')
+      ? [...g.items.filter((it) => !/\/amc$/.test(it.to)), { to: '/residential-interior-design/variations', label: 'Variations', icon: FileSignature }]
+      : g.items,
+  }))
+  // drop the whole Providers & Compliance group — no provider on this line
+  .filter((g) => !g.key.endsWith('providers'));
+
+export const residentialInteriorConsole = {
+  slug: 'residential-interior-design',
+  storageKey: 'rid.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Residential Interior Design',
+    icon: Home,
+    accent: '#9333ea',          // purple — Interior Design group
+    accentStrong: '#7e22ce',
+    accentInk: '#6b21a8',
+    accentTint: 'rgba(147,51,234,.12)',
+    accentTint2: '#f3e8ff',
+  },
+  navGroups: RESIDENTIAL_INTERIOR_NAV,
+  api: { capabilities: '/wt-ops/capabilities', workQueue: '/wt-ops/work-queue' },
+  exitTo: '/dashboard',
+};
+
 export const CONSOLES = {
   'water-tank': waterTankConsole,
   'air-conditioning': airConditioningConsole,
+  'residential-interior-design': residentialInteriorConsole,
   'land-property-assessment': landPropertyAssessmentConsole,
   'loan-financial-support': loanFinancialSupportConsole,
   'property-documentation-verification': propertyDocVerificationConsole,

@@ -92,6 +92,7 @@ import WTPortal from './screens/watertank/Portal';
 import WTPortalAccounts from './screens/watertank/PortalAccounts';
 import { ForgotPassword, ResetPassword, ChangePassword } from './screens/PasswordScreens';
 import WTClients from './screens/watertank/Clients';
+import InteriorVariations from './screens/watertank/InteriorVariations';
 import WTClientDetail from './screens/watertank/clients/ClientDashboard';
 import WTClientCreate from './screens/watertank/clients/ClientCreate';
 import WTServiceRequests from './screens/watertank/ServiceRequests';
@@ -346,6 +347,7 @@ export default function App() {
               <Route path="/website-content" element={<WebsiteContent />} />
               <Route path="/website" element={<Navigate to="/website-management" replace />} />
               <Route path="/website/enquiries" element={<WebsiteManagement />} />
+              <Route path="/website/enquires" element={<WebsiteManagement />} />
             </Route>
 
             {/* Water Tank Services — self-contained operations console with its OWN
@@ -483,6 +485,54 @@ export default function App() {
               <Route path="/air-conditioning/catalogue" element={<WaterTankCatalogue />} />
               <Route path="/air-conditioning/portal-accounts" element={<WTPortalAccounts />} />
               <Route path="/air-conditioning/settings" element={<WaterTankSettings />} />
+              {/* Residential Interior Design — shared engine, scoped by the header.
+                  No provider / no AMC routes; adds Variations. */}
+              <Route path="/residential-interior-design" element={<WaterTankDashboard />} />
+              <Route path="/residential-interior-design/clients" element={<WTClients />} />
+              <Route path="/residential-interior-design/clients/new" element={<WTClientCreate />} />
+              <Route path="/residential-interior-design/clients/:code" element={<WTClientDetail />} />
+              <Route path="/residential-interior-design/service-requests" element={<WTServiceRequests />} />
+              <Route path="/residential-interior-design/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/residential-interior-design/site-assessments" element={<WTSiteAssessments />} />
+              <Route path="/residential-interior-design/site-assessments/new" element={<WTAssessmentForm />} />
+              <Route path="/residential-interior-design/site-assessments/:code" element={<WTAssessmentDetail />} />
+              <Route path="/residential-interior-design/site-assessments/:code/edit" element={<WTAssessmentForm />} />
+              <Route path="/residential-interior-design/site-assessments/:code/quotation" element={<WTQuotationBuilder />} />
+              <Route path="/residential-interior-design/site-assessments/:code/quotation/:quoteCode/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/residential-interior-design/quotations" element={<WTQuotations />} />
+              <Route path="/residential-interior-design/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/residential-interior-design/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/residential-interior-design/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/residential-interior-design/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/residential-interior-design/work-orders" element={<WTWorkOrders />} />
+              <Route path="/residential-interior-design/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/residential-interior-design/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/residential-interior-design/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/residential-interior-design/projects" element={<WTProjects />} />
+              <Route path="/residential-interior-design/projects/new" element={<WTProjectForm />} />
+              <Route path="/residential-interior-design/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/residential-interior-design/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/residential-interior-design/variations" element={<InteriorVariations />} />
+              <Route path="/residential-interior-design/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/residential-interior-design/agreements" element={<WTAgreementsHub />} />
+              <Route path="/residential-interior-design/reports" element={<WTReports />} />
+              <Route path="/residential-interior-design/reports/:kind" element={<WTReports />} />
+              <Route path="/residential-interior-design/service-reports" element={<WTServiceReports />} />
+              <Route path="/residential-interior-design/service-reports/:code" element={<WTServiceReports />} />
+              <Route path="/residential-interior-design/work-queue" element={<WTWorkQueue />} />
+              <Route path="/residential-interior-design/invoices" element={<WTInvoices />} />
+              <Route path="/residential-interior-design/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/residential-interior-design/payments" element={<WTPayments />} />
+              <Route path="/residential-interior-design/calendar" element={<WTCalendar />} />
+              <Route path="/residential-interior-design/registers" element={<WTRegisters />} />
+              <Route path="/residential-interior-design/registers/:kind" element={<WTRegisters />} />
+              <Route path="/residential-interior-design/registers/:kind/:code" element={<WTRegisters />} />
+              <Route path="/residential-interior-design/complaints" element={<WTComplaints />} />
+              <Route path="/residential-interior-design/complaints/:code" element={<WTComplaints />} />
+              <Route path="/residential-interior-design/communication" element={<WTCommLog />} />
+              <Route path="/residential-interior-design/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/residential-interior-design/portal-accounts" element={<WTPortalAccounts />} />
+              <Route path="/residential-interior-design/settings" element={<WaterTankSettings />} />
             </Route>
             {/* ── Land & Property Assessment console — Survey & Valuation, same
                 screens as Water Tank, scoped to land_property_assessment (first

@@ -52,12 +52,15 @@ const NAV = [
     { group: true, label: 'Service Lines' },
     { to: '/water-tank', label: 'Water Tank Services' },
     { to: '/air-conditioning', label: 'Air Conditioning' },
-    { to: '/services/lines/interior-design', label: 'Interior Design' },
     { to: '/removal-relocation', label: 'Removal & Relocation' },
     { to: '/services/lines/solar-energy', label: 'Solar & Energy' },
     { to: '/property-care-concierge', label: 'Property Care & Concierge' },
     // Property Doc Verification & Transfer Support — its own group. Each sub-service
     // is a live console; the remaining two light up here once their documents arrive.
+    // Interior Design Solutions — its own group of 7 client-facing verticals.
+    // Residential is live; the other six light up here as they are built.
+    { group: true, label: 'Interior Design Solutions' },
+    { to: '/residential-interior-design', label: 'Residential Interior Design' },
     { group: true, label: 'Doc Verification & Transfer' },
     { to: '/land-property-assessment', label: 'Land & Property Assessment' },
     { to: '/loan-financial-support', label: 'Loan & Financial Support' },
