@@ -23,7 +23,7 @@ import { useSvcNav, WtHead, Loading, EmptyState, Pill, DatePicker, bdt, dateFmt,
 const STEPS = [
   { label: 'Project', hint: 'Sections 1–2 · project and client' },
   { label: 'Services', hint: 'Section 3 · requested services' },
-  { label: 'Site', hint: 'Sections 4–5 · tanks and scope' },
+  { label: 'Site', hint: 'Sections 4–5 · site and scope' },
   { label: 'Resources', hint: 'Sections 6–7 · materials and timeline' },
   { label: 'Pricing', hint: 'Section 8 · schedules A–E' },
   { label: 'Terms', hint: 'Sections 9–10 · warranty and checklist' },

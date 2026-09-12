@@ -5,7 +5,7 @@ import {
   RotateCcw, Sparkles, Eye, ChevronRight,
 } from 'lucide-react';
 import api from '../../services/api';
-import { useSvcNav, WtHead, Loading, EmptyState, bdt, toast, errText } from './common';
+import { useSvcNav, WtHead, Loading, EmptyState, bdt, toast, errText, svcProfile } from './common';
 import QuotationSendDrawer from './QuotationSend';
 
 /*
@@ -259,7 +259,7 @@ export default function QuotationBuilder() {
               </button>
             ))}
             {!filtered.length && <div className="muted" style={{ fontSize: 12.5, padding: 16, textAlign: 'center' }}>
-              {catalog.length ? 'Nothing matches that search.' : 'No catalogue items seeded for water_tank_csa.'}
+              {catalog.length ? 'Nothing matches that search.' : `No catalogue items seeded for ${svcProfile().short || 'this service'} yet.`}
             </div>}
           </div>
         </aside>

@@ -386,7 +386,43 @@ const PCC_PACK = {
   warranty_rows: PCC_WARRANTY_ROWS,
   checklist_groups: PCC_CHECKLIST_GROUPS,
 };
-const WO_PACKS = { water_tank: WT_PACK, air_conditioning: AC_PACK, land_property_assessment: LPAS_PACK, loan_financial_support: LFS_PACK, property_documentation_verification: PDV_PACK, property_will_succession: PWS_PACK, removal_relocation: RRS_PACK, property_care_concierge: PCC_PACK };
+// ── Residential Interior Design — Project Work Order ──────────────────────────
+const RIDS_PROPERTY_TYPES = ['Apartment', 'House', 'Duplex', 'Villa', 'Studio', 'Penthouse', 'Other'];
+const RIDS_SERVICE_GROUPS = {
+  'Interior Design & Planning': ['Design Consultation', 'Space Planning', 'Colour & Material Selection', '2D Drawings', '3D Visualisation', 'Lighting Design', 'Kitchen / Bathroom Design'],
+  'Renovation & Fit-Out': ['Interior Renovation', 'Carpentry & Joinery', 'Painting & Decoration', 'Flooring', 'Ceiling', 'Electrical & Lighting', 'Plumbing', 'Kitchen Fit-Out', 'Bathroom Fit-Out', 'Built-in Cabinetry'],
+  'Furniture & Styling': ['Custom Furniture', 'Furniture Supply & Placement', 'Curtains & Furnishings', 'Décor & Accessories', 'Final Styling'],
+  'Project Coordination': ['Project Management', 'Site Supervision', 'Vendor Coordination', 'Procurement', 'Installation', 'Handover'],
+};
+const RIDS_SPACE_FIELDS = [
+  ['property_type', 'Property Type'], ['design_style', 'Design Style / Theme'],
+  ['rooms_included', 'Rooms / Zones Included'], ['area', 'Approximate Area'],
+  ['furniture_requirements', 'Furniture Requirements'], ['materials_finishes', 'Materials & Finishes'],
+];
+const RIDS_WARRANTY_ROWS = [
+  ['workmanship', 'Workmanship'], ['fit_out', 'Fit-Out & Renovation'],
+  ['custom_furniture', 'Custom Furniture'], ['installation', 'Installation'],
+  ['materials', 'Supplied Materials'],
+];
+const RIDS_CHECKLIST_GROUPS = {
+  'Before Project': ['Customer Service Agreement Signed', 'Quotation Approved', 'Work Order Approved', 'Design & Layout Approved', 'Deposit Received', 'Site Access Confirmed'],
+  'During Project': ['Site Measurements Confirmed', 'Materials & Finishes Procured', 'Work in Progress Photographed', 'Client Updated on Progress', 'Variations Approved (if any)'],
+  Completion: ['Works Completed to Scope', 'Site Cleaned & Handed Over', 'Snag List Cleared', 'Completion Sign-Off Signed', 'Final Invoice Issued', 'Warranty Summary Issued'],
+};
+const RIDS_PACK = {
+  doc_no: 'SSPC-RIDS-PWO-01',
+  header_subtitle: 'RESIDENTIAL INTERIOR DESIGN SOLUTIONS',
+  division: 'Seventh Sky Interior Design Solutions',
+  document_type: 'residential_interior_design_work_order',
+  property_types: RIDS_PROPERTY_TYPES,
+  service_groups: RIDS_SERVICE_GROUPS,
+  section4_label: 'Section 4 — Space & Project Details',
+  section4_fields: RIDS_SPACE_FIELDS,
+  warranty_rows: RIDS_WARRANTY_ROWS,
+  checklist_groups: RIDS_CHECKLIST_GROUPS,
+  consumables_label: 'Finishes & Consumables',
+};
+const WO_PACKS = { water_tank: WT_PACK, air_conditioning: AC_PACK, land_property_assessment: LPAS_PACK, loan_financial_support: LFS_PACK, property_documentation_verification: PDV_PACK, property_will_succession: PWS_PACK, removal_relocation: RRS_PACK, property_care_concierge: PCC_PACK, residential_interior_design: RIDS_PACK };
 // Resolve a pack by service_line key (or catalogue vertical / related_type prefix
 // for callers that pass those). Falls back to Water Tank.
 const packForWo = (v) => {
@@ -606,7 +642,7 @@ function buildWorkOrderDocument(wo = {}, extra = {}) {
   );
   const s6 = section('s6', 'Section 6 — Materials & Equipment', `
     <div style="${H3}">Materials Required</div>${itemQty(wo.materials_required, 'No materials recorded.')}
-    <div style="${H3}">Chemicals Required</div>${itemQty(wo.chemicals_required, 'No chemicals recorded.')}
+    <div style="${H3}">${esc(pack.consumables_label || 'Chemicals Required')}</div>${itemQty(wo.chemicals_required, 'None recorded.')}
     <div style="${H3}">Equipment Required</div>${itemQty(wo.equipment_required, 'No equipment recorded.')}`);
 
   /*
