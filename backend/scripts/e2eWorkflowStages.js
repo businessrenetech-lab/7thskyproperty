@@ -1,15 +1,20 @@
 /**
- * e2eWorkflowStages.js — actually WORK the properties_sale SOP: for a given
- * property, tick EVERY checklist item on every unlocked stage and complete the
- * stage, looping until nothing more can be advanced. Reports each stage, its
- * checklist size, and the final project state (and any stage still blocked +
- * why). Usage: node scripts/e2eWorkflowStages.js [propertyId]
+ * e2eWorkflowStages.js — actually WORK a sales/buy SOP: tick EVERY checklist item
+ * on every unlocked stage and complete the stage, looping until nothing more can
+ * advance. Reports each stage, its checklist size, and the final project state
+ * (and any stage still event-locked + why).
+ * Usage:
+ *   node scripts/e2eWorkflowStages.js [propertyId]         # properties_sale SOP
+ *   node scripts/e2eWorkflowStages.js deal <dealId>        # residential_purchase SOP
  */
 const http = require('http');
 const PORT = Number(process.env.PORT) || 50001;
 const EMAIL = process.env.E2E_EMAIL || 'admin@seventhskyproperty.com';
 const PASSWORD = process.env.E2E_PASSWORD || 'Admin#2026';
-const PROPERTY_ID = Number(process.argv[2] || 115);
+const IS_DEAL = process.argv[2] === 'deal';
+const ENTITY_ID = Number(IS_DEAL ? process.argv[3] : (process.argv[2] || 115));
+const SOP_PATH = IS_DEAL ? `/api/sales/deals/${ENTITY_ID}/sop` : `/api/sales/properties/${ENTITY_ID}/sop`;
+const LABEL = IS_DEAL ? `buy deal ${ENTITY_ID}` : `property ${ENTITY_ID}`;
 let TOKEN = '';
 const R = { pass: 0, fail: 0 };
 const log = (s, m, d) => { R[s === 'PASS' ? 'pass' : 'fail'] += 1; console.log(`${s === 'PASS' ? '\x1b[32mPASS\x1b[0m' : '\x1b[31mFAIL\x1b[0m'}\t${m}${d !== undefined ? '  \x1b[2m' + d + '\x1b[0m' : ''}`); };
@@ -32,7 +37,7 @@ function req(method, path, opts = {}) {
 const finish = () => { console.log(`\n${'='.repeat(56)}\n${R.fail ? '\x1b[31m' : '\x1b[32m'}${R.pass} PASS / ${R.fail} FAIL\x1b[0m\n`); process.exit(R.fail ? 1 : 0); };
 
 async function getSop() {
-  const r = await req('GET', `/api/sales/properties/${PROPERTY_ID}/sop`);
+  const r = await req("GET", SOP_PATH);
   const d = r.body?.data || r.body;
   const proj = d.project || d;
   const stages = d.stages || proj.stages || [];
@@ -40,13 +45,13 @@ async function getSop() {
 }
 
 (async () => {
-  console.log(`\n===== WORKFLOW STAGE-BY-STAGE E2E (property ${PROPERTY_ID}) =====\n`);
+  console.log(`\n===== WORKFLOW STAGE-BY-STAGE E2E (${LABEL}) =====\n`);
   const login = await req('POST', '/api/auth/login', { noAuth: true, body: { email: EMAIL, password: PASSWORD } });
   TOKEN = login.body?.token || '';
   if (!ok(!!TOKEN, 'admin login', EMAIL)) return finish();
 
   // Ensure the SOP exists.
-  await req('POST', `/api/sales/properties/${PROPERTY_ID}/sop`, { body: {} });
+  await req('POST', SOP_PATH, { body: {} });
   let { projectId, stages } = await getSop();
   if (!ok(!!projectId && stages.length > 0, 'SOP loaded', `project #${projectId}, ${stages.length} stages`)) return finish();
 

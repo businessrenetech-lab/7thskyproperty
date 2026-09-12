@@ -6221,3 +6221,26 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Sub-bug caught during verification: my first cut queried SaleSettlement by property_id (no such column — it links via transaction_id); the throw was swallowed by try/catch so nothing unlocked. Fixed to resolve the settlement through the transaction.
 - Verified on #115: on reload the marketing/offer/settlement/closure phases unlocked; harness then completed all 35 checklist items across all 10 stages → project status 'completion', 10/10 done, 0 remaining. e2eWorkflowStages 12/0.
 - Backend restarted. Test data kept (property #115 SOP fully completed).
+
+### 2026-09-12 17:40 | Antigravity | COMPLETED | Rest of services copy update for mass audience, visual focus & clean hero imagery
+- Request: Change wordings for the remaining services to be easy to understand for mass people, marketing-friendly, focused on what we deliver ("less texts visualise more"); change hero section image relevant to service while preserving the hero structure and hero action as-is.
+- Scope: Update all 9 remaining service items (services 4 through 12: `land-property-assessment`, `loan-financial-support`, `property-documentation-verification`, `property-will-succession`, `removal-relocation`, `property-care-concierge`, `property-management`, `residential-sales`, `short-stay`) across both `website-mock/src/data/servicesData.js` and `website/src/lib/servicesData.js`. Zero prohibited location names.
+- Changes:
+  1. Rewrote service data in both `website-mock/src/data/servicesData.js` and `website/src/lib/servicesData.js` to deliver punchy, benefit-driven, deliverable-focused marketing copy with shorter readable sentences, clearer bullet points, and zero jargon.
+  2. Updated hero images to relevant high-resolution photography for all 12 services across both configurations.
+  3. Strictly kept hero action configurations (`line1`, `line2`, `ctaText`) identical and preserved hero structure.
+  4. Removed all prohibited geographic references across both files (confirmed with regex grep).
+- Verification:
+  - `website-mock` built cleanly via `npm run build` (vite v5.4.21, built in 8.20s, 0 errors).
+  - `website` built cleanly via `npm run build` (Next.js 16.2.6 Turbopack, all 12 static service paths prerendered with 0 errors).
+  - Grep query for prohibited terms returned zero matches across both datasets.
+- Handoff: Both `website-mock/src/data/servicesData.js` and `website/src/lib/servicesData.js` are completely in sync and production-built.
+
+### 2026-09-12 | Claude Opus 4.8 | COMPLETED | FINAL buy-service E2E (incl. deal SOP checklist worked)
+- Ran the complete buy-service journey end to end — all green:
+  - e2eBuyerServiceFull (13/0): buyer client → mandate → approve-to-proceed → candidate → shortlist/inspect → convert → buy deal file aggregate → 8-stage residential_purchase SOP seeded → risk review → non-trust settlement coordination → closure (financial-closure gate).
+  - e2eWorkflowStages deal <id> (14/0): generalized the workflow harness to work a DEAL SOP; on buy deal #101 it ticked ALL 34 checklist items across ALL 8 stages (enquiry→planning→search→diligence→offer→settlement→closure) → project status 'completion', 8/8 done, 0 remaining.
+  - e2eSalesAgreementFlow buyer side (part of 28/0): 2 buyers, KYC by admin AND public link + verify, multi-buyer purchase agreement (4 signers, all signed) → completed (= sale complete for buyer service) → 8 fee invoices drafted.
+- Note on the SOP late-unlock bug: it does NOT affect the buyer SOP — residential_purchase has activeAtStart = ALL phases (no progressive blocking), so every buyer stage is workable from the start; verified 0 blocked stages on a fresh deal. (The fix committed earlier covers the sale SOP, which is progressive.)
+- FINAL BUY-SERVICE VERDICT: production-ready. Mandate→candidates→deal, the full 8-stage workflow with every checklist item, KYC (both channels), multi-buyer purchase agreement + signatures + fee invoices, non-trust settlement coordination, and closure all verified end to end. Outstanding items are shared with sell-side (website offer-button UI, old-agreement backfill, witness email, server PDF, separation-of-duties).
+- Generalized backend/scripts/e2eWorkflowStages.js to accept `deal <id>`. Test data kept (deal #101 SOP completed).
