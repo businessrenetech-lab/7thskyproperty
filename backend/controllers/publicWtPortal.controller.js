@@ -350,7 +350,9 @@ const SEVERITIES = ['Low', 'Medium', 'High', 'Critical'];
 const SLA_HOURS = { Critical: 4, High: 8, Medium: 24, Low: 48 };
 
 async function raiseComplaint(req, res, ctx) {
-  const details = String(req.body?.details || req.body?.body || '').trim();
+  // Accept the common field names an external form / webhook might send, so the
+  // complaint isn't rejected over a key-name mismatch (details|body|description|message).
+  const details = String(req.body?.details || req.body?.body || req.body?.description || req.body?.message || '').trim();
   if (!details) throw new portal.PortalError(400, 'Tell us what went wrong.');
   if (details.length > 4000) throw new portal.PortalError(400, 'That is too long — please summarise.');
 
