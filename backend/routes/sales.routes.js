@@ -6,6 +6,9 @@ const sopCtrl = require('../controllers/salesSop.controller');
 const svcCtrl = require('../controllers/salesServices.controller');
 const reportsCtrl = require('../controllers/salesReports.controller');
 const autoCtrl = require('../controllers/leadAutomation.controller');
+const tasksCtrl = require('../controllers/salesTasks.controller');
+const buyerDealCtrl = require('../controllers/buyerMandate.controller');
+const buyerSopCtrl = require('../controllers/buyerDealSop.controller');
 const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
 
 const READ = ['super_admin', 'branch_admin', 'property_manager', 'sales_executive', 'accounts'];
@@ -18,6 +21,14 @@ router.use(authMiddleware);
 router.get('/dashboard', roleMiddleware(READ), ctrl.dashboard);
 router.get('/accounting-overview', roleMiddleware(READ), ctrl.accountingOverview);
 router.get('/work-queue', roleMiddleware(READ), ctrl.workQueue);
+
+// CRM Tasks & Action Items
+router.get('/tasks', roleMiddleware(READ), tasksCtrl.listTasks);
+router.post('/tasks', roleMiddleware(PREPARE), tasksCtrl.createTask);
+router.get('/tasks/:id', roleMiddleware(READ), tasksCtrl.getTask);
+router.put('/tasks/:id', roleMiddleware(PREPARE), tasksCtrl.updateTask);
+router.patch('/tasks/:id/status', roleMiddleware(PREPARE), tasksCtrl.updateStatus);
+router.delete('/tasks/:id', roleMiddleware(PREPARE), tasksCtrl.deleteTask);
 router.get('/properties/:propertyId/sop', roleMiddleware(READ), sopCtrl.getSop);
 router.post('/properties/:propertyId/sop', roleMiddleware(PREPARE), sopCtrl.ensureSop);
 router.get('/properties/:propertyId/services', roleMiddleware(READ), svcCtrl.propertyServices);
@@ -25,6 +36,10 @@ router.get('/properties/:propertyId/expenses', roleMiddleware(READ), reportsCtrl
 router.post('/properties/:propertyId/expenses', roleMiddleware(PREPARE), reportsCtrl.addExpense);
 router.delete('/expenses/:id', roleMiddleware(PREPARE), reportsCtrl.removeExpense);
 router.get('/reports', roleMiddleware(READ), reportsCtrl.report);
+// Buyer service: the buy deal file + its 8-stage purchase SOP workflow.
+router.get('/deals/:dealId', roleMiddleware(READ), buyerDealCtrl.getBuyerDeal);
+router.get('/deals/:dealId/sop', roleMiddleware(READ), buyerSopCtrl.getSop);
+router.post('/deals/:dealId/sop', roleMiddleware(PREPARE), buyerSopCtrl.ensureSop);
 // Lead automation: routing rules + follow-up sequences (config = admin) and
 // per-enquiry sequence actions (prepare).
 router.get('/lead-rules', roleMiddleware(READ), autoCtrl.listRules);

@@ -102,3 +102,51 @@ exports.convert = asyncHandler(async (req, res) => {
   }).catch((e) => { res.status(e.status || 500).json({ error: e.message }); return null; });
   if (result) res.status(201).json({ data: result, message: 'Converted to a buy deal.' });
 });
+
+// GET /api/sales/deals/:dealId — the buyer deal file payload: the buy deal +
+// buyer + property + the buyer's mandate & candidates + purchase agreements +
+// the buyer's agreement-fee invoices. Read-only aggregation.
+exports.getBuyerDeal = asyncHandler(async (req, res) => {
+  const { Op } = require('sequelize');
+  const deal = await PropertyDeal.findOne({
+    where: { id: req.params.dealId, deal_type: 'buy', ...branchScope(req) },
+    include: [
+      { model: Property, attributes: ['id', 'property_code', 'title', 'area', 'district', 'price', 'category'] },
+      { model: Client, as: 'buyer', include: [{ model: Contact, attributes: ['id', 'full_name', 'email', 'primary_phone'] }] },
+      { model: User, as: 'assignee', attributes: ['id', 'name'] },
+    ],
+  });
+  if (!deal) return res.status(404).json({ error: 'Buy deal not found.' });
+  const buyerContactId = deal.buyer?.Contact?.id || null;
+
+  const mandate = deal.buyer_client_id
+    ? await BuyerMandate.findOne({ where: { buyer_client_id: deal.buyer_client_id, ...branchScope(req) }, include: mandateIncludes(true), order: [['created_at', 'DESC']] })
+    : null;
+
+  // Purchase agreements (RPPS) + the buyer's agreement-fee invoices.
+  const SigningEnvelope = require('../models/SigningEnvelope');
+  const EnvelopeSigner = require('../models/EnvelopeSigner');
+  const PropertyInvoice = require('../models/PropertyInvoice');
+  const agreementEnvelopes = deal.property_id ? await SigningEnvelope.findAll({
+    where: { ...branchScope(req), related_id: deal.property_id, related_type: 'sale_purchase_agreement' },
+    include: [{ model: EnvelopeSigner, as: 'signers', attributes: ['id', 'name', 'role', 'status'] }],
+    order: [['created_at', 'DESC']],
+  }) : [];
+  const agreements = agreementEnvelopes.map((e) => {
+    const p = e.toJSON();
+    const signers = (p.signers || []).map((s) => ({ id: s.id, name: s.name, role: s.role, status: s.status }));
+    return { id: p.id, envelope_code: p.envelope_code, status: p.status, completed_at: p.completed_at, signers, signed_count: signers.filter((s) => s.status === 'signed').length, total_signers: signers.length };
+  });
+  const invoices = buyerContactId ? await PropertyInvoice.findAll({
+    where: { ...branchScope(req), contact_id: buyerContactId, invoice_type: 'agreement_fee' },
+    attributes: ['id', 'invoice_code', 'title', 'status', 'total', 'balance', 'amount_paid'],
+    order: [['created_at', 'DESC']],
+  }) : [];
+  const fees = {
+    total: invoices.reduce((s, i) => s + Number(i.total || 0), 0),
+    collected: invoices.reduce((s, i) => s + Number(i.amount_paid || 0), 0),
+    outstanding: invoices.reduce((s, i) => s + Number(i.balance || 0), 0),
+  };
+
+  res.json({ data: { deal, mandate, candidates: mandate?.candidates || [], agreements, invoices, fees } });
+});
