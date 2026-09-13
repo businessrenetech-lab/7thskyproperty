@@ -206,6 +206,13 @@ const SERVICE_LINES = {
     route_base: 'land-property-assessment',
     env_tag: 'SVS',                 // signing-envelope code tag: ENV-SVSCSA-/ENV-SVSDP-/ENV-SVSPWO-
     catalogue_vertical: 'land_property_assessment_csa',
+    // Seventh Sky delivers this Doc Verification & Transfer service in-house —
+    // there is no third-party service provider. On a signed Customer Service
+    // Agreement the project opens automatically and proceeds internally (no
+    // provider-assignment gate), the same internal-team model as Interior Design.
+    no_provider: true,
+    delivery_model: 'internal_team',
+    completion_signoff: true,
     // Parent grouping on the main dashboard. The "Property Doc Verification &
     // Transfer Support" service has four sub-services; this is the first. The
     // other three (Loan & Financial Support, Property Documentation &
@@ -353,6 +360,11 @@ const SERVICE_LINES = {
     route_base: 'loan-financial-support',
     env_tag: 'LFS',                 // signing-envelope code tag: ENV-LFSCSA-/ENV-LFSSDP-/ENV-LFSPWO-
     catalogue_vertical: 'loan_financial_support_csa',
+    // In-house delivery, no third-party provider — signed agreement auto-opens the
+    // project and it proceeds internally (same internal-team model as Interior Design).
+    no_provider: true,
+    delivery_model: 'internal_team',
+    completion_signoff: true,
     parent: { key: 'doc_verification_transfer', label: 'Property Doc Verification & Transfer Support' },
     doc_manager: true,             // Phase 4 Document Collection — collects the client's financial documents
     loan_tracker: true,            // loan-specific module: the Loan Application Tracker (Sheet 8 + Banking Liaison)
@@ -469,6 +481,11 @@ const SERVICE_LINES = {
     route_base: 'property-documentation-verification',
     env_tag: 'PDV',                 // ENV-PDVCSA-/ENV-PDVSDP-/ENV-PDVPWO-
     catalogue_vertical: 'property_documentation_verification_csa',
+    // In-house delivery, no third-party provider — signed agreement auto-opens the
+    // project and it proceeds internally (same internal-team model as Interior Design).
+    no_provider: true,
+    delivery_model: 'internal_team',
+    completion_signoff: true,
     parent: { key: 'doc_verification_transfer', label: 'Property Doc Verification & Transfer Support' },
     doc_manager: true,             // Phase 4 Document Collection — deed, mutation, porcha, tax, NID, PoA
     verification_register: true,   // line-specific module: Government Search + Verification Findings register
@@ -583,6 +600,11 @@ const SERVICE_LINES = {
     route_base: 'property-will-succession',
     env_tag: 'PWS',                 // ENV-PWSCSA-/ENV-PWSSDP-/ENV-PWSPWO-
     catalogue_vertical: 'property_will_succession_csa',
+    // In-house delivery, no third-party provider — signed agreement auto-opens the
+    // project and it proceeds internally (same internal-team model as Interior Design).
+    no_provider: true,
+    delivery_model: 'internal_team',
+    completion_signoff: true,
     parent: { key: 'doc_verification_transfer', label: 'Property Doc Verification & Transfer Support' },
     doc_manager: true,             // Document Collection — will, death cert, succession cert, beneficiary docs
     beneficiary_register: true,    // line-specific module: the Beneficiary / Heirs Register

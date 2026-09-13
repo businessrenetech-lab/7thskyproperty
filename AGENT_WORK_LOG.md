@@ -7969,3 +7969,73 @@ used "the last line starting with `import`", which landed inside a multi-line
   - `GET /api/wt-ops/dashboard`: 200 OK, returns `finance.funds_holding: 206444` (PASS).
   - Frontend Build: `npm run build` in `admin-portal`: transformed 2064 modules, built production bundle in 10.13s with 0 errors (PASS).
 - Handoff: The Projects dashboard and Suppliers bill/payment modal now provide full visibility into retained project funds with automatic deficit notifications.
+
+### 2026-09-13 23:03 | Antigravity | STARTED | Open New Client Agreement Window Directly From Agreements Hub
+- Request: "from here we have to go another agreements page...after click new client agrement..please fix it....new agreement window should open from this page...."
+- Scope: `admin-portal/src/screens/WtCustomerAgreements.jsx`, `admin-portal/src/screens/watertank/AgreementsHub.jsx`
+- Changes: None yet.
+- Verification: Read `AGENT_WORK_LOG.md`, analyzed user request and screenshot, inspected `AgreementsHub.jsx` and `WtCustomerAgreements.jsx`.
+- Handoff: Export `CustomerAgreementBuilder` from `WtCustomerAgreements.jsx` and embed the agreement creation window/modal directly into `AgreementsHub.jsx` so clicking "+ New client agreement" opens the builder window directly on `/agreements` without navigating away.
+
+### 2026-09-13 23:06 | Antigravity | COMPLETED | Open New Client Agreement Window Directly From Agreements Hub
+- Request: "from here we have to go another agreements page...after click new client agrement..please fix it....new agreement window should open from this page...."
+- Scope:
+  - `admin-portal/src/screens/WtCustomerAgreements.jsx`
+  - `admin-portal/src/screens/watertank/AgreementsHub.jsx`
+- Changes:
+  - `WtCustomerAgreements.jsx`:
+    - Refactored and exported `CustomerAgreementBuilder` (with alias `Builder`), supporting standalone full-page mode and embedded modal window mode (`isModal = true`).
+    - Added fallback to `useAuth()` and `svcProfile()` when optional props are omitted.
+    - Added support for `onClose` and `isModal`: header Back button supports `onClose || onCancel`, and added a dedicated `Close` button in the top action strip.
+    - Made the sticky live A4 preview column height dynamically adapt (`isModal ? 'calc(96vh - 120px)' : 'calc(100vh - 95px)'`) so it fits cleanly inside the window viewport without awkward scrolling.
+  - `AgreementsHub.jsx`:
+    - Added `showNewAgreementWindow` state and handlers (`openNewAgreementWindow`, `closeNewAgreementWindow`), with auto-detection for `?new=client` or `?new=customer` and optional `?project=`.
+    - Wired the "+ New client agreement" button to `openNewAgreementWindow` instead of routing away via `nav(`${svcBase()}/agreements/customer`)`.
+    - Embedded the full interactive `CustomerAgreementBuilder` inside an in-page modal window overlay with a dark executive title bar, document reference badge (`SSPC-RIDS-CSA-01`), subtitle, and `Close window` button (also responsive to Escape key).
+    - On agreement dispatch completion: automatically closes the window, reloads the agreements list (`await load()`), and toasts confirmation so the user stays on the Agreements Hub with the new agreement immediately visible in the table.
+- Verification & Results:
+  - Backend API: Authenticated request to `GET /api/wt-agreements/customer/meta` returns 200 OK with complete service line metadata and catalog configuration (PASS).
+  - Frontend Build: `npm run build` in `admin-portal`: transformed 2064 modules, built production bundle in 14.24s with 0 errors (PASS).
+- Handoff: Clicking "+ New client agreement" on `/residential-interior-design/agreements` (and all other Property Care service lines) now launches the agreement drafting window directly from the current page without navigating away.
+
+### 2026-09-13 23:10 | Antigravity | STARTED | Add Client Name and Emails to Agreements Hub Table
+- Request: "add client name and emails in the table"
+- Scope: `backend/controllers/waterTankAgreementHub.controller.js`, `admin-portal/src/screens/watertank/AgreementsHub.jsx`
+- Changes: None yet.
+- Verification: Read `AGENT_WORK_LOG.md`, analyzed user request and screenshot, inspected `shapeEnvelope` in backend controller and table rendering in `AgreementsHub.jsx`.
+- Handoff: Expose client name/email in backend `shapeEnvelope`, add `Client & Email` column to the Agreements table in `AgreementsHub.jsx`, and enable searching by client name and email.
+
+### 2026-09-13 23:13 | Antigravity | COMPLETED | Add Client Name and Emails to Agreements Hub Table
+- Request: "add client name and emails in the table"
+- Scope:
+  - `backend/controllers/waterTankAgreementHub.controller.js`
+  - `admin-portal/src/screens/watertank/AgreementsHub.jsx`
+- Changes:
+  - `backend/controllers/waterTankAgreementHub.controller.js`:
+    - Updated `shapeEnvelope(env)` to identify the primary client/counterparty signer and return `client_name`, `client_email`, and `client_role`.
+    - Enhanced `exports.list` to support filtering by client name and client email in addition to envelope code and title.
+  - `admin-portal/src/screens/watertank/AgreementsHub.jsx`:
+    - Added `getClientSigner` helper to reliably resolve the client's name and email from envelope fields or signers list.
+    - Updated `shown` search memoization so searching by client name or email filters rows immediately.
+    - Added a dedicated `Client & Email` column (`<th>Client & Email</th>` and `<td>`) right beside `Reference & Type`.
+    - Rendered the client's name in bold with their email styled with `<Mail size={12} />` linking to `mailto:`.
+    - Updated empty table row `colSpan` from 6 to 7 to maintain table column alignment.
+- Verification & Results:
+  - Backend API: `GET /api/wt-agreement-hub` verified returning `client_name` and `client_email` for all rows (31 rows inspected, PASS).
+  - Search Query: `GET /api/wt-agreement-hub?q=780983` verified returning matched envelopes by client email/name (PASS).
+  - Frontend Build: `npm run build` in `admin-portal` completed in 12.72s with 0 errors (PASS).
+- Handoff: The Agreements register table on `/residential-interior-design/agreements` (and across all Property Care service lines) now displays the client's full name and email address for every agreement.
+
+### 2026-09-13 15:40 | Claude Opus 4.8 | COMPLETED | Doc Verification & Transfer: no third-party provider, auto-open project on signing
+- Request: "for interior services, as third party or providers not available it automatically open the projects after the agreement signed..... all DOC VERIFICATION & TRANSFER services...."
+- Scope: apply Interior Design's in-house delivery model to all 4 Doc Verification & Transfer lines (Land & Property Assessment, Loan & Financial Support, Property Documentation & Verification, Property Will & Succession).
+- Changes Made:
+  - `backend/config/serviceLines.js`: added `no_provider: true`, `delivery_model: 'internal_team'`, `completion_signoff: true` to all 4 lines (mirrors residential_interior_design). Left AMC available (`no_amc` NOT set) — these lines may carry retainers; scope kept to the provider/project ask.
+  - `admin-portal/src/config/consoles.js`: dropped the Providers & Compliance nav group from all 4 consoles via `.filter((g) => !g.key.endsWith('providers'))`, matching RESIDENTIAL_INTERIOR_NAV. Doc Manager / line-specific nav items preserved.
+- Verification & Results:
+  - `GET /api/wt-ops/capabilities` per line: `{no_provider:true, completion_signoff:true}` for all 4; water_tank unchanged (`no_provider:false`) (PASS).
+  - `GET /api/wt-providers/directory` → 409 for all 4 (no_provider) (PASS); `GET /api/wt-projects` → 200 (project machinery reachable) (PASS).
+  - Interior E2E `node scripts/e2eInteriorDesign.js`: 20 PASS / 0 FAIL — shared engine intact (PASS).
+  - `npm run build` in admin-portal: built in 7.97s, 0 errors (PASS).
+- Rationale: the signing → work-order → project-open path (`wtWorkOrder.createFromSignedAgreement` → `identity.ensureProject`) is line-agnostic and already ran for every `*_customer_agreement`. The provider-assignment gate (assign vs internal allocate) and provider nav were what differed; setting the delivery flags removes the gate so the project opens and proceeds internally, exactly as Interior Design does.
+- Handoff: On a signed Customer Service Agreement, all Doc Verification & Transfer lines now auto-open the project and proceed in-house with no provider step; provider endpoints/nav are gone. AMC remains available on these lines by design.

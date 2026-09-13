@@ -545,7 +545,10 @@ export const airConditioningConsole = {
 export const LAND_PROPERTY_ASSESSMENT_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/land-property-assessment')
   .map((g) => (g.key.endsWith('intake')
     ? { ...g, items: [...g.items, { to: '/land-property-assessment/doc-manager', label: 'Doc Manager', icon: FolderArchive }] }
-    : g));
+    : g))
+  // Seventh Sky delivers this in-house — no third-party provider — so drop the
+  // whole Providers & Compliance group (matches Residential Interior Design).
+  .filter((g) => !g.key.endsWith('providers'));
 
 export const landPropertyAssessmentConsole = {
   slug: 'land-property-assessment',
@@ -580,7 +583,9 @@ export const LOAN_FINANCIAL_SUPPORT_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank
       return { ...g, items: [{ to: '/loan-financial-support/loan-applications', label: 'Loan Applications', icon: Landmark }, ...g.items] };
     }
     return g;
-  });
+  })
+  // In-house delivery, no third-party provider — drop the Providers group.
+  .filter((g) => !g.key.endsWith('providers'));
 
 export const loanFinancialSupportConsole = {
   slug: 'loan-financial-support',
@@ -614,7 +619,9 @@ export const PROPERTY_DOC_VERIFICATION_NAV = rebaseNav(WATER_TANK_NAV, '/water-t
       return { ...g, items: [{ to: '/property-documentation-verification/verifications', label: 'Verifications', icon: ShieldCheck }, ...g.items] };
     }
     return g;
-  });
+  })
+  // In-house delivery, no third-party provider — drop the Providers group.
+  .filter((g) => !g.key.endsWith('providers'));
 
 export const propertyDocVerificationConsole = {
   slug: 'property-documentation-verification',
@@ -648,7 +655,9 @@ export const PROPERTY_WILL_SUCCESSION_NAV = rebaseNav(WATER_TANK_NAV, '/water-ta
       return { ...g, items: [{ to: '/property-will-succession/beneficiaries', label: 'Beneficiaries', icon: Users }, ...g.items] };
     }
     return g;
-  });
+  })
+  // In-house delivery, no third-party provider — drop the Providers group.
+  .filter((g) => !g.key.endsWith('providers'));
 
 export const propertyWillSuccessionConsole = {
   slug: 'property-will-succession',
