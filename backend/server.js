@@ -152,6 +152,7 @@ mount('/api/tenant-applications', './routes/tenantApplication.routes');
 mount('/api/rental-assessments', './routes/rentalAssessment.routes');
 mount('/api/rental-enquiries', './routes/rentalEnquiry.routes');
 mount('/api/communications', './routes/communications.routes');
+mount('/api/marketing', './routes/marketingCampaign.routes');
 mount('/api/sales-enquiries', './routes/salesEnquiry.routes');
 mount('/api/leads', './routes/lead.routes');
 mount('/api/public', './routes/publicSales.routes');
