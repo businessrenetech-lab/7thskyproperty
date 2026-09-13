@@ -94,7 +94,7 @@ import WTPortalAccounts from './screens/watertank/PortalAccounts';
 import { ForgotPassword, ResetPassword, ChangePassword } from './screens/PasswordScreens';
 import WTClients from './screens/watertank/Clients';
 import InteriorVariations from './screens/watertank/InteriorVariations';
-import InteriorServiceConsole, { FitnessRoomInteriorConsole, CommercialInteriorConsole, CustomFitoutConsole, FurnitureStylingConsole, PrayerRoomInteriorConsole } from './screens/watertank/InteriorServiceConsole';
+import InteriorServiceConsole, { FitnessRoomInteriorConsole, CommercialInteriorConsole, CustomFitoutConsole, FurnitureStylingConsole, PrayerRoomInteriorConsole, SpacePlanningConsole } from './screens/watertank/InteriorServiceConsole';
 import WtSuppliers from './screens/watertank/WtSuppliers';
 import WTClientDetail from './screens/watertank/clients/ClientDashboard';
 import WTClientCreate from './screens/watertank/clients/ClientCreate';
@@ -807,6 +807,59 @@ export default function App() {
               <Route path="/prayer-room-interior-design/catalogue" element={<WaterTankCatalogue />} />
               <Route path="/prayer-room-interior-design/portal-accounts" element={<WTPortalAccounts />} />
               <Route path="/prayer-room-interior-design/settings" element={<WaterTankSettings />} />
+            </Route>
+            {/* ── Space Planning & Renovation console — same interior screens &
+                SOP, scoped to space_planning_renovation. Final sibling under
+                the Interior Design Solutions parent. ── */}
+            <Route element={<RequireAuth><AdminGate><SpacePlanningConsole /></AdminGate></RequireAuth>}>
+              <Route path="/space-planning-renovation" element={<WaterTankDashboard />} />
+              <Route path="/space-planning-renovation/contacts" element={<SalesContacts scope="interior" />} />
+              <Route path="/space-planning-renovation/clients" element={<WTClients />} />
+              <Route path="/space-planning-renovation/clients/new" element={<WTClientCreate />} />
+              <Route path="/space-planning-renovation/clients/:code" element={<WTClientDetail />} />
+              <Route path="/space-planning-renovation/service-requests" element={<WTServiceRequests />} />
+              <Route path="/space-planning-renovation/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/space-planning-renovation/site-assessments" element={<WTSiteAssessments />} />
+              <Route path="/space-planning-renovation/site-assessments/new" element={<WTAssessmentForm />} />
+              <Route path="/space-planning-renovation/site-assessments/:code" element={<WTAssessmentDetail />} />
+              <Route path="/space-planning-renovation/site-assessments/:code/edit" element={<WTAssessmentForm />} />
+              <Route path="/space-planning-renovation/site-assessments/:code/quotation" element={<WTQuotationBuilder />} />
+              <Route path="/space-planning-renovation/site-assessments/:code/quotation/:quoteCode/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/space-planning-renovation/quotations" element={<WTQuotations />} />
+              <Route path="/space-planning-renovation/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/space-planning-renovation/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/space-planning-renovation/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/space-planning-renovation/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/space-planning-renovation/work-orders" element={<WTWorkOrders />} />
+              <Route path="/space-planning-renovation/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/space-planning-renovation/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/space-planning-renovation/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/space-planning-renovation/projects" element={<WTProjects />} />
+              <Route path="/space-planning-renovation/projects/new" element={<WTProjectForm />} />
+              <Route path="/space-planning-renovation/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/space-planning-renovation/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/space-planning-renovation/variations" element={<InteriorVariations />} />
+              <Route path="/space-planning-renovation/suppliers" element={<WtSuppliers />} />
+              <Route path="/space-planning-renovation/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/space-planning-renovation/agreements" element={<WTAgreementsHub />} />
+              <Route path="/space-planning-renovation/reports" element={<WTReports />} />
+              <Route path="/space-planning-renovation/reports/:kind" element={<WTReports />} />
+              <Route path="/space-planning-renovation/service-reports" element={<WTServiceReports />} />
+              <Route path="/space-planning-renovation/service-reports/:code" element={<WTServiceReports />} />
+              <Route path="/space-planning-renovation/work-queue" element={<WTWorkQueue />} />
+              <Route path="/space-planning-renovation/invoices" element={<WTInvoices />} />
+              <Route path="/space-planning-renovation/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/space-planning-renovation/payments" element={<WTPayments />} />
+              <Route path="/space-planning-renovation/calendar" element={<WTCalendar />} />
+              <Route path="/space-planning-renovation/registers" element={<WTRegisters />} />
+              <Route path="/space-planning-renovation/registers/:kind" element={<WTRegisters />} />
+              <Route path="/space-planning-renovation/registers/:kind/:code" element={<WTRegisters />} />
+              <Route path="/space-planning-renovation/complaints" element={<WTComplaints />} />
+              <Route path="/space-planning-renovation/complaints/:code" element={<WTComplaints />} />
+              <Route path="/space-planning-renovation/communication" element={<WTCommLog />} />
+              <Route path="/space-planning-renovation/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/space-planning-renovation/portal-accounts" element={<WTPortalAccounts />} />
+              <Route path="/space-planning-renovation/settings" element={<WaterTankSettings />} />
             </Route>
             {/* ── Land & Property Assessment console — Survey & Valuation, same
                 screens as Water Tank, scoped to land_property_assessment (first

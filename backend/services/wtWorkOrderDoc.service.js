@@ -600,7 +600,43 @@ const MPRIDS_PACK = {
   checklist_groups: MPRIDS_CHECKLIST_GROUPS,
   consumables_label: 'Materials, Carpet & Consumables',
 };
-const WO_PACKS = { water_tank: WT_PACK, air_conditioning: AC_PACK, land_property_assessment: LPAS_PACK, loan_financial_support: LFS_PACK, property_documentation_verification: PDV_PACK, property_will_succession: PWS_PACK, removal_relocation: RRS_PACK, property_care_concierge: PCC_PACK, residential_interior_design: RIDS_PACK, fitness_room_interior_design: FRIDS_PACK, commercial_interior_design: CIDS_PACK, custom_design_fitout: CDFS_PACK, furniture_styling_consultation: FSCS_PACK, prayer_room_interior_design: MPRIDS_PACK };
+// Space Planning & Renovation — same interior work-order structure, planning vocab.
+const SPRS_PROPERTY_TYPES = ['Apartment', 'House', 'Villa', 'Office', 'Retail Shop', 'Showroom', 'Commercial', 'Other'];
+const SPRS_SERVICE_GROUPS = {
+  'Space Planning & Design': ['Space Planning', 'Layout Planning', 'Functional Flow', 'Space Optimisation', 'Furniture Layout', 'Storage Planning', 'Lighting Layout', '2D Drawings', '3D Visualisation'],
+  'Renovation & Fit-Out': ['Interior Renovation', 'Commercial Fit-Out', 'Carpentry & Joinery', 'Partition Installation', 'Ceiling Installation', 'Flooring Installation', 'Painting & Decoration', 'Glass & Aluminium', 'Electrical', 'Plumbing', 'Built-in Cabinetry'],
+  'Furniture & Interior Solutions': ['Furniture', 'Modular Furniture', 'Appliance Coordination', 'Decorative Items', 'Window Furnishings', 'Interior Styling'],
+  'Project Coordination': ['Project Management', 'Site Supervision', 'Vendor Coordination', 'Procurement', 'Installation', 'Handover'],
+};
+const SPRS_SPACE_FIELDS = [
+  ['property_type', 'Property Type'], ['design_style', 'Design Style'],
+  ['rooms_included', 'Rooms / Zones Included'], ['area', 'Approximate Area'],
+  ['renovation_requirements', 'Renovation Requirements'], ['materials_finishes', 'Materials & Finishes'],
+];
+const SPRS_WARRANTY_ROWS = [
+  ['space_planning', 'Space Planning Services'], ['renovation', 'Renovation Workmanship'],
+  ['joinery', 'Carpentry & Joinery'], ['partition', 'Partition Installation'],
+  ['furniture', 'Furniture Installation'],
+];
+const SPRS_CHECKLIST_GROUPS = {
+  'Before Project': ['Customer Service Agreement Signed', 'Quotation Approved', 'Work Order Approved', 'Layout & Design Approved', 'Deposit Received', 'Site Access & Permissions Confirmed'],
+  'During Project': ['Site Measurements Confirmed', 'Materials & Furniture Procured', 'Work in Progress Photographed', 'Client Updated on Progress', 'Variations Approved (if any)'],
+  Completion: ['Works Completed to Scope', 'Site Cleaned & Handed Over', 'Snag List Cleared', 'Completion Sign-Off Signed', 'Final Invoice Issued', 'Warranty Summary Issued'],
+};
+const SPRS_PACK = {
+  doc_no: 'SSPC-SPRS-PWO-01',
+  header_subtitle: 'SPACE PLANNING & RENOVATION INTERIOR DESIGN SOLUTIONS',
+  division: 'Seventh Sky Interior Design Solutions',
+  document_type: 'space_planning_renovation_work_order',
+  property_types: SPRS_PROPERTY_TYPES,
+  service_groups: SPRS_SERVICE_GROUPS,
+  section4_label: 'Section 4 — Space & Renovation Details',
+  section4_fields: SPRS_SPACE_FIELDS,
+  warranty_rows: SPRS_WARRANTY_ROWS,
+  checklist_groups: SPRS_CHECKLIST_GROUPS,
+  consumables_label: 'Materials, Furniture & Consumables',
+};
+const WO_PACKS = { water_tank: WT_PACK, air_conditioning: AC_PACK, land_property_assessment: LPAS_PACK, loan_financial_support: LFS_PACK, property_documentation_verification: PDV_PACK, property_will_succession: PWS_PACK, removal_relocation: RRS_PACK, property_care_concierge: PCC_PACK, residential_interior_design: RIDS_PACK, fitness_room_interior_design: FRIDS_PACK, commercial_interior_design: CIDS_PACK, custom_design_fitout: CDFS_PACK, furniture_styling_consultation: FSCS_PACK, prayer_room_interior_design: MPRIDS_PACK, space_planning_renovation: SPRS_PACK };
 // Resolve a pack by service_line key (or catalogue vertical / related_type prefix
 // for callers that pass those). Falls back to Water Tank.
 const packForWo = (v) => {

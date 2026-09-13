@@ -974,6 +974,41 @@ export const prayerRoomInteriorConsole = {
   exitTo: '/dashboard',
 };
 
+/* ── Space Planning & Renovation ────────────────────────────────────────────
+ * Final sibling under the Interior Design parent — identical in-house workflow
+ * (no Providers/Compliance, no AMC, Variations + Suppliers on). Rebased onto
+ * /space-planning-renovation/* with an amber-orange accent. Scoped to the
+ * space_planning_renovation service line by the header. */
+export const SPACE_PLANNING_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/space-planning-renovation')
+  .map((g) => {
+    if (g.key.endsWith('delivery')) {
+      return { ...g, items: [...g.items.filter((it) => !/\/amc$/.test(it.to)), { to: '/space-planning-renovation/variations', label: 'Variations', icon: FileSignature }] };
+    }
+    if (g.key.endsWith('finance')) {
+      return { ...g, items: [...g.items, { to: '/space-planning-renovation/suppliers', label: 'Suppliers & Payables', icon: Truck }] };
+    }
+    return g;
+  })
+  .filter((g) => !g.key.endsWith('providers'));
+
+export const spacePlanningConsole = {
+  slug: 'space-planning-renovation',
+  storageKey: 'sprs.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Space Planning & Renovation',
+    icon: Home,
+    accent: '#ea580c',          // amber-orange — distinct from the other interior lines
+    accentStrong: '#c2410c',
+    accentInk: '#9a3412',
+    accentTint: 'rgba(234,88,12,.12)',
+    accentTint2: '#ffedd5',
+  },
+  navGroups: SPACE_PLANNING_NAV,
+  api: { capabilities: '/wt-ops/capabilities', workQueue: '/wt-ops/work-queue' },
+  exitTo: '/dashboard',
+};
+
 export const CONSOLES = {
   'water-tank': waterTankConsole,
   'air-conditioning': airConditioningConsole,
@@ -983,6 +1018,7 @@ export const CONSOLES = {
   'custom-design-fit-out': customFitoutConsole,
   'furniture-styling-consultation': furnitureStylingConsole,
   'prayer-room-interior-design': prayerRoomInteriorConsole,
+  'space-planning-renovation': spacePlanningConsole,
   'land-property-assessment': landPropertyAssessmentConsole,
   'loan-financial-support': loanFinancialSupportConsole,
   'property-documentation-verification': propertyDocVerificationConsole,

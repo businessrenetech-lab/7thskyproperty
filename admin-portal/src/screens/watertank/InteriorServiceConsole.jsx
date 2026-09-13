@@ -1,6 +1,6 @@
 import React from 'react';
 import ServiceConsole from '../../ui/ServiceConsole';
-import { residentialInteriorConsole, fitnessRoomInteriorConsole, commercialInteriorConsole, customFitoutConsole, furnitureStylingConsole, prayerRoomInteriorConsole } from '../../config/consoles';
+import { residentialInteriorConsole, fitnessRoomInteriorConsole, commercialInteriorConsole, customFitoutConsole, furnitureStylingConsole, prayerRoomInteriorConsole, spacePlanningConsole } from '../../config/consoles';
 
 /*
  * ResidentialInteriorConsole — the Residential Interior Design operations console.
@@ -61,4 +61,14 @@ export function FurnitureStylingConsole() {
  */
 export function PrayerRoomInteriorConsole() {
   return <ServiceConsole config={prayerRoomInteriorConsole} />;
+}
+
+/*
+ * SpacePlanningConsole — sibling Interior Design console for Space Planning &
+ * Renovation (space planning, layout optimisation, renovation fit-out).
+ * Identical shell and screens; amber-orange accent, /space-planning-renovation/*
+ * nav, scoped to the space_planning_renovation service line by the header.
+ */
+export function SpacePlanningConsole() {
+  return <ServiceConsole config={spacePlanningConsole} />;
 }

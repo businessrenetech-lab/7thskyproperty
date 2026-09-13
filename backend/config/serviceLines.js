@@ -1598,6 +1598,113 @@ const SERVICE_LINES = {
       incident_types: ['Injury', 'Property Damage', 'Fire', 'Electrical Incident', 'Water Damage', 'Other'],
     },
   },
+
+  /* ── Space Planning & Renovation (Interior Design Solutions #7) ──────────────
+   * Final sibling under the Interior Design parent — identical 4-phase SOP
+   * workflow (Consultation & Space Planning Assessment → Design Development &
+   * Space Planning → Renovation & Execution Coordination → Completion & Handover),
+   * so it reuses the same project stages, assessment, variations and costing. The
+   * CSA and vocabulary cover space planning, layout optimisation and renovation
+   * fit-out. In-house delivery, no provider, no AMC (SSPC-SPRS-CSA-01 v0.2). */
+  space_planning_renovation: {
+    key: 'space_planning_renovation',
+    label: 'Space Planning & Renovation',
+    short: 'SPRS',
+    accent: '#ea580c',              // amber-orange — distinct from the other interior lines
+    api_base: 'wt',
+    route_base: 'space-planning-renovation',
+    env_tag: 'SPRS',               // ENV-SPRSCSA-…
+    catalogue_vertical: 'space_planning_renovation_csa',
+    parent: { key: 'interior_design', label: 'Interior Design Solutions' },
+    no_provider: true,
+    no_amc: true,
+    variations: true,
+    completion_signoff: true,
+    delivery_model: 'internal_team',
+    code_prefix: {
+      client: 'SPRS-C', project: 'SPRS-P', request: 'SPRR-', assessment: 'SPRA-',
+      quotation: 'SPRQ-', work_order: 'SPRW-', invoice: 'SPRI-',
+    },
+    required_docs: { compliance: [], insurance: [] },
+    service_categories: [],
+    related_type: {
+      customer: 'space_planning_renovation_customer_agreement',
+    },
+    agreement_template: {
+      customer: 'Space Planning & Renovation Interior Design Solutions Customer Service Agreement',
+    },
+    ui: {
+      full_label: 'Space Planning & Renovation',
+      // From the SOP + CSA Clause 3 / Schedule A.
+      project_types: ['Space Planning & Design', 'Renovation & Fit-Out', 'Furniture & Interior Solutions', 'Project Coordination', 'Full Renovation', 'Mixed Scope'],
+      categories: ['Space Planning', 'Renovation', 'Fit-Out', 'Furniture', 'Styling', 'Coordination'],
+      property_types: ['Apartment', 'House', 'Villa', 'Office', 'Retail Shop', 'Showroom', 'Commercial', 'Other'],
+      service_catalogue: {
+        'Space Planning & Design': ['Space Planning Consultation', 'Site Assessment', 'Layout Planning', 'Space Optimisation', 'Functional Flow Planning', 'Furniture Layout Planning', 'Storage Planning', 'Workspace Planning', 'Residential Space Planning', 'Commercial Space Planning', 'Office Layout Planning', 'Retail Layout Planning', 'Lighting Layout Planning', '2D Design Drawings', '3D Visualisation'],
+        'Renovation & Fit-Out': ['Interior Renovation', 'Office Renovation', 'Residential Renovation', 'Commercial Fit-Out', 'Carpentry & Joinery', 'Partition Installation', 'Ceiling Installation', 'Flooring Installation', 'Painting & Decoration', 'Glass & Aluminium Works', 'Electrical Coordination', 'Plumbing Coordination', 'Built-in Cabinetry'],
+        'Furniture & Interior Solutions': ['Furniture Consultation', 'Furniture Procurement Coordination', 'Modular Furniture Coordination', 'Appliance Coordination', 'Decorative Item Coordination', 'Window Furnishing Coordination', 'Interior Styling'],
+        'Project Coordination': ['Budget Planning', 'Project Planning', 'Contractor Coordination', 'Supplier Coordination', 'Material Coordination', 'Installation Supervision', 'Progress Monitoring', 'Quality Coordination', 'Practical Completion & Handover'],
+      },
+      equipment: {
+        section_label: 'Space & Renovation Details',
+        type_label: 'Property Type',
+        type_options: ['Apartment', 'House', 'Villa', 'Office', 'Retail Shop', 'Showroom', 'Commercial', 'Other'],
+        count_label: 'Number of Rooms / Zones',
+        capacity_label: 'Approximate Area',
+        capacity_placeholder: 'e.g. 2,000 sq ft',
+        source_label: 'Design Style',
+        source_options: ['Modern', 'Contemporary', 'Minimalist', 'Classic', 'Industrial', 'Scandinavian', 'Mixed', 'Client to advise'],
+      },
+      // SOP Phase 1 — Consultation & Space Planning Assessment + site survey.
+      assess_materials: ['Concrete', 'Brick', 'Wood', 'Gypsum Board', 'Glass', 'Aluminium', 'Tiles', 'Marble', 'Laminate', 'Existing Finishes', 'Other'],
+      assess_sources: ['Modern', 'Contemporary', 'Minimalist', 'Classic', 'Industrial', 'Scandinavian', 'Mixed', 'Client to advise'],
+      assess_checks: [
+        // Consultation & Requirement Analysis (SOP Step 2)
+        { key: 'planning_objective', label: 'Space planning objective & usage captured', group: 'Consultation' },
+        { key: 'renovation_scope', label: 'Renovation / fit-out scope discussed', group: 'Consultation' },
+        { key: 'furniture_requirements', label: 'Furniture / storage requirements captured', group: 'Consultation' },
+        { key: 'budget_captured', label: 'Project budget captured', group: 'Consultation' },
+        { key: 'timeline_expectation', label: 'Timeline expectation agreed', group: 'Consultation' },
+        // Space Planning Assessment (SOP §5)
+        { key: 'site_survey', label: 'Site survey carried out', group: 'Site Survey' },
+        { key: 'measurements_taken', label: 'Measurements & existing layout recorded', group: 'Site Survey' },
+        { key: 'photography', label: 'Existing condition photographed', group: 'Site Survey' },
+        { key: 'services_points', label: 'Electrical / plumbing / structural points noted', group: 'Site Survey' },
+        // Design / Feasibility Assessment
+        { key: 'layout_optimisation', label: 'Layout optimisation & flow assessed', group: 'Design Assessment' },
+        { key: 'structural_constraints', label: 'Structural / load-bearing constraints identified', group: 'Design Assessment' },
+        { key: 'renovation_feasibility', label: 'Renovation feasibility reviewed', group: 'Design Assessment' },
+        // Preliminary Feasibility Review (SOP Step 3)
+        { key: 'practicality', label: 'Project practicality assessed', group: 'Feasibility Review' },
+        { key: 'budget_alignment', label: 'Budget alignment reviewed', group: 'Feasibility Review' },
+        { key: 'permissions', label: 'Building / landlord permissions identified', group: 'Feasibility Review' },
+      ],
+      assess_templates: [
+        { key: 'standard', label: 'Standard (all scopes)', extra: [] },
+        { key: 'space_planning_only', label: 'Space Planning only', extra: [
+          { key: 'zoning', label: 'Zoning / functional areas captured', group: 'Design Assessment' },
+        ] },
+        { key: 'renovation', label: 'Renovation & Fit-Out', extra: [
+          { key: 'demolition_scope', label: 'Demolition / removal scope noted', group: 'Site Survey' },
+          { key: 'services_reroute', label: 'Electrical / plumbing re-routing assessed', group: 'Design Assessment' },
+          { key: 'building_permission', label: 'Building / society permissions needed?', group: 'Feasibility Review' },
+        ] },
+        { key: 'office_commercial', label: 'Office / Commercial', extra: [
+          { key: 'workstation_count', label: 'Workstation / seat count captured', group: 'Consultation' },
+          { key: 'phasing', label: 'Phased / after-hours work discussed', group: 'Feasibility Review' },
+        ] },
+      ],
+      assess_equipment: ['Measuring Tape / Laser Meter', 'Camera', 'Floor Plan / CAD', 'Material & Finish Samples', 'Laptop', 'Reference Deck'],
+      recommended_services: ['Space Planning Consultation', 'Layout Planning', 'Space Optimisation', 'Interior Renovation', 'Carpentry & Joinery', 'Built-in Cabinetry', 'Practical Completion & Handover'],
+      report_types: ['Site Visit', 'Design Concept', 'Progress', 'Handover', 'Completion Sign-Off'],
+      cost_categories: ['Materials', 'Furniture & Modular', 'Partitions & Glass', 'Joinery / Carpentry', 'Built-in Cabinetry', 'Painting', 'Electrical', 'Plumbing', 'Flooring', 'False Ceiling', 'Labour', 'Subcontractor', 'Transport & Installation', 'Permits / Govt', 'Design / Consultant', 'Misc'],
+      supplier_categories: ['Material Supplier', 'Furniture Supplier', 'Carpenter / Joiner', 'Partition / Glass Contractor', 'Painter', 'Electrician', 'Plumber', 'Flooring Contractor', 'False Ceiling Contractor', 'Labour Contractor', 'Subcontractor', 'Transport', 'Other'],
+      warranty_types: ['Space Planning Services', 'Renovation Workmanship', 'Carpentry & Joinery', 'Partition Installation', 'Flooring Installation', 'Ceiling Installation', 'Furniture Installation', 'Manufacturer'],
+      warranty_months: { 'Space Planning Services': 12, 'Renovation Workmanship': 12, 'Carpentry & Joinery': 12, 'Partition Installation': 12, 'Flooring Installation': 12, 'Ceiling Installation': 12, 'Furniture Installation': 12, Manufacturer: 12 },
+      complaint_types: ['Design Quality', 'Workmanship', 'Incomplete Work', 'Damage During Work', 'Material Quality', 'Staff Conduct', 'Delays', 'Billing Dispute', 'Other'],
+      incident_types: ['Injury', 'Property Damage', 'Fire', 'Electrical Incident', 'Water Damage', 'Other'],
+    },
+  },
 };
 
 const DEFAULT_SERVICE_LINE = 'water_tank';

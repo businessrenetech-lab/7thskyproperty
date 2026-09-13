@@ -15,7 +15,7 @@ import { Spinner } from '../../ui/kit';
 // Every non-default console base, matched against the URL. Water Tank is the
 // default. Add a service line by giving it a SERVICE_UI entry (below) and, if its
 // base isn't one of these, listing it here — keeping one N-way source of truth.
-const SVC_BASES = ['/air-conditioning', '/land-property-assessment', '/loan-financial-support', '/property-documentation-verification', '/property-will-succession', '/removal-relocation', '/property-care-concierge', '/residential-interior-design', '/fitness-room-interior-design', '/commercial-interior-design', '/custom-design-fit-out', '/furniture-styling-consultation', '/prayer-room-interior-design'];
+const SVC_BASES = ['/air-conditioning', '/land-property-assessment', '/loan-financial-support', '/property-documentation-verification', '/property-will-succession', '/removal-relocation', '/property-care-concierge', '/residential-interior-design', '/fitness-room-interior-design', '/commercial-interior-design', '/custom-design-fit-out', '/furniture-styling-consultation', '/prayer-room-interior-design', '/space-planning-renovation'];
 export const svcBase = () => {
   try {
     const p = window.location.pathname || '';
@@ -648,6 +648,50 @@ export const SERVICE_UI = {
       direct_cost_examples: 'Prayer carpet, materials, furniture & storage, Wudu plumbing, décor, transport & labour',
     },
   },
+  '/space-planning-renovation': {
+    label: 'Space Planning & Renovation',
+    full_label: 'Space Planning & Renovation',
+    short: 'Space Planning',
+    doc_code: 'SPRS', // SSPC-SPRS-… document numbers
+    internal_team: true, // Seventh Sky coordinates in-house; no external provider
+    wo_consumables_label: 'Materials, Furniture & Consumables',
+    accent: '#ea580c', accent_ink: '#9a3412', accent_soft: '#ffedd5', // portal theming (amber-orange)
+    equipment: {
+      section_label: 'Space & Renovation Details',
+      type_label: 'Property Type',
+      type_options: ['Apartment', 'House', 'Villa', 'Office', 'Retail Shop', 'Showroom', 'Commercial', 'Other'],
+      count_label: 'Number of Rooms / Zones',
+      capacity_label: 'Approximate Area',
+      capacity_placeholder: 'e.g. 2,000 sq ft',
+      source_label: 'Design Style',
+      source_options: ['Modern', 'Contemporary', 'Minimalist', 'Classic', 'Industrial', 'Scandinavian', 'Mixed', 'Client to advise'],
+      unit_word: 'space',
+    },
+    // SOP Phase 1 — Consultation & Space Planning Assessment + site survey.
+    assess: {
+      profile_label: 'Space & brief', profile_hint: 'Property, style, scope',
+      quality_label: 'Space assessment', quality_hint: 'Layout, flow & feasibility',
+      obs1_label: 'Planning observations', obs1_ph: 'Existing layout, flow issues, zoning, storage needs…',
+      obs2_label: 'Constraints / risks', obs2_ph: 'Load-bearing walls, low ceiling, services, permissions…',
+      readings_label: 'On-site measurements',
+      readings: [
+        { key: 'total_area', ph: 'Total area (sq ft)' }, { key: 'rooms', ph: 'Number of rooms / zones' },
+        { key: 'ceiling_height', ph: 'Ceiling height (ft)' }, { key: 'budget', ph: 'Indicative budget (৳)' },
+        { key: 'timeline', ph: 'Target timeline (weeks)' },
+      ],
+    },
+    report_types: ['Site Visit', 'Design Concept', 'Progress', 'Handover', 'Completion Sign-Off'],
+    report_placeholder: 'e.g. Completed the consultation and site survey, agreed the optimised layout and renovation scope, and prepared the plan for client approval.',
+    registers: {
+      incident_types: ['Property Damage', 'Injury', 'Fire', 'Electrical Incident', 'Water Damage', 'Material Defect', 'Other'],
+      warranty_hint: 'e.g. Space Planning, Renovation, Carpentry & Joinery, Partition, Flooring.',
+      location_placeholder: 'Room / area of the property…',
+      incident_blurb: 'Property damage, injury, electrical or water damage during the works',
+      warranty_scope: 'completed space planning, renovation, fit-out and furniture installation work',
+      incident_log: 'property damage, injuries, electrical/water damage and material defects',
+      direct_cost_examples: 'Materials, furniture & modular, partitions, joinery, cabinetry, transport, day labour and permits',
+    },
+  },
 };
 /** The active console's UI profile (label, full_label, equipment field labels). */
 export const svcProfile = () => SERVICE_UI[svcBase()] || SERVICE_UI['/water-tank'];
@@ -670,6 +714,7 @@ const LINE_TO_BASE = {
   custom_design_fitout: '/custom-design-fit-out',
   furniture_styling_consultation: '/furniture-styling-consultation',
   prayer_room_interior_design: '/prayer-room-interior-design',
+  space_planning_renovation: '/space-planning-renovation',
   water_tank: '/water-tank',
 };
 export const profileForLine = (serviceLine) =>
