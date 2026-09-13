@@ -13,10 +13,10 @@ export default function Testimonials() {
             Client Testimonials
           </div>
           <h2 className="text-3xl sm:text-4xl font-black text-[#012a4e] tracking-tight">
-            Trusted by Owners Globally
+            Real Stories From Real Owners
           </h2>
-          <p className="text-slate-500 text-sm sm:text-base mt-2">
-            Read verified experiences from expatriate landlords, institutional investors, and local homeowners.
+          <p className="text-slate-500 text-xs sm:text-sm mt-2">
+            See how we help NRB expat landlords, flat owners, and commercial investors in Bangladesh.
           </p>
         </div>
 

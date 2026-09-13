@@ -220,45 +220,77 @@ export const SERVICE_CATEGORIES = [
       }
     ]
   },
-  {
-    id: "interior-design",
-    title: "Interior Design & Fit-Out",
-    category: "Properties",
-    icon: "Palette",
-    shortDesc: "Contemporary architectural transformations, custom cabinetry, ergonomics and serene prayer room designs.",
-    featured: false,
-    services: [
       {
-        id: "residential-interior-design",
-        name: "Residential Interior Design",
-        explanation: "Custom spatial design, lighting architectures and bespoke living room aesthetics for modern homes.",
-        icon: "Sofa",
-        subItems: ["Living Room Concepts", "Modular Kitchens", "Master Suites", "Accent Ceilings"]
+        id: "interior-design",
+        title: "Interior Design & Fit-Out",
+        category: "Properties",
+        icon: "Palette",
+        shortDesc: "Contemporary architectural transformations, custom cabinetry, ergonomics and turnkey residential & commercial fit-outs.",
+        featured: true,
+        dedicatedSlug: "interior-design",
+        services: [
+          {
+            id: "residential-interior-design",
+            name: "Residential Interior Design",
+            slug: "interior-design",
+            explanation: "Custom spatial design, lighting architectures and bespoke living room aesthetics for modern homes.",
+            icon: "Sofa",
+            subItems: ["Living Room Concepts", "Modular Kitchens", "Master Suites", "Accent Ceilings"]
+          },
+          {
+            id: "space-planning-renovation",
+            name: "Space Planning & Renovation",
+            slug: "interior-design",
+            explanation: "Full-scale architectural restructuring, modern bathroom overhauls and acoustic wall paneling installations.",
+            icon: "Maximize",
+            subItems: ["Floor Optimization", "Civil Renovations", "Acoustic Wall Panels", "Luxury Tiles"]
+          },
+          {
+            id: "prayer-fitness-rooms",
+            name: "Prayer & Fitness Room Design",
+            slug: "interior-design",
+            explanation: "Specialized tranquil prayer sanctuaries with acoustic insulation, alongside dedicated private home fitness studios.",
+            icon: "HeartHandshake",
+            subItems: ["Islamic Geometry", "Ablution Nooks", "Home Gym Flooring", "Mirror Walls"]
+          },
+          {
+            id: "custom-fitout-solutions",
+            name: "Custom Design & Fit-Out",
+            slug: "interior-design",
+            explanation: "Precision custom joinery, imported hardware fittings and turnkey styling for premium residential estates.",
+            icon: "Hammer",
+            subItems: ["Bespoke Wardrobes", "Hidden Lighting", "Curtain Automation", "Artifact Curation"]
+          }
+        ]
       },
       {
-        id: "space-planning-renovation",
-        name: "Space Planning & Renovation",
-        explanation: "Full-scale architectural restructuring, modern bathroom overhauls and acoustic wall paneling installations.",
-        icon: "Maximize",
-        subItems: ["Floor Optimization", "Civil Renovations", "Acoustic Wall Panels", "Luxury Tiles"]
-      },
-      {
-        id: "prayer-fitness-rooms",
-        name: "Prayer & Fitness Room Design",
-        explanation: "Specialized tranquil prayer sanctuaries with acoustic insulation, alongside dedicated private home fitness studios.",
-        icon: "HeartHandshake",
-        subItems: ["Islamic Geometry", "Ablution Nooks", "Home Gym Flooring", "Mirror Walls"]
-      },
-      {
-        id: "custom-fitout-solutions",
-        name: "Custom Design & Fit-Out",
-        explanation: "Precision custom joinery, imported hardware fittings and turnkey styling for premium residential estates.",
-        icon: "Hammer",
-        subItems: ["Bespoke Wardrobes", "Hidden Lighting", "Curtain Automation", "Artifact Curation"]
+        id: "care-maintenance",
+        title: "Water Tank & AC Care",
+        category: "Care & Maintenance",
+        icon: "Wrench",
+        shortDesc: "Certified mechanized water tank sanitisation and precision chemical HVAC servicing across residential and commercial properties.",
+        featured: true,
+        dedicatedSlug: "water-tank",
+        services: [
+          {
+            id: "water-tank-cleaning",
+            name: "Water Tank Cleaning & Sanitisation",
+            slug: "water-tank",
+            explanation: "Mechanized 6-stage rotary jet cleaning, heavy sludge evacuation and hospital-grade non-corrosive disinfection.",
+            icon: "Droplets",
+            subItems: ["High-Pressure Jet Wash", "Sludge Evacuation Pump", "Food-Safe Disinfection", "Water Quality Lab Testing"]
+          },
+          {
+            id: "air-conditioning-servicing",
+            name: "Air Conditioning Solutions & Servicing",
+            slug: "air-conditioning",
+            explanation: "Indoor-outdoor pressure jet coil washing, digital refrigerant leak diagnostics and precision inverter PCB repairs.",
+            icon: "Wind",
+            subItems: ["Master Chemical Jet Wash", "Pure R410A/R32 Gas Refill", "Inverter PCB Diagnostics", "Annual Maintenance (AMC)"]
+          }
+        ]
       }
-    ]
-  }
-];
+    ];
 
 // Temporarily Hidden per website_requirements.txt page 9-16
 export const TEMPORARILY_HIDDEN_SERVICES = [

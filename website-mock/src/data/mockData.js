@@ -9,7 +9,7 @@ export const COMPANY_INFO = {
   email: "care@seventhskyproperty.com",
   inquiryEmail: "properties@seventhskyproperty.com",
   address: "Suites 701-704, Sky View Landmark, Gulshan Avenue, Gulshan 2, Dhaka 1212, Bangladesh",
-  sylhetBranch: "Level 4, Al-Hamra Shopping City, Zindabazar, Sylhet 3100, Bangladesh",
+  regionalBranch: "Level 4, Regional Corporate Center, Commercial Hub, Bangladesh",
   socials: {
     facebook: "https://facebook.com/seventhskyproperty",
     linkedin: "https://linkedin.com/company/seventh-sky-property",
@@ -17,10 +17,10 @@ export const COMPANY_INFO = {
     youtube: "https://youtube.com/@seventhskyproperty"
   },
   stats: [
-    { label: "Assets Under Care", value: "৳850+ Cr", sub: "Managed portfolio value" },
-    { label: "Client Retention", value: "98.4%", sub: "Long-term owner satisfaction" },
-    { label: "Global NRB Owners", value: "620+", sub: "Expatriates served in 18 countries" },
-    { label: "Average Lease Time", value: "14 Days", sub: "Vetted corporate tenants" }
+    { label: "Assets Under Care", value: "৳850+ Cr", sub: "Safe & protected property value" },
+    { label: "On-Time Rent Record", value: "99.2%", sub: "Direct monthly bank deposit" },
+    { label: "NRB Expat Owners", value: "620+", sub: "UK, USA, Gulf & Canada landlords" },
+    { label: "Fast Tenant Placement", value: "14 Days", sub: "Police & job verified families" }
   ]
 };
 
@@ -60,23 +60,23 @@ export const MOCK_TESTIMONIALS = [
 export const MOCK_FAQS = [
   {
     question: "What makes Seventh Sky different from traditional brokers in Bangladesh?",
-    answer: "We are an institutional property care and asset management firm, not a casual brokerage. We provide ongoing caretaker oversight, video inspection audits, formal legal document vetting, automated rent ledgers, and 24/7 maintenance dispatch under clear service level agreements."
+    answer: "Traditional brokers take a commission and disappear. Seventh Sky stays with you permanently. We manage your property full-time: collecting rent on time, screening tenants with police verification, fixing electrical/plumbing issues, and sending you monthly bank statements."
   },
   {
-    question: "How do NRB Dedicated Services work for owners living abroad?",
-    answer: "Non-Resident Bangladeshi owners receive dedicated account managers who conduct periodic 4K video inspections, manage developer handovers, coordinate caretaker staff, pay utility/municipal taxes, and wire rental disbursements directly into designated international or local bank accounts."
+    question: "How do you help NRB landlords living abroad (UK, USA, Gulf, Canada)?",
+    answer: "You never have to take an emergency flight back to Bangladesh. We inspect your flat with WhatsApp video updates, pay utility bills and service charges, coordinate caretakers, and deposit rental income directly into your bank account."
   },
   {
     question: "How do you screen and vet prospective tenants?",
-    answer: "Our 4-tier screening evaluates national identity verification, police clearance filing, employment/salary verification with corporate HR, and previous landlord reference checks before drafting legally binding bilingual agreements."
+    answer: "We perform strict National ID (NID) checks, police verification filings, workplace HR checks, and previous landlord references before drafting a legally binding biometric contract."
   },
   {
-    question: "What is the Upstate-style property inspection booking process?",
-    answer: "Each listing features confirmed public inspection windows or private appointment bookings. You can book an inspection online in 30 seconds; our concierge confirms by SMS and WhatsApp, and a licensed property advisor welcomes you on-site."
+    question: "How do I book a visit to view a property?",
+    answer: "You can book online in 30 seconds. We confirm your time slot by WhatsApp and SMS, and our certified property advisor meets you at the property with all keys and legal documentation ready."
   },
   {
-    question: "Can I get an appraisal for selling or leasing my property?",
-    answer: "Yes. Simply click 'Book an Appraisal' at the top of the page. Our property valuation team will analyze current precinct trends, recent comparable sales, and rental yields to provide a comprehensive market valuation."
+    question: "Can I get a free valuation to sell or rent my flat or plot?",
+    answer: "Yes. Simply click 'Get Free Consultation' or 'Request Appraisal'. Our valuation team inspects your property and gives you an honest fair-market rent and price assessment within 24 hours."
   }
 ];
 
@@ -90,7 +90,7 @@ export const MOCK_TEAM = [
   {
     name: "Tariqul Islam",
     role: "Head of Property Care & Operations",
-    bio: "Oversees all on-site inspection protocols, maintenance dispatch, and emergency response teams across Dhaka and Sylhet.",
+    bio: "Oversees all on-site inspection protocols, maintenance dispatch, and emergency response teams across Dhaka and prime metropolitan hubs.",
     image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"
   },
   {

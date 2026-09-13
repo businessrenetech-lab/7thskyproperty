@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+  <defs>
+    <linearGradient id="acBody" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e0f2fe"/>
+    </linearGradient>
+    <linearGradient id="frostGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="6" dy="12" stdDeviation="10" flood-color="#012a4e" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <g transform="translate(380, 620)">
+    <path d="M -240,60 L 0,180 L 0,205 L -240,85 Z" fill="#0284c7" opacity="0.8" />
+    <path d="M 0,180 L 240,60 L 240,85 L 0,205 Z" fill="#012a4e" opacity="0.95" />
+    <path d="M 0,-40 L 240,60 L 0,180 L -240,60 Z" fill="#f0f9ff" stroke="#ffffff" stroke-width="2" />
+  </g>
+
+  <!-- 3D Wall Mounted Split AC Unit -->
+  <g transform="translate(360, 360) rotate(-10)" filter="url(#dropShadow)">
+    <rect x="-160" y="-70" width="320" height="140" rx="16" fill="url(#acBody)" stroke="#38bdf8" stroke-width="2.5" />
+    <!-- Air Vent Louver -->
+    <rect x="-140" y="25" width="280" height="24" rx="6" fill="#012a4e" />
+    <rect x="-135" y="30" width="270" height="8" rx="4" fill="#38bdf8" opacity="0.8" />
+    <!-- Digital Temp Display -->
+    <rect x="80" y="-35" width="45" height="22" rx="4" fill="#012a4e" />
+    <text x="102" y="-19" fill="#38bdf8" font-family="monospace" font-size="12" font-weight="bold" text-anchor="middle">18°C</text>
+    
+    <!-- Flowing Cold Air Waves -->
+    <path d="M -120,65 C -80,120 -100,160 -60,200" fill="none" stroke="#00AEEF" stroke-width="4" stroke-linecap="round" opacity="0.7" />
+    <path d="M -20,65 C 20,120 0,160 40,200" fill="none" stroke="#38bdf8" stroke-width="5" stroke-linecap="round" opacity="0.8" />
+    <path d="M 80,65 C 120,120 100,160 140,200" fill="none" stroke="#00AEEF" stroke-width="4" stroke-linecap="round" opacity="0.7" />
+  </g>
+
+  <!-- 3D Ice Snowflake / Cold Shield -->
+  <g transform="translate(560, 260)" filter="url(#dropShadow)">
+    <circle cx="0" cy="0" r="50" fill="url(#frostGrad)" stroke="#ffffff" stroke-width="2.5" />
+    <path d="M 0,-35 L 0,35 M -35,0 L 35,0 M -25,-25 L 25,25 M -25,25 L 25,-25" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+</svg>

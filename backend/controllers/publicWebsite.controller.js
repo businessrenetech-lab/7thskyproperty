@@ -172,17 +172,47 @@ exports.getPublishedProperties = asyncHandler(async (req, res) => {
   }
 
   // Bedrooms
-  if (req.query.bedrooms) {
+  if (req.query.bedrooms && req.query.bedrooms !== 'any') {
     const beds = parseInt(req.query.bedrooms, 10);
     if (!isNaN(beds)) andConditions.push({ bedrooms: { [Op.gte]: beds } });
   }
 
-  // Price range
+  // Bathrooms
+  if (req.query.bathrooms && req.query.bathrooms !== 'any') {
+    const baths = parseInt(req.query.bathrooms, 10);
+    if (!isNaN(baths)) andConditions.push({ bathrooms: { [Op.gte]: baths } });
+  }
+
+  // Balconies
+  if (req.query.balconies && req.query.balconies !== 'any') {
+    const balc = parseInt(req.query.balconies, 10);
+    if (!isNaN(balc)) andConditions.push({ balconies: { [Op.gte]: balc } });
+  }
+
+  // Price range (checks price and approved_monthly_rent)
   if (req.query.min_price || req.query.max_price) {
     const priceCond = {};
-    if (req.query.min_price) priceCond[Op.gte] = Number(req.query.min_price);
-    if (req.query.max_price) priceCond[Op.lte] = Number(req.query.max_price);
-    andConditions.push({ price: priceCond });
+    const rentCond = {};
+    if (req.query.min_price) {
+      const minP = Number(req.query.min_price);
+      if (!isNaN(minP)) {
+        priceCond[Op.gte] = minP;
+        rentCond[Op.gte] = minP;
+      }
+    }
+    if (req.query.max_price) {
+      const maxP = Number(req.query.max_price);
+      if (!isNaN(maxP)) {
+        priceCond[Op.lte] = maxP;
+        rentCond[Op.lte] = maxP;
+      }
+    }
+    andConditions.push({
+      [Op.or]: [
+        { price: priceCond },
+        { approved_monthly_rent: rentCond },
+      ],
+    });
   }
 
   // Search keyword
@@ -681,14 +711,35 @@ exports.submitTenantApplication = asyncHandler(async (req, res) => {
 // Map a website service label/slug to a canonical service-line key so the request
 // lands in the right service console (e.g. Water Tank → /admin/water-tank/service-requests).
 const SERVICE_LINE_ALIASES = {
-  water_tank: 'water_tank', 'water tank': 'water_tank', watertank: 'water_tank', 'water tank cleaning': 'water_tank', 'tank cleaning': 'water_tank',
-  air_conditioning: 'air_conditioning', ac: 'air_conditioning', 'air conditioning': 'air_conditioning', aircon: 'air_conditioning', 'ac service': 'air_conditioning', 'ac servicing': 'air_conditioning',
-  land_property_assessment: 'land_property_assessment', 'land assessment': 'land_property_assessment', 'property assessment': 'land_property_assessment', 'land survey': 'land_property_assessment',
-  loan_financial_support: 'loan_financial_support', loan: 'loan_financial_support', 'financial support': 'loan_financial_support', 'home loan': 'loan_financial_support',
-  property_documentation_verification: 'property_documentation_verification', 'document verification': 'property_documentation_verification', 'doc verification': 'property_documentation_verification', 'documentation verification': 'property_documentation_verification',
-  property_will_succession: 'property_will_succession', 'will succession': 'property_will_succession', succession: 'property_will_succession', will: 'property_will_succession',
-  removal_relocation: 'removal_relocation', removal: 'removal_relocation', relocation: 'removal_relocation', moving: 'removal_relocation', 'removal & relocation': 'removal_relocation',
-  property_care_concierge: 'property_care_concierge', concierge: 'property_care_concierge', 'property care': 'property_care_concierge',
+  // 1. Water Tank
+  water_tank: 'water_tank', 'water tank': 'water_tank', watertank: 'water_tank', 'water tank cleaning': 'water_tank', 'water tank cleaning & disinfection services': 'water_tank', 'tank cleaning': 'water_tank',
+  // 2. Air Conditioning
+  air_conditioning: 'air_conditioning', ac: 'air_conditioning', 'air conditioning': 'air_conditioning', aircon: 'air_conditioning', 'ac service': 'air_conditioning', 'ac servicing': 'air_conditioning', 'ac servicing & maintenance': 'air_conditioning', 'precision air conditioning servicing & maintenance': 'air_conditioning',
+  // 3. Interior Design
+  interior_design: 'interior_design', 'interior design': 'interior_design', interior: 'interior_design', fitout: 'interior_design', 'fit-out': 'interior_design', 'interior design & fit-out': 'interior_design', 'architectural interior design & turnkey fit-out': 'interior_design',
+  // 4. Land Assessment
+  land_property_assessment: 'land_property_assessment', 'land assessment': 'land_property_assessment', 'property assessment': 'land_property_assessment', 'land survey': 'land_property_assessment', 'land survey & valuation': 'land_property_assessment', 'land survey, structural audit & bank valuation': 'land_property_assessment',
+  // 5. Loan & Finance
+  loan_financial_support: 'loan_financial_support', loan: 'loan_financial_support', 'financial support': 'loan_financial_support', 'home loan': 'loan_financial_support', 'home loan & financing': 'loan_financial_support', 'home loan & property financing support': 'loan_financial_support',
+  // 6. Legal Vetting
+  property_documentation_verification: 'property_documentation_verification', 'document verification': 'property_documentation_verification', 'doc verification': 'property_documentation_verification', 'documentation verification': 'property_documentation_verification', 'title search & legal vetting': 'property_documentation_verification', 'property title search & 30-year legal vetting': 'property_documentation_verification',
+  // 7. Will & Succession
+  property_will_succession: 'property_will_succession', 'will succession': 'property_will_succession', succession: 'property_will_succession', will: 'property_will_succession', 'will & succession planning': 'property_will_succession', 'property will, inheritance & succession planning': 'property_will_succession',
+  // 8. Removal & Relocation
+  removal_relocation: 'removal_relocation', removal: 'removal_relocation', relocation: 'removal_relocation', moving: 'removal_relocation', 'removal & relocation': 'removal_relocation', 'relocation & moving': 'removal_relocation', 'white-glove removal & relocation logistics': 'removal_relocation',
+  // 9. Property Care Concierge
+  property_care_concierge: 'property_care_concierge', concierge: 'property_care_concierge', 'property care': 'property_care_concierge', 'property care & concierge': 'property_care_concierge', 'property care & vacant flat concierge': 'property_care_concierge',
+  // 10. Property Management / Rentals
+  property_management: 'property_management', 'property management': 'property_management', 'rent management': 'property_management', 'tenancy management': 'property_management', 'residential tenancy & guaranteed rent management': 'property_management', 'residential rentals': 'property_management', rentals: 'property_management',
+  // 11. Residential Sales
+  residential_sales: 'residential_sales', 'residential sales': 'residential_sales', sales: 'residential_sales', 'property sales': 'residential_sales', 'verified prime real estate sales & acquisition': 'residential_sales',
+  // 12. Commercial Sales & Rentals
+  commercial_sales: 'commercial_sales', 'commercial sales': 'commercial_sales',
+  commercial_rentals: 'commercial_rentals', 'commercial rentals': 'commercial_rentals',
+  // 13. Business Sales
+  business_sales: 'business_sales', 'business sales': 'business_sales', business: 'business_sales',
+  // 14. Short Stay
+  short_stay: 'short_stay', 'short stay': 'short_stay', 'short-stay': 'short_stay', 'serviced apartments': 'short_stay', 'furnished short stays': 'short_stay', 'furnished executive suites & short stays': 'short_stay',
 };
 function resolveWebsiteServiceLine(...vals) {
   for (const v of vals) {
@@ -703,30 +754,30 @@ exports.submitServiceRequest = asyncHandler(async (req, res) => {
   const {
     name, phone, email, service_line, service_name,
     address, district, preferred_date, description,
+    property_type, proposed_value, proposed_rent, proposed_sale_value, timeline,
+    business_type,
   } = req.body || {};
 
   if (!name || (!phone && !email)) {
     return res.status(400).json({ error: 'Name and a phone or email are required.' });
   }
 
-  // Route service-line requests (Water Tank, Air Conditioning, …) into that line's
-  // Service Requests module so they appear at /admin/<line>/service-requests. The
-  // shared intake needs a phone; general Property Care requests fall through to the
-  // Care enquiry desk below.
-  const canonicalLine = resolveWebsiteServiceLine(service_line, service_name);
-  if (canonicalLine && canonicalLine !== 'property_care_concierge' && phone) {
-    req.serviceLine = canonicalLine;
-    req.body = {
-      client_name: name, phone, email,
-      site_address: address, district,
-      services_requested: service_name ? [service_name] : [],
-      preferred_date, message: description, source: 'Website',
-    };
-    return require('./waterTankIntake.controller').publicEnquiry(req, res);
-  }
-
   const branchId = await getDefaultBranchId();
 
+  const effectiveType = property_type || business_type || null;
+  const rawValue = proposed_value || proposed_sale_value || proposed_rent || null;
+  const numEstimatedValue = rawValue ? (parseFloat(String(rawValue).replace(/[^0-9.]/g, '')) || 0) : 0;
+
+  const noteParts = [];
+  if (effectiveType) noteParts.push(`Type: ${effectiveType}`);
+  if (rawValue) noteParts.push(`Proposed Value/Rent: ৳${rawValue}`);
+  if (timeline) noteParts.push(`Timeline: ${timeline}`);
+  if (preferred_date) noteParts.push(`Preferred Date: ${preferred_date}`);
+  if (description) noteParts.push(`Notes: ${description}`);
+  const combinedNotes = noteParts.length > 0 ? noteParts.join(' | ') : null;
+
+  // 1. ALWAYS log a CareEnquiry record so that every enquiry submitted from the public website
+  // form lands directly in http://localhost:3005/admin/website/enquiries (and /website/enquires).
   const enquiry = await sequelize.transaction(async (tx) => {
     const contact = await ensureContact({
       branchId,
@@ -747,14 +798,65 @@ exports.submitServiceRequest = asyncHandler(async (req, res) => {
       mobile: phone || null,
       email: email || null,
       district: district || 'Dhaka',
-      address: address || null,
+      site_address: address || null,
       service_interest: service_name || service_line || 'Property Care',
       service_category: service_line || null,
-      notes: `${description || ''} ${preferred_date ? `(Preferred: ${preferred_date})` : ''}`.trim(),
-      source: 'web',
-      stage: 'enquiry',
+      property_type: effectiveType,
+      estimated_value: numEstimatedValue,
+      message: description || null,
+      notes: combinedNotes || description || null,
+      source: 'website',
+      stage: 'new',
     }, { transaction: tx });
   });
+
+  // 2. If this service maps to a dedicated field desk with its own operations console (e.g. water_tank, air_conditioning),
+  // also create a synchronized WtServiceRequest ticket so the field technician dispatch queue gets it too.
+  const canonicalLine = resolveWebsiteServiceLine(service_line, service_name);
+  const FIELD_DESK_LINES = [
+    'water_tank', 'air_conditioning', 'land_property_assessment',
+    'loan_financial_support', 'property_documentation_verification',
+    'property_will_succession', 'removal_relocation'
+  ];
+  if (canonicalLine && FIELD_DESK_LINES.includes(canonicalLine) && phone) {
+    try {
+      const M = require('../models/waterTankOps');
+      const { codePrefix } = require('../utils/controllerHelpers');
+      const reqMock = { ...req, serviceLine: canonicalLine };
+      const codeStart = (canonicalLine === 'water_tank' ? 1095 : 1);
+
+      const rows = await M.WtServiceRequest.findAll({ where: { branch_id: branchId }, attributes: ['code'], raw: true });
+      const prefix = codePrefix(reqMock, 'request');
+      let max = codeStart - 1;
+      for (const r of rows) {
+        const n = parseInt(String(r.code || '').replace(prefix, ''), 10);
+        if (!Number.isNaN(n) && n > max) max = n;
+      }
+      const srCode = prefix + String(max + 1).padStart(4, '0');
+
+      await M.WtServiceRequest.create({
+        branch_id: branchId,
+        service_line: canonicalLine,
+        code: srCode,
+        request_date: new Date().toISOString().slice(0, 10),
+        client_name: name,
+        phone,
+        email: email || null,
+        address: address || null,
+        district: district || 'Dhaka',
+        services_requested: service_name ? [service_name] : [service_line],
+        specific_service: service_name || service_line,
+        preferred_date: preferred_date || null,
+        description: description || null,
+        source: 'Website',
+        needs_assessment: true,
+        visit_required: true,
+        status: 'New',
+      });
+    } catch (subErr) {
+      console.warn('[submitServiceRequest] Field desk ticket sync notice:', subErr.message);
+    }
+  }
 
   res.status(201).json({
     message: 'Your service request has been logged. Our property care desk will contact you to confirm timing.',

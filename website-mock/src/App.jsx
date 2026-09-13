@@ -6,6 +6,7 @@ import HomePage from './pages/HomePage';
 import PropertiesPage from './pages/PropertiesPage';
 import PropertyDetailPage from './pages/PropertyDetailPage';
 import ServicesPage from './pages/ServicesPage';
+import ServiceDetailPage from './pages/ServiceDetailPage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
 import CareersPage from './pages/CareersPage';
@@ -68,6 +69,14 @@ export default function App() {
               path="/services" 
               element={
                 <ServicesPage 
+                  onOpenAppraisal={handleOpenAppraisal} 
+                />
+              } 
+            />
+            <Route 
+              path="/services/:slug" 
+              element={
+                <ServiceDetailPage 
                   onOpenAppraisal={handleOpenAppraisal} 
                 />
               } 

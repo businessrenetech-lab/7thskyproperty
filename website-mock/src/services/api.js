@@ -36,15 +36,29 @@ export const websiteApi = {
   async getProperties(params = {}) {
     try {
       const query = new URLSearchParams();
-      if (params.category && params.category !== 'all') query.append('category', params.category);
+      if (params.category && params.category !== 'all') query.append('category', String(params.category).toLowerCase());
       if (params.purpose && params.purpose !== 'all') {
         const purp = String(params.purpose).toLowerCase();
-        if (purp.includes('sale')) query.append('listing_type', 'sale');
-        if (purp.includes('rent')) query.append('listing_type', 'rent');
-        if (purp.includes('short')) query.append('listing_type', 'short_term');
+        if (purp.includes('business buy')) {
+          query.append('listing_type', 'sale');
+          query.append('category', 'business');
+        } else if (purp.includes('sale') || purp === 'buy') {
+          query.append('listing_type', 'sale');
+        } else if (purp.includes('rent')) {
+          query.append('listing_type', 'rent');
+        } else if (purp.includes('short')) {
+          query.append('listing_type', 'short_term');
+        }
+      }
+      if (params.status && params.status !== 'all') {
+        query.append('status', String(params.status).toLowerCase());
       }
       if (params.query) query.append('search', params.query);
-      if (params.bedrooms) query.append('bedrooms', params.bedrooms);
+      if (params.bedrooms && params.bedrooms !== 'any') query.append('bedrooms', params.bedrooms);
+      if (params.bathrooms && params.bathrooms !== 'any') query.append('bathrooms', params.bathrooms);
+      if (params.balconies && params.balconies !== 'any') query.append('balconies', params.balconies);
+      if (params.min_price) query.append('min_price', params.min_price);
+      if (params.max_price) query.append('max_price', params.max_price);
 
       const res = await request(`/public-website/properties?${query.toString()}`);
       if (res.data && res.data.length > 0) {
@@ -65,6 +79,32 @@ export const websiteApi = {
           }
           if (!Array.isArray(features)) features = [];
 
+          const pStatus = String(p.status || '').toLowerCase();
+          const pListingStatus = String(p.listing_status || '').toLowerCase();
+          const pPmStatus = String(p.pm_status || '').toLowerCase();
+          const pOccStatus = String(p.occupancy_status || '').toLowerCase();
+
+          const isSold = pStatus === 'sold' || pListingStatus === 'sold' || pStatus === 'settled';
+          const isUnderOffer = pStatus === 'under_offer' || pStatus === 'reserved' || pListingStatus === 'under_offer';
+          const isUnderApplication = pStatus === 'under_application' || pListingStatus === 'under_application' || pPmStatus === 'application_review' || pOccStatus === 'notice_period';
+          const isLeased = pStatus === 'rented' || pStatus === 'occupied' || pListingStatus === 'let' || pOccStatus === 'occupied';
+
+          let normalizedStatus = 'available';
+          let statusBadge = null;
+          if (isSold) {
+            normalizedStatus = 'sold';
+            statusBadge = 'Sold';
+          } else if (isUnderOffer) {
+            normalizedStatus = 'under_offer';
+            statusBadge = 'Under Offer';
+          } else if (isUnderApplication) {
+            normalizedStatus = 'under_application';
+            statusBadge = 'Under Application';
+          } else if (isLeased) {
+            normalizedStatus = 'leased';
+            statusBadge = 'Leased';
+          }
+
           return {
             id: p.id,
             code: p.property_code || String(p.id),
@@ -78,8 +118,8 @@ export const websiteApi = {
             currency: p.currency || 'BDT',
             priceDisplay: displayPrice,
             priceUnit: p.price_unit || (p.listing_type === 'sale' ? 'Total' : isShort ? 'per night' : 'per month'),
-            location: `${p.area || ''}, ${p.city || p.district || 'Dhaka'}`.replace(/^,\s*/, ''),
-            suburb: p.area || 'Dhaka',
+            location: `${p.area || ''}, ${p.city || p.district || ''}`.replace(/^,\s*|,\s*$/g, '') || 'Prime Sector',
+            suburb: p.area || 'Executive Sector',
             beds: p.bedrooms || 3,
             baths: p.bathrooms || 2,
             bedrooms: p.bedrooms || 3,
@@ -94,11 +134,14 @@ export const websiteApi = {
             gallery,
             orientation: p.orientation || 'landscape',
             status: p.listing_status || p.status || 'available',
-            // Sale lifecycle status straight from the property (never the listing
-            // label) so the UI can reliably tell sold from available.
+            lifecycleStatus: normalizedStatus,
+            statusBadge,
             saleStatus: p.status || 'available',
-            isSold: String(p.status || '').toLowerCase() === 'sold',
-            canOffer: p.listing_type === 'sale' && String(p.status || '').toLowerCase() !== 'sold',
+            isSold,
+            isUnderOffer,
+            isUnderApplication,
+            isLeased,
+            canOffer: p.listing_type === 'sale' && !isSold && !isUnderOffer,
             isShortStay: isShort,
             shortStayProfile: p.short_stay_profile || null,
             features,
@@ -120,10 +163,65 @@ export const websiteApi = {
     // Curated Fallback
     let fallback = [...MOCK_PROPERTIES];
     if (params.purpose && params.purpose !== 'all') {
-      fallback = fallback.filter(p => p.purpose.toLowerCase().includes(params.purpose.toLowerCase()));
+      const purp = String(params.purpose).toLowerCase();
+      if (purp.includes('business buy')) {
+        fallback = fallback.filter(p => p.purpose.toLowerCase().includes('sale') && p.category.toLowerCase() === 'business');
+      } else if (purp === 'buy' || purp.includes('sale')) {
+        fallback = fallback.filter(p => p.purpose.toLowerCase().includes('sale'));
+      } else if (purp.includes('rent')) {
+        fallback = fallback.filter(p => p.purpose.toLowerCase().includes('rent'));
+      } else if (purp.includes('short')) {
+        fallback = fallback.filter(p => p.purpose.toLowerCase().includes('short') || p.isShortStay);
+      } else {
+        fallback = fallback.filter(p => p.purpose.toLowerCase().includes(purp));
+      }
     }
     if (params.category && params.category !== 'all') {
       fallback = fallback.filter(p => p.category.toLowerCase() === params.category.toLowerCase());
+    }
+    if (params.status && params.status !== 'all') {
+      const s = String(params.status).toLowerCase();
+      fallback = fallback.filter(p => {
+        const pSt = String(p.status || '').toLowerCase();
+        if (s === 'under_offer') return pSt.includes('offer') || pSt.includes('reserved') || p.isUnderOffer;
+        if (s === 'sold') return pSt.includes('sold') || pSt.includes('settled') || p.isSold;
+        if (s === 'under_application') return pSt.includes('application') || p.isUnderApplication;
+        if (s === 'leased' || s === 'rented') return pSt.includes('leased') || pSt.includes('rented') || pSt.includes('occupied') || p.isLeased;
+        if (s === 'available') return (!p.isSold && !p.isUnderOffer && !p.isUnderApplication && !p.isLeased) || pSt.includes('available') || pSt.includes('instant');
+        return pSt.includes(s);
+      });
+    }
+    if (params.bedrooms && params.bedrooms !== 'any') {
+      const minB = parseInt(params.bedrooms, 10);
+      if (!isNaN(minB)) fallback = fallback.filter(p => (p.bedrooms || 0) >= minB);
+    }
+    if (params.bathrooms && params.bathrooms !== 'any') {
+      const minBa = parseInt(params.bathrooms, 10);
+      if (!isNaN(minBa)) fallback = fallback.filter(p => (p.bathrooms || 0) >= minBa);
+    }
+    if (params.balconies && params.balconies !== 'any') {
+      const minBal = parseInt(params.balconies, 10);
+      if (!isNaN(minBal)) fallback = fallback.filter(p => (p.balconies || 0) >= minBal);
+    }
+    if (params.min_price) {
+      const minP = Number(params.min_price);
+      if (!isNaN(minP) && minP > 0) fallback = fallback.filter(p => (p.price || 0) >= minP);
+    }
+    if (params.max_price) {
+      const maxP = Number(params.max_price);
+      if (!isNaN(maxP) && maxP > 0) fallback = fallback.filter(p => (p.price || 0) <= maxP);
+    }
+    if (params.min_size) {
+      const minS = Number(params.min_size);
+      if (!isNaN(minS) && minS > 0) fallback = fallback.filter(p => (parseInt(String(p.sizeSqft).replace(/,/g, ''), 10) || 0) >= minS);
+    }
+    if (params.max_size) {
+      const maxS = Number(params.max_size);
+      if (!isNaN(maxS) && maxS > 0) fallback = fallback.filter(p => (parseInt(String(p.sizeSqft).replace(/,/g, ''), 10) || 0) <= maxS);
+    }
+    if (params.guests && params.guests !== 'any') {
+      const minG = parseInt(params.guests, 10);
+      if (!isNaN(minG)) fallback = fallback.filter(p => (p.shortStayData?.maxGuests || 4) >= minG);
     }
     if (params.query) {
       const q = params.query.toLowerCase();

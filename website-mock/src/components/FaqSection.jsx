@@ -17,8 +17,8 @@ export default function FaqSection() {
           <h2 className="text-3xl sm:text-4xl font-black text-[#012a4e] tracking-tight">
             Frequently Asked Questions
           </h2>
-          <p className="text-slate-500 text-sm sm:text-base mt-2">
-            Clear answers on service SLAs, NRB remote onboarding, tenant screening, and appraisal protocols.
+          <p className="text-slate-500 text-xs sm:text-sm mt-2">
+            Clear, honest answers about rent collection, tenant screening, and managing your property.
           </p>
         </div>
 
@@ -57,8 +57,8 @@ export default function FaqSection() {
         {/* Support Box */}
         <div className="mt-12 p-6 rounded-2xl bg-[#e8f7fd]/60 border border-[#00AEEF]/20 text-center sm:flex sm:items-center sm:justify-between gap-4">
           <div className="text-left">
-            <h4 className="text-sm font-bold text-[#012a4e]">Have a specific query about your asset?</h4>
-            <p className="text-xs text-slate-600 mt-0.5">Our senior property management team is on standby 7 days a week.</p>
+            <h4 className="text-sm font-bold text-[#012a4e]">Have a question about your flat, plot, or tenancy?</h4>
+            <p className="text-xs text-slate-600 mt-0.5">Our team in Dhaka is available 7 days a week to answer your call or WhatsApp message.</p>
           </div>
           <a
             href="#contact"
