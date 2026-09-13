@@ -1,5 +1,9 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { KeyRound, Wallet, AlertTriangle, Home, ArrowRight, Check, X, CreditCard, ChevronLeft, FileCheck2, Users, ListChecks, TrendingUp } from 'lucide-react';
+import {
+  KeyRound, Wallet, AlertTriangle, Home, ArrowRight, Check, X, CreditCard, ChevronLeft,
+  FileCheck2, Users, ListChecks, TrendingUp, UserPlus, FileSpreadsheet, Phone, MessageSquare,
+  Compass, MapPin, ExternalLink
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { PageHead, StatCard, Button, Spinner, Drawer, Field, Input, Select, Textarea, SearchInput, Badge, StatusBadge } from '../ui/kit';
@@ -8,6 +12,20 @@ import { EnquiryBoard } from './RentalEnquiries';
 import ActionCenter from './ActionCenter';
 
 const money = (v) => 'BDT ' + Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const dateFmt = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+const safeJsonParse = (val, fallback = []) => {
+  if (!val) return fallback;
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      return val.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+  }
+  return fallback;
+};
 // Compact BDT for tiles: ৳12.4L / ৳93k
 const bdt = (v) => {
   const n = Number(v || 0);
@@ -99,6 +117,17 @@ export default function PropertyMgmtDashboard() {
   const [upcomingRenewals, setUpcomingRenewals] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [actions, setActions] = useState([]);
+
+  // Rental Leads & Contacts CRM state
+  const [rentalLeads, setRentalLeads] = useState([]);
+  const [rentalLeadCounts, setRentalLeadCounts] = useState({
+    total: 0,
+    new: 0,
+    contacted: 0,
+    qualified: 0,
+    showing: 0,
+    under_contract: 0,
+  });
   
   // Filters & grid states
   const [search, setSearch] = useState('');
@@ -145,6 +174,24 @@ export default function PropertyMgmtDashboard() {
         const { data: appData } = await api.get('/tenant-applications?include_counts=true&limit=1');
         setAppCounts(appData.status_counts || {});
       } catch { /* applications module optional */ }
+
+      // Fetch rental leads from Contacts CRM
+      let newLeadsCount = 0;
+      try {
+        const { data: contactData } = await api.get('/contacts?looking_for=rent&limit=50');
+        const rLeads = contactData.data || [];
+        setRentalLeads(rLeads);
+        newLeadsCount = rLeads.filter((l) => (l.lead_status || 'new') === 'new').length;
+        setRentalLeadCounts({
+          total: contactData.pagination?.total || rLeads.length,
+          new: newLeadsCount,
+          contacted: rLeads.filter((l) => l.lead_status === 'contacted').length,
+          qualified: rLeads.filter((l) => l.lead_status === 'requirement_qualified').length,
+          showing: rLeads.filter((l) => l.lead_status === 'property_showing').length,
+          under_contract: rLeads.filter((l) => l.lead_status === 'under_contract').length,
+        });
+      } catch { /* contacts crm optional */ }
+
       try {
         const { data: ac } = await api.get('/property-management/action-center');
         const c = ac.cohorts || {};
@@ -154,14 +201,23 @@ export default function PropertyMgmtDashboard() {
         setUpcomingRenewals([...exp30, ...exp60].sort((a, b) => (a.days_remaining || 0) - (b.days_remaining || 0)).slice(0, 5));
         // Build the "Today's actions" list from live cohorts (most urgent first).
         const cnt = (k) => c[k]?.count || 0;
-        setActions([
+        const cohortActions = [
+          ...(newLeadsCount > 0 ? [{
+            label: 'New rental leads',
+            sub: `${newLeadsCount} prospective tenant${newLeadsCount === 1 ? '' : 's'} awaiting outreach`,
+            count: newLeadsCount,
+            sev: 'info',
+            icon: Users,
+            to: '/property-management/contacts?looking_for=rent',
+          }] : []),
           { label: 'Rent overdue', sub: `${cnt('overdue_rent')} tenant${cnt('overdue_rent') === 1 ? '' : 's'} behind`, count: cnt('overdue_rent'), sev: 'bad', icon: AlertTriangle, to: '/property-management/rentals?tab=arrears' },
           { label: 'Owner approval pending', sub: 'Tenant applications waiting', count: cnt('applications_awaiting_owner'), sev: 'warn', icon: FileCheck2, to: '/property-management/applications' },
           { label: 'Work orders overdue', sub: 'Past SLA target', count: cnt('work_orders_overdue'), sev: 'warn', icon: ListChecks, to: '/work-orders' },
           { label: 'Statements to send', sub: 'Owners awaiting statements', count: cnt('statements_not_sent'), sev: 'info', icon: FileCheck2, to: '/property-management/statements' },
           { label: 'Move-ins blocked', sub: 'Missing signed docs / bond', count: cnt('move_ins_blocked'), sev: 'bad', icon: KeyRound, to: '/property-management/applications' },
           { label: 'Missing bank / KYC', sub: 'Owner onboarding gaps', count: cnt('missing_bank') + cnt('kyc_incomplete'), sev: 'info', icon: Users, to: '/property-management/rentals' },
-        ].filter((a) => a.count > 0).slice(0, 5));
+        ].filter((a) => a.count > 0).slice(0, 5);
+        setActions(cohortActions);
       } catch { /* command centre optional */ }
       try { const { data: m } = await api.get('/property-management/dashboard-metrics'); setMetrics(m); } catch { /* metrics optional */ }
     } catch (e) {
@@ -389,6 +445,7 @@ export default function PropertyMgmtDashboard() {
           <div className="pm-meta">{occ.managed} managed {occ.managed === 1 ? 'property' : 'properties'} · {s.active} active {s.active === 1 ? 'tenancy' : 'tenancies'} · {occ.rate}% occupancy</div>
         </div>
         <div className="pm-head-actions">
+          <button className="pm-btn" onClick={() => nav('/property-management/contacts?looking_for=rent')} style={{ borderColor: '#0284c7', color: '#0369a1', background: '#f0f9ff' }}><Users size={15} /> Rental leads</button>
           <button className="pm-btn" onClick={() => setShowBulkDrawer(true)}><KeyRound size={15} /> Bulk invoices</button>
           <button className="pm-btn" onClick={() => nav('/property-management/collect-rent')}><Wallet size={15} /> Collect rent</button>
           <button className="pm-btn" onClick={() => nav('/property-management/disburse-owners')}><CreditCard size={15} /> Pay owners</button>
@@ -566,12 +623,261 @@ export default function PropertyMgmtDashboard() {
         </div>
       </div>
 
+      {/* ── Rental Leads & Prospective Tenants CRM ── */}
+      <div className="pm-card" style={{ marginTop: 16 }}>
+        <div className="pm-card-h">
+          <div className="ic" style={{ background: 'rgba(2, 132, 199, 0.12)', color: '#0284c7' }}>
+            <Users size={17} />
+          </div>
+          <div>
+            <h3>Rental Leads &amp; Prospective Tenants</h3>
+            <div className="hsub">Active tenant demand, budget criteria &amp; matching requirements</div>
+          </div>
+          <div className="sp" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="pm-btn"
+              onClick={() => nav('/property-management/contacts?action=import&looking_for=rent')}
+              style={{ borderColor: '#0284c7', color: '#0369a1', fontWeight: 650, background: '#f0f9ff' }}
+            >
+              <FileSpreadsheet size={13} /> Import Excel
+            </button>
+            <button
+              type="button"
+              className="pm-btn primary"
+              onClick={() => nav('/property-management/contacts?action=new&looking_for=rent')}
+              style={{ background: '#0284c7', color: '#ffffff' }}
+            >
+              <UserPlus size={13} /> + New Rental Lead
+            </button>
+            <button
+              type="button"
+              className="pm-link"
+              onClick={() => nav('/property-management/contacts?looking_for=rent')}
+            >
+              Manage All Leads ({rentalLeadCounts.total}) &rarr;
+            </button>
+          </div>
+        </div>
+
+        <div className="pm-card-body">
+          {/* Mini pipeline stages counters */}
+          <div className="pm-minis" style={{ marginBottom: 16 }}>
+            {[
+              { label: 'Total Demand', count: rentalLeadCounts.total, color: '#0284c7' },
+              { label: 'New Leads', count: rentalLeadCounts.new, color: '#38bdf8' },
+              { label: 'Contacted', count: rentalLeadCounts.contacted, color: 'var(--cyan)' },
+              { label: 'Qualified', count: rentalLeadCounts.qualified, color: 'var(--warn)' },
+              { label: 'Showing', count: rentalLeadCounts.showing, color: '#a855f7' },
+              { label: 'Under Contract', count: rentalLeadCounts.under_contract, color: 'var(--good)' },
+            ].map((b, idx) => (
+              <div
+                key={idx}
+                className="pm-mini"
+                style={{ cursor: 'pointer' }}
+                onClick={() => nav(`/property-management/contacts?looking_for=rent`)}
+              >
+                <div className="n pm-num">{b.count}</div>
+                <div className="t">
+                  <span className="dot" style={{ background: b.color }} />
+                  {b.label}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Leads table or empty state */}
+          {rentalLeads.length === 0 ? (
+            <div className="pm-empty" style={{ padding: '32px 16px', textAlign: 'center' }}>
+              <div className="ic" style={{ margin: '0 auto 8px', color: 'var(--muted)' }}><Users size={24} /></div>
+              <div style={{ fontWeight: 650, color: 'var(--ink)' }}>No rental leads or prospective tenants recorded</div>
+              <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 4, maxWidth: 460, margin: '4px auto 14px' }}>
+                Capture inquiries from prospective tenants, record rental requirements, or import tenant lists from Excel to match with vacant units.
+              </div>
+              <div style={{ display: 'inline-flex', gap: 8 }}>
+                <button
+                  type="button"
+                  className="pm-btn primary"
+                  onClick={() => nav('/property-management/contacts?action=new&looking_for=rent')}
+                  style={{ background: '#0284c7', color: '#fff' }}
+                >
+                  <UserPlus size={13} /> Add Prospective Tenant
+                </button>
+                <button
+                  type="button"
+                  className="pm-btn"
+                  onClick={() => nav('/property-management/contacts?action=import&looking_for=rent')}
+                >
+                  <FileSpreadsheet size={13} /> Bulk Import via Excel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="pm-tbl">
+                <thead>
+                  <tr>
+                    <th>Lead Name &amp; Contact</th>
+                    <th>Rental Requirements</th>
+                    <th>Monthly Budget</th>
+                    <th>Stage</th>
+                    <th>Last Touch</th>
+                    <th style={{ textAlign: 'right' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rentalLeads.slice(0, 6).map((lead) => {
+                    const areas = safeJsonParse(lead.preferred_areas, []);
+                    const types = safeJsonParse(lead.property_types, []);
+                    const bMin = Number(lead.budget_min || 0);
+                    const bMax = Number(lead.budget_max || 0);
+                    const cleanPhone = (lead.primary_phone || '').replace(/[^0-9]/g, '');
+
+                    return (
+                      <tr key={lead.id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div
+                              style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: '50%',
+                                background: avGrad(lead.id || lead.full_name),
+                                color: '#fff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 12,
+                                fontWeight: 700,
+                                flexShrink: 0,
+                              }}
+                            >
+                              {initials(lead.full_name)}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--ink)' }}>
+                                {lead.full_name || 'Unnamed Lead'}
+                              </div>
+                              <div style={{ fontSize: 11, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                                <span>{lead.contact_code || 'SSPC-CT'}</span>
+                                {lead.contact_list && (
+                                  <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                                    {lead.contact_list}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 650, color: '#1e293b' }}>
+                              {areas.length > 0 ? areas.join(', ') : (lead.area || 'Any Location')}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                              {[
+                                types.length > 0 ? types.join(', ') : 'Apartment',
+                                lead.bedrooms_min ? `${lead.bedrooms_min}+ Beds` : null,
+                                lead.size_min_sft ? `${lead.size_min_sft} sqft` : null,
+                              ].filter(Boolean).join(' · ')}
+                            </div>
+                          </div>
+                        </td>
+
+                        <td>
+                          <div style={{ fontSize: 12.5, fontWeight: 750, color: 'var(--ink)' }}>
+                            {bMax > 0
+                              ? (bMin > 0 ? `${bdt(bMin)} – ${bdt(bMax)}` : `Up to ${bdt(bMax)}`)
+                              : (lead.notes && /৳?[0-9,]+/.test(lead.notes) ? lead.notes : 'Flexible')}
+                            <span style={{ fontSize: 10.5, color: 'var(--muted)', fontWeight: 500 }}> /mo</span>
+                          </div>
+                        </td>
+
+                        <td>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '2px 8px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              textTransform: 'capitalize',
+                              background:
+                                lead.lead_status === 'requirement_qualified' ? '#fef3c7' :
+                                lead.lead_status === 'property_showing' ? '#f3e8ff' :
+                                lead.lead_status === 'under_contract' ? '#dcfce7' :
+                                lead.lead_status === 'contacted' ? '#e0f2fe' : '#f1f5f9',
+                              color:
+                                lead.lead_status === 'requirement_qualified' ? '#b45309' :
+                                lead.lead_status === 'property_showing' ? '#7e22ce' :
+                                lead.lead_status === 'under_contract' ? '#15803d' :
+                                lead.lead_status === 'contacted' ? '#0369a1' : '#475569',
+                            }}
+                          >
+                            {(lead.lead_status || 'New Lead').replace(/_/g, ' ')}
+                          </span>
+                        </td>
+
+                        <td>
+                          <div style={{ fontSize: 11.5, color: 'var(--ink)' }}>
+                            {dateFmt(lead.last_contacted_at || lead.createdAt || lead.created_at)}
+                          </div>
+                          <div style={{ fontSize: 10.5, color: 'var(--muted)' }}>
+                            {lead.last_contacted_at ? 'Outreach logged' : 'Added to CRM'}
+                          </div>
+                        </td>
+
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            {cleanPhone && (
+                              <a
+                                href={`https://wa.me/${cleanPhone.startsWith('88') ? cleanPhone : '88' + cleanPhone}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="WhatsApp Chat"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: 26,
+                                  height: 26,
+                                  borderRadius: 5,
+                                  background: '#25d366',
+                                  color: '#fff',
+                                }}
+                              >
+                                <MessageSquare size={12} />
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              className="pm-btn btn-sm"
+                              onClick={() => nav(`/property-management/contacts?search=${encodeURIComponent(lead.full_name || '')}`)}
+                              style={{ padding: '3px 8px', fontSize: 11.5 }}
+                            >
+                              Dossier &rarr;
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* ── Quick links ── */}
       <div className="pm-card" style={{ marginTop: 16 }}>
         <div className="pm-card-h"><div className="ic"><ArrowRight size={17} /></div><div><h3>Quick links</h3></div></div>
         <div className="pm-card-body" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {[
-            ['Rentals list', '/property-management/rentals'], ['Tenant Applications', '/property-management/applications'],
+            ['Rentals list', '/property-management/rentals'], ['Rental Leads & Contacts', '/property-management/contacts?looking_for=rent'],
+            ['Tenant Applications', '/property-management/applications'],
             ['Onboarding & Workflow', '/property-management/rentals?detailTab=onboarding'], ['Rental Enquiries', '/property-management/enquiries'],
             ['Rental Assessments', '/property-management/assessments'], ['Disbursements', '/property-management/disbursements'],
             ['Tenant Invoices', '/invoices'], ['Rental Receipts', '/rental-receipts'], ['Landlord Bills', '/landlord-bills'],

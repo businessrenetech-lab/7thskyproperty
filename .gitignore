@@ -6,6 +6,9 @@ node_modules/
 # Build (only ignore at root level, allow sub-project dist/ and .next/)
 build/
 .cache/
+
+# Playwright MCP transient console logs
+.playwright-mcp/
 **/.next/
 !website/.next/
 !website/.next/**

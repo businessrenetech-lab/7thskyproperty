@@ -442,6 +442,7 @@ const LINE_TO_BASE = {
   property_will_succession: '/property-will-succession',
   removal_relocation: '/removal-relocation',
   property_care_concierge: '/property-care-concierge',
+  residential_interior_design: '/residential-interior-design',
   water_tank: '/water-tank',
 };
 export const profileForLine = (serviceLine) =>

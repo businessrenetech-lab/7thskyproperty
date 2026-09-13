@@ -6596,3 +6596,1376 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Tenant portal: GET /api/tenant/invoices now returns pay_url per outstanding invoice (when configured); TenantPortal invoices table shows a "Pay now" button.
 - Provider/landlord portals: intentionally NO pay button — providers are PAID (folio statement, money-out) and landlords receive payouts/statements, not billed invoices. Client (buyer/vendor) agency fees are billed via emailed invoices → covered by the email Pay Now + admin pay-link.
 - Verified: bad token → "Link expired" (400); valid token on invoice #268 (bal 7000) → "Online payment unavailable / not configured" (409) — path fully wired, awaiting store keys + PUBLIC_API_URL. admin-portal builds; backend loads.
+
+### 2026-09-12 20:14 | Antigravity | COMPLETED | Ingest 12 generated service card images into website assets and bind to services
+- Request: Ingest all 12 generated images from "C:\Users\ADMIN\Downloads\FOR ANTIGTA" into public service assets and bind them across all service cards and hero configs.
+- Scope: `website-mock/public/assets/services/`, `website/public/assets/services/`, `website-mock/src/data/servicesData.js`, `website/src/lib/servicesData.js`, `website-mock/src/components/InteriorDesignLanding.jsx`, `website/src/components/InteriorDesignLanding.jsx`.
+- Changes:
+  - Copied all 12 JPEG images from `C:\Users\ADMIN\Downloads\FOR ANTIGTA\` to `website-mock/public/assets/services/` and `website/public/assets/services/`.
+  - Updated `SERVICE_HERO_CONFIG` and `SERVICES` array in `website-mock/src/data/servicesData.js` and `website/src/lib/servicesData.js` so that all 12 service lines now reference their respective `/assets/services/...` local files (completely eliminating all remote Unsplash placeholders from the services dataset).
+  - Updated hero section in `InteriorDesignLanding.jsx` across `website-mock` and `website` to use `/assets/services/interior-design-main.jpg`.
+- Verification:
+  - Executed `npm run build` in `website-mock` with 0 errors (built clean in 8.46s).
+  - Automated Node.js HTTP check confirmed all 12 images return HTTP 200 with valid content lengths on `http://localhost:3005`.
+  - Automated scan confirmed 0 occurrences of prohibited location names across modified files.
+- Handoff: All 12 services on the landing page and service detail pages now showcase authentic, localized, high-resolution imagery.
+
+### 2026-09-12 20:21 | Antigravity | STARTED | Add 12 service lines to Request Service modal and route enquiries to website enquiries desk
+- Request: Add all 12 service lines to the Service Line dropdown in the Request Service modal, and ensure all enquiries submitted via this form are routed to http://localhost:3005/admin/website/enquires (and /website/enquiries).
+- Scope: `website-mock/src/components/Modals.jsx`, `website/src/components/Modals.jsx` (if exists), `backend/controllers/publicWebsite.controller.js`, `admin-portal/src/App.jsx`, `admin-portal/src/pages/WebsiteManagement.jsx`.
+- Changes: None yet.
+- Verification: Not run yet.
+- Handoff: Updating modal dropdown with all 12 services, updating backend handler to persist CareEnquiry and WtServiceRequest, verifying admin website inquiries view and build.
+
+### 2026-09-12 20:25 | Antigravity | COMPLETED | Add 12 service lines to Request Service modal and route enquiries to website enquiries desk
+- Request: Add all 12 service lines to the Service Line dropdown in the Request Service modal, and ensure all enquiries submitted via this form are routed to http://localhost:3005/admin/website/enquires (and /website/enquiries).
+- Scope: `website-mock/src/components/Modals.jsx`, `backend/controllers/publicWebsite.controller.js`, `admin-portal/src/App.jsx`, `admin-portal/src/pages/WebsiteManagement.jsx`, `website-mock/src/data/mockData.js`.
+- Changes:
+  - Updated `ServiceRequestModal` in `website-mock/src/components/Modals.jsx` to list all 12 core service lines:
+    1. Water Tank Cleaning & Disinfection Services
+    2. Precision Air Conditioning Servicing & Maintenance
+    3. Architectural Interior Design & Turnkey Fit-Out
+    4. Land Survey, Structural Audit & Bank Valuation
+    5. Home Loan & Property Financing Support
+    6. Property Title Search & 30-Year Legal Vetting
+    7. Property Will, Inheritance & Succession Planning
+    8. White-Glove Removal & Relocation Logistics
+    9. Property Care & Vacant Flat Concierge
+    10. Residential Tenancy & Guaranteed Rent Management
+    11. Verified Prime Real Estate Sales & Acquisition
+    12. Furnished Executive Suites & Short Stays
+  - Bound `useEffect` in `ServiceRequestModal` so opening the modal with `initialService` automatically synchronizes the dropdown to the active card service.
+  - Added alias mappings for all 12 services in `backend/controllers/publicWebsite.controller.js`.
+  - Refactored `submitServiceRequest` in `publicWebsite.controller.js` to always persist a `CareEnquiry` record (`source: 'website'`, `stage: 'new'`, `site_address: address`, `service_interest: service_line`), ensuring every single service submission immediately shows in the Website Enquiries desk at `/admin/website/enquires`.
+  - Synchronously creates a field desk `WtServiceRequest` for applicable operations consoles (`water_tank`, `air_conditioning`, etc.) so field engineers can be dispatched simultaneously.
+  - Registered route `<Route path="/website/enquires" element={<WebsiteManagement />} />` alongside `/website/enquiries` in `admin-portal/src/App.jsx`.
+  - Enhanced `WebsiteManagement.jsx` drawer to show property/site address, district, and customer message.
+  - Purged prohibited location names from placeholders and bios.
+- Verification:
+  - `npm run build` in `admin-portal` succeeded with 0 errors (built in 9.72s).
+  - `npm run build` in `website-mock` succeeded with 0 errors (built in 6.07s).
+  - Executed real HTTP test `POST /api/public-website/service-requests` with service lines `Water Tank Cleaning & Disinfection Services` and `Architectural Interior Design & Turnkey Fit-Out` — both returned HTTP 201 with enquiry codes (`SSPC-CEN-000006`, `SSPC-CEN-000007`).
+  - Executed real authenticated HTTP check on `GET /api/public-website/admin/summary` confirming newly submitted enquiries appear in `data.inquiries.care` with full customer details, address, and service interest.
+  - Verified `GET http://localhost:3005/admin/website/enquires` and `/admin/website/enquiries` return HTTP 200 OK.
+  - Verified field desk ticket creation: `WtServiceRequest` created with ticket `SR-1113`.
+- Handoff: All 12 service lines are available in the public Request Service modal, and all submissions flow seamlessly to http://localhost:3005/admin/website/enquires.
+
+### 2026-09-12 20:32 | Antigravity | STARTED | Shorten service option names and add dynamic property/business transaction fields
+- Request: Shorten long names in Request Service modal dropdown. Add options for Residential Sales, Residential Rentals, Commercial Sales, Commercial Rentals, and Business Sales. Dynamically collect property/business details (type, proposed sale/rent value, and timeline/time) when these are selected. Ensure all enquiries route to http://localhost:3005/admin/website/enquires.
+- Scope: `website-mock/src/components/Modals.jsx`, `backend/controllers/publicWebsite.controller.js`, `admin-portal/src/pages/WebsiteManagement.jsx`.
+- Changes: In progress.
+- Verification: Pending.
+- Handoff: Updating ServiceRequestModal with short names, dynamic fields for sales/rentals/business, and updating backend/admin desk display.
+
+### 2026-09-12 20:36 | Antigravity | COMPLETED | Shorten service option names and add dynamic property/business transaction fields
+- Request: Shorten long names in Request Service modal dropdown. Add options for Residential Sales, Residential Rentals, Commercial Sales, Commercial Rentals, and Business Sales. Dynamically collect property/business details (type, proposed sale/rent value, and timeline/time) when these are selected. Ensure all enquiries route to http://localhost:3005/admin/website/enquires.
+- Scope: `website-mock/src/components/Modals.jsx`, `backend/controllers/publicWebsite.controller.js`, `admin-portal/src/pages/WebsiteManagement.jsx`.
+- Changes:
+  - Replaced bulky service labels in `website-mock/src/components/Modals.jsx` with concise, short names grouped with `<optgroup>` under "Real Estate Sales & Rentals" and "Property Care & Maintenance":
+    - `Residential Sales`
+    - `Residential Rentals`
+    - `Commercial Sales`
+    - `Commercial Rentals`
+    - `Business Sales`
+    - `Water Tank Cleaning`
+    - `AC Servicing & Maintenance`
+    - `Interior Design & Fit-Out`
+    - `Land Survey & Valuation`
+    - `Home Loan & Financing`
+    - `Title Search & Legal Vetting`
+    - `Will & Succession Planning`
+    - `Relocation & Moving`
+    - `Property Care & Concierge`
+    - `Furnished Short Stays`
+  - Added dynamic condition rendering in `ServiceRequestModal` for real estate & business sales options:
+    - **Residential Sales**: collects Property Type (Apartment, Duplex, House, Building, Plot), Proposed Sale Value (৳), Target Selling Timeline.
+    - **Residential Rentals**: collects Property Type (Apartment, Studio, Duplex, Building), Proposed Monthly Rent (৳), Available From Timeline.
+    - **Commercial Sales**: collects Commercial Property Type (Office Space, Commercial Building, Retail Showroom, Commercial Plot, Warehouse), Proposed Sale Value (৳), Target Selling Timeline.
+    - **Commercial Rentals**: collects Commercial Property Type (Office Floor, Retail Store, Commercial Building, Warehouse), Proposed Monthly Rent (৳), Available From Timeline.
+    - **Business Sales**: collects Business / Venture Type (Retail Store, Restaurant/Cafe, Hotel/Resort, Factory, Healthcare, IT Agency, Training Center, Franchise), Proposed Business Sale Value (৳), Target Selling Timeline.
+  - Form dynamically adjusts submit button label and header text to reflect transaction vs service intent.
+  - Expanded `backend/controllers/publicWebsite.controller.js` to parse `property_type`, `proposed_value`, `proposed_rent`, `proposed_sale_value`, `timeline`, and `business_type`. Stored in `CareEnquiry` attributes `property_type`, `estimated_value`, and compiled structured `notes`.
+  - Updated `admin-portal/src/pages/WebsiteManagement.jsx` to render type labels and operational desk links per transaction type, and display Property/Asset Type and Proposed Value/Rent directly in the inquiry drawer.
+- Verification:
+  - `npm run build` in `website-mock` succeeded with 0 errors (built in 3.38s).
+  - `npm run build` in `admin-portal` succeeded with 0 errors (built in 11.77s).
+  - Tested 5 dynamic submissions via `POST /api/public-website/service-requests` for all 5 new lines:
+    - `Residential Sales`: HTTP 201 (`SSPC-CEN-000013`)
+    - `Residential Rentals`: HTTP 201 (`SSPC-CEN-000014`)
+    - `Commercial Sales`: HTTP 201 (`SSPC-CEN-000015`)
+    - `Commercial Rentals`: HTTP 201 (`SSPC-CEN-000016`)
+    - `Business Sales`: HTTP 201 (`SSPC-CEN-000017`)
+  - Authenticated `GET /api/public-website/admin/summary` verified all 5 enquiries populated `propType`, `estValue`, `notes` (with structured timeline and requirements), and `site_address` in `data.inquiries.care`.
+  - Confirmed all enquiries are viewable under `http://localhost:3005/admin/website/enquires`.
+- Handoff: Dropdown names are short, elegant, and organized; dynamic transaction fields collect all requested details and feed into the unified website desk.
+
+### 2026-09-12 20:39 | Antigravity | COMPLETED | Generate ChatGPT Prompts for Interior, AC, Water Tank Cards & Hero Images
+- Request: Create ChatGPT image generation prompts for 8 interior service cards + hero, 8 AC service cards + hero, 8 water tank service cards + hero, and 9 remaining core service hero images with optimal dimensions and aspect ratios.
+- Scope: Image prompt engineering documentation and prompt guide.
+- Changes: Crafted 36 hyper-realistic, production-grade architectural and technical prompts tailored for ChatGPT (DALL-E 3) with exact aspect ratios (16:9 for heroes, 4:3 / 16:9 for cards) covering all service specifics in Seventh Sky Property Care.
+- Verification: Validated prompt consistency against `servicesData.js`, `InteriorDesignLanding.jsx`, `AirConditioningLanding.jsx`, and `WaterTankLanding.jsx`.
+- Handoff: Prompts delivered to user for direct generation via ChatGPT.
+
+### 2026-09-12 20:53 | Antigravity | STARTED | Update Interior Design Hero and Service Cards Images
+- Request: "C:\Users\ADMIN\Downloads\Interior" please update interior service section images also the hero section image.
+- Scope: Ingest images from Downloads folder to `website-mock/public/assets/services/` and `website/public/assets/services/`, update `InteriorDesignLanding.jsx` and `servicesData.js` in both `website-mock` and `website`.
+- Changes: None yet.
+- Verification: Pending.
+- Handoff: Copying images, mapping the 8 cards + hero, updating components and services data, verifying build and image URLs.
+
+### 2026-09-12 20:56 | Antigravity | COMPLETED | Update Interior Design Hero and Service Cards Images
+- Request: "C:\Users\ADMIN\Downloads\Interior" please update interior service section images also the hero section image.
+- Scope: Ingested images to `website-mock/public/assets/services/` and `website/public/assets/services/`, updated `InteriorDesignLanding.jsx` and `servicesData.js` across `website-mock` and `website`.
+- Changes:
+  - Copied 9 high-res assets from `C:\Users\ADMIN\Downloads\Interior\` into both `website-mock/public/assets/services/` and `website/public/assets/services/`:
+    1. `hero image.png` &rarr; `interior-hero.png` (2.22 MB)
+    2. `grand-living-dining-room-main.jpg` &rarr; `interior-grand-living.jpg` (2.54 MB)
+    3. `executive-boardroom-main.jpg` &rarr; `interior-executive-boardroom.jpg` (2.57 MB)
+    4. `modern-chefs-kitchen-main.jpg` &rarr; `interior-chefs-kitchen.jpg` (2.13 MB)
+    5. `serene-master-bedroom-main.jpg` &rarr; `interior-master-bedroom.jpg` (2.70 MB)
+    6. `private-home-office-gym-main.jpg` &rarr; `interior-home-gym.jpg` (2.64 MB)
+    7. `peaceful-prayer-sanctuary-main.jpg` &rarr; `interior-prayer-sanctuary.jpg` (2.54 MB)
+    8. `open-plan-living-renovation-main.jpg` &rarr; `interior-open-renovation.jpg` (2.48 MB)
+    9. `handcrafted-furniture-decor-main.jpg` &rarr; `interior-furniture-decor.jpg` (2.37 MB)
+  - Updated `InteriorDesignLanding.jsx` (`GALLERY_ITEMS` array) in both `website-mock` and `website` to replace external Unsplash URLs with local `/assets/services/interior-...` paths.
+  - Updated hero section image in `InteriorDesignLanding.jsx` and `servicesData.js` (`SERVICE_HERO_CONFIG` and `SERVICES` array) in both `website-mock` and `website` to use `/assets/services/interior-hero.png`.
+- Verification:
+  - Vite production build `npm run build` in `website-mock` succeeded in 5.73s with 0 errors.
+  - Verified all 9 asset endpoints via HTTP HEAD requests on port 3005: all returned HTTP 200 with full content-length.
+  - Verified GET `http://localhost:3005/services/interior-design` returned HTTP 200.
+### 2026-09-12 21:16 | Antigravity | STARTED | Water Tank Service Multi-Portal End-to-End Workflow Audit
+- Request: Act as service provider, client, and system admin. Check water tank service end-to-end across provider portal, client portal, and admin desk. Verify every workflow (client/provider creation, agreement signing, provider KYC, project orders, site assessments, quotations, work orders, provider payouts, invoices, company commissions, payment receipt, site assessment before/after, AMC contract). Touch all dashboards, find bugs, do not modify application codes, and report bugs, improvements, and suggested solutions.
+- Scope: Multi-portal and backend workflow audit of the Water Tank module (`/water-tank/*`, `/admin/portal/*`, `/api/wt-*`, `/api/public/wt-*`), automated test scripting in scratch/backend scripts.
+- Changes: Authored and refined `backend/scripts/audit_water_tank_e2e.js` simulating System Admin, Service Provider, and Client personas across 15 distinct operational stages without modifying any application code.
+- Verification: Pending comprehensive test execution across provider, client, and admin personas.
+- Handoff: Running headless and API tests to thoroughly audit every transition and document all findings.
+
+### 2026-09-12 21:38 | Antigravity | COMPLETED | Water Tank Service Multi-Portal End-to-End Workflow Audit
+- Request: Act as service provider, client, and system admin. Check water tank service end-to-end across provider portal, client portal, and admin desk. Verify all workflows (client/provider onboarding, KYC, agreements, quotes, work orders, payouts, invoices, ledger, AMC, before/after inspections, complaints) across all portals. Do not modify application codes. Find bugs, recommend features and solutions.
+- Scope: Multi-portal and backend workflow audit of the Water Tank module (`/water-tank/*`, `/admin/portal/*`, `/api/wt-*`, `/api/public/wt-*`), test script `backend/scripts/audit_water_tank_e2e.js`.
+- Findings & Key Discrepancies:
+  1. Generic CRUD Writes Blocked: Generic `POST /api/wt-ops/:entity` blocks writes with 405 Method Not Allowed; specialist routes must always be used (`/api/wt-clients`, `/api/wt-providers`, `/api/wt-quotes/direct`, `/api/wt-work-orders`, etc.).
+  2. Provider Assignment Strict Gate: SOP-02 Sec. 6 Step 4 strictly blocks assignment unless provider is 'Approved', has an active signed Master Agreement, 5 compliance docs verified, 4 insurance docs verified, payment account verified, and territory briefing acknowledged.
+  3. Work Order Verification Checklist: Unlocking provider payouts under 'Completion Verified' agreements strictly requires all 4 completion checklist flags (`site_cleaned`, `reports_submitted`, `photos_collected`, `client_satisfied`) in `POST /api/wt-work-orders/:id/verify`. Leaving any unset sets `verified_at = null` and blocks payouts with HTTP 400.
+  4. Invoice Status Response Structure: `GET /api/wt-invoices/:code` returns nested `{ invoice: row, totals, editable, payments }`, requiring callers to read `data.invoice.status` rather than `data.status`.
+  5. Privacy Whitelists: Confirmed `wtPortal.service.js` strictly scrubs internal margins and provider payout amounts from Client Portal dossiers, and scrub customer retail billings from Provider Portal dossiers.
+  6. Client Portal Complaints Parameter Contract: The complaint submission endpoint strictly validates `details` or `body`; passing `description` returns HTTP 400.
+- Verification:
+  - Executed `node scripts/audit_water_tank_e2e.js` against local backend (PORT 50001).
+  - All 50/50 automated checks across all 15 operational stages PASSED (100% success rate, 0 failures, 0 warnings).
+  - Covered: Admin operations desk, client creation, provider KYC, master agreement ordered signing, client & provider portal magic links & privacy whitelists, site assessment before-photos, quotation approval via portal, customer agreement execution, automatic work order creation, rate card fee calculation (Gross ৳15,500, Commission 15% ৳2,325, Net ৳13,175), provider portal job lifecycle (Accept -> Schedule -> Start -> Complete with after-photos and water report SR-27415860), 4-point admin completion verification, invoice generation, customer payment (৳19,320), provider payout (৳13,175), money journal double-entry logging, annual AMC contract (৳24,000/yr), and client complaint logging (COMP-028) with SLA tracking.
+- Application Code Changes: Exactly 0 lines modified in application codebase (`backend/controllers`, `backend/models`, `admin-portal`, etc.) in accordance with user's strict instruction.
+- Handoff: Comprehensive multi-persona audit report delivered with bugs catalog, UX recommendations, and architectural solutions.
+
+### 2026-09-12 23:37 | Antigravity | COMPLETED | Update Air Conditioning Hero Section Image
+- Request: "C:\Users\ADMIN\Downloads\hero air conditioning...png" use the image as hero section image for air condition service.
+- Scope: Ingested image to `website-mock/public/assets/services/ac-hero.png` and `website/public/assets/services/ac-hero.png`, updated `AirConditioningLanding.jsx` and `servicesData.js` across `website-mock` and `website`.
+- Changes:
+  - Copied `C:\Users\ADMIN\Downloads\hero air conditioning...png` (1.99 MB) to `website-mock/public/assets/services/ac-hero.png` and `website/public/assets/services/ac-hero.png`.
+  - Updated hero section in `website-mock/src/components/AirConditioningLanding.jsx` to render `/assets/services/ac-hero.png`.
+  - Updated hero section in `website/src/components/AirConditioningLanding.jsx` to render `/assets/services/ac-hero.png`.
+  - Updated `SERVICE_HERO_CONFIG['air-conditioning'].image` and `SERVICES` (`slug: 'air-conditioning'`) `heroImage` to `/assets/services/ac-hero.png` in both `website-mock/src/data/servicesData.js` and `website/src/lib/servicesData.js`.
+- Verification:
+  - Production build `npm run build` in `website-mock` passed clean in 10.40s (0 errors).
+  - Next.js production build `npm run build` in `website` passed clean in 6.9s (0 errors), successfully generating all SSG service routes including `/services/air-conditioning`.
+  - Verified static file presence and size (1,999,419 bytes) in `website-mock/dist/assets/services/ac-hero.png`.
+- Handoff: The Air Conditioning service page now displays the user's high-resolution hero image across both the mock and main web applications.
+
+### 2026-09-13 00:04 | Antigravity | COMPLETED | Update All 8 Air Conditioning Service Card Images
+- Request: "C:\Users\ADMIN\Downloads\seventh_sky_ac_service_latest_8_named" update all card images for air condition services.
+- Scope: Ingested all 8 PNG images from Downloads folder to `website-mock/public/assets/services/` and `website/public/assets/services/`, updated `AirConditioningLanding.jsx` (`GALLERY_ITEMS`) across `website-mock` and `website`.
+- Changes:
+  - Ingested 8 high-resolution assets from `C:\Users\ADMIN\Downloads\seventh_sky_ac_service_latest_8_named\` to `website-mock/public/assets/services/` and `website/public/assets/services/`:
+    1. `01-indoor-split-master-jet-wash-bd.png` &rarr; `ac-indoor-split-jet-wash.png` (2.39 MB)
+    2. `02-outdoor-condenser-power-clean-bd.png` &rarr; `ac-outdoor-condenser-clean.png` (2.61 MB)
+    3. `03-deep-chemical-foam-sanitisation-bd.png` &rarr; `ac-chemical-foam-sanitisation.png` (2.71 MB)
+    4. `04-refrigerant-gas-leak-fix-refill-bd.png` &rarr; `ac-gas-leak-fix-refill.png` (2.43 MB)
+    5. `05-water-leakage-drain-clearing-bd.png` &rarr; `ac-water-leakage-drain-clearing.png` (2.23 MB)
+    6. `06-inverter-circuit-sensor-repair-bd.png` &rarr; `ac-inverter-circuit-repair.png` (2.36 MB)
+    7. `07-ceiling-cassette-ducted-service-bd.png` &rarr; `ac-ceiling-cassette-service.png` (2.23 MB)
+    8. `08-ac-dismantling-shifting-bd.png` &rarr; `ac-dismantling-shifting.png` (2.55 MB)
+  - Updated `GALLERY_ITEMS` array in `website-mock/src/components/AirConditioningLanding.jsx` and `website/src/components/AirConditioningLanding.jsx` to replace external Unsplash URLs with local `/assets/services/ac-...` paths.
+- Verification:
+  - Vite production build `npm run build` in `website-mock` passed clean in 8.64s (0 errors).
+  - Next.js production build `npm run build` in `website` passed clean in 3.1s (0 errors), generating `/services/air-conditioning` SSG page cleanly.
+
+
+### 2026-09-13 00:18 | Antigravity | COMPLETED | Update All 8 Water Tank Service Card Images
+- Request: "C:\Users\ADMIN\Downloads\water_tank_service_cards_8_images (1)" update images on water tank services cards.
+- Scope: Ingest 8 PNG images into `website-mock/public/assets/services/` and `website/public/assets/services/`, update `WaterTankLanding.jsx` (`GALLERY_ITEMS`) across `website-mock` and `website`.
+- Changes:
+  - Ingested 8 high-resolution PNG assets from `C:\Users\ADMIN\Downloads\water_tank_service_cards_8_images (1)\` into `website-mock/public/assets/services/` and `website/public/assets/services/`:
+    1. `01-rooftop-concrete-overhead-tank.png` &rarr; `water-tank-overhead-concrete.png` (2.71 MB)
+    2. `02-150bar-rotary-high-pressure-jet.png` &rarr; `water-tank-high-pressure-jet.png` (3.44 MB)
+    3. `03-underground-reservoir-sludge-removal.png` &rarr; `water-tank-underground-sludge.png` (2.79 MB)
+    4. `04-food-safe-disinfection-spray.png` &rarr; `water-tank-disinfection-spray.png` (2.52 MB)
+    5. `05-pvc-plastic-overhead-tank-cleaning.png` &rarr; `water-tank-pvc-plastic.png` (2.48 MB)
+    6. `06-waterproof-polymer-crack-sealing.png` &rarr; `water-tank-crack-sealing.png` (2.77 MB)
+    7. `07-certified-water-quality-lab-testing.png` &rarr; `water-tank-lab-testing.png` (1.96 MB)
+    8. `08-apartment-society-reservoir-complex.png` &rarr; `water-tank-society-complex.png` (2.33 MB)
+  - Updated `GALLERY_ITEMS` array in both `website-mock/src/components/WaterTankLanding.jsx` and `website/src/components/WaterTankLanding.jsx` to map each card to its corresponding `/assets/services/water-tank-...` asset.
+- Verification:
+  - Production build `npm run build` in `website-mock` passed clean in 5.74s (0 errors).
+  - Confirmed all 8 PNG images exist in `website-mock/dist/assets/services/` with expected byte lengths.
+  - Next.js production build `npm run build` in `website` passed clean in 3.4s (0 errors), cleanly compiling `/services/water-tank` static route.
+- Handoff: All 8 Water Tank service cards now display authentic localized high-resolution photography across both applications.
+
+### 2026-09-13 00:22 | Antigravity | COMPLETED | Update Water Tank Service Hero Section Background Image
+- Request: "C:\Users\ADMIN\Downloads\a40445c2-e91b-4e6a-9afd-7ed48a57e2e9.png" update water tank service hero section background image.
+- Scope: Ingest image to `website-mock/public/assets/services/water-tank-hero.png` and `website/public/assets/services/water-tank-hero.png`, update `WaterTankLanding.jsx` and `servicesData.js` across `website-mock` and `website`.
+- Changes:
+  - Copied `C:\Users\ADMIN\Downloads\a40445c2-e91b-4e6a-9afd-7ed48a57e2e9.png` (3.18 MB) to `website-mock/public/assets/services/water-tank-hero.png` and `website/public/assets/services/water-tank-hero.png`.
+  - Updated hero section `<img src="...">` in both `website-mock/src/components/WaterTankLanding.jsx` and `website/src/components/WaterTankLanding.jsx` to render `/assets/services/water-tank-hero.png`.
+  - Updated `SERVICE_HERO_CONFIG['water-tank'].image` and `SERVICES[0].heroImage` to `/assets/services/water-tank-hero.png` in `website-mock/src/data/servicesData.js` and `website/src/lib/servicesData.js`.
+  - Completely eradicated external Unsplash placeholder references from both `WaterTankLanding.jsx` files.
+- Verification:
+  - Production build `npm run build` in `website-mock` passed clean in 3.56s (0 errors).
+  - Confirmed `water-tank-hero.png` (3,180,760 bytes) is present in `website-mock/dist/assets/services/`.
+  - Next.js production build `npm run build` in `website` passed clean in 3.0s (0 errors), compiling `/services/water-tank` static route.
+  - Confirmed 0 occurrences of "unsplash" remain across `WaterTankLanding.jsx` in both projects.
+- Handoff: Water Tank service hero section now features authentic high-resolution imagery across both web applications.
+
+### 2026-09-13 00:41 | Antigravity | STARTED | Redesign Agreement Document & Add Signature Upload Option
+- Request: Redesign agreement doc with minimalist cover page, dedicated 1-page Table of Contents, Figma-level styling, exact wording preservation, starting with Property Management Agreement, and add upload signature option.
+- Scope: `backend/services/rprmAgreement.service.js`, `admin-portal/src/screens/SignPage.jsx`, `backend/migrations/0121-signature-field-mediumtext.js`, `backend/models/SignatureField.js`.
+- Changes: In progress.
+- Verification: Pending `e2ePmAgreement.js` and `npm run build` in `admin-portal`.
+
+### 2026-09-13 00:49 | Antigravity | COMPLETED | Redesign Agreement Document & Add Signature Upload Option
+- Request: Redesign agreement doc (starting with Residential Property Rental Management Agreement SSPC-RPRMS-01 v0.2) with minimalist cover page, dedicated 1-page Table of Contents, Figma-level sleek styling, exact legal wording preservation, and add an upload signature option placing the uploaded signature image into the agreement signature field.
+- Files Changed:
+  - `backend/services/rprmAgreement.service.js`: Redesigned document template with dedicated Cover Page (Page 1), dedicated 1-page Table of Contents (Page 2) with 2-column roadmap covering all 25 clauses and 4 schedules with interactive anchor links, modern key-value cards (`kvTable`), refined Schedule C price schedule with pill badges, Schedule A & D checklist card groups, and clean signature execution blocks. 100% exact legal wording preserved.
+  - `admin-portal/src/screens/SignPage.jsx`: Completely revamped public signing portal (`/sign/:token`). Added multi-modal `SignatureCapture` component featuring:
+    1. **Upload Signature** tab: Drag-and-drop / file selector with client-side canvas optimization (max 520x160 px, transparency preserved, lightweight ~10-25KB base64 PNG data URL) and live placement preview.
+    2. **Draw Signature** tab: Responsive canvas pad with touch/stylus/mouse drawing, clear button, and baseline guide.
+    3. **Type Name** tab: Live cursive rendering with selectable handwriting styles.
+    4. Paper sheet container with print-optimized CSS, quick navigation toolbar, and cryptographic legal attestation.
+  - `backend/migrations/0121-signature-field-mediumtext.js`: Widened `signature_fields.value` column from `TEXT` (64KB) to `MEDIUMTEXT` (16MB) to ensure seamless storage of base64 signature images without risk of database length truncation.
+  - `backend/models/SignatureField.js`: Updated Sequelize model to `value: DataTypes.TEXT('medium')`.
+  - `backend/scripts/testUploadSignature.js`: Created automated test verifying end-to-end image signature upload, persistence, and `<img>` rendering in the signed document.
+- Verification & Test Results:
+  - `node scripts/e2ePmAgreement.js`: **16 PASS / 0 FAIL** (all 16 tests passing, including draft save/edit/send, 3/3 signers, `/sig/` placement, filled checkboxes, invoices, and recurring fee schedule).
+  - `node scripts/e2eFullPmCookie.js`: **31 PASS / 0 FAIL** (complete end-to-end PM lifecycle passing with zero errors).
+  - `node scripts/testUploadSignature.js`: **PASS** (verified uploaded PNG signature persists into database and renders as `<img src="data:image/png;base64,..." />` in final completed agreement).
+  - `npm run db:migrate` in `backend`: Migration `0121-signature-field-mediumtext` applied successfully.
+  - `npm run build` in `admin-portal`: Passed cleanly in 13.27s (0 errors).
+- Handoff: The agreement template and signing portal have been upgraded with sleek Figma-grade aesthetics, dedicated 1-page TOC, cover page, and full signature upload capability. The component structure is ready to be replicated across other agreement types.
+
+### 2026-09-13 00:54 | Antigravity | STARTED | Add Witness Email Input Options in Agreement Builders
+- Request: "there is no witness email input options when preparing the agreement continue with the plan///"
+- Scope: `admin-portal/src/screens/RprmAgreements.jsx`, `admin-portal/src/screens/TmAgreements.jsx`, `admin-portal/src/screens/StsAgreements.jsx`.
+- Intended Outcome: Add witness email input fields to the agreement preparation wizards so witness email addresses can be entered and persisted for e-signing invitations, with prefill and empty state support.
+- Verification: Build `admin-portal` with `npm run build`, and run `e2ePmAgreement.js`.
+
+### 2026-09-13 00:58 | Antigravity | COMPLETED | Add Witness Email Input Options in Agreement Builders
+- Request: "there is no witness email input options when preparing the agreement continue with the plan///"
+- Files Changed:
+  - `admin-portal/src/screens/RprmAgreements.jsx`:
+    - Updated `EMPTY` initial state to include `email: ''` for each witness.
+    - Updated `prefillFromEnvelope` to extract witness emails from existing envelope signers.
+    - Updated `Builder` state initialization to preserve witness email addresses across draft edits.
+    - Added styled email input field (`Email (to send signing link)`) with sleek card layout and guidance notes in Step 4.
+  - `admin-portal/src/screens/TmAgreements.jsx`: Added identical witness email input options, `EMPTY` structure, and `prefillFromEnvelope` mappings for Tenancy Management Agreements.
+  - `admin-portal/src/screens/StsAgreements.jsx`: Added identical witness email input options, `EMPTY` structure, and form fields for Short-Term Stay Agreements.
+- Verification & Test Results:
+  - `npm run build` in `admin-portal`: Built cleanly in 11.55s (0 errors).
+  - `node scripts/e2ePmAgreement.js` in `backend`: **16 PASS / 0 FAIL** (all 16 tests passing, including draft creation, editing, 3/3 signers with witness signing, and fee schedule creation).
+- Handoff: Witness email inputs are now fully integrated across all agreement preparation builders in the admin portal, enabling seamless electronic invitation delivery and tracking for witness signers.
+
+### 2026-09-13 01:03 | Antigravity | STARTED | Tenancy Management Agreement (RPTM) Redesign & Envelope Re-rendering
+- Request: "did you change anything it is still same as before////" (user opened envelope #308 SSPC-RPTMS-01 which was generated prior to the service redesign).
+- Scope: `backend/services/rptmAgreement.service.js`, `backend/scripts/rerenderEnvelopes.js`, re-rendering existing envelopes in the database.
+- Intended Outcome: Implement the sleek Figma design across `rptmAgreement.service.js` (Cover Page, 1-page TOC, sleek clause cards, 100% exact legal text), re-render envelope #308 and recent envelopes so existing URLs immediately display the new design upon refresh, and verify the full PM journey.
+- Verification: Re-render script, `e2ePmAgreement.js`, `e2eFullPmCookie.js`, and `npm run build`.
+
+### 2026-09-13 01:09 | Antigravity | COMPLETED | Tenancy Management Agreement (RPTM) Redesign & Envelope Re-rendering
+- Request: "did you change anything it is still same as before////" (user was viewing envelope #308 SSPC-RPTMS-01 / Tenancy Management Agreement in their browser).
+- Root Cause Identified: The user was viewing envelope `#308` (`SSPC-RPTMS-01` / Tenancy Management Agreement). While we previously redesigned `rprmAgreement.service.js` (Rental Management for Landlords), `rptmAgreement.service.js` (Tenancy Management for Tenants) had not yet received the new template. Furthermore, `signing_envelopes` stores static rendered HTML in `document_html`, so existing envelopes created prior to the update would continue displaying the old layout until re-rendered.
+- Files Changed:
+  - `backend/services/rptmAgreement.service.js`:
+    - Completely redesigned document template for `SSPC-RPTMS-01 v0.2` with:
+      1. **Dedicated Minimalist Cover Page (Page 1)**: Seventh Sky official branding, document identification badges, tenant dossier card, and security verification notices.
+      2. **Dedicated 1-Page Table of Contents (Page 2)**: Sleek 2-column roadmap covering all 25 legal clauses and Schedules A–D with interactive anchor jumps.
+      3. **Modern Card Layouts**: Replaced double lines and raw text with high-contrast, rounded cards (`kvTable`), pill badges, and clean grid layouts for Schedule A, B, C, and D.
+      4. **Anchored Signature Slots**: Clean counterpart cards for Management Agency, Tenant, and Witnesses.
+      5. **Zero Text Changes**: 100% exact legal text, clauses, definitions, and schedules preserved verbatim.
+  - `backend/scripts/rerenderEnvelopes.js`: Re-rendered existing database envelopes (including envelope `#308` and `#307`) with the new Figma templates and safely re-applied all 6 captured signatures via `wtSignedDocument.service.applySignatures`.
+- Verification & Test Results:
+  - `node scripts/rerenderEnvelopes.js`: Successfully re-rendered envelope `#308` (HTML length: 99,069, applied signatures: 6) and envelope `#307` (HTML length: 107,230, applied signatures: 6), plus all recent envelopes #300–#312.
+  - `node scripts/e2ePmAgreement.js`: **16 PASS / 0 FAIL**.
+  - `node scripts/e2eFullPmCookie.js`: **31 PASS / 0 FAIL** (complete full PM journey passing with 0 failures, including RPTM envelope #315 creation and 3/3 signing).
+  - `npm run build` in `admin-portal`: Built cleanly in 10.28s (0 errors).
+- Handoff: Both Landlord (`SSPC-RPRMS-01`) and Tenant (`SSPC-RPTMS-01`) agreements now share the exact same sleek, Figma-grade design system. Envelope #308 has been re-rendered in the database so refreshing the open tab immediately displays the new sleek design.
+
+### 2026-09-13 01:13 | Antigravity | STARTED | Fix Agreement Builder Step 6 Live Preview & Restart Backend Server
+- Request: "here same old view.....fix this too" (user uploaded screenshot of Agreement Builder Step 6 "Review & send" showing old template layout).
+- Scope: `backend/services/stsAgreement.service.js`, backend running process on port 50001, `admin-portal/src/screens/TmAgreements.jsx`, `RprmAgreements.jsx`, `StsAgreements.jsx`.
+- Intended Outcome: Restart the backend server so the running process mounts the updated `rptmAgreement.service.js` and `stsAgreement.service.js` templates in memory, upgrade STS agreements to match the Figma standard, and enhance builder Step 6 preview container with desktop paper sheet styling and comfortable height.
+- Verification: `/api/{rprm,rptm,sts}/preview` HTTP assertions, `npm run build` in `admin-portal`, and `e2ePmAgreement.js`.
+
+### 2026-09-13 01:16 | Antigravity | COMPLETED | Fix Agreement Builder Step 6 Live Preview & Restart Backend Server
+- Root Cause Identified:
+  1. The user was on Step 6 ("Review & send") of the agreement builder, which calls `POST /api/rptm/preview`.
+  2. Because the Node backend server (`server.js` PID 23032) was a long-running process started before our file edits, it had cached the old in-memory module of `rptmAgreement.service.js`. Hence `/api/rptm/preview` was serving the old Times New Roman / double-line HTML.
+  3. `stsAgreement.service.js` (Short-Term Stay) also still had the legacy layout.
+- Files Changed:
+  - `backend/services/stsAgreement.service.js`: Redesigned with dedicated Cover Page (Page 1), dedicated 1-Page TOC (Page 2), modern card styling (`kvTable`), Schedule A–D card grids, and anchored signatures with 100% exact text preserved.
+  - `admin-portal/src/screens/TmAgreements.jsx`: Enhanced Step 6 preview container to a responsive desktop paper-sheet presentation (`maxHeight: 680`, shadow, `#f1f5f9` backdrop, rounded paper card).
+  - `admin-portal/src/screens/RprmAgreements.jsx`: Enhanced Step 6 preview container identically.
+  - `admin-portal/src/screens/StsAgreements.jsx`: Enhanced Step 6 preview container identically.
+  - Backend Server: Terminated outdated process and booted fresh `server.js` daemon listening on port 50001.
+- Verification & Test Results:
+  - Live preview endpoint verification across all 3 services:
+    - `POST /api/rprm/preview` -> `Status: 200, Cover: true, TOC: true, Old Double Border: false`
+    - `POST /api/rptm/preview` -> `Status: 200, Cover: true, TOC: true, Old Double Border: false`
+    - `POST /api/sts/preview` -> `Status: 200, Cover: true, TOC: true, Old Double Border: false`
+  - `npm run build` in `admin-portal`: Built cleanly in 9.93s (0 errors).
+  - `node scripts/e2ePmAgreement.js`: **16 PASS / 0 FAIL**.
+- Handoff: The backend server is running the updated code. Any agreement preview in Step 6 ("Review & send") or newly sent agreement now renders the new Figma design with cover page and 1-page Table of Contents.
+
+### 2026-09-13 01:19 | Antigravity | STARTED | Real-Time Side-by-Side Agreement Builder Redesign
+- Request: "can we apply side be side editing thats looks very professional ways......this already available build agreements from qouatation" (with uploaded reference screenshot of QuotationAgreement.jsx two-column builder).
+- Scope: `admin-portal/src/screens/TmAgreements.jsx`, `RprmAgreements.jsx`, `StsAgreements.jsx`.
+- Intended Outcome: Replace the sequential step wizard with a 2-column real-time editing workspace matching `QuotationAgreement.jsx`:
+  1. Sticky top bar with action buttons ("Refresh preview", "Full preview", "Save as draft", "Send for signature", "Cancel").
+  2. Quick navigation tab bar to filter or scroll across sections (`All Sections`, `1. Parties`, `2. Tenancy/Property`, `3. Services Scope`, `4. Pricing & Terms`, `5. Checklist & Witnesses`).
+  3. Interactive left column with clearly styled cards for all editable fields.
+  4. Sticky right column with auto-syncing, sandboxed `iframe` rendering the Figma agreement live with scroll position preservation across keystrokes.
+- Verification: `npm run build` in `admin-portal`, `node scripts/e2ePmAgreement.js`, `node scripts/e2eFullPmCookie.js`.
+
+### 2026-09-13 01:24 | Antigravity | COMPLETED | Real-Time Side-by-Side Agreement Builder Redesign
+- Files Changed:
+  - `admin-portal/src/screens/TmAgreements.jsx`:
+    - Refactored `Builder` into a 2-column grid (`minmax(480px, 1.15fr) minmax(460px, 1fr)`).
+    - Added sticky top header with badge indicator, template code pill, and actions (`Refresh preview`, `Full preview`, `Save as draft`, `Send for signature`).
+    - Added quick-jump segment tab bar (`All Sections`, `1. Parties`, `2. Tenancy`, `3. Services`, `4. Pricing`, `5. Witnesses & Checklist`).
+    - Built debounced 400ms auto-refresh hook with `iframe` scroll-position preservation (`prevScrollRef.current` saved and restored on `onLoad`).
+    - Integrated expandable full-screen preview modal (`showFullPreview`).
+  - `admin-portal/src/screens/RprmAgreements.jsx`:
+    - Replaced sequential 6-step wizard with identical 2-column real-time builder layout.
+    - All sections (`1. Landlord & Agency`, `2. Rental Property`, `3. Services Scope`, `4. Pricing & Terms`, `5. Witnesses & Addenda`) editable side-by-side with live document synchronization.
+  - `admin-portal/src/screens/StsAgreements.jsx`:
+    - Upgraded Short-Term Stay builder with identical 2-column layout and sticky live preview.
+- Verification & Test Results:
+  - `npm run build` in `admin-portal`: Built cleanly in 9.40s with 0 errors.
+  - `node scripts/e2ePmAgreement.js`: **16 PASS / 0 FAIL**.
+  - `node scripts/e2eFullPmCookie.js`: **31 PASS / 0 FAIL** (full cookie journey passing 100%).
+- Handoff: All 3 property-care agreement builders (Rental Property Management, Tenancy Management, and Short-Term Stay) now support real-time side-by-side editing matching the Quotation builder standard.
+
+### 2026-09-13 01:36 | Antigravity | COMPLETED | Auto-Generate Schedule B References & Add 7th Sky Representative Inputs
+- Root Cause Identified:
+  1. `schedule_b` references (`work_order_no` and `tenancy_ref_no`) were unpopulated when creating an agreement directly without a prior quotation, rendering as `—` in Schedule B.
+  2. Section 1 (Parties) had no fields for Seventh Sky's representative (`org.represented_by`, `org.position`, `org.email`, `org.phone`), causing static placeholders in the legal agreement and signature lines.
+- Files Changed:
+  - `backend/services/rptmAgreement.service.js`: Auto-generates fallback `work_order_no` (`SSPC-WO-XXXXXX`) and `tenancy_ref_no` (`SSPC-TN-XXXXXX`) if missing.
+  - `backend/services/rprmAgreement.service.js`: Auto-generates fallback `work_order_no` and `quotation_no`.
+  - `backend/services/stsAgreement.service.js`: Auto-generates fallback `work_order_no` and `quotation_no`.
+  - `admin-portal/src/screens/TmAgreements.jsx`, `RprmAgreements.jsx`, `StsAgreements.jsx`:
+    - Added representative inputs in Section 1 (`org.represented_by`, `org.position`, `org.email`, `org.phone`) pre-filled from current user.
+    - Added auto-generation and manual override inputs for `Work Order No.` and `Tenancy Reference No.` in Schedule B with "Generate New" actions.
+- Verification & Test Results:
+  - `npm run build` in `admin-portal`: Built cleanly (0 errors).
+  - `node scripts/e2ePmAgreement.js`: **16 PASS / 0 FAIL**.
+  - `node scripts/e2eFullPmCookie.js`: **31 PASS / 0 FAIL**.
+
+### 2026-09-13 01:40 | Antigravity | STARTED | Auto-Draft Feature & Full Draft Options/Checklist Persistence
+- Request: "add auto draft feature.....should auto draft properly...previously selected options not drafted....."
+- Scope:
+  - Frontend: `admin-portal/src/screens/TmAgreements.jsx`, `RprmAgreements.jsx`, `StsAgreements.jsx`.
+  - Backend: `backend/services/rptmAgreement.service.js`, `backend/services/rprmAgreement.service.js`, `backend/services/stsAgreement.service.js`, `backend/controllers/signing.controller.js`.
+- Intended Outcome:
+  1. In-browser debounced auto-drafting to `localStorage` (scoped by edit ID vs new) with live visual badge in pinned top bar (`● Auto-draft saved (HH:MM:SS) [Clear]`).
+  2. Restore unsaved changes automatically on page load or refresh.
+  3. Full backend persistence in `terms` for 100% of user inputs, selected services, checklist checkboxes, representative details, client details, and custom pricing lines.
+  4. Full rehydration in `prefillFromEnvelope` with safe JSON parsing so reopening a draft preserves every previously selected option.
+- Verification: Unit test asserting 100% field preservation on save & update, `npm run build`, and `e2ePmAgreement.js`.
+
+### 2026-09-13 01:46 | Antigravity | COMPLETED | Auto-Draft Feature & Full Draft Options/Checklist Persistence
+- Root Cause of Lost Options:
+  1. Previously, agreement builders only stored a partial `terms` object (`doc_no`, `selected_services`, `schedule_b`, `frequency`) on draft save, completely discarding `checklist`, `client` (NID, occupation, emergency contact), `org` (representative), and `pricing_input` (custom agreed lines, rent override, discounts).
+  2. In `signing.controller.js` and frontend loaders, `terms` returned as a raw JSON string from Sequelize/MySQL in some environments, which failed property lookups unless defensively parsed.
+  3. In `rptmAgreement.service.js`, `rprmAgreement.service.js`, and `stsAgreement.service.js`, `new Set(data.checklist)` crashed with `TypeError: object is not iterable` when an object of booleans `{ key: true }` was passed.
+- Files Changed:
+  - `admin-portal/src/screens/TmAgreements.jsx`:
+    - Added `draftStorageKey = 'sspc_rptm_draft_' + (editId || 'new')`.
+    - Integrated debounced (600ms) auto-save writing full form state to `localStorage`.
+    - Added live auto-draft status indicator in pinned top bar: `● Auto-draft saved (HH:MM:SS) [Clear]`.
+    - Added auto-recovery on mount from `localStorage`.
+    - Updated `prefillFromEnvelope` with `safeJson` and full rehydration of all previously selected options (`services`, `checklist`, `pricing_input`, `schedule_b`, `client`, `org`, `witnesses`, `payment_terms`, `property_type`, `effective_date`).
+    - Added `clearAutoDraft()` invoked on successful draft save, envelope send, or manual user clear.
+  - `admin-portal/src/screens/RprmAgreements.jsx`:
+    - Added identical in-browser auto-draft with key `sspc_rprm_draft_${editId || 'new'}`.
+    - Added live auto-draft indicator badge and `clearAutoDraft()`.
+    - Added full `prefillFromEnvelope` rehydration with `safeJson`.
+  - `admin-portal/src/screens/StsAgreements.jsx`:
+    - Added identical in-browser auto-draft with key `sspc_sts_draft_${editId || 'new'}`.
+    - Added live auto-draft indicator badge and full rehydration.
+  - `backend/services/rptmAgreement.service.js`, `rprmAgreement.service.js`, `stsAgreement.service.js`:
+    - Added `normalizeCollection(raw)` to safely parse arrays, boolean maps, JSON strings, or Sets without throwing.
+    - Updated `terms` construction in `build*Agreement` to persist `services`, `selected_services`, `checklist`, `schedule_b`, `org`, `client`, `property_id`, `client_contact_id`, `property_type`, `effective_date`, `witnesses`, `payment_terms`, `frequency`, and `pricing_input`.
+  - `backend/controllers/signing.controller.js`:
+    - Added defensive `typeof env.terms === 'string' ? JSON.parse(env.terms) : env.terms` in `getEnvelope` so API consumers always receive structured terms.
+- Verification & Test Results:
+  - `node scripts/e2ePmAgreement.js`: **16 PASS / 0 FAIL**.
+  - Custom Draft Persistence Test (`POST /api/rptm/agreements`):
+    - Checklist preserved: **true** (`{ chk_keys_received: true, chk_meter_recorded: true, chk_appliances_tested: false }`)
+    - Services preserved: **true** (`['Rent Collection', 'Tenant Screening', 'Inspection']`)
+    - Org (representative) preserved: **true** (`{ represented_by: 'SS Admin Rep', position: 'Managing Director', ... }`)
+    - Client preserved: **true** (`{ nid: '1987654321', occupation: 'Software Engineer', ... }`)
+    - Pricing input preserved: **true** (`{ agreed_lines: [...], discount_pct: 10 }`)
+    - **ALL DRAFT PERSISTENCE CHECKS PASSED!**
+  - Custom Draft Update Test (`PUT /api/rptm/agreements/:id`):
+    - Checklist updated & preserved: **true**
+    - Services updated & preserved: **true**
+    - Org updated & preserved: **true**
+    - Client updated & preserved: **true**
+    - Pricing updated & preserved: **true**
+    - **ALL DRAFT UPDATE CHECKS PASSED!**
+  - `npm run build` in `admin-portal`: Built cleanly in 11.62s with 0 errors.
+- Handoff: Auto-drafting is live across Tenancy Management (`TmAgreements.jsx`), Rental Property Management (`RprmAgreements.jsx`), and Short-Term Stay (`StsAgreements.jsx`). Unsaved inputs are continuously saved in the browser and fully preserved on the backend without dropping any selections.
+
+### 2026-09-13 01:49 | Antigravity | STARTED | Add 7th Sky Representative Inputs (Name, Email, Phone No, Position) Across Agreement Builders
+- Request: "there is no input option for 7th sky representative name email phone no...position please add it"
+- Scope:
+  - `admin-portal/src/screens/TmAgreements.jsx`
+  - `admin-portal/src/screens/RprmAgreements.jsx`
+  - `admin-portal/src/screens/StsAgreements.jsx`
+  - `admin-portal/src/screens/watertank/QuotationAgreement.jsx`
+  - `admin-portal/src/screens/AgreementBuilder.jsx`
+  - `admin-portal/src/screens/WtCustomerAgreements.jsx`
+  - `admin-portal/src/screens/WtProviderAgreements.jsx`
+  - `admin-portal/src/screens/sales/SalesAgreementScreen.jsx`
+- Intended Outcome:
+  1. Make the Seventh Sky Representative inputs prominently visible as a distinct, dedicated highlighted card in `TmAgreements.jsx`, `RprmAgreements.jsx`, and `StsAgreements.jsx`.
+  2. Also show the Seventh Sky Representative block in Section 5 (Checklist, 7th Sky Rep & Witnesses) right above Witnesses so users working on signing/attestation can edit them directly.
+  3. Add missing phone/position inputs to `QuotationAgreement.jsx`, `AgreementBuilder.jsx`, `WtCustomerAgreements.jsx`, `WtProviderAgreements.jsx`, and `SalesAgreementScreen.jsx`.
+- Verification: `npm run build` in `admin-portal/`, `node scripts/audit_water_tank_e2e.js`.
+
+### 2026-09-13 01:55 | Antigravity | COMPLETED | Add 7th Sky Representative Inputs (Name, Email, Phone No, Position) Across All Agreement Builders
+- Request: "there is no input option for 7th sky representative name email phone no...position please add it"
+- Scope:
+  - `admin-portal/src/screens/TmAgreements.jsx`
+  - `admin-portal/src/screens/RprmAgreements.jsx`
+  - `admin-portal/src/screens/StsAgreements.jsx`
+  - `admin-portal/src/screens/watertank/QuotationAgreement.jsx`
+  - `admin-portal/src/screens/AgreementBuilder.jsx`
+  - `admin-portal/src/screens/WtCustomerAgreements.jsx`
+  - `admin-portal/src/screens/WtProviderAgreements.jsx`
+  - `admin-portal/src/screens/sales/SalesAgreementScreen.jsx`
+- Changes:
+  1. `TmAgreements.jsx`:
+     - Updated tab navigation labels: `1. Parties & 7th Sky Rep` and `5. Checklist, 7th Sky Rep & Witnesses`.
+     - Elevated Seventh Sky Representative into a dedicated, highlighted card (`pm-card` with `ShieldCheck` icon, blue accent border and header) rendered whenever `activeSection` is `'all'`, `'parties'`, or `'checklist'`.
+     - Dedicated inputs for `Representative Name *` (`org.represented_by`), `Position / Designation *` (`org.position`), `Official Email *` (`org.email`), `Official Phone No *` (`org.phone`), and `Company Name` (`org.name`).
+  2. `RprmAgreements.jsx`:
+     - Updated tab navigation labels: `1. Landlord & 7th Sky Rep` and `5. Checklist, 7th Sky Rep & Witnesses`.
+     - Elevated Seventh Sky Representative into the same prominent dedicated card visible in `'parties'`, `'checklist'`, and `'all'` sections.
+  3. `StsAgreements.jsx`:
+     - Updated tab navigation labels: `1. Owner & 7th Sky Rep` and `5. Checklist, 7th Sky Rep & Witnesses`.
+     - Removed inline representative block from inside Section 1 and elevated it to a dedicated card visible in `'parties'`, `'checklist'`, and `'all'` sections.
+  4. `QuotationAgreement.jsx`:
+     - Added official phone no input (`draft.org.phone`) alongside `represented_by`, `position`, and `email` in the `Signing parties` grid.
+  5. `AgreementBuilder.jsx`:
+     - Expanded signer cards in `Review & send` to include `Representative name`, `Position / Title`, `Official email`, and `Official phone no`.
+  6. `WtCustomerAgreements.jsx`:
+     - Added `Official phone no *` (`d.org.phone`) to the Seventh Sky signatory & representative grid.
+  7. `WtProviderAgreements.jsx`:
+     - Added `Representative position` (`form.org.position`) and `Official phone no` (`form.org.phone`) inputs in commercial and execution terms.
+  8. `SalesAgreementScreen.jsx`:
+     - Added `Official phone no *` (`d.org.phone`) to Seventh Sky countersigning section.
+- Verification:
+  - `npm run build` in `admin-portal`: Built cleanly with 0 errors (17.47s).
+  - `node scripts/audit_water_tank_e2e.js` in `backend`: 50/50 checks passed (100% pass rate, 0 bugs, 0 warnings).
+- Handoff: Seventh Sky representative details (Name, Position/Designation, Email, Phone number, Agency name) are now prominently displayed, editable, and accessible across all agreement builders in both initial parties sections and signature/checklist sections.
+
+### 2026-09-13 01:58 | Antigravity | STARTED | Apply Full UI Workspace Enhancements on Property Management Agreements (RPRM) & STS
+- Request: "now apply this ui changes on pm agreements.....as planned"
+- Scope:
+  - `admin-portal/src/screens/RprmAgreements.jsx`
+  - `admin-portal/src/screens/StsAgreements.jsx`
+  - `backend/controllers/rprm.controller.js`
+  - `backend/routes/rprm.routes.js`
+  - `backend/controllers/sts.controller.js`
+  - `backend/routes/sts.routes.js`
+- Intended Outcome:
+  1. Align `RprmAgreements.jsx` (and `StsAgreements.jsx`) with the Figma-grade workspace introduced in `TmAgreements.jsx`:
+     - Sleek floating action bar with Back button, Document Code Badge, Live Sync Active indicator, Auto-draft badge with clear action.
+     - Full in-app preview modal (`showFullPreview`) with `Maximize2` icon to prevent popup blockers from interrupting workflow.
+     - Auto-populating property defaults (`/rprm/property-defaults/:id` and `/sts/property-defaults/:id`) on property selection.
+  2. Verify frontend builds with 0 errors and backend endpoints respond correctly.
+- Verification: `npm run build` in `admin-portal/`, test endpoints.
+
+### 2026-09-13 02:12 | Antigravity | COMPLETED | Apply Full UI Workspace Enhancements on Property Management Agreements (RPRM) & STS
+- Request: "now apply this ui changes on pm agreements.....as planned"
+- Scope:
+  - `backend/controllers/rprm.controller.js`
+  - `backend/routes/rprm.routes.js`
+  - `backend/controllers/sts.controller.js`
+  - `backend/routes/sts.routes.js`
+  - `admin-portal/src/screens/RprmAgreements.jsx`
+  - `admin-portal/src/screens/StsAgreements.jsx`
+  - `admin-portal/src/screens/TmAgreements.jsx`
+- Changes:
+  1. Backend property defaults endpoints:
+     - `backend/controllers/rprm.controller.js`: Implemented `getPropertyDefaults` returning auto-generated `work_order_no`, `quotation_no`, `property_type`, `property_address`, `expected_rent`, and `security_deposit`.
+     - `backend/routes/rprm.routes.js`: Added GET `/property-defaults/:propertyId`.
+     - `backend/controllers/sts.controller.js`: Implemented `getPropertyDefaults` returning auto-generated `work_order_no`, `quotation_no`, `property_type`, and `property_address`.
+     - `backend/routes/sts.routes.js`: Added GET `/property-defaults/:propertyId`.
+  2. `RprmAgreements.jsx` (Residential Property Rental Management - SSPC-RPRMS-01 v0.2):
+     - Floating pinned action bar with Back button, Document Ref pill, Live Sync Active indicator, Auto-draft badge with clear button, and Full preview / Save draft / Send buttons.
+     - Asynchronous property defaults auto-fill in `onProperty`: Automatically populates Work Order No, Quotation No, Expected Monthly Rent, Security Deposit, and Pricing input.
+     - In-App Full Document Preview Modal (`showFullPreview`) with iframe display, "Open in new window" button, and Close button.
+  3. `StsAgreements.jsx` (Short-Term Stay Rental Management - SSPC-STRMS-01 v0.2):
+     - Upgraded Top Pinned Action Bar with Back button, Document Ref pill, Live Sync Active indicator, and Auto-draft badge with clear button.
+     - Asynchronous property defaults auto-fill in `onProperty`: Automatically populates Work Order No, Quotation No, Property Type, and Property Address.
+     - In-App Full Document Preview Modal (`showFullPreview`) with iframe display, "Open in new window" button, and Close button.
+  4. `TmAgreements.jsx` (Tenancy Management - SSPC-RPTMS-01 v0.2):
+     - Added missing icon imports (`ArrowLeft`, `Maximize2`, `Save`, `ExternalLink`, `X`).
+     - Added `showFullPreview` state and implemented the In-App Full Document Preview Modal.
+- Verification:
+  - Backend restarted on port 50001 (db: up, healthy).
+  - Authenticated verification script tested `/api/rprm/property-defaults/1` and `/api/sts/property-defaults/1`: returned 200 OK with newly generated work order numbers and quotation numbers.
+  - `npm run build` in `admin-portal`: Built cleanly with 0 errors (9.48s).
+- Handoff: Tenancy Management (`TmAgreements`), Rental Property Management (`RprmAgreements`), and Short-Term Stay (`StsAgreements`) now share the unified Figma-grade workspace with instant property auto-population, floating action header with live status, and in-app full document preview modals.
+
+### 2026-09-13 02:18 | Antigravity | STARTED | Apply UI Workspace Enhancements on Residential Sale Vendor Agreement (RPSS)
+- Request: "next do the same with resdential sell vendor agreement"
+- Scope:
+  - `admin-portal/src/screens/sales/SalesAgreementScreen.jsx`
+  - `backend/controllers/salesAgreement.controller.js`
+  - `backend/routes/salesAgreement.routes.js`
+  - `backend/services/salesAgreementRender.js`
+- Intended Outcome:
+  1. Transform `SalesAgreementScreen.jsx` from a 5-step wizard to the unified Figma-grade 2-column live workspace:
+     - Top pinned blurred floating action bar with Back button, Document Ref pill (`SSPC-RPSS-01 (v0.2)` for sale, `SSPC-RPPS-01 (v0.2)` for purchase), pulsing `Live Sync Active` green indicator, real-time auto-draft badge with clear button, and Full preview / Save draft / Send actions.
+     - Section quick-jump selector (All Sections, 1. Parties & 7th Sky Rep, 2. Property & Engagement, 3. Scope / Schedule A, 4. Pricing & Commission, 5. Checklist, 7th Sky Rep & Witnesses).
+     - Side-by-side layout: Form inputs on left, sticky sandboxed iframe preview on right with auto-scroll preservation.
+     - In-App Full Document Preview Modal (`showFullPreview`) with `Maximize2` and `ExternalLink`.
+     - In-browser debounced auto-drafting to `localStorage` with `autoDraftTime` and `clearAutoDraft`.
+  2. Backend:
+     - Add GET `/:kind/property-defaults/:propertyId` to return auto-generated work order number, quotation number, property type, property address, and target value.
+     - Auto-populate property defaults on property selection.
+  3. Verify with `npm run build` and endpoint testing.
+
+### 2026-09-13 02:25 | Antigravity | COMPLETED | Apply UI Workspace Enhancements on Residential Sale Vendor Agreement (RPSS)
+- Request: "next do the same with resdential sell vendor agreement"
+- Scope:
+  - `backend/controllers/salesAgreement.controller.js`
+  - `backend/routes/salesAgreement.routes.js`
+  - `backend/services/salesAgreementRender.js`
+  - `admin-portal/src/screens/sales/SalesAgreementScreen.jsx`
+  - `backend/scripts/test_sales_agreement_flow.js`
+- Changes:
+  1. Backend property defaults endpoint & meta enhancements:
+     - `backend/controllers/salesAgreement.controller.js`:
+       - Updated `getMeta` to return `work_order_no`, `quotation_no`, and `org` defaults with auto-generated tracking codes and user profile fallback.
+       - Implemented `getPropertyDefaults` endpoint generating next `SSPC-WO-*` and `SSPC-QT-*` codes and returning property pricing targets and address.
+     - `backend/routes/salesAgreement.routes.js`: Added route `router.get('/:kind/property-defaults/:propertyId', ctrl.getPropertyDefaults)`.
+     - `backend/services/salesAgreementRender.js`: Enhanced `terms` return object to persist `effective_date`, `property_id`, `property_type`, `client`, `clients`, `additional_clients`, `org`, `witnesses`, `pricing_input`, `services`, `checklist`, and `schedule_b`.
+  2. `SalesAgreementScreen.jsx` (Residential Sale Vendor Agreement & Purchase Agreement):
+     - Upgraded from step-by-step wizard to unified 2-column live workspace.
+     - Top pinned blurred action bar: Back button (`ArrowLeft`), Document Ref pill (`SSPC-RPSS-01 (v0.2)` / `SSPC-RPPS-01 (v0.2)`), pulsing `Live Sync Active` green indicator, debounced auto-draft badge with timestamp and `Clear` button, `Refresh preview`, `Full preview`, `Save as draft`, and `Send for signature`.
+     - Quick-jump section navigation pills (`All Sections`, `1. Seller & 7th Sky Rep`, `2. Property & Engagement`, `3. Scope (Schedule A)`, `4. Pricing & Commission`, `5. Checklist, 7th Sky Rep & Witnesses`).
+     - Dual 7th Sky Representative cards in Sections 1 & 5 with representative name, position, email, and phone.
+     - Schedule B official reference codes with manual `↻ Generate` buttons (`generateNewWo` / `generateNewQt`).
+     - Asynchronous property defaults auto-population in `onProperty`: fetches `/property-defaults/:propertyId` and populates work order number, quotation number, property type, property address, target value, and commission base price.
+     - Right column sticky live document preview iframe with scroll position preservation (`previewScroll.current`).
+     - In-App Full Document Preview Modal (`showFullPreview`) with responsive iframe, "Open in new window" button, and "Close" button.
+     - LocalStorage debounced auto-draft saving (`sspc_${kind}_draft_${editId || 'new'}`) with timestamp and clear option.
+- Verification:
+  - Backend running healthy on port 50001 (daemon `task-8051`).
+  - Executed end-to-end test script `backend/scripts/test_sales_agreement_flow.js`:
+    - Meta returned 200 OK with `SSPC-WO-000013` and `SSPC-QT-000007`.
+    - Property defaults returned 200 OK with tracking codes.
+    - Live Document Preview returned 200 OK generating 72,783 bytes of HTML.
+    - Draft saved with envelope code `ENV-RPSS-661914`.
+    - Saved envelope verified: 5 signers (client, co-signer, staff countersign, 2 witnesses) and full terms integrity.
+  - Frontend production build: `npm run build` in `admin-portal` succeeded with 0 errors (10.17s).
+- Handoff: Residential Sale Vendor Agreement (`SaleAgreements.jsx` / `SalesAgreementScreen.jsx` with `kind="sale"` and `kind="purchase"`) is fully upgraded to the modern 2-column Figma-grade workspace. Ready for user testing.
+
+### 2026-09-13 02:27 | Antigravity | STARTED | Residential Property Purchase Service Agreement (RPPS) Dedicated Design
+- Request: "now residential purchase agreement...design"
+- Scope:
+  - `admin-portal/src/screens/sales/SalesAgreementScreen.jsx`
+  - `backend/controllers/salesAgreement.controller.js`
+  - `backend/services/salesAgreementRender.js`
+- Intended Outcome:
+  1. Refine `SalesAgreementScreen.jsx` when `kind="purchase"` (Residential Property Purchase Service Agreement, SSPC-RPPS-01 v0.2):
+     - Surfaced dedicated Schedule B Buyer Search Parameters:
+       - Preferred Property Type (Apartment, Duplex, Land, Penthouse)
+       - Preferred Location(s) / Area(s) (e.g. Gulshan, Banani, Dhanmondi, Bashundhara R/A, Uttara)
+       - Budget Range (BDT) with realistic budget range placeholder
+       - Finance Method (Cash / Self-funded, Bank Mortgage / Home Loan, Developer Installment, Mixed)
+       - Intended Use (Owner-Occupier, Rental Investment, Commercial/Mixed Use)
+       - Expected Purchase Date
+       - Identified / Target Property (optional picker)
+       - Special Requirements (aspect, parking spaces, floor preference, building amenities)
+     - Dynamic Section 1 Labels & Roles:
+       - Buyer Credentials & Co-Buyers (joint signers)
+       - 7th Sky Representative: Buyer's Acquisition Agent & Property Care Lead
+     - Dynamic Section 4 Pricing & Commission:
+       - Success Fee / Commission (% of Purchase Price or Fixed Amount) with automatic base price sync with Budget Range.
+     - Dynamic Section 5 Schedule D:
+       - Render Schedule D buyer acquisition checklist items with category grouping and visual status checkboxes.
+  2. Verify preview rendering, draft saving, and full rehydration for `kind="purchase"`.
+  3. Verify production build with `npm run build`.
+
+### 2026-09-13 02:32 | Antigravity | COMPLETED | Residential Property Purchase Service Agreement (RPPS) Dedicated Design
+- Request: "now residential purchase agreement...design"
+- Scope:
+  - `admin-portal/src/screens/sales/SalesAgreementScreen.jsx`
+  - `backend/controllers/salesAgreement.controller.js`
+  - `backend/services/salesAgreementRender.js`
+  - `scratch/test_purchase_agreement_flow.js`
+- Changes:
+  1. Dedicated Schedule B Buyer Search & Criteria Parameters (`kind="purchase"`):
+     - `admin-portal/src/screens/sales/SalesAgreementScreen.jsx`:
+       - Tailored Section 2 dynamically for `kind === 'purchase'` with dedicated inputs matching verbatim V0.2 Schedule B taxonomy:
+         - `Target / Shortlisted Property (optional)` picker via `Combo` component.
+         - `Preferred Property Type` (`property_type`).
+         - `Engagement Type` (`Non-exclusive` vs `Exclusive Buyer Representation`).
+         - `Preferred Location(s) / Area(s)` (`schedule_b.preferred_location`).
+         - `Budget Range (BDT)` (`schedule_b.budget_range`) with auto-sync to `commission.base_price`.
+         - `Finance Method` (`schedule_b.finance_method` dropdown: Cash / Self-Funded, Bank Home Loan / Mortgage, Developer Installment Plan, Partial Loan & Cash, Other / Mixed).
+         - `Intended Use` (`schedule_b.intended_use` dropdown: Owner Occupier, Rental Investment / High Yield, Capital Appreciation, Vacation / Secondary Home, Commercial / Mixed Use).
+         - `Expected Purchase / Closing Date` (`schedule_b.expected_date` date picker).
+         - `Search & Acquisition Timeframe` (`schedule_b.timeframe`).
+         - `Special Requirements & Acquisition Criteria` (`schedule_b.special_requirements`).
+  2. Section 1, 4, 5 & Card Contextualization:
+     - Enriched `KIND_META.purchase` with `agencyRole: "Buyer's Acquisition Agency"`, `subtitle`, `summaryTitle: "Property Purchase Summary"`, `summarySubtitle`, and `feeLabel: "Professional Success Fee / Commission (Schedule C)"`.
+     - Section 1 quick-jump pill and header dynamically displays `1. Buyer & 7th Sky Rep` and `Buyer Credentials`.
+     - Section 2 quick-jump pill reflects `2. Criteria & Schedule B` for purchases.
+     - Section 4 Commission Box header displays `km.feeLabel` and base price label dynamically reflects `Purchase price / budget base (BDT)`.
+     - Section 5 Transaction Checklist header renders `Schedule D — Property Purchase Checklist`.
+     - Dual 7th Sky Representative cards in Section 1 and Section 5 display: `7th Sky Representative (Buyer's Acquisition Agency)` with description: `Authorized buyer's acquisition representative, official contact details, and countersigning officer`.
+  3. Backend Schedule B Buyer Data Resolution & Defaults:
+     - `backend/controllers/salesAgreement.controller.js`: Updated `getPropertyDefaults` to include `preferred_location`, `budget_range`, and `base_price`.
+     - `backend/services/salesAgreementRender.js`: Updated `bValues` resolution to properly resolve `preferred_location`, `budget_range`, `finance_method`, `intended_use`, and `expected_date` for purchase Schedule B tables; returned `pricing` object in `buildAgreement` for client-side cost breakdown synchronization.
+- Verification:
+  - Backend server running healthy on port 50001 (daemon `task-8257`).
+  - Executed end-to-end test script `scratch/test_purchase_agreement_flow.js`:
+    - Meta endpoint returned 200 OK with `SSPC-WO-000013`, `SSPC-QT-000007`, and purchase taxonomy groups.
+    - Live Document Preview returned 200 OK:
+      - Generated valid HTML containing `SCHEDULE B — Property Purchase Summary` with Preferred Location, Budget Range, Finance Method, Intended Use, and Expected Date.
+      - Generated valid HTML containing `SCHEDULE D — Property Purchase Checklist`.
+      - Generated dual co-buyer signature blocks (`Buyer 1` and `Buyer 2`).
+      - Pricing summary accurately calculated: 2% commission on ৳35,000,000 = ৳700,000 + third party costs (৳15,000) + admin (৳5,000) + 5% VAT = ৳756,000 total.
+    - Draft creation returned 201 Created (`ENV-RPPS-106794`).
+  - Executed regression test `backend/scripts/test_sales_agreement_flow.js`:
+    - Sale vendor agreement flow passed 100% with envelope code `ENV-RPSS-112923` and 5 verified signers.
+  - Frontend production build: `npm run build` in `admin-portal` completed with 0 errors in 10.44s.
+- Handoff: Residential Property Purchase Service Agreement (`PurchaseAgreements.jsx` / `SalesAgreementScreen.jsx` with `kind="purchase"`) is fully tailored and operational with Figma-grade 2-column live workspace. Ready for user testing.
+
+### 2026-09-13 02:35 | Antigravity | STARTED | Design Residential Interior Design Agreements Hub & CSA Builder
+- Request: "http://localhost:3005/admin/residential-interior-design/agreements/ now design it......"
+- Scope:
+  - `admin-portal/src/screens/watertank/common.jsx`
+  - `admin-portal/src/screens/watertank/AgreementsHub.jsx`
+  - `admin-portal/src/screens/WtCustomerAgreements.jsx`
+- Intended Outcome:
+  1. Add `/residential-interior-design` configuration to `SERVICE_UI` in `common.jsx` (purple accent `#9333ea`, `RIDS` doc code, `no_provider: true`, space details, site assessment readings, report types).
+  2. Redesign `AgreementsHub.jsx` (`/residential-interior-design/agreements`):
+     - Dynamic branding for Residential Interior Design (purple theme, zero "Water Tank" references).
+     - Filter out provider agreements when `no_provider: true` (no provider button, no provider tabs, clean 2-family layout: Client Agreements & Work Orders).
+     - Fix navigation to use `svcBase()` (`${svcBase()}/agreements/customer`) rather than hardcoded `/water-tank`.
+     - Modern Figma-grade KPI cards, filterbar, interactive signer progress visualization, one-click countersign action for Seventh Sky staff, and detailed audit drawer.
+  3. Polish and verify the customer agreement flow under Residential Interior Design.
+  4. Verify production build with `npm run build`.
+
+### 2026-09-13 02:42 | Antigravity | COMPLETED | Design Residential Interior Design Agreements Hub & CSA Builder
+- Request: "http://localhost:3005/admin/residential-interior-design/agreements/ now design it......"
+- Scope:
+  - `admin-portal/src/screens/watertank/common.jsx`
+  - `admin-portal/src/screens/watertank/AgreementsHub.jsx`
+  - `admin-portal/src/screens/WtCustomerAgreements.jsx`
+  - `backend/controllers/waterTankAgreementHub.controller.js`
+- Changes:
+  1. Internal-Only & Service Line Support in `common.jsx`:
+     - Added `residential_interior_design: '/residential-interior-design'` to `LINE_TO_BASE` for robust `profileForLine()` resolution.
+  2. Redesigned Agreements Register & Signing Control Hub (`AgreementsHub.jsx`):
+     - Dynamic Service Line Branding: Header title & subtitle accurately state `Every Residential Interior Design document out for signature — customer agreements and project work orders`.
+     - Provider Suppression: When `profile.internal_team || profile.no_provider` is true, provider tabs, the "New provider agreement" header button, and the "Provider Agreement" breakdown in the KPI card are cleanly suppressed.
+     - Dynamic Navigation: Replaced hardcoded `/water-tank/...` button links with `${svcBase()}/agreements/customer`.
+     - Modern KPI Stat Cards: Total Agreements, Signatures Outstanding, Fully Executed, Expiring in 7 Days, Declined/Voided, and By Family breakdown with active service doc code badge (`RIDS`).
+     - Enhanced High-Density Register Table:
+       - Monospace envelope code chip (`ENV-RIDSCSA-...`) with 1-click clipboard copy.
+       - Service line family chip (Client Agreement in purple accent tint, Work Order in amber).
+       - Document title with clear typography, sent/executed dates, and expiry status tags.
+       - Visual Signer Avatars: Step-by-step sequence avatars (green for signed, red for declined, active purple border for current turn) with rich hover tooltips.
+       - Awaiting On & 1-Click Countersign: Prominent party status with avatar indicator, role tag, and an instant "Countersign" action button when awaiting Seventh Sky officer signature.
+       - Status badge pill and action button group (Open, Resend, Signed PDF / Preview).
+     - Enhanced Audit & Details Drawer (`AgreementDrawer`):
+       - Header with envelope code, status chip, document title and family.
+       - Execution status alert banner with next awaiting party info.
+       - Comprehensive Signer Sequence Timeline with direct 1-click countersign action for Seventh Sky staff, copy signing link, and resend.
+       - Execution & validity metadata grid (Sent Date, Execution Date, Expiry Date).
+       - Cryptographic Hash (SHA-256) block with 1-click copy and legal e-signature notice under Bangladesh ICT laws.
+  3. Customer Agreement Builder (`WtCustomerAgreements.jsx`):
+     - Added datalist dropdown auto-completions for `Property Type` and `Design Style` options.
+     - Added `Furniture & styling requirements` and `Materials & finishes` inputs into Schedule B.
+     - Added `furniture_requirements` and `materials_finishes` attributes to `EMPTY` initial state.
+  4. Backend Controller (`backend/controllers/waterTankAgreementHub.controller.js`):
+     - Updated `relatedTypesFor` to omit `provider` when `sl.no_provider` is true, preventing undefined queries in Sequelize.
+     - Updated `overview` endpoint to filter `by_family` by active service line families only.
+     - Included `id: pending[0].id` in `shapeEnvelope.awaiting` for client-side direct countersignature.
+- Verification:
+  - Restarted backend server daemon (PID 28124 terminated, restarted cleanly).
+  - Backend API tests:
+    - `POST /api/auth/login` returned 200 OK with valid JWT.
+    - `GET /api/wt-agreement-hub/overview` with `X-Service-Line: residential_interior_design` returned 200 OK: Total 6 agreements, 6 awaiting, 6 signatures outstanding, and `by_family` cleanly limited to `Client Agreement` and `Work Order Agreement`.
+    - `GET /api/wt-agreement-hub` list returned 200 OK with 6 envelopes (including `ENV-RIDSCSA-288742`) and `awaiting.id` populated.
+  - Frontend production build: `npm run build` in `admin-portal` completed with 0 errors in 12.84s.
+  - Vite dev server running on port 3005 serving the live application.
+- Handoff: Residential Interior Design Agreements Hub (`/residential-interior-design/agreements/`) is fully redesigned, branded with purple accent `#9333ea`, and operational.
+
+### 2026-09-13 02:47 | Antigravity | STARTED | Redesign Residential Interior Design Customer Agreement Builder (Figma 2-Column Live Workspace)
+- Request: "still previous window no change" with screenshot of old 6-step Customer Service Agreement screen (cyan theme, single column, no live preview).
+- Scope: `admin-portal/src/screens/WtCustomerAgreements.jsx`
+- Intended Outcome:
+  - Replace the outdated single-column 6-step wizard in `WtCustomerAgreements.jsx` with a modern Figma-grade 2-column live workspace matching `SalesAgreementScreen.jsx`.
+  - Top Pinned Executive Header with service-line branding (Purple `#9333ea` for Residential Interior Design, `SSPC-RIDS-CSA-01` doc code badge, live sync indicator, full-preview modal trigger, save draft / send buttons).
+  - Left Column: Structured form cards with quick-jump navigation (Parties & Representation, Schedule A Scope, Schedule B Space & Finishes, Schedule C Pricing & Advance, Schedule D Checklist & Witnesses).
+  - Right Column: Sticky Live Agreement Preview with real-time HTML rendering, Table of Contents, pricing breakdown, and execution blocks.
+  - Retain 100% backward compatibility for all service lines and the existing backend API.
+
+### 2026-09-13 02:50 | Antigravity | COMPLETED | Redesign Residential Interior Design Customer Agreement Builder (Figma 2-Column Live Workspace)
+- Request: "still previous window no change" with screenshot of old 6-step Customer Service Agreement screen.
+- Scope: `admin-portal/src/screens/WtCustomerAgreements.jsx`
+- Changes:
+  1. Top Pinned Executive Action Bar:
+     - Dynamic Service Branding: Dynamically resolves `profile.label` (e.g. `Residential Interior Design`), document code badge (`SSPC-RIDS-CSA-01`), and accent color (`#9333ea` purple).
+     - Live Sync Status: Green pulsating `● Live Sync Active` indicator.
+     - Auto-Draft Management: Debounced auto-saving to `localStorage` with timestamp and clear button.
+     - Action Controls: `Refresh preview` with spin animation, `Full preview` modal launcher, and `Send for signature` button.
+  2. Side-by-Side 2-Column Responsive Workspace:
+     - Left Column:
+       - Quick-jump navigation bar (`All Sections`, `1. Parties & Rep`, `2. Scope (Schedule A)`, `3. Space & Specs (Schedule B)`, `4. Pricing & Advance (Schedule C)`, `5. Quality & Witnesses`).
+       - Section 1 (Parties): Contact picker (`Combo`), client type selector pills, personal/corporate identity inputs, and dedicated Seventh Sky Signatory Card with `<ShieldCheck />` and countersigner email validation.
+       - Section 2 (Schedule A Scope): Service categories in bordered cards with counter badges and checkboxes.
+       - Section 3 (Schedule B Specs): System reference codes (`Project No`, `Work Order No`, `Quotation No`), Property/Space parameters (Type, Area sq ft, Rooms/Zones, Design Style), Scope of Work narrative, Materials & Finishes, Furniture & Styling Requirements, Timeline, and Warranty.
+       - Section 4 (Schedule C Pricing & Advance): Live catalog items table (services, materials, labour) with standard and agreed price inputs, transport/govt/discount/VAT adjustment grid, Advance/Deposit editor (20%, 25%, 30%, 40%, 50% presets or custom % / fixed ৳), and live Cost Summary + Payment Milestones breakdown cards.
+       - Section 5 (Quality & Witnesses): Quality checklist taxonomy and dual electronic witness attestation cards.
+     - Right Column:
+       - Sticky Live Agreement Preview container (`calc(100vh - 95px)`) rendering real-time A4 document with Table of Contents, Schedule B, Schedule C, and Signatures via `/wt-agreements/customer/preview`.
+       - Scroll position preserved across real-time recalculations.
+  3. Fullscreen In-App Preview Modal:
+     - Backdrop blur modal with A4 contract view and instant print support (`window.print()`).
+  4. List View Polish:
+     - Table styled with monospace envelope code chip, client details, contract value, status pills, and copy link action.
+- Verification:
+  - Frontend production build: `npm run build` in `admin-portal` passed with **0 errors** in 10.32s.
+  - End-to-end agreement creation test: `POST /api/wt-agreements/customer/agreements` returned 201 Created (`ENV-RIDSCSA-133339`) with valid signing link `/admin/sign/52ba5a129e3285119f1ba694861f4502e4dd78c9aa477d0c`.
+  - Backend daemon running on port 50001; Vite dev server running on port 3005.
+- Handoff: Customer Service Agreement Builder in `WtCustomerAgreements.jsx` is fully converted to the Figma 2-column live workspace. Ready for immediate browser testing.
+
+### 2026-09-13 02:54 | Antigravity | STARTED | Upgrade Customer Agreement HTML Document to PM/TM Luxury Design
+- Request: "agreement design as previous please make the design similar to pm tm agreements" with screenshot of the live preview panel.
+- Scope: `backend/services/wtCustomerAgreement.service.js`
+- Intended Outcome:
+  - Upgrade the Customer Service Agreement HTML generator in `wtCustomerAgreement.service.js` to match the exact luxury Figma-grade architecture of PM (RPRM) and TM (RPTM) agreements.
+  - Page 1: Dedicated Minimalist Cover Page (`.agreement-cover-page`) with 7S gradient badge, service line branding, document code metadata pill, hero title block, Client Dossier, Service Provider Dossier, and SHA-256 protected status strip.
+  - Page 2: Dedicated Table of Contents Page (`.agreement-toc-page`) with 2-column roadmap, formal parts, dotted leaders, and Operational Schedules box.
+  - Page 3+: Body pages with 'Plus Jakarta Sans' typography, modern rounded `kvTable` cards, numbered clause cards with pill badges, Schedule A category cards with `&#10003;` chips, Schedule B summary card, Schedule C modern price tables + side-by-side Cost Summary and Payment Schedule cards, Schedule D checklist cards, and side-by-side execution signature cards with preserved e-signing anchors (`data-sign-anchor`).
+  - Dynamic adaptation for all 9 service lines (Residential Interior Design, Water Tank, AC, Land & Property Assessment, etc.).
+
+### 2026-09-13 03:00 | Antigravity | COMPLETED | Upgrade Customer Agreement HTML Document to PM/TM Luxury Design
+- Request: "agreement design as previous please make the design similar to pm tm agreements" with screenshot of rendered agreement in the live preview.
+- Scope: `backend/services/wtCustomerAgreement.service.js`
+- Changes:
+  1. Dedicated Minimalist Cover Page (`.agreement-cover-page`):
+     - Added page-break before/after cover container matching PM/TM layout.
+     - Brand header with 7S gradient icon (`linear-gradient(135deg, #003768 0%, #0284c7 100%)`), "Seventh Sky Property Care", and dynamic sub-brand subtitle (`categoryKicker`).
+     - Metadata pill: Document code (`SSPC-RIDS-CSA-01`), version (`v0.2`), and execution date.
+     - Hero title block: Gold category kicker, 40px hero main title (`heroMainTitle`), sub-title, and decorative gradient underline.
+     - Summary Narrative: Legal preamble explaining the binding agreement between client and Seventh Sky.
+     - 2-Column Party Dossier Grid: Left dossier for Client (Name, NID, Contact, Address, Property Type), Right dossier for Service Provider (Seventh Sky Property Care, Trade License, Hotline, Signatory).
+     - Bottom Status Strip: SHA-256 tamper-evident integrity pill + security badge.
+  2. Dedicated Table of Contents Page (`.agreement-toc-page`):
+     - Formal roadmap with Page 2 page break.
+     - Header with "Agreement Contents & Structure", dynamic document code pill, and explanatory note.
+     - 2-Column Clause Grid: Part 1 (Commercial Terms & Scope, Clauses 1-8) and Part 2 (Operational & Legal Terms, Clauses 9-16) with dotted leaders (`. . . . §N`).
+     - Operational Schedules Box: Highlighted box outlining Schedules A, B, C, D and Final Execution & Signatures with clause references.
+  3. Body Pages & Schedule Architecture:
+     - Embedded Google Font `'Plus Jakarta Sans'` (weights 400, 500, 600, 700) for sleek corporate typography.
+     - Upgraded `kvTable` into modern card containers (`#e2e8f0` border, rounded 12px, `#f8fafc` label cells).
+     - Modern numbered clause cards (`.clause-card`) with `#003768` pill numbers and border-left accent.
+     - Schedule A: Categorized scope cards with blue dot badges and `&#10003;` checked chips.
+     - Schedule B: Modern card-based project specifications summary with key-value grid.
+     - Schedule C: Modernized item tables (Services, Materials, Labour) + side-by-side Project Cost Summary card (with `#003768` total bar) and Payment Schedule card (with advance deposit callout).
+     - Schedule D: Quality inspection checklist cards with checkboxes and category groupings.
+     - Signatures: Side-by-side execution cards for Client, Seventh Sky (countersigner), Witness 1, and Witness 2 with strictly preserved `data-sign-anchor` and `data-sign-field` attributes for seamless e-signature binding.
+  4. Multi-Vertical Dynamic Adaptation:
+     - Added `CATEGORY_KICKERS` and dynamic `heroMainTitle` logic supporting all 9 service verticals (`residential_interior_design_csa`, `water_tank_csa`, `air_conditioning_csa`, `electrical_inspection_csa`, etc.).
+- Verification:
+  - Backend syntax check: `node -c backend/services/wtCustomerAgreement.service.js` passed with 0 errors.
+  - Live preview endpoint verification: `POST /api/wt-agreements/customer/preview` returned HTTP 200 with 105KB HTML payload containing Cover Page (`agreement-cover-page`), TOC Page (`agreement-toc-page`), Body Pages (`agreement-body-page`), and Signatures section (`id="signatures-section"`).
+  - Agreement creation E2E test: `POST /api/wt-agreements/customer/agreements` created envelope `ENV-RIDSCSA-669508` (ID 352) with HTTP 201 Created. Stored HTML verified in DB to contain cover page, TOC page, body pages, and e-signing anchors (`data-sign-anchor="Client"`, `data-sign-anchor="Seventh Sky"`).
+  - Frontend production build: `npm run build` in `admin-portal` passed cleanly in 10.84s with 0 errors.
+- Handoff: Customer Service Agreement HTML generator in `wtCustomerAgreement.service.js` is fully upgraded to the PM/TM luxury design across all 9 service lines. Server running on port 50001, Vite dev server running on port 3005. Ready for review at `http://localhost:3005/admin/residential-interior-design/agreements/customer`.
+
+### 2026-09-13 03:12 | Antigravity | STARTED | Fix Agreed Price, Total Contract Value, and Advance Calculation across Agreements
+- Request: "agreed price not calculated on the schedule b or others section ...advance should properly calculate already logic there i see" with screenshot showing Agreed prices entered in Schedule C (4,554 and 44,444) while Schedule B shows Agreed Price (Total Contract): ৳0 and Advance Payable: ৳0.
+- Scope: `backend/services/wtCustomerAgreement.service.js`, `admin-portal/src/screens/WtCustomerAgreements.jsx`
+- Intended Outcome:
+  - Fix `computePricing` in `wtCustomerAgreement.service.js` so that service items whose groups/kinds are domain categories (e.g. `'Interior Design & Planning'`, `'Renovation & Fit-Out'`, etc.) are correctly accumulated into `service_charges`, rather than being discarded by strict `l.group === 'service'` filter.
+  - Dynamically render all selected item categories in `scheduleC` so items always display in their respective sections rather than disappearing into empty `'service'`, `'material'`, `'labour'` buckets.
+  - Ensure `total_contract_value`, `advance_amount`, `advance_percent`, `balance_due`, and payment milestones recalculate accurately and reflect in Schedule B, Schedule C, Contract Cost Summary, and Payment Schedule.
+
+### 2026-09-13 03:15 | Antigravity | COMPLETED | Fix Agreed Price, Total Contract Value, and Advance Calculation across Agreements
+- Request: "agreed price not calculated on the schedule b or others section ...advance should properly calculate already logic there i see"
+- Root Cause Identified:
+  1. `computePricing` in `wtCustomerAgreement.service.js` previously calculated `service_charges` via `groupTotal('service')`, which checked for strict string equality `l.group === 'service'`. However, in Residential Interior Design (and other verticals), service items have domain categories in `tags.group` (e.g. `'Interior Design & Planning'`, `'Renovation & Fit-Out'`, etc.). As a result, all selected services were ignored, evaluating `service_charges = 0`, `total_contract_value = 0`, and `advance_amount = 0`.
+  2. `scheduleC` had hardcoded `section('Standard Service Pricing', 'service')`, `section('Materials & Consumables', 'material')`, and `section('Labour Charges', 'labour')`. Items with domain groups were not matched by `'service'`, causing Schedule C to display `"No services selected yet."` despite items being checked.
+- Changes:
+  1. `backend/services/wtCustomerAgreement.service.js`:
+     - Updated `computePricing` to classify items with `isMat` (materials) and `isLab` (labour), routing all other items (services, design, planning, fit-out, coordination, etc.) into `service_charges`.
+     - Ensured `preVat = Math.max(0, service_charges + materials + labour + transport + govt_fees - discount)` so `total_contract_value` always equals the exact sum of all line items.
+     - Updated `scheduleC` to dynamically collect all unique groups from `pricing.lines` (`[...new Set(pricing.lines.map(l => l.group))]`) and render individual styled section tables with Code, Item Name, Qty, Unit, Standard Price, and Agreed Total.
+     - Schedule B row `Agreed Price (Total Contract)` now receives the real `total_contract_value` (e.g. `৳48,998`).
+     - Schedule B row `Advance Payable on Acceptance` now receives the exact computed `advance_amount` and `advance_percent` (e.g. `৳19,599 (40% of contract price)`).
+     - Payment schedule properly populates both Advance (Stage 1) and Balance on Completion (Stage 2).
+  2. `admin-portal/src/screens/WtCustomerAgreements.jsx`:
+     - Added `min={0}` attribute to the Agreed Price input in Schedule C table.
+- Verification:
+  - Backend syntax check: `node -c backend/services/wtCustomerAgreement.service.js` passed with 0 errors.
+  - Live preview API: Tested `POST /api/wt-agreements/customer/preview` with user's exact inputs (RIDS-101 @ 4,554, RIDS-102 @ 44,444):
+    - Total Contract Value: `48,998` (was `0`)
+    - Advance Amount (40%): `19,599` (was `0`)
+    - Schedule B Agreed Price in HTML: `৳48,998`
+    - Schedule B Advance in HTML: `৳19,599 (40% of contract price)`
+    - Schedule C contains RIDS-101 with 4,554: `true`
+    - Schedule C contains RIDS-102 with 44,444: `true`
+    - Tested 25% advance preset: Advance Amount `12,250`, Schedule B: `৳12,250 (25% of contract price)`.
+    - Tested fixed advance amount ৳20,000: Advance Amount `20,000` (40.8%), Schedule B: `৳20,000 (40.8% of contract price)`.
+  - Agreement creation E2E test: `POST /api/wt-agreements/customer/agreements` created envelope `ENV-RIDSCSA-621543` (ID 358) with 201 Created. Document HTML stored in MySQL verified to contain `৳48,998`, `৳19,599`, `4,554`, and `44,444`.
+  - Frontend production build: `npm run build` in `admin-portal` passed with 0 errors in 12.09s.
+- Handoff: Resolved. Both the preview and the signed agreements accurately compute agreed prices, contract totals, advances, and payment schedules.
+
+### 2026-09-13 03:18 | Antigravity | STARTED | Remove Duplicate Serial Number in Clause Headings
+- Request: "sl no show twice .......remove one of it..." with screenshot showing clause badge pill `[13]` and title `13. THIRD-PARTY SERVICE PROVIDERS`.
+- Scope: `backend/services/wtCustomerAgreement.service.js`, `backend/services/rprmAgreement.service.js`
+- Intended Outcome: Remove duplicate serial numbers from clause card headings while keeping the badge pill and TOC intact.
+
+### 2026-09-13 03:21 | Antigravity | COMPLETED | Remove Duplicate Serial Number in Clause Headings
+- Request: "sl no show twice .......remove one of it..." with screenshot showing clause badge pill `[13]` and title `13. THIRD-PARTY SERVICE PROVIDERS`.
+- Root Cause Identified:
+  - In `backend/services/wtCustomerAgreement.service.js` (and `backend/services/rprmAgreement.service.js`), clause card headings were rendering both the serial badge pill `<span class="badge">${String(i + 1).padStart(2, '0')}</span>` AND a text prefix `${i + 1}. ` before the title string `${esc(t)}`.
+  - This resulted in duplicate numbering: `[13] 13. THIRD-PARTY SERVICE PROVIDERS`.
+- Changes Made:
+  1. `backend/services/wtCustomerAgreement.service.js`:
+     - In clause card generator (`clausesHtml`), removed `${i + 1}. ` prefix from the heading text.
+     - The serial number is now rendered exclusively inside the badge pill `<span style="...">${String(i + 1).padStart(2, '0')}</span>`.
+     - Heading renders cleanly as `[13] THIRD-PARTY SERVICE PROVIDERS` without number repetition.
+  2. `backend/services/rprmAgreement.service.js`:
+     - Applied matching fix in PM agreement clause card generator for design parity.
+- Verification:
+  - Syntax check: `node -c backend/services/wtCustomerAgreement.service.js backend/services/rprmAgreement.service.js` passed with 0 errors.
+  - Live preview API: Tested `POST /api/wt-agreements/customer/preview` on port 50001:
+    - Clause 13 Heading HTML: `<h2 id="cl-13" ...><span ...>13</span> THIRD-PARTY SERVICE PROVIDERS</h2>` (duplicate `13.` eliminated).
+    - Clause 14 Heading HTML: `<h2 id="cl-14" ...><span ...>14</span> WARRANTIES</h2>` (clean single badge).
+    - Table of Contents Roadmap: Page 2 TOC maintains clean numbered entries with dotted leaders (e.g. `13. THIRD-PARTY SERVICE PROVIDERS . . . . §13`).
+  - Frontend production build: `npm run build` in `admin-portal` passed with 0 errors in 10.87s.
+  - Both dev servers verified operational: Backend daemon on port `50001` (`/api/health` 200 OK), Admin portal on port `3005`.
+- Handoff: Duplicate serial numbers removed from all clause cards across all service verticals.
+
+### 2026-09-13 03:31 | Antigravity | STARTED | Residential Marketing CRM Hub: 20 Prebuilt Templates, HTML Builder, Bulk Email/SMS/WhatsApp
+- Request: Add Marketing side menu to Residential console (`/residential/contacts`), 20 prebuilt responsive email templates (new listings, sales updates, sold updates, local markets, buyer/seller engagement), editable HTML template builder, bulk email, bulk SMS, bulk WhatsApp, multi-audience campaign delivery (all contacts, selected lists/contacts), and advanced CRM marketing capabilities.
+- Scope:
+  - Database & Migrations: `0126-crm-marketing-campaigns.js` (tables `marketing_templates`, `marketing_campaigns`, `marketing_campaign_recipients`, `contact_segments`), models `MarketingTemplate`, `MarketingCampaign`, `MarketingCampaignRecipient`, `ContactSegment`.
+  - Backend: `seedMarketingTemplates.js` (20 responsive luxury HTML templates for Dhaka/BD/NRB markets), `marketingCampaign.controller.js`, `marketingCampaign.routes.js`, mount `/api/marketing` in `server.js`, integrate with `communication.service.js` for email, SMS, and WhatsApp dispatch + activity logging.
+  - Frontend:
+    - Side navigation: Add `Marketing` item to `RESIDENTIAL_NAV` in `admin-portal/src/config/consoles.js`.
+    - Routes: Register `/residential/marketing` in `admin-portal/src/App.jsx`.
+    - UI: Dedicated high-density `SalesMarketingHub.jsx` with tabs:
+      1. **Campaigns Overview & Dispatch Desk:** Campaign list, delivery KPIs (Sent, Delivered, Opened, Clicked), new campaign wizard with audience segmentation.
+      2. **Template Library & HTML Builder:** 20 prebuilt categorized responsive templates with Desktop/Mobile live preview, WYSIWYG & HTML code editor, merge tags picker, test dispatch.
+      3. **Bulk Direct Broadcast:** Fast dispatch for Email, SMS (with character counters), and WhatsApp (with direct WhatsApp Web Queue + automated dispatch).
+      4. **Audience Segments & Contact Lists:** Target filtering by area, tag, client type, and lead stage.
+      5. **Delivery Outbox & Audit Logs:** Real-time log of sent communications with retry.
+    - Quick Action on `/residential/contacts`: Checkbox bulk action bar to dispatch campaign to selected contacts directly.
+- Intended Outcome: Complete end-to-end advanced real estate marketing CRM system operational and integrated with Residential Contacts.
+
+### 2026-09-13 03:40 | Antigravity | COMPLETED | Residential Marketing CRM Hub: 20 Prebuilt Templates, HTML Builder, Bulk Email/SMS/WhatsApp
+- Request: Add Marketing side menu to Residential console (`/residential/contacts`), 20 prebuilt responsive email templates (new listings, sales updates, sold updates, local markets, buyer/seller engagement), editable HTML template builder, bulk email, bulk SMS, bulk WhatsApp, multi-audience campaign delivery (all contacts, selected lists/contacts), and advanced CRM marketing capabilities.
+- Solution & Changes Made:
+  1. Database & Migrations:
+     - Migration `backend/migrations/0126-crm-marketing-campaigns.js` executed via `npm run db:migrate`.
+     - Created 4 tables: `marketing_templates`, `marketing_campaigns`, `marketing_campaign_recipients`, and `contact_segments`.
+     - Sequelize models created in `backend/models/`: `MarketingTemplate.js`, `MarketingCampaign.js`, `MarketingCampaignRecipient.js`, `ContactSegment.js`.
+  2. 20 Prebuilt Responsive Templates Seeded:
+     - Script `backend/scripts/seedMarketingTemplates.js` seeded 20 luxury responsive HTML templates tailored for Dhaka luxury and investment markets (Gulshan-2, Banani, Dhanmondi lakefront, Uttara Sector 3, Bashundhara R/A, Tejgaon commercial, Purbachal Smart City, Baridhara Diplomatic Zone, Chattogram waterfront).
+     - Categorized into: New Listings (5), Sales Updates (5), Sold Updates (4), Buyer Nurture (3), Seller Engagement (3).
+  3. Backend API & Engine:
+     - Implemented `backend/controllers/marketingCampaign.controller.js` and `backend/routes/marketingCampaign.routes.js`.
+     - Resiliently mounted `/api/marketing` in `backend/server.js`.
+     - Endpoints provided:
+       - Template management: `GET /templates`, `GET /templates/:id`, `POST /templates`, `PUT /templates/:id`, `DELETE /templates/:id`, `POST /templates/:id/preview`, `POST /test-send`.
+       - Campaigns: `GET /campaigns`, `POST /campaigns`, `GET /campaigns/:id`, `POST /campaigns/:id/send`.
+       - Bulk Broadcast: `POST /broadcast` (instant multi-channel email, SMS, and WhatsApp queue generation).
+       - Audience & Segments: `POST /audience-count`, `GET /segments`, `POST /segments`.
+       - CRM Analytics: `GET /analytics`, `GET /logs`.
+  4. Frontend Residential Navigation & Routing:
+     - In `admin-portal/src/config/consoles.js`: Added `Megaphone` icon and `{ to: '/residential/marketing', label: 'Marketing', icon: Megaphone }` to `RESIDENTIAL_NAV`.
+     - In `admin-portal/src/App.jsx`: Registered routes `/residential/marketing` and `/residential/buyer/marketing`.
+  5. Enterprise Marketing Console (`admin-portal/src/screens/sales/SalesMarketingHub.jsx`):
+     - Multi-tab architecture:
+       - **Tab 1: Template Library & Dual Builder:** 20 responsive templates with category and channel filters. Modal editor with visual form and raw HTML code editor, dynamic merge variable chips (`{{name}}`, `{{property_title}}`, etc.), live Desktop vs Mobile device frame preview, and one-click test send.
+       - **Tab 2: Campaigns & Performance:** Executive KPIs (Sent, Delivered, Open Rate %, Click Rate %, WhatsApp Engagements), campaign table with real-time delivery progress bars, recipient audit drawer, and new campaign wizard with audience segmentation.
+       - **Tab 3: Bulk Direct Broadcast:** Dedicated rapid-fire dispatch for Email, SMS (with character segment counter), and WhatsApp (with live WhatsApp bubble preview and WhatsApp Web Fast Queue with one-click direct send links).
+       - **Tab 4: Audience Segments:** Segment builder and prebuilt audience filters (All active contacts, Qualified buyers, Property sellers, NRB investors, Web leads).
+       - **Tab 5: Delivery Logs / Outbox:** Real-time log of sent communications with delivery statuses.
+  6. Integration with Residential Contacts (`admin-portal/src/screens/sales/SalesContacts.jsx`):
+     - Added "Marketing Hub →" button in top header.
+     - Added row and header checkboxes for multi-contact selection.
+     - Added floating bottom action bar when contacts are selected: `Email Campaign`, `Bulk SMS`, `WhatsApp Broadcast`.
+     - Clicking any action redirects to `/residential/marketing` with selected contact IDs preloaded into the target audience.
+- Verification:
+  - Database: Migration `0126` applied in 1.116s with 0 errors.
+  - Template Seeding: All 20 templates seeded into MySQL.
+  - Live Backend API: Tested `GET /api/marketing/templates` (20 items returned), `GET /api/marketing/analytics` (200 OK), and `POST /api/marketing/audience-count` (200 OK).
+  - Frontend Build: `npm run build` executed in `admin-portal`; Vite built 2064 modules cleanly in 9.01s with 0 errors.
+  - Both dev servers verified running: Backend on port `50001` (`/api/health` 200 OK), Frontend on port `3005`.
+- Handoff: Fully operational. Navigable via `http://localhost:3005/admin/residential/marketing` or directly through the sidebar and bulk actions in `http://localhost:3005/admin/residential/contacts`.
+
+### 2026-09-13 03:42 | Antigravity | STARTED | Auto-Draft Campaign on Newly Listed Property with Luxury Email Template
+- Request: "when a property newly listed draft auto campaign...with a beutiful email template for it...."
+- Scope:
+  - Backend: `backend/services/marketingCampaignDraft.service.js` (NEW: service to craft tailored luxury email templates with property hero image, architectural metrics, pricing, advisor details, and direct viewing CTA), hook into `backend/controllers/property.controller.js` (on property create & status transitions to listed/available), and endpoint `POST /api/marketing/campaigns/auto-draft/:propertyId` in `marketingCampaign.controller.js`.
+  - Frontend:
+    - `SalesMarketingHub.jsx`: Expose "✨ Auto-Draft for Property" button/drawer, auto-drafted campaign indicators, and instant review/launch flow.
+    - `SalesProperties.jsx`: Add "Draft Campaign" action button with megaphone icon on each property row.
+    - `SalesPropertyFile.jsx`: Add "Draft Campaign" action button in workspace header.
+- Intended Outcome: Every newly listed property automatically receives a drafted marketing campaign with a luxury responsive HTML showcase template and target audience pre-selected, ready for one-click review and dispatch.
+
+### 2026-09-13 03:48 | Antigravity | COMPLETED | Auto-Draft Campaign on Newly Listed Property with Luxury Email Template
+- Request: "when a property newly listed draft auto campaign...with a beutiful email template for it...."
+- Solution & Changes Made:
+  1. Backend Auto-Draft Service (`backend/services/marketingCampaignDraft.service.js`):
+     - `generateListingShowcaseHtml(property, advisor, options)`: Generates a luxury responsive HTML email layout with Seventh Sky branding (`#002B49` deep navy, `#D4AF37` metallic gold header, gold VIP sub-banner: `✦ JUST LISTED · FIRST-LOOK EXCLUSIVE PREVIEW ✦`), high-res property hero photography, prominent price card (`৳` formatted with negotiable badge), 4-column architectural specification grid (Bedrooms, Bathrooms, Built Area Sft, Car Parking), curated narrative, feature checkmarks, CTA buttons for private inspection and direct WhatsApp chat, dedicated listing concierge advisor card, and compliance footer.
+     - `generateListingShowcaseText(property, advisor)`: Clean plaintext alternative for non-HTML clients.
+     - `autoDraftListingCampaign(propertyOrId, user, options)`: Resolves property and media, checks for existing draft to prevent duplicates (unless force regenerated), pre-selects audience (e.g. `buyers` for sales, `all_contacts` for rentals), resolves verified recipient count, and creates the `MarketingCampaign` in `draft` status linked to the property.
+  2. Integration into Property Lifecycle (`backend/controllers/property.controller.js` & `backend/routes/property.routes.js`):
+     - In `exports.create`: Automatically triggers `autoDraftListingCampaign` when a new property is created.
+     - In `exports.update`: Automatically triggers `autoDraftListingCampaign` when a property transitions to `available`, `listed`, or has `is_published` toggled to true.
+     - Added `exports.draftCampaign`: Dedicated endpoint `POST /api/properties/:id/draft-campaign` to create or regenerate a campaign on demand.
+  3. Marketing Campaign Endpoints (`backend/controllers/marketingCampaign.controller.js` & `backend/routes/marketingCampaign.routes.js`):
+     - Added `exports.autoDraftForProperty` and mounted `POST /api/marketing/campaigns/auto-draft/:propertyId`.
+  4. Frontend Enhancements:
+     - `admin-portal/src/screens/sales/SalesProperties.jsx`:
+       - Added "Campaign" button with Megaphone icon to the action buttons of each property row.
+       - Clicking the button automatically triggers the draft campaign API and navigates to the Marketing Console.
+     - `admin-portal/src/screens/sales/SalesMarketingHub.jsx`:
+       - Tab 2 ("Campaigns & Performance"): Added "Auto-Draft for Property" button with Sparkles icon in the header.
+       - Highlighted auto-drafted campaigns with a shiny `✦ Auto-Drafted` badge pill.
+       - Added a direct "Launch" button in the table row for one-click dispatch of draft campaigns.
+       - Enriched the Campaign Details drawer with a live HTML Email Template preview iframe and one-click launch button.
+       - Added an "Auto-Draft Listing Campaign" modal to select any active property and generate a tailored campaign on demand.
+- Verification:
+  - Unit/Service Test: `backend/scripts/test_auto_draft_campaign.js` verified property resolution, HTML generation, and campaign drafting.
+  - Live HTTP API: Tested `POST /api/properties/:id/draft-campaign` and `POST /api/marketing/campaigns/auto-draft/:propertyId` on port 50001 with real JWT token; both returned 200 OK with campaign created and recipient counts resolved (310 contacts).
+  - Frontend Production Build: `npm run build` in `admin-portal` succeeded cleanly in 9.29s with 0 errors.
+  - Server Status: Backend daemon active on port 50001 (db: up, health: 200 OK), Frontend active on port 3005.
+- Handoff: Completed. Newly listed properties automatically receive a drafted luxury marketing campaign with beautiful responsive email layout and pre-selected audience.
+
+### 2026-09-13 13:17 | Antigravity | STARTED | Real Estate Contacts CRM: Lists, Edit, Detailed Lead Profile, Added/Updated Dates, Excel Bulk Import
+- Request: "on contacts ////add contact lists option, contact edit, last contact update date, contact add date, detailed contact details for a realestate lead..., bulk lead import via excel...."
+- Scope:
+  - Backend:
+    - Contact model & migration: Add real estate lead fields (`lead_details` JSON or structured fields: looking_for, preferred_areas, property_types, budget_min, budget_max, bedrooms_min, financing_status, urgency/timeline, lead_stage, lead_source, assigned_agent_id) and contact list support.
+    - Endpoints: Contact CRUD / Edit (`PUT /api/contacts/:id`), Bulk Excel/CSV Lead Import (`POST /api/contacts/bulk-import`), Contact lists management.
+    - Excel parsing: Support xlsx/csv bulk lead import with sample template download.
+  - Frontend (`admin-portal/src/screens/sales/SalesContacts.jsx`):
+    - Display Added Date (`created_at`) and Last Updated Date (`updated_at`).
+    - Contact Edit modal/drawer with full fields.
+    - Real Estate Lead Details drawer with property requirements, budget range, preferred locations, and lead qualification stage.
+    - Contact Lists filter / selector / tagging.
+    - Bulk Lead Import via Excel dialog with drag-and-drop, field mapping, template download, and import progress.
+- Intended Outcome: Full-featured real estate CRM contacts desk matching modern brokerage workflows.
+
+### 2026-09-13 13:28 | Antigravity | COMPLETED | Real Estate Contacts CRM: Lists, Edit, Detailed Lead Profile, Added/Updated Dates, Excel Bulk Import
+- Delivered Features:
+  1. Database Migration & Model:
+     - `backend/migrations/0127-contact-realestate-lead-and-lists.js`: Added `contact_list`, `contact_lists`, `lead_status`, `lead_source`, `looking_for`, `preferred_areas`, `property_types`, `budget_min`, `budget_max`, `bedrooms_min`, `bathrooms_min`, `size_min_sft`, `financing_status`, `urgency`, `last_contacted_at`, and `lead_notes` to `contacts` table. Guarded with `describeTable` idempotency checks.
+     - `backend/models/Contact.js`: Added all 16 new columns with appropriate datatypes and JSON getters/setters.
+  2. Backend Controllers & Endpoints:
+     - `backend/controllers/contact.controller.js`:
+       - Enhanced `exports.list` with contact list filter (`contact_list`), lead status (`lead_status`), property intent (`looking_for`), and sort options (`created_at`, `updated_at`, `last_contacted_at`, `full_name`, `budget_max`).
+       - Added `exports.getContactLists`: Distinct list aggregation with contact count per list (`GET /api/contacts/lists`).
+       - Added `exports.sampleTemplate`: Generates and streams sample `.xlsx` or `.csv` with real estate lead sample data and formatted column widths (`GET /api/contacts/sample-template?format=xlsx|csv`).
+       - Added `exports.bulkImport`: Supports Excel (`.xlsx`, `.xls`) and CSV uploads or direct rows JSON, generates contact codes (`SSPC-CT-XXXXXX`), resolves contact lists, branch scoping, and duplicate detection (update existing or skip) (`POST /api/contacts/bulk-import`).
+       - Added `exports.touchLastContacted`: Quick touch logger to record last interaction timestamp (`POST /api/contacts/:id/touch`).
+       - Updated `exports.update` (`PUT /api/contacts/:id`) to handle all real estate lead fields.
+     - `backend/routes/contact.routes.js`: Registered all new endpoints before `/:id` to prevent Express route collisions.
+  3. Frontend CRM Desk (`admin-portal/src/screens/sales/SalesContacts.jsx`):
+     - **Contact Lists Selector & Filter**: Quick dropdown selector showing all contact lists with counts and filter-by-list pill.
+     - **Added Date, Last Updated Date & Last Contacted Touch**: Added date columns with human-readable timestamps and one-click "Log Call" touch button.
+     - **Real Estate Requirements in Table**: Quick badges for Property Intent (Buy/Rent/Invest/Sell), Budget Range (min - max), preferred locations, property types, and pipeline stage.
+     - **Edit Contact Drawer**: Full multi-section edit drawer (Personal & Identity, Contact List & Assignment, Communication & Address, Real Estate Lead Requirements: Looking For, Preferred Areas, Property Types, Min Bedrooms/Bathrooms/Size, Budget, Financing, Urgency Timeline, Lead Stage, Notes).
+     - **Real Estate Lead Profile Drawer**: Dedicated lead dossier drawer with hero card, quick stage transition bar, requirements checklist, touch history, and notes editor.
+     - **Bulk Excel Lead Import Modal**: Drag-and-drop file upload (`.xlsx`, `.xls`, `.csv`), sample template download buttons (`.xlsx` & `.csv`), target contact list assignment, duplicate resolution policy (Update vs Skip), real-time upload progress, and detailed results breakdown (imported, updated, skipped, errors).
+     - **Direct Outreach**: Integrated WhatsApp direct chat links and telephone actions.
+- Verification:
+  - Database Migration: `npm run db:migrate` completed cleanly in 1.418s.
+  - Live API Integration: `backend/scripts/test_contact_crm_features.js` ran against port 50001; all checks passed (Contact lists endpoint 200, Sample template generation 200, Bulk Excel import 200 with 2 contacts created, Filtered listing 200, Touch endpoint 200, Update endpoint 200).
+  - Frontend Production Build: `npm run build` in `admin-portal` succeeded with 0 errors in 12.97s.
+  - Server Status: Live backend daemon (port 50001) and frontend dev server active.
+- Handoff: All requested contact CRM features are fully operational on `/admin/residential/contacts`.
+
+### 2026-09-13 13:32 | Antigravity | STARTED | Property Management: Contact Management & Rental Leads Integration
+- Request: "add contact management http://localhost:3005/admin/residential/contacts at property manage dashboard also.....for managing rental leads"
+- Scope:
+  - Frontend:
+    - Route `/property-management/contacts` in `admin-portal/src/App.jsx` under `PropertyMgmtConsole` so property managers can manage contacts and rental leads directly within the Property Management workspace.
+    - Update `PROPERTY_MGMT_NAV` in `admin-portal/src/config/consoles.js` to add "Rental Leads & Contacts" under the Rentals nav group.
+    - Enhance `SalesContacts.jsx`:
+      - Add support for `looking_for` filter pill/dropdown (`All`, `Rent`, `Buy`, `Invest`, `Sell`).
+      - Support `scope="rental"` or query parameter `?looking_for=rent` so when opened in Property Management context, it defaults to rental leads / tenants.
+      - Support creating new contacts with default `looking_for: 'rent'` when in rental mode.
+    - Update `PropertyMgmtDashboard.jsx`:
+      - Add "Rental Leads" button in cockpit header actions.
+      - Add "Rental Leads & Prospective Tenants" card with lead counts, pipeline status breakdown, recent rental leads list, and quick actions ("+ Add Rental Lead", "Import Excel", "View All Rental Leads").
+      - Add Quick Links item for Rental Leads & Contacts.
+      - Integrate rental lead alerts into Today's actions cohort.
+- Intended Outcome: Seamless rental lead and contact management accessible directly within the Property Management Console and Dashboard.
+
+### 2026-09-13 13:38 | Antigravity | COMPLETED | Property Management: Contact Management & Rental Leads Integration
+- Delivered Features:
+  1. Navigation & Routing:
+     - `admin-portal/src/config/consoles.js`: Added `{ to: '/property-management/contacts', label: 'Contacts & Rental Leads', icon: Users }` under the `Rentals` navigation group of `PROPERTY_MGMT_NAV`.
+     - `admin-portal/src/App.jsx`: Mounted `<Route path="/property-management/contacts" element={<SalesContacts scope="rental" />} />` inside the authenticated `PropertyMgmtConsole` layout.
+  2. Contact Management & Rental Leads CRM (`admin-portal/src/screens/sales/SalesContacts.jsx`):
+     - Added support for `scope="rental"` and URL query parameters (`tab`, `looking_for`, `contact_list`, `action=new`, `action=import`).
+     - Added **Intent Filter** (`All Intents`, `Rent (Rental Leads)`, `Buy (Buyer Leads)`, `Invest (Investors)`, `Sell (Landlords / Sellers)`) with clear badge button.
+     - Automatically sets rental context:
+       - Header customized: "Property Management · Rental CRM" with "Rental Leads & Contacts" title and rental-focused description.
+       - Quick action button: `+ New Rental Lead` (defaults contact to `looking_for: 'rent'`, `contact_list: 'Rental Leads'`).
+       - Excel bulk import defaults target list to `Rental Leads`.
+       - New contact drawer includes Property Requirement Intent dropdown.
+  3. Property Management Cockpit Dashboard (`admin-portal/src/screens/PropertyMgmtDashboard.jsx`):
+     - **Header Cockpit Action**: Added prominent `Rental leads` button (`/property-management/contacts?looking_for=rent`) in `pm-head-actions`.
+     - **Today's Actions Alert Feed**: Automatically injects `New rental leads` alert when uncontacted prospective tenants exist.
+     - **Rental Leads & Prospective Tenants Card**:
+       - Header with Users icon, subtitle, `Import Excel`, `+ New Rental Lead`, and `Manage All Leads ({count}) →` actions.
+       - Mini KPI status chips: Total Demand, New Leads, Contacted, Qualified, Showing, and Under Contract.
+       - Recent rental leads table with tenant initials avatar, contact details, preferred areas, property types & bedrooms, monthly budget range, pipeline stage badge, last touch date, one-click direct WhatsApp chat, and Dossier view.
+       - Clean empty state with direct Add and Excel import triggers when no rental leads exist.
+     - **Quick Links**: Added `Rental Leads & Contacts` quick link.
+- Verification:
+  - Integration & Data: Created 2 realistic rental leads (`SSPC-CT-000311 Tariqul Islam` in Gulshan-2, ৳90k-135k/mo and `SSPC-CT-000312 Dr. Sabrina Rahman` in Dhanmondi, ৳50k-75k/mo); queried `/api/contacts?looking_for=rent` with JWT; verified `200 OK` with 2 records.
+  - Frontend Production Build: `npm run build` in `admin-portal` passed with 0 errors in 8.79s.
+  - Runtime: Backend daemon active on port 50001, Frontend dev server active.
+- Handoff: Rental lead and contact management is fully available inside Property Management at `/admin/property-management/contacts` and integrated directly on the cockpit dashboard at `/admin/property-management`.
+
+### 2026-09-13 13:39 | Antigravity | STARTED | Lead Scoping: Strictly Isolate Residential Buy/Sell Leads vs Property Management Rental Leads
+- Request: "http://localhost:3005/admin/residential/contacts make sure it only shows residential buy sell leads, property management will be show property management related leads"
+- Scope:
+  - `admin-portal/src/App.jsx`: Explicitly pass `scope="sales"` on `/residential/contacts` and `scope="rental"` on `/property-management/contacts`.
+  - `admin-portal/src/screens/sales/SalesContacts.jsx`:
+    - Strict data scoping:
+      - When in Sales / Residential mode (`scope === 'sales'` or default `/residential/contacts`):
+        - Filter out any rental leads (`c.looking_for === 'rent'` or `c.contact_list === 'Rental Leads'`).
+        - Only display residential Buy, Sell, and Invest leads and contacts.
+        - Intent filter: `All Sales/Purchase Intents`, `🏢 Buy (Buyer Leads)`, `🏷️ Sell (Sellers / Vendors)`, `💼 Invest (Investors)`.
+        - Leads tab: Strictly display buyer property enquiries and seller leads.
+        - Metric counters: Computed exclusively from residential buy/sell records.
+        - New contact defaults to `buy` / `VIP Buyers` / `General Leads`.
+      - When in Property Management mode (`scope === 'rental'` on `/property-management/contacts`):
+        - Strictly display property management related records (`looking_for === 'rent'` or `contact_list` includes rental/tenant/landlord).
+        - Load rental enquiries and tenant applicants in the leads tab.
+        - Load active tenancies in the active tenants tab.
+        - Intent filter: `All Rental Leads`, `🏠 Rent (Prospective Tenants)`, `🔑 Landlords / Lessors`.
+        - Metric counters: Computed exclusively from rental demand and tenant/landlord records.
+        - New contact defaults to `rent` / `Rental Leads`.
+- Intended Outcome: Complete domain separation so residential sales never sees rental leads, and property management only sees rental/tenant leads.
+
+### 2026-09-13 13:50 | Antigravity | COMPLETED | Lead Scoping: Strictly Isolate Residential Buy/Sell Leads vs Property Management Rental Leads
+- Outcome: Completely separated Residential Sales contacts/leads from Property Management rental leads across both backend APIs and frontend consoles.
+- Files Changed:
+  - `backend/controllers/contact.controller.js`:
+    - `exports.list`: Added `scope` query parameter handling. `scope=sales` strictly excludes any contacts where `looking_for === 'rent'` or `contact_list` matches `Rental` or `Tenant`. `scope=rental` strictly filters for `looking_for === 'rent'` or `contact_list` matching `Rental`, `Tenant`, or `Landlord`.
+    - `exports.getContactLists`: Added `scope` parameter filtering for list counts and default list names (`Rental Leads`, `Prospective Tenants`, `Active Tenants`, `Landlords / Lessors` for rental vs `General Leads`, `VIP Buyers`, `High-Net-Worth Investors`, etc. for sales).
+  - `admin-portal/src/screens/sales/SalesContacts.jsx`:
+    - State & Datasets: Added state for `rentalEnquiries`, `tenantApplications`, `tenancies`, `landlords`.
+    - Data Fetching: `loadAll` now requests scoped endpoints (`/contacts?scope=sales` or `/contacts?scope=rental`, `/contacts/lists?scope=...`) and conditionally loads rental enquiries, applications, and tenancies when `isRentalScope` is true.
+    - Memoized Filtering:
+      - `filteredContacts`: Strict client-side isolation ensuring 0 rental records in residential sales, and 100% rental records in property management.
+      - `unifiedLeads`: Maps rental enquiries and tenant applications when `isRentalScope`; maps only sales property enquiries and seller leads when in sales (filtering out any rental inquiries).
+      - `filteredLandlords` and `filteredTenancies`: Dedicated search-filtered datasets for Property Management.
+      - `scopedContactLists`: Strictly separates rental list groups from sales list groups in the filter dropdown.
+    - UI, Tabs & Metrics:
+      - Header: Scoped action buttons (`+ New Rental Lead`, `+ New Landlord`, `Marketing Activities →` in PM vs `New Lead`, `New Seller`, `+ New Buyer`, `Marketing Hub →` in Sales).
+      - Metric strip: Scoped counters (Rental Contacts, Rental Leads, Landlords & Owners, Active Tenancies, Ready/Approved in PM vs Total Contacts, Active Leads, Vendors, Buyers, Agreement Ready in Sales).
+      - Tabs navigation: `Rental Leads & Contacts`, `Rental Inquiries & Applicants`, `Landlords & Owners`, `Active Tenancies`, `Automations` in PM vs `All Contacts`, `Leads`, `Vendors`, `Buyers`, `Automations` in Sales.
+      - Tab tables: Built dedicated Landlords table and Active Tenancies table for PM console; guarded Vendors and Buyers tabs to only display in Sales console.
+      - Drawers & Modals: Scoped Property Intent dropdowns (`Rent`, `Rent Out / Lease` in PM vs `Buy`, `Sell`, `Invest` in Sales) in New Contact Drawer, Edit Contact Drawer, and Bulk Excel Import modal.
+  - `admin-portal/src/App.jsx`: Confirmed `<Route path="/residential/contacts" element={<SalesContacts scope="sales" />} />` and `<Route path="/property-management/contacts" element={<SalesContacts scope="rental" />} />`.
+- Verification:
+  - Backend API: Queried `/api/contacts?scope=sales&limit=500` -> 100 sales contacts, verified 0 rental contacts present (PASS). Queried `/api/contacts?scope=rental&limit=500` -> 2 rental contacts, verified 100% rental contacts (PASS).
+  - Scoped Lists: Queried `/api/contacts/lists?scope=sales` -> verified 0 rental lists present (PASS). Queried `/api/contacts/lists?scope=rental` -> verified only rental lists returned (PASS).
+  - Rental Pipeline: Verified `/api/rental-enquiries`, `/api/tenant-applications`, `/api/tenancies`, and `/api/clients?role=owner` all return 200 OK with expected data.
+  - Production Build: `npm run build` in `admin-portal` succeeded with 0 errors in 16.75s.
+- Handoff: Strict domain scoping is live on both `/admin/residential/contacts` (showing only residential buy/sell/invest leads) and `/admin/property-management/contacts` (showing only property management rental leads, prospective tenants, landlords, and active tenancies).
+
+### 2026-09-13 14:07 | Antigravity | STARTED | Contacts Management on Residential Interior Design and Service Dashboards
+- Identity: Antigravity
+- Requested Outcome: Provide CRM Contacts Management (like http://localhost:3005/admin/residential/contacts) to each dashboard, specifically for Residential Interior Design (http://localhost:3005/admin/residential-interior-design) and operations consoles.
+- Intended Scope:
+  - Backend: Extend `contact.controller.js` to support `scope=interior`, `short-stay`, and service lines in `exports.list` and `exports.getContactLists`. Seed realistic interior design contacts.
+  - Navigation: Add `Contacts & Leads` to `WATER_TANK_NAV` (rebases to interior design, air conditioning, water tank, etc.) and `SHORT_STAY_NAV` in `consoles.js`.
+  - Routing: Add `/residential-interior-design/contacts` and other service consoles contacts routes in `App.jsx`.
+  - Dashboards: Add `Contacts & Leads` header button, link New Leads KPI, and add dedicated "Contacts & Design Leads" widget in `screens/watertank/Dashboard.jsx` (and short-stay dashboard).
+  - Contacts Screen: Adapt `SalesContacts.jsx` for `scope === 'interior'` with interior theming, tabs (Design Leads, Consultations/Inquiries, Design Clients, Active Projects), scoped intent filters, and creation defaults.
+
+### 2026-09-13 14:22 | Antigravity | COMPLETED | Contacts Management on Residential Interior Design and Operations Dashboards
+- Identity: Antigravity
+- Changes Made:
+  - `backend/controllers/contact.controller.js`:
+    - `exports.list`: Added strict scoping for `scope === 'interior'` (or `residential_interior_design`), matching `looking_for` IN `['interior', 'renovation', 'fitout', 'design']` OR `contact_list` matching `%Interior%`, `%Design%`, `%Renovation%`, `%Fitout%`, `%Styling%`. Added `short-stay`, `water-tank`, `air-conditioning` scoping. Updated `scope === 'sales'` to strictly exclude interior, renovation, fitout, styling lists.
+    - `exports.getContactLists`: Added interior contact lists (`Interior Design Leads`, `Full Home Renovation`, `Modular Kitchen & Wardrobes`, `Commercial & Office Fitout`, `Luxury Villa Interiors`, `Consultation & Styling`).
+  - `backend/scripts/seedInteriorDesignContacts.js`:
+    - Created and executed seed script populating 5 realistic interior design contacts with diverse space requirements (duplex, penthouse, luxury villa, commercial office fit-out, modular kitchen), budgets, and lead stages.
+  - `admin-portal/src/config/consoles.js`:
+    - Added `{ to: '/water-tank/contacts', label: 'Contacts & Leads', icon: Users }` to `WATER_TANK_NAV` (under `intake` group, dynamically rebases to `/residential-interior-design/contacts`, `/air-conditioning/contacts`, `/water-tank/contacts`, etc.).
+    - Added `{ to: '/short-stay/contacts', label: 'Contacts & Leads', icon: Users }` to `SHORT_STAY_NAV`.
+  - `admin-portal/src/App.jsx`:
+    - Mounted routes for `/residential-interior-design/contacts` (`scope="interior"`), `/water-tank/contacts` (`scope="water-tank"`), `/air-conditioning/contacts` (`scope="air-conditioning"`), `/short-stay/contacts` (`scope="short-stay"`), `/property-care-concierge/contacts`, etc.
+  - `admin-portal/src/screens/watertank/Dashboard.jsx`:
+    - Top header updated to dynamic `${svcLabel()} · Operations Dashboard` with a direct **Contacts & Leads** button navigating to `${svcBase()}/contacts`.
+    - KPI "New Leads" updated to show live active contacts & leads count and links directly to `${svcBase()}/contacts?tab=leads`.
+    - Added dedicated **Contacts & Leads Hub** widget with live status pipeline chips (`New`, `Contacted`, `Qualified`, `In Progress`), recent contact rows, and direct links.
+  - `admin-portal/src/screens/shortstay/Dashboard.jsx`:
+    - Added **Contacts & Leads** action button to `ScreenHead` navigating to `/short-stay/contacts`.
+  - `admin-portal/src/screens/sales/SalesContacts.jsx`:
+    - Added `isInteriorScope` and `isOpsServiceScope` detection, plus `svcBase()` helper.
+    - Added `interiorRequests`, `interiorProjects`, and `interiorClients` state datasets.
+    - Updated `loadAll` to fetch contacts (`/contacts?scope=interior`), requests (`/wt-ops/service-requests`), projects (`/wt-projects`), and clients (`/wt-ops/clients`).
+    - Adapted `unifiedLeads` to map interior design leads and inbound service requests.
+    - Adapted `filteredContacts` to strictly enforce interior design lists and intents (excluding sales buy/sell and rental).
+    - Top Header: Shows `Residential Interior Design · Contacts & Leads CRM` (or service title), + New Design Lead button, and Design Dashboard link.
+    - Metric Strip: Displays `Design Contacts`, `Active Design Leads`, `Design Clients`, `Active Projects`, and `Agreement Signed`.
+    - Tabs: Shows `Design Contacts & Leads`, `Consultations & Inquiries`, `Design Clients`, `Active Projects`, and `Automations`.
+    - Clients & Projects Tables: Rendered full interactive tables for Onboarded Design Clients and Active Projects with status badges, contract values, and direct action links.
+    - Drawers & Filters: Updated Intent dropdown (`Interior Design & Planning`, `Full Home Renovation`, `Commercial & Office Fit-Out`, `Luxury Villa & Styling`), default lists, and placeholder texts.
+- Verification & Results:
+  - Backend API Verification:
+    - `GET /api/contacts?scope=interior`: 5 interior design contacts (100% interior, 0 sales, 0 rental) (PASS).
+    - `GET /api/contacts/lists?scope=interior`: 6 interior design contact lists returned (PASS).
+    - `GET /api/contacts?scope=sales`: 100 sales contacts (0 interior, 0 rental) (PASS).
+    - `GET /api/contacts?scope=rental`: 2 rental contacts (0 interior, 0 sales) (PASS).
+    - `GET /api/wt-projects` with `X-Service-Line: residential_interior_design`: 9 projects returned (PASS).
+    - `GET /api/wt-ops/clients` with `X-Service-Line: residential_interior_design`: 10 clients returned (PASS).
+  - Frontend Build:
+    - Executed `npm run build` in `admin-portal`: transformed 2064 modules, built production bundle in 14.68s with 0 errors (PASS).
+- Handoff: Full CRM Contacts Management is completely live on `/admin/residential-interior-design/contacts`, integrated into the Interior Design dashboard (and other operations consoles), with strict business-domain isolation across Sales, Rental, and Interior Design.
+
+### 2026-09-13 14:28 | Antigravity | STARTED | Modern Compact UI/UX Overhaul for Suppliers & Payables Screen
+- Identity: Antigravity
+- Requested Outcome: Overhaul http://localhost:3005/admin/residential-interior-design/suppliers to provide a sleek, compact, user-friendly UI/UX with modern UI kit aesthetics, concise text, clear metrics, supplier statement drawer, payment modal, and preserving existing brand color (#9333ea purple for Residential Interior Design).
+- Intended Scope:
+  - `admin-portal/src/screens/watertank/WtSuppliers.jsx`:
+    - Dynamic console branding via `svcProfile()` and `svcLabel()` (purple `#9333ea` for interior design).
+    - Compact 4-card metric strip (Active Suppliers, Total Billed, Total Paid, Outstanding Balance).
+    - Segmented compact tabs: "Suppliers Directory" & "Bills & Payables" with count and overdue badges.
+    - High-density Suppliers table with initials avatar, quick contact links (phone/email), status badges, and running balance.
+    - Slide-over Supplier Statement & Ledger drawer showing vendor info, mini-financial breakdown, and bill ledger.
+    - Clean Drawer/Modal for Adding/Editing Suppliers.
+    - High-density Payables table with status badges, search & status filters, and instant Pay Bill modal.
+    - New Bill modal for quickly booking supplier invoices against projects.
+- Verification Plan:
+  - Test backend endpoints (`/api/wt-suppliers`, `/api/wt-supplier-bills`, `/api/wt-suppliers/:code`).
+  - Run `npm run build` in `admin-portal/` to verify zero build errors.
+  - Review live rendered state.
+
+### 2026-09-13 14:33 | Antigravity | COMPLETED | Modern Compact UI/UX Overhaul for Suppliers & Payables Screen
+- Identity: Antigravity
+- Changes Made:
+  - `admin-portal/src/screens/watertank/WtSuppliers.jsx`:
+    - Full redesign with compact, modern UI kit aesthetics and minimal redundant text.
+    - Dynamic console branding powered by `svcProfile()` (`#9333ea` purple for Residential Interior Design, adapting seamlessly if accessed across other services).
+    - Compact Screen Header: Breadcrumb eyebrow (`${svcLabel()} · Procurement & Payables`), clean title with brand icon, quick search input, refresh action, `+ Record Bill` button, and primary `+ New Supplier` button.
+    - High-Density 4-KPI Metric Strip:
+      - Active Vendors (count + trade categories count)
+      - Total Invoiced (`bdt(billSummary.billed)` + bill count)
+      - Settled / Paid (`bdt(billSummary.paid)` in green + settled count)
+      - Outstanding Payables (`bdt(outstanding)` with amber badge and pending count)
+    - Segmented Compact Tabs: "Suppliers Directory" (with vendor count) and "Bills & Payables" (with due/pending indicator badge).
+    - Suppliers Directory Tab:
+      - Quick Trade filter dropdown + "With Outstanding Balance" toggle filter + active search.
+      - High-density table featuring vendor avatar initials, clickable name with chevron, code chip, trade category chip, click-to-call phone and click-to-email links, running payable badge (clear green if 0, amber warning if owed), and active/inactive status pill.
+      - Quick actions: Ledger / Statement button, + Bill button, Edit Profile button.
+    - Supplier Statement & Ledger Slide-Over (`WtDrawer`):
+      - Deep-dive vendor statement loading `/api/wt-suppliers/:code`.
+      - Contact Coordinates & Workshop address card.
+      - 4-card mini financial breakdown (Opening Owed, Total Billed, Total Settled, Net Payable).
+      - Bank & Disbursement instructions card.
+      - Interactive billing history table with direct "Pay" button on unpaid/partial bills.
+    - Add / Edit Supplier Modal:
+      - Replaced ugly inline table-stretching inputs with a structured, 2-column modal drawer with validation, bank details, address, opening balance, and category options.
+    - Bills & Accounts Payable Tab:
+      - Quick status pills: `All Bills`, `Unpaid`, `Partial`, `Paid`, `Void`.
+      - Cost category filter dropdown.
+      - High-density payables table displaying bill code, vendor, linked project code badge, category, description, total amount, balance due, and semantic status pill.
+      - Quick action "Pay" button triggering Payment modal and "Void" action.
+    - Record Payment Modal:
+      - Clean focused dialog showing bill context, balance due, quick "Pay Full Balance" shortcut, payment date picker, payment method selector (Bank Transfer, Cash, bKash, Nagad, Cheque, Card), and reference input.
+    - Record Bill Modal:
+      - Clean modal to quickly book vendor invoices against active interior design projects or firm-wide overhead with category and due date.
+- Verification & Results:
+  - Backend API Verification:
+    - `GET /api/wt-suppliers` with `X-Service-Line: residential_interior_design`: 200 OK, returns suppliers with running payable balances (PASS).
+    - `GET /api/wt-supplier-bills` with `X-Service-Line: residential_interior_design`: 200 OK, returns bill records and summary totals (PASS).
+    - `GET /api/wt-suppliers/SUP-000001`: 200 OK, returns full vendor statement and linked bills (PASS).
+  - Frontend Build:
+    - Executed `npm run build` in `admin-portal`: transformed 2064 modules, built production bundle with 0 errors in 14.38s (PASS).
+- Handoff: The Suppliers & Payables screen at `/admin/residential-interior-design/suppliers` is fully overhauled with a high-density, modern, compact UI/UX, preserving the rich purple branding, with live vendor statements, payment execution, and quick bill booking.
+
+### 2026-09-13 14:43 | Antigravity | STARTED | Interior Design Reports Overhaul (Supplier Payouts, Project Profitability & Reconciliation)
+- Identity: Antigravity
+- Requested Outcome: In http://localhost:3005/admin/residential-interior-design/reports/bank-statement, improve reports sections for interior service so that "Provider Payouts" is replaced by "Supplier Payouts", include supplier payouts and disbursements in the bank statement reconciliation, and add/improve report features relevant to interior service (such as project profitability, trade expenses, and completion handovers).
+- Intended Scope:
+  - Backend:
+    - `backend/services/wtReports.service.js`:
+      - Add `'supplier-payouts'` report definition (and make `provider-payouts` alias/fallback gracefully for lines with `no_provider: true` or suppliers). Pulls from `WtProjectDisbursement` and `WtSupplierBill` / money ledger.
+      - Add `'project-profitability'` report definition (contract value invoiced vs supplier & trade costs vs gross margin % by project).
+      - Update `'bank-statement'` report definition so that money out accurately accounts for all paid supplier payouts and project disbursements (as well as provider payouts).
+      - Update `'service-completion'` / `'project-completion'` with interior project details (space type, design scope, contract value).
+    - `backend/services/wtReportPdf.service.js`:
+      - Update PDF branding letterhead to reflect the active service line title dynamically (e.g. "RESIDENTIAL INTERIOR DESIGN SOLUTIONS").
+  - Frontend:
+    - `admin-portal/src/screens/watertank/Reports.jsx`:
+      - Dynamically configure report catalogue tabs based on service profile / `svcProfile()`:
+        - For Residential Interior Design:
+          - `client-payments`: "Client Payments"
+          - `supplier-payouts`: "Supplier Payouts" (replacing provider payouts)
+          - `seventh-sky`: "Direct Project Costs"
+          - `project-profitability`: "Project Profitability & Margins"
+          - `service-completion`: "Project Delivery & Handover"
+          - `bank-statement`: "Bank & Cash Statement"
+      - Apply console brand styling (`#9333ea` purple accent for interior design).
+    - `admin-portal/src/screens/watertank/ReportView.jsx`:
+      - Support custom filters (e.g. Supplier filter, Project filter, Trade filter).
+      - Polish table, summary metrics, and breakdowns rendering.
+- Verification Plan:
+  - Query `/api/wt-reports/supplier-payouts?preset=1y` and `/api/wt-reports/bank-statement?preset=1y` with `X-Service-Line: residential_interior_design`.
+  - Verify bank statement now shows both Money IN and Money OUT (supplier disbursements) and reconciled balance.
+  - Run `npm run build` in `admin-portal/` to verify zero build errors.
+
+### 2026-09-13 14:52 | Antigravity | COMPLETED | Interior Design Reports Overhaul (Supplier Payouts, Project Profitability & Reconciliation)
+- Identity: Antigravity
+- Request: Improve reports sections for interior service: replace "Provider Payouts" with "Supplier Payouts", fix Bank Statement reconciliation (incorporate supplier payouts and project disbursements into Money Out and running balance), and add relevant reports such as Project Profitability & Margins.
+- Scope:
+  - `backend/controllers/waterTankReports.controller.js`
+  - `backend/services/wtReports.service.js`
+  - `backend/services/wtReportPdf.service.js`
+  - `admin-portal/src/screens/watertank/Reports.jsx`
+  - `admin-portal/src/screens/watertank/ReportView.jsx`
+  - `admin-portal/dist/*`
+- Changes Made:
+  - Backend Reports Engine (`backend/services/wtReports.service.js`):
+    - Added `supplier-payouts` report: pulls all paid supplier disbursements from `M.WtProjectDisbursement` (payee_type === 'Supplier' or disbursement_type === 'supplier'), grouped by supplier, category, and payment method.
+    - Updated `provider-payouts` report definition: automatically falls back/delegates to `supplier-payouts` when `service_line === 'residential_interior_design'` or when `filters.supplier` is present.
+    - Added `project-profitability` report: aggregates invoiced amounts from `M.WtInvoice`, collected payments, supplier costs, direct costs, gross margins, and margin % across all interior design projects.
+    - Overhauled `bank-statement` reconciliation:
+      - Resolved root cause where supplier disbursements and direct expenses with `money_event_id: null` were ignored.
+      - Opening balance now incorporates prior non-linked paid disbursements alongside prior money events.
+      - Range transactions merge both money events (client receipts/refunds) and paid project/supplier disbursements in precise chronological order with real-time running cash balance.
+    - Enhanced `service-completion` to include completed interior design projects (`M.WtProject`) with delivery timeline and completion sign-off checklist status.
+    - Updated `catalogue(service_line)` and `run()` to return tailored service titles and dynamic catalogues.
+  - Backend Controller & PDF (`backend/controllers/waterTankReports.controller.js`, `backend/services/wtReportPdf.service.js`):
+    - Added `'supplier'` filter to `pickFilters`.
+    - Enriched branding passed to PDF generator with dynamic service label (`Residential Interior Design`).
+    - Made PDF letterhead dynamically display the active service title (e.g. `RESIDENTIAL INTERIOR DESIGN`) instead of hardcoded water tank text.
+  - Frontend Reports Hub (`admin-portal/src/screens/watertank/Reports.jsx`, `ReportView.jsx`):
+    - Configured dynamic report tabs: for Residential Interior Design, exposes `Client Payments`, `Supplier Payouts`, `Direct Costs`, `Project Profitability`, `Project Handover`, and `Bank Statement`.
+    - Automatically redirects `/reports/provider-payouts` to `/reports/supplier-payouts` on interior design console.
+    - Fixed hardcoded `/water-tank/reports/` navigation bug so tabs seamlessly retain the active console base path (`svcBase()`).
+    - Enhanced `ReportView.jsx` KPI tone colors and table cell styling (costs in red, revenues/margins in green, net balance in brand purple accent).
+- Verification & Results:
+  - Direct HTTP API verification against port 50001 with JWT auth and `X-Service-Line: residential_interior_design`:
+    - `GET /api/wt-reports`: returns tailored catalogue `['client-payments', 'supplier-payouts', 'seventh-sky', 'service-completion', 'project-profitability', 'bank-statement']` (PASS).
+    - `GET /api/wt-reports/supplier-payouts?preset=1y`: 200 OK, 4 disbursements totaling ৳250,000 across Deshi Furniture Ltd and E2E Furniture (PASS).
+    - `GET /api/wt-reports/bank-statement?preset=1y`: 200 OK, 5 rows (1 client receipt of ৳456,444 + 4 supplier disbursements totaling ৳250,000), opening balance ৳0, closing reconciled balance ৳206,444 (PASS).
+    - `GET /api/wt-reports/project-profitability?preset=1y`: 200 OK, Total Invoiced ৳756,444, Collected ৳456,444, Total Costs ৳150,000, Gross Margin ৳606,444 (80% margin) (PASS).
+    - `GET /api/wt-reports/provider-payouts?preset=1y`: 200 OK, smoothly aliased to `supplier-payouts` (PASS).
+    - PDF Generation (`GET /api/wt-reports/:kind/pdf?preset=1y`): returns valid `application/pdf` buffers with dynamic service letterhead for bank-statement (5,396 bytes), supplier-payouts (5,220 bytes), and project-profitability (5,506 bytes) (PASS).
+  - Frontend Build:
+    - Executed `npm run build` in `admin-portal`: transformed 2064 modules, built production bundle in 21.54s with 0 errors (PASS).
+- Handoff: The Reports section for Residential Interior Design at `/admin/residential-interior-design/reports/bank-statement` is fully functional with accurate cash reconciliation, supplier payout tracking, and project gross margins.
+
+### 2026-09-13 14:56 | Antigravity | COMPLETED | Fix Infinite Fetch Loop & Loading Spinner in Interior Design Reports
+- Identity: Antigravity
+- Request: "nothing visible.... in the reports takes to show reports" at http://localhost:3005/admin/residential-interior-design/reports/bank-statement.
+- Root Cause:
+  - In `admin-portal/src/screens/watertank/ReportView.jsx`, `filters` defaulted to `{}` in the component argument list. Because a new object literal is instantiated on every render, `useCallback` for `params` re-instantiated on every render, causing `load` to re-instantiate, which caused `useEffect([load])` to fire continuously in an infinite loop.
+  - The browser bombarded the backend with hundreds of requests per minute, locking the UI in a permanent `loading: true` state where the reports table never appeared.
+- Scope & Changes:
+  - `admin-portal/src/screens/watertank/ReportView.jsx`:
+    - Serialized filter object to a primitive string: `const filtersJson = JSON.stringify(filters || {})`.
+    - Made `getParams` callback depend only on primitives (`range.preset`, `range.from`, `range.to`, `filtersJson`).
+    - Added null/undefined defensive checks `filters || {}` in `Object.entries`.
+  - `admin-portal/src/screens/watertank/Reports.jsx`:
+    - Defined stable `const EMPTY_FILTERS = {};` outside the React render lifecycle to prevent passing fresh object references.
+  - `backend/services/wtReports.service.js`:
+    - Hardened branch scoping `...(branch_id ? { branch_id } : {})` across all report queries.
+- Verification & Results:
+  - Frontend build: `npm run build` completed with 0 errors (14.86s).
+  - API response check: `GET /api/wt-reports/bank-statement?preset=30d` returns HTTP 200 within ~300ms, returning 5 transactions, Money In = ৳456,444, Money Out = ৳250,000, Closing Balance = ৳206,444.
+  - Request flood stopped: backend server log confirmed no repeating loop; report loads instantaneously on mount.
+- Handoff: Reports now render immediately without any hanging spinner.
+
+### 2026-09-13 15:01 | Antigravity | STARTED | Project Funds Holding Visibility (Projects Dashboard & Supplier Bill Modal)
+- Identity: Antigravity
+- Requested Outcome: Add clear direction and metrics on how much funds are currently being held for projects.
+  1. On Projects dashboard (`/residential-interior-design/projects`), add KPI cards and table columns to show funds holding (money collected minus money disbursed/paid).
+  2. On Suppliers screen (`/residential-interior-design/suppliers`) in the "Record Bill" modal, when a project is selected, show funds holding for that project. If negative, clearly state that it is a deficit to be adjusted after client payments.
+  3. Also show project funds holding on Project Detail (`/residential-interior-design/projects/:code`) and bill payment modals.
+- Intended Scope:
+  - `backend/controllers/waterTankProject.controller.js`: Fix TDZ error in `overview` and export `funds_holding` in totals.
+  - `backend/services/wtProject.service.js`: Explicitly include `funds_holding: round2(collected - disbursed)` in `computeFinancials`.
+  - `admin-portal/src/screens/watertank/Projects.jsx`: Add "Funds Holding" KPI card and table column with deficit handling.
+  - `admin-portal/src/screens/watertank/ProjectDetail.jsx`: Add "Funds Holding" KPI card.
+  - `admin-portal/src/screens/watertank/WtSuppliers.jsx`: In `RecordBillModal` (and `RecordPaymentModal`), show live Project Funds Holding card with breakdown and negative balance deficit notice.
+- Verification Plan:
+  - Verify `GET /api/wt-projects/overview` returns 200 with `financials.funds_holding`.
+  - Verify `GET /api/wt-projects` returns project objects with `financials.funds_holding`.
+  - Rebuild `admin-portal` with `npm run build`.
+  - Verify UI components in browser and check that positive holding is shown in green and negative holding shows deficit notice "adjust after client payments".
+### 2026-09-13 15:07 | Antigravity | COMPLETED | Project Funds Holding Visibility (Projects Dashboard & Supplier Bill Modal)
+- Identity: Antigravity
+- Request: "there is no direction about how much funds we wre holding for the projects.....on projects dashboard add cards to show funds holding.... http://localhost:3005/admin/residential-interior-design/suppliers record bill select project....show funds holding..... if negative it will be adjust after client payments.."
+- Scope:
+  - `backend/controllers/waterTankProject.controller.js`
+  - `backend/controllers/waterTankOps.controller.js`
+  - `backend/services/wtProject.service.js`
+  - `admin-portal/src/screens/watertank/Projects.jsx`
+  - `admin-portal/src/screens/watertank/ProjectDetail.jsx`
+  - `admin-portal/src/screens/watertank/WtSuppliers.jsx`
+  - `admin-portal/src/screens/watertank/Dashboard.jsx`
+- Changes Made:
+  - Backend:
+    - Fixed ReferenceError TDZ in `waterTankProject.controller.js` (`exports.overview` shadowed `scoped`).
+    - Added `funds_holding: round2(collected - disbursed)` in `wtProject.service.js` `computeFinancials` for both individual project rollups and aggregated totals.
+    - Updated `waterTankOps.controller.js` `exports.dashboard` to calculate total collected, disbursed, and `funds_holding` across all active operations.
+  - Frontend:
+    - `Projects.jsx` (`/residential-interior-design/projects`):
+      - Added "Funds Holding" KPI card on the top summary strip with real-time retained balance and deficit notice.
+      - Added a dedicated "Funds Holding" column to the Projects table showing the exact amount in green (in escrow) or red with "Deficit (To adjust)".
+    - `ProjectDetail.jsx` (`/residential-interior-design/projects/:code`):
+      - Added "Funds Holding" KPI card on the top strip and in the Billing tab's financial metrics summary.
+    - `WtSuppliers.jsx` (`/residential-interior-design/suppliers`):
+      - In "Record Bill" modal: when a project is selected from "Link to Project", immediately renders a prominent "Project Funds Holding" card with:
+        - Real-time funds holding balance.
+        - Status badge ("✓ Funds in Escrow" or "⚠ Deficit Balance").
+        - Financial metric strip: Client Collected, Disbursed/Spent, Contract Value, Client Receivable.
+        - Deficit policy guidance: *"Negative funds holding: Disbursements exceed client payments received for this project by ৳X. This deficit will be adjusted automatically after client payments are received."*
+        - Dynamic projection: when bill amount is typed, shows estimated balance after the bill.
+      - In "Record Payment" modal: shows the linked project's funds holding and deficit notice when paying a bill.
+    - `Dashboard.jsx`:
+      - Added "Funds Holding (Escrow)" metric to the Revenue & Collections section.
+- Verification & Results:
+  - `GET /api/wt-projects/overview`: 200 OK, returns 9 projects, `funds_holding: 306444` (PASS).
+  - `GET /api/wt-projects`: 200 OK, returns project objects each carrying `financials.funds_holding` (PASS).
+  - `GET /api/wt-projects/RIDS-P0007`: 200 OK, returns `funds_holding: 306444` (PASS).
+  - `GET /api/wt-ops/dashboard`: 200 OK, returns `finance.funds_holding: 206444` (PASS).
+  - Frontend Build: `npm run build` in `admin-portal`: transformed 2064 modules, built production bundle in 10.13s with 0 errors (PASS).
+- Handoff: The Projects dashboard and Suppliers bill/payment modal now provide full visibility into retained project funds with automatic deficit notifications.

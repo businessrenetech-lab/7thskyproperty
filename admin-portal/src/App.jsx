@@ -34,6 +34,7 @@ import SalesInbox from './screens/sales/SalesInbox';
 import SalesReports from './screens/sales/SalesReports';
 import SalesProperties from './screens/sales/SalesProperties';
 import SalesContacts from './screens/sales/SalesContacts';
+import SalesMarketingHub from './screens/sales/SalesMarketingHub';
 import LeadAutomation from './screens/sales/LeadAutomation';
 import RentalProperties from './screens/RentalProperties';
 import PropertyWizard from './screens/PropertyWizard';
@@ -358,6 +359,7 @@ export default function App() {
                 every other service line. */}
             <Route element={<RequireAuth><AdminGate><WaterTankConsole /></AdminGate></RequireAuth>}>
               <Route path="/water-tank" element={<WaterTankDashboard />} />
+              <Route path="/water-tank/contacts" element={<SalesContacts scope="water-tank" />} />
               <Route path="/water-tank/clients" element={<WTClients />} />
               <Route path="/water-tank/clients/new" element={<WTClientCreate />} />
               <Route path="/water-tank/clients/:code" element={<WTClientDetail />} />
@@ -431,6 +433,7 @@ export default function App() {
             {/* ── Air Conditioning console — same screens as Water Tank, scoped to AC ── */}
             <Route element={<RequireAuth><AdminGate><AirConditioningConsole /></AdminGate></RequireAuth>}>
               <Route path="/air-conditioning" element={<WaterTankDashboard />} />
+              <Route path="/air-conditioning/contacts" element={<SalesContacts scope="air-conditioning" />} />
               <Route path="/air-conditioning/clients" element={<WTClients />} />
               <Route path="/air-conditioning/clients/new" element={<WTClientCreate />} />
               <Route path="/air-conditioning/clients/:code" element={<WTClientDetail />} />
@@ -492,6 +495,7 @@ export default function App() {
                 Its OWN console shell (no provider / no AMC nav); adds Variations. */}
             <Route element={<RequireAuth><AdminGate><InteriorServiceConsole /></AdminGate></RequireAuth>}>
               <Route path="/residential-interior-design" element={<WaterTankDashboard />} />
+              <Route path="/residential-interior-design/contacts" element={<SalesContacts scope="interior" />} />
               <Route path="/residential-interior-design/clients" element={<WTClients />} />
               <Route path="/residential-interior-design/clients/new" element={<WTClientCreate />} />
               <Route path="/residential-interior-design/clients/:code" element={<WTClientDetail />} />
@@ -544,6 +548,7 @@ export default function App() {
                 sub-service of Property Doc Verification & Transfer Support) ── */}
             <Route element={<RequireAuth><AdminGate><LandPropertyAssessmentConsole /></AdminGate></RequireAuth>}>
               <Route path="/land-property-assessment" element={<WaterTankDashboard />} />
+              <Route path="/land-property-assessment/contacts" element={<SalesContacts scope="land-property-assessment" />} />
               <Route path="/land-property-assessment/clients" element={<WTClients />} />
               <Route path="/land-property-assessment/clients/new" element={<WTClientCreate />} />
               <Route path="/land-property-assessment/clients/:code" element={<WTClientDetail />} />
@@ -607,6 +612,7 @@ export default function App() {
                 adds the Doc Manager + Loan Application Tracker ── */}
             <Route element={<RequireAuth><AdminGate><LoanFinancialSupportConsole /></AdminGate></RequireAuth>}>
               <Route path="/loan-financial-support" element={<WaterTankDashboard />} />
+              <Route path="/loan-financial-support/contacts" element={<SalesContacts scope="loan-financial-support" />} />
               <Route path="/loan-financial-support/clients" element={<WTClients />} />
               <Route path="/loan-financial-support/clients/new" element={<WTClientCreate />} />
               <Route path="/loan-financial-support/clients/:code" element={<WTClientDetail />} />
@@ -671,6 +677,7 @@ export default function App() {
                 Doc-Verification sub-service); adds the Doc Manager + Verification Register ── */}
             <Route element={<RequireAuth><AdminGate><PropertyDocVerificationConsole /></AdminGate></RequireAuth>}>
               <Route path="/property-documentation-verification" element={<WaterTankDashboard />} />
+              <Route path="/property-documentation-verification/contacts" element={<SalesContacts scope="property-documentation-verification" />} />
               <Route path="/property-documentation-verification/clients" element={<WTClients />} />
               <Route path="/property-documentation-verification/clients/new" element={<WTClientCreate />} />
               <Route path="/property-documentation-verification/clients/:code" element={<WTClientDetail />} />
@@ -735,6 +742,7 @@ export default function App() {
                 sub-service); adds the Doc Manager + Beneficiary Register ── */}
             <Route element={<RequireAuth><AdminGate><PropertyWillSuccessionConsole /></AdminGate></RequireAuth>}>
               <Route path="/property-will-succession" element={<WaterTankDashboard />} />
+              <Route path="/property-will-succession/contacts" element={<SalesContacts scope="property-will-succession" />} />
               <Route path="/property-will-succession/clients" element={<WTClients />} />
               <Route path="/property-will-succession/clients/new" element={<WTClientCreate />} />
               <Route path="/property-will-succession/clients/:code" element={<WTClientDetail />} />
@@ -800,6 +808,7 @@ export default function App() {
                 Resource Allocation step (no provider master agreement). ── */}
             <Route element={<RequireAuth><AdminGate><RemovalRelocationConsole /></AdminGate></RequireAuth>}>
               <Route path="/removal-relocation" element={<WaterTankDashboard />} />
+              <Route path="/removal-relocation/contacts" element={<SalesContacts scope="removal-relocation" />} />
               <Route path="/removal-relocation/clients" element={<WTClients />} />
               <Route path="/removal-relocation/clients/new" element={<WTClientCreate />} />
               <Route path="/removal-relocation/clients/:code" element={<WTClientDetail />} />
@@ -857,6 +866,7 @@ export default function App() {
                 care plans run through the shared AMC console. No provider agreement. ── */}
             <Route element={<RequireAuth><AdminGate><PropertyCareConciergeConsole /></AdminGate></RequireAuth>}>
               <Route path="/property-care-concierge" element={<WaterTankDashboard />} />
+              <Route path="/property-care-concierge/contacts" element={<SalesContacts scope="property-care-concierge" />} />
               <Route path="/property-care-concierge/clients" element={<WTClients />} />
               <Route path="/property-care-concierge/clients/new" element={<WTClientCreate />} />
               <Route path="/property-care-concierge/clients/:code" element={<WTClientDetail />} />
@@ -916,6 +926,7 @@ export default function App() {
                 all use; the tab now comes from the path rather than ?tab=. */}
             <Route element={<RequireAuth><AdminGate><ShortStayConsole /></AdminGate></RequireAuth>}>
               <Route path="/short-stay" element={<ShortStayHub />} />
+              <Route path="/short-stay/contacts" element={<SalesContacts scope="short-stay" />} />
               {/* Declared before /:tab so a property route is not read as a tab. */}
               <Route path="/short-stay/properties/new" element={<ShortStayPropertyOnboarding />} />
               <Route path="/short-stay/properties/link" element={<ShortStayPropertyOnboarding />} />
@@ -938,6 +949,7 @@ export default function App() {
               <Route path="/property-management/rentals" element={<RentalProperties />} />
               <Route path="/property-management/rentals/new" element={<PropertyWizard />} />
               <Route path="/property-management/rentals/new/:id" element={<PropertyWizard />} />
+              <Route path="/property-management/contacts" element={<SalesContacts scope="rental" />} />
               <Route path="/property-management/applications" element={<TenantApplications />} />
               <Route path="/property-management/enquiries" element={<RentalEnquiries />} />
               <Route path="/property-management/assessments" element={<RentalAssessments />} />
@@ -1003,7 +1015,8 @@ export default function App() {
               <Route path="/residential/contracts" element={<SalesContracts />} />
               <Route path="/residential/inbox" element={<SalesInbox />} />
               <Route path="/residential/reports" element={<SalesReports />} />
-              <Route path="/residential/contacts" element={<SalesContacts />} />
+              <Route path="/residential/contacts" element={<SalesContacts scope="sales" />} />
+              <Route path="/residential/marketing" element={<SalesMarketingHub />} />
               <Route path="/residential/contacts/clients" element={<Clients />} />
               <Route path="/residential/clients" element={<Navigate to="/residential/contacts/clients" replace />} />
               <Route path="/residential/lead-automation" element={<Navigate to="/residential/contacts" replace />} />
@@ -1015,6 +1028,7 @@ export default function App() {
               <Route path="/residential/buyer/work-queue" element={<SalesWorkQueue dealScope="buy" />} />
               <Route path="/residential/buyer/calendar" element={<SalesCalendar category="residential" scope="buy" />} />
               <Route path="/residential/buyer/contacts" element={<SalesContacts scope="buy" />} />
+              <Route path="/residential/buyer/marketing" element={<SalesMarketingHub scope="buy" />} />
               <Route path="/residential/buyer/clients" element={<Clients />} />
               <Route path="/residential/buyer-invoices" element={<BuyerInvoices />} />
               <Route path="/residential/buy" element={<DealsBoard category="residential" dealType="buy" title="Residential · Buy" desc="Buyer service — deals, buyers, agreements, fees and status." />} />

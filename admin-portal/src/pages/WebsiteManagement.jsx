@@ -156,10 +156,35 @@ export default function WebsiteManagement() {
     });
 
     (data.inquiries.care || []).forEach(item => {
+      const s = String(item.service_interest || '').toLowerCase();
+      let typeLabel = 'Care Service Request';
+      let deskUrl = '/property-care/enquiries';
+
+      if (s.includes('commercial sale')) {
+        typeLabel = 'Commercial Sale Listing';
+        deskUrl = '/residential/enquiry';
+      } else if (s.includes('commercial rent')) {
+        typeLabel = 'Commercial Rental Listing';
+        deskUrl = '/property-management/enquiries';
+      } else if (s.includes('business')) {
+        typeLabel = 'Business Sale Enquiry';
+        deskUrl = '/residential/enquiry';
+      } else if (s.includes('sale') || s.includes('acquis')) {
+        typeLabel = 'Residential Sale Listing';
+        deskUrl = '/residential/enquiry';
+      } else if (s.includes('rent') || s.includes('tenan')) {
+        typeLabel = 'Residential Rental Listing';
+        deskUrl = '/property-management/enquiries';
+      } else if (s.includes('water')) {
+        deskUrl = '/water-tank/service-requests';
+      } else if (s.includes('ac') || s.includes('air')) {
+        deskUrl = '/air-conditioning/service-requests';
+      }
+
       list.push({
         ...item,
         _type: 'care',
-        _typeLabel: 'Care Service Request',
+        _typeLabel: typeLabel,
         _typeName: item.customer_name,
         _typePhone: item.mobile,
         _typeEmail: item.email,
@@ -167,7 +192,7 @@ export default function WebsiteManagement() {
         _typeCode: item.enquiry_code,
         _typeDate: item.created_at,
         _typeStatus: item.stage,
-        _deskUrl: '/property-care/enquiries',
+        _deskUrl: deskUrl,
       });
     });
 
@@ -802,10 +827,22 @@ export default function WebsiteManagement() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <h4 style={{ margin: 0, fontSize: '13px', textTransform: 'uppercase', color: '#475569', fontWeight: 700 }}>Requirement & Details</h4>
               <KV k="Property / Service" v={selectedInquiry._typeProperty} />
+              {selectedInquiry.property_type && (
+                <KV k="Property / Asset Type" v={selectedInquiry.property_type} />
+              )}
+              {Number(selectedInquiry.estimated_value) > 0 && (
+                <KV k="Proposed Value / Rent" v={`৳${Number(selectedInquiry.estimated_value).toLocaleString()}`} />
+              )}
+              {(selectedInquiry.site_address || selectedInquiry.address) && (
+                <KV k="Property / Site Address" v={selectedInquiry.site_address || selectedInquiry.address} />
+              )}
+              {selectedInquiry.district && <KV k="District" v={selectedInquiry.district} />}
               {selectedInquiry.budget && <KV k="Budget / Offer" v={`৳${Number(selectedInquiry.budget).toLocaleString()}`} />}
               {selectedInquiry.preferred_move_in && <KV k="Preferred Move-in" v={selectedInquiry.preferred_move_in} />}
               {selectedInquiry.lease_period && <KV k="Lease Period" v={selectedInquiry.lease_period} />}
-              {selectedInquiry.notes && <KV k="Message / Notes" v={selectedInquiry.notes} />}
+              {(selectedInquiry.notes || selectedInquiry.message) && (
+                <KV k="Message / Notes" v={selectedInquiry.notes || selectedInquiry.message} />
+              )}
             </div>
           </div>
         </Drawer>

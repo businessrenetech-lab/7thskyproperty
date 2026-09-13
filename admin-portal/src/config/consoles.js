@@ -5,7 +5,7 @@ import {
   Inbox, CalendarDays, KeyRound,
   Hotel, CalendarRange, MessageSquareQuote, BookOpen, UserCheck, DoorOpen,
   Home, Sparkles, Wrench, HandCoins, Landmark, BarChart3, TrendingUp,
-  Ruler, FolderArchive, Boxes, Plug, Building2, Wallet,
+  Ruler, FolderArchive, Boxes, Plug, Building2, Wallet, Megaphone,
 } from 'lucide-react';
 
 /*
@@ -44,7 +44,8 @@ export const WATER_TANK_NAV = [
     key: 'intake',
     label: 'Sales & Intake',
     items: [
-      { to: '/water-tank/clients', label: 'Clients', icon: Users },
+      { to: '/water-tank/contacts', label: 'Contacts & Leads', icon: Users },
+      { to: '/water-tank/clients', label: 'Clients', icon: UserCheck },
       { to: '/water-tank/service-requests', label: 'Service Requests', icon: FileText },
       { to: '/water-tank/site-assessments', label: 'Site Assessments', icon: ClipboardList },
       { to: '/water-tank/quotations', label: 'Quotations', icon: FileSignature },
@@ -144,6 +145,7 @@ export const SHORT_STAY_NAV = [
     key: 'guests',
     label: 'Guests & Bookings',
     items: [
+      { to: '/short-stay/contacts', label: 'Contacts & Leads', icon: Users },
       { to: '/short-stay/enquiries', label: 'Enquiries', icon: MessageSquareQuote },
       { to: '/short-stay/bookings', label: 'Bookings', icon: BookOpen },
       { to: '/short-stay/guests', label: 'Guests', icon: UserCheck },
@@ -260,6 +262,7 @@ export const PROPERTY_MGMT_NAV = [
     label: 'Rentals',
     items: [
       { to: '/property-management/rentals', label: 'Properties', icon: Home },
+      { to: '/property-management/contacts', label: 'Contacts & Rental Leads', icon: Users },
       { to: '/property-management/enquiries', label: 'Rental Enquiries', icon: MessageSquareQuote },
       { to: '/property-management/applications', label: 'Tenant Applications', icon: ClipboardList },
       { to: '/property-management/assessments', label: 'Rental Assessments', icon: ClipboardCheck },
@@ -387,6 +390,7 @@ export const RESIDENTIAL_NAV = [
       { to: '/residential/calendar', label: 'Calendar', icon: CalendarDays },
       { to: '/residential/reports', label: 'Reports', icon: BarChart3 },
       { to: '/residential/contacts', label: 'Contacts', icon: Users },
+      { to: '/residential/marketing', label: 'Marketing', icon: Megaphone },
     ],
   },
   {

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Hotel, Plus, CalendarDays, AlertTriangle, Sparkles, ShieldCheck, Wallet, FileSignature, ClipboardCheck, ArrowRight,
+  Hotel, Plus, CalendarDays, AlertTriangle, Sparkles, ShieldCheck, Wallet, FileSignature, ClipboardCheck, ArrowRight, Users,
 } from 'lucide-react';
 import api from '../../services/api';
 import { Spinner } from '../../ui/kit';
@@ -10,6 +11,7 @@ const SEV = { critical: 'sev-bad', blocker: 'sev-bad', high: 'sev-warn', medium:
 const SEV_ICON = { Incident: AlertTriangle, Housekeeping: Sparkles, Readiness: ShieldCheck, Payment: Wallet, Agreement: FileSignature };
 
 export default function Dashboard({ actions = {}, goTab, refreshKey }) {
+  const nav = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [movementFilter, setMovementFilter] = useState('all');
@@ -35,6 +37,7 @@ export default function Dashboard({ actions = {}, goTab, refreshKey }) {
         title="Operations Dashboard"
         desc="Guest-ready inventory, bookings and daily turnover across the short-stay portfolio."
         actions={<>
+          <button className="pm-btn" onClick={() => nav('/short-stay/contacts')}><Users size={15} /> Contacts &amp; Leads</button>
           <button className="pm-btn primary" onClick={actions.addProperty}><Hotel size={15} /> Add stay property</button>
           <button className="pm-btn" onClick={actions.addBooking}><Plus size={15} /> Add booking</button>
           <button className="pm-btn" onClick={() => goTab?.('availability')}><CalendarDays size={15} /> View calendar</button>
