@@ -939,6 +939,41 @@ export const furnitureStylingConsole = {
   exitTo: '/dashboard',
 };
 
+/* ── Muslim Prayer Room Interior Design ─────────────────────────────────────
+ * Sibling under the Interior Design parent — identical in-house workflow (no
+ * Providers/Compliance, no AMC, Variations + Suppliers on). Rebased onto
+ * /prayer-room-interior-design/* with a deep-emerald accent. Scoped to the
+ * prayer_room_interior_design service line by the header. */
+export const PRAYER_ROOM_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/prayer-room-interior-design')
+  .map((g) => {
+    if (g.key.endsWith('delivery')) {
+      return { ...g, items: [...g.items.filter((it) => !/\/amc$/.test(it.to)), { to: '/prayer-room-interior-design/variations', label: 'Variations', icon: FileSignature }] };
+    }
+    if (g.key.endsWith('finance')) {
+      return { ...g, items: [...g.items, { to: '/prayer-room-interior-design/suppliers', label: 'Suppliers & Payables', icon: Truck }] };
+    }
+    return g;
+  })
+  .filter((g) => !g.key.endsWith('providers'));
+
+export const prayerRoomInteriorConsole = {
+  slug: 'prayer-room-interior-design',
+  storageKey: 'mprids.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Prayer Room Interior Design',
+    icon: Home,
+    accent: '#047857',          // deep emerald — distinct from the other interior lines
+    accentStrong: '#065f46',
+    accentInk: '#064e3b',
+    accentTint: 'rgba(4,120,87,.12)',
+    accentTint2: '#d1fae5',
+  },
+  navGroups: PRAYER_ROOM_NAV,
+  api: { capabilities: '/wt-ops/capabilities', workQueue: '/wt-ops/work-queue' },
+  exitTo: '/dashboard',
+};
+
 export const CONSOLES = {
   'water-tank': waterTankConsole,
   'air-conditioning': airConditioningConsole,
@@ -947,6 +982,7 @@ export const CONSOLES = {
   'commercial-interior-design': commercialInteriorConsole,
   'custom-design-fit-out': customFitoutConsole,
   'furniture-styling-consultation': furnitureStylingConsole,
+  'prayer-room-interior-design': prayerRoomInteriorConsole,
   'land-property-assessment': landPropertyAssessmentConsole,
   'loan-financial-support': loanFinancialSupportConsole,
   'property-documentation-verification': propertyDocVerificationConsole,

@@ -564,7 +564,43 @@ const FSCS_PACK = {
   checklist_groups: FSCS_CHECKLIST_GROUPS,
   consumables_label: 'Furniture, Decor & Consumables',
 };
-const WO_PACKS = { water_tank: WT_PACK, air_conditioning: AC_PACK, land_property_assessment: LPAS_PACK, loan_financial_support: LFS_PACK, property_documentation_verification: PDV_PACK, property_will_succession: PWS_PACK, removal_relocation: RRS_PACK, property_care_concierge: PCC_PACK, residential_interior_design: RIDS_PACK, fitness_room_interior_design: FRIDS_PACK, commercial_interior_design: CIDS_PACK, custom_design_fitout: CDFS_PACK, furniture_styling_consultation: FSCS_PACK };
+// Prayer Room — same interior work-order structure, prayer room vocabulary.
+const MPRIDS_PROPERTY_TYPES = ['Home Prayer Room', 'Office Prayer Room', 'Mosque / Masjid', 'Commercial Prayer Space', 'School / Institution', 'Hospital', 'Mall / Public', 'Other'];
+const MPRIDS_SERVICE_GROUPS = {
+  'Prayer Room Design & Planning': ['Space Planning', 'Musallah Layout', 'Qibla Orientation', 'Prayer Capacity Planning', 'Male / Female Areas', 'Imam Area', 'Wudu Area Planning', '2D Drawings', '3D Visualisation'],
+  'Interior Fit-Out & Renovation': ['Prayer Room Fit-Out', 'Renovation', 'Carpentry & Joinery', 'Flooring', 'Prayer Carpet', 'Ceiling Installation', 'Painting & Decoration', 'Glass & Partition', 'Electrical & Lighting', 'Wudu Plumbing'],
+  'Furniture, Décor & Equipment': ['Islamic Décor', 'Furniture', 'Shoe Rack', "Qur'an Storage", 'Shelving & Storage', 'Audio System', 'Digital Prayer Time Display', 'Signage & Wayfinding'],
+  'Project Coordination': ['Project Management', 'Site Supervision', 'Vendor Coordination', 'Procurement', 'Installation', 'Handover'],
+};
+const MPRIDS_SPACE_FIELDS = [
+  ['prayer_room_type', 'Prayer Room Type'], ['design_style', 'Design Style'],
+  ['rooms_included', 'Prayer Capacity'], ['area', 'Approximate Area'],
+  ['wudu_requirements', 'Wudu Facility Requirements'], ['materials_finishes', 'Materials & Finishes'],
+];
+const MPRIDS_WARRANTY_ROWS = [
+  ['design', 'Design Services'], ['fit_out', 'Fit-Out Workmanship'],
+  ['furniture', 'Furniture Installation'], ['carpet', 'Prayer Carpet Installation'],
+  ['wudu', 'Wudu Facility Installation'],
+];
+const MPRIDS_CHECKLIST_GROUPS = {
+  'Before Project': ['Customer Service Agreement Signed', 'Quotation Approved', 'Work Order Approved', 'Qibla Orientation Confirmed', 'Design & Layout Approved', 'Deposit Received', 'Site Access Confirmed'],
+  'During Project': ['Site Measurements Confirmed', 'Materials & Carpet Procured', 'Work in Progress Photographed', 'Client Updated on Progress', 'Variations Approved (if any)'],
+  Completion: ['Works Completed to Scope', 'Prayer Carpet Laid & Qibla Verified', 'Wudu Facilities Tested', 'Site Cleaned & Handed Over', 'Snag List Cleared', 'Completion Sign-Off Signed', 'Final Invoice Issued', 'Warranty Summary Issued'],
+};
+const MPRIDS_PACK = {
+  doc_no: 'SSPC-MPRIDS-PWO-01',
+  header_subtitle: 'MUSLIM PRAYER ROOM INTERIOR DESIGN SOLUTIONS',
+  division: 'Seventh Sky Interior Design Solutions',
+  document_type: 'prayer_room_interior_design_work_order',
+  property_types: MPRIDS_PROPERTY_TYPES,
+  service_groups: MPRIDS_SERVICE_GROUPS,
+  section4_label: 'Section 4 — Prayer Room & Project Details',
+  section4_fields: MPRIDS_SPACE_FIELDS,
+  warranty_rows: MPRIDS_WARRANTY_ROWS,
+  checklist_groups: MPRIDS_CHECKLIST_GROUPS,
+  consumables_label: 'Materials, Carpet & Consumables',
+};
+const WO_PACKS = { water_tank: WT_PACK, air_conditioning: AC_PACK, land_property_assessment: LPAS_PACK, loan_financial_support: LFS_PACK, property_documentation_verification: PDV_PACK, property_will_succession: PWS_PACK, removal_relocation: RRS_PACK, property_care_concierge: PCC_PACK, residential_interior_design: RIDS_PACK, fitness_room_interior_design: FRIDS_PACK, commercial_interior_design: CIDS_PACK, custom_design_fitout: CDFS_PACK, furniture_styling_consultation: FSCS_PACK, prayer_room_interior_design: MPRIDS_PACK };
 // Resolve a pack by service_line key (or catalogue vertical / related_type prefix
 // for callers that pass those). Falls back to Water Tank.
 const packForWo = (v) => {

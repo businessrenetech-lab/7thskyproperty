@@ -94,7 +94,7 @@ import WTPortalAccounts from './screens/watertank/PortalAccounts';
 import { ForgotPassword, ResetPassword, ChangePassword } from './screens/PasswordScreens';
 import WTClients from './screens/watertank/Clients';
 import InteriorVariations from './screens/watertank/InteriorVariations';
-import InteriorServiceConsole, { FitnessRoomInteriorConsole, CommercialInteriorConsole, CustomFitoutConsole, FurnitureStylingConsole } from './screens/watertank/InteriorServiceConsole';
+import InteriorServiceConsole, { FitnessRoomInteriorConsole, CommercialInteriorConsole, CustomFitoutConsole, FurnitureStylingConsole, PrayerRoomInteriorConsole } from './screens/watertank/InteriorServiceConsole';
 import WtSuppliers from './screens/watertank/WtSuppliers';
 import WTClientDetail from './screens/watertank/clients/ClientDashboard';
 import WTClientCreate from './screens/watertank/clients/ClientCreate';
@@ -754,6 +754,59 @@ export default function App() {
               <Route path="/furniture-styling-consultation/catalogue" element={<WaterTankCatalogue />} />
               <Route path="/furniture-styling-consultation/portal-accounts" element={<WTPortalAccounts />} />
               <Route path="/furniture-styling-consultation/settings" element={<WaterTankSettings />} />
+            </Route>
+            {/* ── Muslim Prayer Room Interior Design console — same interior
+                screens & SOP, scoped to prayer_room_interior_design. Sibling
+                under the Interior Design Solutions parent. ── */}
+            <Route element={<RequireAuth><AdminGate><PrayerRoomInteriorConsole /></AdminGate></RequireAuth>}>
+              <Route path="/prayer-room-interior-design" element={<WaterTankDashboard />} />
+              <Route path="/prayer-room-interior-design/contacts" element={<SalesContacts scope="interior" />} />
+              <Route path="/prayer-room-interior-design/clients" element={<WTClients />} />
+              <Route path="/prayer-room-interior-design/clients/new" element={<WTClientCreate />} />
+              <Route path="/prayer-room-interior-design/clients/:code" element={<WTClientDetail />} />
+              <Route path="/prayer-room-interior-design/service-requests" element={<WTServiceRequests />} />
+              <Route path="/prayer-room-interior-design/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/prayer-room-interior-design/site-assessments" element={<WTSiteAssessments />} />
+              <Route path="/prayer-room-interior-design/site-assessments/new" element={<WTAssessmentForm />} />
+              <Route path="/prayer-room-interior-design/site-assessments/:code" element={<WTAssessmentDetail />} />
+              <Route path="/prayer-room-interior-design/site-assessments/:code/edit" element={<WTAssessmentForm />} />
+              <Route path="/prayer-room-interior-design/site-assessments/:code/quotation" element={<WTQuotationBuilder />} />
+              <Route path="/prayer-room-interior-design/site-assessments/:code/quotation/:quoteCode/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/prayer-room-interior-design/quotations" element={<WTQuotations />} />
+              <Route path="/prayer-room-interior-design/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/prayer-room-interior-design/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/prayer-room-interior-design/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/prayer-room-interior-design/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/prayer-room-interior-design/work-orders" element={<WTWorkOrders />} />
+              <Route path="/prayer-room-interior-design/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/prayer-room-interior-design/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/prayer-room-interior-design/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/prayer-room-interior-design/projects" element={<WTProjects />} />
+              <Route path="/prayer-room-interior-design/projects/new" element={<WTProjectForm />} />
+              <Route path="/prayer-room-interior-design/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/prayer-room-interior-design/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/prayer-room-interior-design/variations" element={<InteriorVariations />} />
+              <Route path="/prayer-room-interior-design/suppliers" element={<WtSuppliers />} />
+              <Route path="/prayer-room-interior-design/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/prayer-room-interior-design/agreements" element={<WTAgreementsHub />} />
+              <Route path="/prayer-room-interior-design/reports" element={<WTReports />} />
+              <Route path="/prayer-room-interior-design/reports/:kind" element={<WTReports />} />
+              <Route path="/prayer-room-interior-design/service-reports" element={<WTServiceReports />} />
+              <Route path="/prayer-room-interior-design/service-reports/:code" element={<WTServiceReports />} />
+              <Route path="/prayer-room-interior-design/work-queue" element={<WTWorkQueue />} />
+              <Route path="/prayer-room-interior-design/invoices" element={<WTInvoices />} />
+              <Route path="/prayer-room-interior-design/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/prayer-room-interior-design/payments" element={<WTPayments />} />
+              <Route path="/prayer-room-interior-design/calendar" element={<WTCalendar />} />
+              <Route path="/prayer-room-interior-design/registers" element={<WTRegisters />} />
+              <Route path="/prayer-room-interior-design/registers/:kind" element={<WTRegisters />} />
+              <Route path="/prayer-room-interior-design/registers/:kind/:code" element={<WTRegisters />} />
+              <Route path="/prayer-room-interior-design/complaints" element={<WTComplaints />} />
+              <Route path="/prayer-room-interior-design/complaints/:code" element={<WTComplaints />} />
+              <Route path="/prayer-room-interior-design/communication" element={<WTCommLog />} />
+              <Route path="/prayer-room-interior-design/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/prayer-room-interior-design/portal-accounts" element={<WTPortalAccounts />} />
+              <Route path="/prayer-room-interior-design/settings" element={<WaterTankSettings />} />
             </Route>
             {/* ── Land & Property Assessment console — Survey & Valuation, same
                 screens as Water Tank, scoped to land_property_assessment (first

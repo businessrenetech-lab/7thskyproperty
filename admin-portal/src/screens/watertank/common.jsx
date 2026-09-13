@@ -15,7 +15,7 @@ import { Spinner } from '../../ui/kit';
 // Every non-default console base, matched against the URL. Water Tank is the
 // default. Add a service line by giving it a SERVICE_UI entry (below) and, if its
 // base isn't one of these, listing it here — keeping one N-way source of truth.
-const SVC_BASES = ['/air-conditioning', '/land-property-assessment', '/loan-financial-support', '/property-documentation-verification', '/property-will-succession', '/removal-relocation', '/property-care-concierge', '/residential-interior-design', '/fitness-room-interior-design', '/commercial-interior-design', '/custom-design-fit-out', '/furniture-styling-consultation'];
+const SVC_BASES = ['/air-conditioning', '/land-property-assessment', '/loan-financial-support', '/property-documentation-verification', '/property-will-succession', '/removal-relocation', '/property-care-concierge', '/residential-interior-design', '/fitness-room-interior-design', '/commercial-interior-design', '/custom-design-fit-out', '/furniture-styling-consultation', '/prayer-room-interior-design'];
 export const svcBase = () => {
   try {
     const p = window.location.pathname || '';
@@ -604,6 +604,50 @@ export const SERVICE_UI = {
       direct_cost_examples: 'Furniture, soft furnishings, decor, artwork, curtains, transport & installation',
     },
   },
+  '/prayer-room-interior-design': {
+    label: 'Prayer Room Interior Design',
+    full_label: 'Muslim Prayer Room Interior Design',
+    short: 'Prayer Room',
+    doc_code: 'MPRIDS', // SSPC-MPRIDS-… document numbers
+    internal_team: true, // Seventh Sky coordinates in-house; no external provider
+    wo_consumables_label: 'Materials, Carpet & Consumables',
+    accent: '#047857', accent_ink: '#064e3b', accent_soft: '#d1fae5', // portal theming (deep emerald)
+    equipment: {
+      section_label: 'Prayer Room Details',
+      type_label: 'Prayer Room Type',
+      type_options: ['Home Prayer Room', 'Office Prayer Room', 'Mosque / Masjid', 'Commercial Prayer Space', 'School / Institution', 'Hospital', 'Mall / Public', 'Other'],
+      count_label: 'Prayer Capacity (persons)',
+      capacity_label: 'Approximate Area',
+      capacity_placeholder: 'e.g. 800 sq ft',
+      source_label: 'Design Style',
+      source_options: ['Modern Islamic', 'Traditional', 'Minimalist', 'Contemporary', 'Ornate / Classical', 'Mixed', 'Client to advise'],
+      unit_word: 'prayer room',
+    },
+    // SOP Phase 1 — Consultation & Prayer Room Design Assessment + site survey.
+    assess: {
+      profile_label: 'Prayer room brief', profile_hint: 'Type, capacity, scope',
+      quality_label: 'Design assessment', quality_hint: 'Layout, Qibla & Wudu',
+      obs1_label: 'Design observations', obs1_ph: 'Musallah layout, Qibla direction, male/female areas, lighting…',
+      obs2_label: 'Constraints / risks', obs2_ph: 'Wudu plumbing, capacity limits, structural walls, permissions…',
+      readings_label: 'On-site measurements',
+      readings: [
+        { key: 'total_area', ph: 'Total area (sq ft)' }, { key: 'capacity', ph: 'Prayer capacity (persons)' },
+        { key: 'qibla', ph: 'Qibla orientation' }, { key: 'budget', ph: 'Indicative budget (৳)' },
+        { key: 'timeline', ph: 'Target timeline (weeks)' },
+      ],
+    },
+    report_types: ['Site Visit', 'Design Concept', 'Progress', 'Handover', 'Completion Sign-Off'],
+    report_placeholder: 'e.g. Completed the consultation and site survey, confirmed Qibla orientation and capacity, and prepared the musallah layout and Wudu scope for client approval.',
+    registers: {
+      incident_types: ['Property Damage', 'Injury', 'Fire', 'Electrical Incident', 'Water Damage', 'Material Defect', 'Other'],
+      warranty_hint: 'e.g. Design Services, Fit-Out, Furniture, Prayer Carpet, Wudu Facility.',
+      location_placeholder: 'Area of the prayer room / facility…',
+      incident_blurb: 'Property damage, injury, electrical or water damage during the works',
+      warranty_scope: 'completed design, fit-out, furniture, prayer carpet and Wudu facility work',
+      incident_log: 'property damage, injuries, electrical/water damage and material defects',
+      direct_cost_examples: 'Prayer carpet, materials, furniture & storage, Wudu plumbing, décor, transport & labour',
+    },
+  },
 };
 /** The active console's UI profile (label, full_label, equipment field labels). */
 export const svcProfile = () => SERVICE_UI[svcBase()] || SERVICE_UI['/water-tank'];
@@ -625,6 +669,7 @@ const LINE_TO_BASE = {
   commercial_interior_design: '/commercial-interior-design',
   custom_design_fitout: '/custom-design-fit-out',
   furniture_styling_consultation: '/furniture-styling-consultation',
+  prayer_room_interior_design: '/prayer-room-interior-design',
   water_tank: '/water-tank',
 };
 export const profileForLine = (serviceLine) =>

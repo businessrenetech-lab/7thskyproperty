@@ -1,6 +1,6 @@
 import React from 'react';
 import ServiceConsole from '../../ui/ServiceConsole';
-import { residentialInteriorConsole, fitnessRoomInteriorConsole, commercialInteriorConsole, customFitoutConsole, furnitureStylingConsole } from '../../config/consoles';
+import { residentialInteriorConsole, fitnessRoomInteriorConsole, commercialInteriorConsole, customFitoutConsole, furnitureStylingConsole, prayerRoomInteriorConsole } from '../../config/consoles';
 
 /*
  * ResidentialInteriorConsole — the Residential Interior Design operations console.
@@ -51,4 +51,14 @@ export function CustomFitoutConsole() {
  */
 export function FurnitureStylingConsole() {
   return <ServiceConsole config={furnitureStylingConsole} />;
+}
+
+/*
+ * PrayerRoomInteriorConsole — sibling Interior Design console for Muslim Prayer
+ * Room Interior Design (prayer room design, Qibla, Wudu, prayer carpets, décor).
+ * Identical shell and screens; deep-emerald accent, /prayer-room-interior-design/*
+ * nav, scoped to the prayer_room_interior_design service line by the header.
+ */
+export function PrayerRoomInteriorConsole() {
+  return <ServiceConsole config={prayerRoomInteriorConsole} />;
 }

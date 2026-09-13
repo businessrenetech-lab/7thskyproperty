@@ -1491,6 +1491,113 @@ const SERVICE_LINES = {
       incident_types: ['Injury', 'Property Damage', 'Furniture Damage', 'Fire', 'Water Damage', 'Other'],
     },
   },
+
+  /* ── Muslim Prayer Room Interior Design (Interior Design Solutions #6) ───────
+   * Sibling under the Interior Design parent — identical 4-phase SOP workflow, so
+   * it reuses the same project stages, assessment, variations and costing. The
+   * CSA and vocabulary cover prayer room design, Qibla orientation, Wudu
+   * facilities, prayer carpets and Islamic décor. In-house delivery, no provider,
+   * no AMC (SSPC-MPRIDS-CSA-01 v0.2). */
+  prayer_room_interior_design: {
+    key: 'prayer_room_interior_design',
+    label: 'Prayer Room Interior Design',
+    short: 'MPRIDS',
+    accent: '#047857',              // deep emerald green — distinct from the other interior lines
+    api_base: 'wt',
+    route_base: 'prayer-room-interior-design',
+    env_tag: 'MPRIDS',             // ENV-MPRIDSCSA-…
+    catalogue_vertical: 'prayer_room_interior_design_csa',
+    parent: { key: 'interior_design', label: 'Interior Design Solutions' },
+    no_provider: true,
+    no_amc: true,
+    variations: true,
+    completion_signoff: true,
+    delivery_model: 'internal_team',
+    code_prefix: {
+      client: 'MPRIDS-C', project: 'MPRIDS-P', request: 'MPRIDR-', assessment: 'MPRIDA-',
+      quotation: 'MPRIDQ-', work_order: 'MPRIDW-', invoice: 'MPRIDI-',
+    },
+    required_docs: { compliance: [], insurance: [] },
+    service_categories: [],
+    related_type: {
+      customer: 'prayer_room_interior_design_customer_agreement',
+    },
+    agreement_template: {
+      customer: 'Muslim Prayer Room Interior Design Solutions Customer Service Agreement',
+    },
+    ui: {
+      full_label: 'Muslim Prayer Room Interior Design',
+      // From the SOP + CSA Clause 3 / Schedule A.
+      project_types: ['Prayer Room Design & Planning', 'Interior Fit-Out & Renovation', 'Furniture, Décor & Equipment', 'Project Coordination', 'Full Prayer Room', 'Mixed Scope'],
+      categories: ['Design & Planning', 'Fit-Out', 'Renovation', 'Furniture & Décor', 'Equipment', 'Coordination'],
+      property_types: ['Home Prayer Room', 'Office Prayer Room', 'Mosque / Masjid', 'Commercial Prayer Space', 'School / Institution', 'Hospital', 'Mall / Public', 'Other'],
+      service_catalogue: {
+        'Prayer Room Design & Planning': ['Prayer Room Space Planning', 'Musallah Layout Design', 'Qibla Orientation Planning', 'Prayer Capacity Planning', 'Male & Female Prayer Area Planning', 'Imam Area Design', 'Wudu Area Planning', 'Accessibility Planning', 'Lighting Design', '2D Design Drawings', '3D Visualisation'],
+        'Interior Fit-Out & Renovation': ['Prayer Room Fit-Out', 'Renovation & Refurbishment', 'Carpentry & Joinery', 'Flooring Installation', 'Prayer Carpet Coordination', 'Ceiling Installation', 'Painting & Decoration', 'Glass & Partition Installation', 'Electrical & Lighting', 'Plumbing Coordination for Wudu Facilities'],
+        'Furniture, Décor & Equipment': ['Islamic Décor Consultation', 'Furniture Coordination', 'Shoe Rack Design & Installation', 'Shelving & Storage Solutions', "Qur'an Storage Solutions", 'Audio System Coordination', 'Digital Prayer Time Display Coordination', 'Window Furnishing Coordination', 'Signage & Wayfinding Coordination'],
+        'Project Coordination': ['Site Assessment', 'Project Planning', 'Budget Planning', 'Contractor Coordination', 'Supplier Coordination', 'Material Coordination', 'Installation Supervision', 'Progress Monitoring', 'Quality Coordination', 'Practical Completion & Handover'],
+      },
+      equipment: {
+        section_label: 'Prayer Room Details',
+        type_label: 'Prayer Room Type',
+        type_options: ['Home Prayer Room', 'Office Prayer Room', 'Mosque / Masjid', 'Commercial Prayer Space', 'School / Institution', 'Hospital', 'Mall / Public', 'Other'],
+        count_label: 'Prayer Capacity (persons)',
+        capacity_label: 'Approximate Area',
+        capacity_placeholder: 'e.g. 800 sq ft',
+        source_label: 'Design Style',
+        source_options: ['Modern Islamic', 'Traditional', 'Minimalist', 'Contemporary', 'Ornate / Classical', 'Mixed', 'Client to advise'],
+      },
+      // SOP Phase 1 — Consultation & Prayer Room Design Assessment + site survey.
+      assess_materials: ['Concrete', 'Brick', 'Wood', 'Gypsum Board', 'Prayer Carpet', 'Tiles', 'Marble', 'Glass', 'Metal', 'Existing Finishes', 'Other'],
+      assess_sources: ['Modern Islamic', 'Traditional', 'Minimalist', 'Contemporary', 'Ornate / Classical', 'Mixed', 'Client to advise'],
+      assess_checks: [
+        // Consultation & Requirement Analysis (SOP Step 2)
+        { key: 'prayer_room_type', label: 'Prayer room type & usage captured', group: 'Consultation' },
+        { key: 'capacity_requirement', label: 'Prayer capacity requirement captured', group: 'Consultation' },
+        { key: 'gender_areas', label: 'Male / female prayer area needs captured', group: 'Consultation' },
+        { key: 'wudu_requirement', label: 'Wudu facility requirement captured', group: 'Consultation' },
+        { key: 'budget_captured', label: 'Project budget captured', group: 'Consultation' },
+        { key: 'timeline_expectation', label: 'Timeline expectation agreed', group: 'Consultation' },
+        // Prayer Room Property Assessment (SOP §5)
+        { key: 'site_survey', label: 'Site survey carried out', group: 'Site Survey' },
+        { key: 'qibla_orientation', label: 'Qibla orientation confirmed on site', group: 'Site Survey' },
+        { key: 'measurements_taken', label: 'Measurements & layout recorded', group: 'Site Survey' },
+        { key: 'photography', label: 'Existing condition photographed', group: 'Site Survey' },
+        { key: 'wudu_plumbing', label: 'Wudu / plumbing points assessed', group: 'Site Survey' },
+        // Design / Feasibility Assessment
+        { key: 'layout_feasibility', label: 'Musallah layout & capacity feasibility reviewed', group: 'Design Assessment' },
+        { key: 'accessibility', label: 'Accessibility requirements assessed', group: 'Design Assessment' },
+        { key: 'renovation_feasibility', label: 'Renovation feasibility reviewed', group: 'Design Assessment' },
+        // Preliminary Feasibility Review (SOP Step 3)
+        { key: 'practicality', label: 'Project practicality assessed', group: 'Feasibility Review' },
+        { key: 'budget_alignment', label: 'Budget alignment reviewed', group: 'Feasibility Review' },
+      ],
+      assess_templates: [
+        { key: 'standard', label: 'Standard (all scopes)', extra: [] },
+        { key: 'home_office', label: 'Home / Office Prayer Room', extra: [
+          { key: 'compact_layout', label: 'Compact layout / multi-use considered', group: 'Design Assessment' },
+        ] },
+        { key: 'mosque', label: 'Mosque / Institutional', extra: [
+          { key: 'large_capacity', label: 'Large capacity & rows planning captured', group: 'Consultation' },
+          { key: 'ablution_block', label: 'Ablution (Wudu) block scope defined', group: 'Design Assessment' },
+          { key: 'permits', label: 'Building / community permissions needed?', group: 'Feasibility Review' },
+        ] },
+        { key: 'wudu_focus', label: 'Wudu Facility Focus', extra: [
+          { key: 'water_supply', label: 'Water supply & drainage assessed', group: 'Site Survey' },
+          { key: 'wet_area_waterproofing', label: 'Wet-area waterproofing considered', group: 'Design Assessment' },
+        ] },
+      ],
+      assess_equipment: ['Measuring Tape / Laser Meter', 'Qibla Compass', 'Camera', 'Material & Carpet Samples', 'Laptop / CAD', 'Reference Deck'],
+      recommended_services: ['Prayer Room Space Planning', 'Qibla Orientation Planning', 'Wudu Area Planning', 'Prayer Room Fit-Out', 'Prayer Carpet Coordination', "Qur'an Storage Solutions", 'Practical Completion & Handover'],
+      report_types: ['Site Visit', 'Design Concept', 'Progress', 'Handover', 'Completion Sign-Off'],
+      cost_categories: ['Materials', 'Prayer Carpet', 'Furniture & Storage', 'Joinery / Carpentry', 'Painting', 'Electrical & Lighting', 'Plumbing (Wudu)', 'Flooring', 'False Ceiling', 'Islamic Décor', 'Audio / Display Equipment', 'Signage', 'Labour', 'Subcontractor', 'Transport & Installation', 'Permits / Govt', 'Design / Consultant', 'Misc'],
+      supplier_categories: ['Material Supplier', 'Prayer Carpet Supplier', 'Furniture Supplier', 'Carpenter / Joiner', 'Painter', 'Electrician', 'Plumber', 'Flooring Contractor', 'False Ceiling Contractor', 'Décor / Signage Supplier', 'Audio / Display Supplier', 'Labour Contractor', 'Subcontractor', 'Transport', 'Other'],
+      warranty_types: ['Design Services', 'Fit-Out Workmanship', 'Furniture Installation', 'Prayer Carpet Installation', 'Wudu Facility Installation', 'Manufacturer'],
+      warranty_months: { 'Design Services': 12, 'Fit-Out Workmanship': 12, 'Furniture Installation': 12, 'Prayer Carpet Installation': 6, 'Wudu Facility Installation': 12, Manufacturer: 12 },
+      complaint_types: ['Design Quality', 'Workmanship', 'Incomplete Work', 'Damage During Work', 'Carpet Quality', 'Wudu / Plumbing Issue', 'Material Quality', 'Staff Conduct', 'Delays', 'Billing Dispute', 'Other'],
+      incident_types: ['Injury', 'Property Damage', 'Fire', 'Electrical Incident', 'Water Damage', 'Other'],
+    },
+  },
 };
 
 const DEFAULT_SERVICE_LINE = 'water_tank';
