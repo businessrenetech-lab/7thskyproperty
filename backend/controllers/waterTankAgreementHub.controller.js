@@ -32,8 +32,11 @@ const FAMILY_META = {
   work_order: { label: 'Work Order Agreement', doc: 'Project Work Order' },
 };
 const relatedTypesFor = (req) => {
-  const rt = getServiceLine(resolveServiceLine(req)).related_type;
-  return { client: rt.customer, provider: rt.provider, work_order: `${resolveServiceLine(req)}_work_order` };
+  const sl = getServiceLine(resolveServiceLine(req));
+  const rt = sl.related_type || {};
+  const out = { client: rt.customer, work_order: `${sl.key}_work_order` };
+  if (rt.provider && !sl.no_provider) out.provider = rt.provider;
+  return out;
 };
 const familyOf = (relatedType) => {
   const t = String(relatedType || '');
@@ -98,7 +101,7 @@ function shapeEnvelope(env) {
     declined_count: declined.length,
     fully_signed: complete,
     // whose signature is actually being waited on right now
-    awaiting: pending[0] ? { name: pending[0].name, email: pending[0].email, role: pending[0].role, order: pending[0].order } : null,
+    awaiting: pending[0] ? { id: pending[0].id, name: pending[0].name, email: pending[0].email, role: pending[0].role, order: pending[0].order } : null,
     progress_pct: signers.length ? Math.round((signed.length / signers.length) * 100) : 0,
     can_resend: !complete && !eq(env.status, 'voided') && !eq(env.status, 'declined') && pending.length > 0,
     // A fully-executed or already-voided/declined envelope cannot be voided — the
@@ -150,23 +153,26 @@ exports.list = asyncHandler(async (req, res) => {
 });
 
 exports.overview = asyncHandler(async (req, res) => {
+  const rtypes = relatedTypesFor(req);
   const rows = await SigningEnvelope.findAll({
-    where: { ...branchScope(req), related_type: { [Op.in]: Object.values(relatedTypesFor(req)) } },
+    where: { ...branchScope(req), related_type: { [Op.in]: Object.values(rtypes) } },
     include: [{ model: EnvelopeSigner, as: 'signers' }],
   });
   const all = rows.map((r) => shapeEnvelope(r.get({ plain: true })));
   const live = all.filter((a) => !eq(a.status, 'voided'));
 
-  const byFamily = Object.keys(FAMILY_META).map((key) => {
-    const set = all.filter((a) => a.family === key);
-    return {
-      family: key,
-      label: FAMILY_META[key].label,
-      total: set.length,
-      fully_signed: set.filter((a) => a.fully_signed).length,
-      awaiting: set.filter((a) => !a.fully_signed && a.pending_count > 0 && !eq(a.status, 'voided')).length,
-    };
-  });
+  const byFamily = Object.keys(FAMILY_META)
+    .filter((k) => rtypes[k])
+    .map((key) => {
+      const set = all.filter((a) => a.family === key);
+      return {
+        family: key,
+        label: FAMILY_META[key].label,
+        total: set.length,
+        fully_signed: set.filter((a) => a.fully_signed).length,
+        awaiting: set.filter((a) => !a.fully_signed && a.pending_count > 0 && !eq(a.status, 'voided')).length,
+      };
+    });
 
   res.json({
     total: all.length,

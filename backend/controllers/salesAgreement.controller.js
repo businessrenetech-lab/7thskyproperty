@@ -12,6 +12,10 @@ const rpss = require('../services/rpssAgreement.service');
 const SigningEnvelope = require('../models/SigningEnvelope');
 const EnvelopeSigner = require('../models/EnvelopeSigner');
 const SignatureField = require('../models/SignatureField');
+const Property = require('../models/Property');
+const WorkOrder = require('../models/WorkOrder');
+const CareQuotation = require('../models/CareQuotation');
+const { generateCode } = require('../utils/codeGenerator');
 const sequelize = require('../config/db.config');
 
 const KIND = {
@@ -82,11 +86,53 @@ exports.getCatalog = asyncHandler(async (req, res) => {
 exports.getMeta = asyncHandler(async (req, res) => {
   const k = K(req); if (!k) return res.status(404).json({ error: 'Unknown agreement kind' });
   const sched = require('../services/salesAgreementSchedules')[req.params.kind] || {};
+  const nextWo = await generateCode(WorkOrder, 'work_order_code', 'SSPC-WO-');
+  const nextQt = await generateCode(CareQuotation, 'quote_code', 'SSPC-QT-');
   res.json({
     party: k.party, code: k.code, signer: k.signer,
     client_heading: sched.client_heading, commission_label: sched.commission_label,
     schedule_a: sched.schedule_a || [], schedule_d: sched.schedule_d || [],
     schedule_b_fields: sched.schedule_b_fields || [],
+    work_order_no: nextWo,
+    quotation_no: nextQt,
+    org: {
+      name: 'Seventh Sky Residential Property Services',
+      represented_by: req.user?.name || req.user?.full_name || 'Authorized Signatory',
+      position: req.user?.role === 'super_admin' ? 'Managing Director' : 'Sales & Acquisition Director',
+      email: req.user?.email || 'sales@seventhskyproperty.com',
+      phone: req.user?.phone || '+880 1700-000000',
+    },
+    defaults: {
+      work_order_no: nextWo,
+      quotation_no: nextQt,
+      org: {
+        name: 'Seventh Sky Residential Property Services',
+        represented_by: req.user?.name || req.user?.full_name || 'Authorized Signatory',
+        position: req.user?.role === 'super_admin' ? 'Managing Director' : 'Sales & Acquisition Director',
+        email: req.user?.email || 'sales@seventhskyproperty.com',
+        phone: req.user?.phone || '+880 1700-000000',
+      },
+    },
+  });
+});
+
+exports.getPropertyDefaults = asyncHandler(async (req, res) => {
+  const propertyId = req.params.propertyId;
+  const prop = await Property.findByPk(propertyId);
+  const nextWo = await generateCode(WorkOrder, 'work_order_code', 'SSPC-WO-');
+  const nextQt = await generateCode(CareQuotation, 'quote_code', 'SSPC-QT-');
+  res.json({
+    work_order_no: nextWo,
+    quotation_no: nextQt,
+    property_type: prop?.property_type || '',
+    property_address: prop?.address || '',
+    preferred_location: prop?.area || prop?.address || '',
+    budget_range: prop?.price ? `${Number(prop.price).toLocaleString()} BDT` : '',
+    listing_price: prop?.price || '',
+    market_value: prop?.price || prop?.market_rent_min || '',
+    min_price: prop?.price ? Math.round(prop.price * 0.95) : '',
+    target_value: prop?.price || '',
+    base_price: prop?.price || '',
   });
 });
 

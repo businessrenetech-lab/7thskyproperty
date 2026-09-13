@@ -15,7 +15,7 @@ const SignatureField = sequelize.define('SignatureField', {
   height: { type: DataTypes.INTEGER, defaultValue: 60 },
   required: { type: DataTypes.BOOLEAN, defaultValue: true },
   label: DataTypes.STRING,
-  value: DataTypes.TEXT,
+  value: DataTypes.TEXT('medium'),
 }, { tableName: 'signature_fields', underscored: true });
 
 SigningEnvelope.hasMany(SignatureField, { foreignKey: 'envelope_id', as: 'fields' });

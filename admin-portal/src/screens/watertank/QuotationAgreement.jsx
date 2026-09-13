@@ -786,16 +786,22 @@ export default function QuotationAgreement() {
             </div>
 
             <div className="wt-grid2">
-              <div className="wt-field"><label>Seventh Sky representative</label>
+              <div className="wt-field"><label>Seventh Sky representative *</label>
                 <input className="wt-input" value={draft.org?.represented_by || ''}
-                  onChange={(e) => setPath('org.represented_by', e.target.value)} /></div>
-              <div className="wt-field"><label>Position</label>
+                  onChange={(e) => setPath('org.represented_by', e.target.value)}
+                  placeholder="Full legal name" /></div>
+              <div className="wt-field"><label>Position / Designation *</label>
                 <input className="wt-input" value={draft.org?.position || ''}
-                  onChange={(e) => setPath('org.position', e.target.value)} /></div>
-              <div className="wt-field" style={{ gridColumn: '1 / -1' }}><label>Countersigner email</label>
+                  onChange={(e) => setPath('org.position', e.target.value)}
+                  placeholder="e.g. Managing Director / Operations Manager" /></div>
+              <div className="wt-field"><label>Countersigner official email *</label>
                 <input className="wt-input" type="email" value={draft.org?.email || ''}
                   onChange={(e) => setPath('org.email', e.target.value)}
-                  placeholder="Leave blank to skip the Seventh Sky countersignature" /></div>
+                  placeholder="rep@seventhskyproperty.com" /></div>
+              <div className="wt-field"><label>Official phone no *</label>
+                <input className="wt-input" value={draft.org?.phone || ''}
+                  onChange={(e) => setPath('org.phone', e.target.value)}
+                  placeholder="+880 1..." /></div>
             </div>
 
             {[0, 1].map((i) => (

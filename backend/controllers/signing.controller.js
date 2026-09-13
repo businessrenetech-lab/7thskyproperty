@@ -57,7 +57,11 @@ exports.listEnvelopes = asyncHandler(async (req, res) => {
 exports.getEnvelope = asyncHandler(async (req, res) => {
   const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req) }, include: envelopeIncludes });
   if (!env) return res.status(404).json({ error: 'Envelope not found.' });
-  res.json({ data: env });
+  const data = env.toJSON();
+  if (typeof data.terms === 'string') {
+    try { data.terms = JSON.parse(data.terms); } catch {}
+  }
+  res.json({ data });
 });
 
 // GET /envelopes/:id/links — staff-only. Returns each signer's signing link and,

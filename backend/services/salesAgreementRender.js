@@ -218,6 +218,11 @@ function buildAgreement(cfg, data = {}) {
     client_name: clients.map((cl) => cl.full_name).filter(Boolean).join(' & ') || c.full_name,
     property_address: (clients[0] || c).property_address || b.property_address,
     property_type: data.property_type || b.property_type,
+    preferred_location: b.preferred_location || b.property_address || '',
+    budget_range: b.budget_range || (b.target_value ? `${b.target_value} BDT` : ''),
+    finance_method: b.finance_method || '',
+    intended_use: b.intended_use || '',
+    expected_date: b.expected_date || b.timeframe || '',
     selected_services_text: (data.services && data.services.length) ? data.services.join(', ') : null,
   };
   const schedB = `<h2 id="sched-b" style="font-size:15px;color:#003768;margin:22px 0 6px;">${esc(cfg.schedule_b_title || 'SCHEDULE B — Engagement Summary')}</h2>${kvTable(
@@ -265,13 +270,27 @@ function buildAgreement(cfg, data = {}) {
 
   const terms = {
     doc_no: cfg.doc_no, version: cfg.version, party: cfg.party,
-    selected_services: data.services || [], checklist: data.checklist || [], schedule_b: b,
-    pricing_summary: pricing.summary, payment_schedule: pricing.payment_schedule,
+    effective_date: data.effective_date,
+    property_id: data.property_id,
+    property_type: data.property_type,
+    client: data.client || (data.clients && data.clients[0]) || {},
+    clients: data.clients || (data.client ? [data.client] : []),
+    additional_clients: data.additional_clients || [],
+    org: data.org || {},
+    witnesses: data.witnesses || [],
+    pricing_input: data.pricing_input || {},
+    services: data.services || [],
+    selected_services: data.services || [],
+    checklist: data.checklist || [],
+    schedule_b: b,
+    pricing_summary: pricing.summary,
+    payment_schedule: pricing.payment_schedule,
     commission: pricing.summary.commission || 0,
-    commission_mode: pricing.summary.commission_mode, commission_percent: pricing.summary.commission_percent,
+    commission_mode: pricing.summary.commission_mode,
+    commission_percent: pricing.summary.commission_percent,
     agreed_lines: pricing.lines.map((l) => ({ code: l.code, name: l.name, agreed_price: l.agreed_price, price_type: l.price_type })),
   };
-  return { title: cfg.title, doc_no: cfg.doc_no, html, terms };
+  return { title: cfg.title, doc_no: cfg.doc_no, html, terms, pricing };
 }
 
 module.exports = { getCatalog, computePricing, buildAgreement, money, esc };

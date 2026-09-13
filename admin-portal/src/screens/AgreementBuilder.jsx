@@ -310,11 +310,16 @@ export default function AgreementBuilder({ template, onClose }) {
                   {kycRole !== 'none' && <Field label="KYC policy"><Select value={kycPolicy} onChange={(e) => setKycPolicy(e.target.value)}><option value="flexible">Flexible — sign now, verify after</option><option value="strict">Strict — upload before signing</option></Select></Field>}
                 </div>
                 {kycRole !== 'none' && <Field label={`Link to ${RELATED_TYPE[kycRole] === 'service_provider' ? 'provider' : 'role profile'} ID (optional — enables auto-activation)`}><Input value={relatedId} onChange={(e) => setRelatedId(e.target.value)} placeholder="e.g. 12" /></Field>}
-                <div style={{ fontWeight: 700, fontSize: 13, margin: '10px 0 6px' }}>Signers</div>
+                <div style={{ fontWeight: 700, fontSize: 13, margin: '12px 0 8px' }}>Signers &amp; Representatives</div>
                 {signers.map((s, i) => (
-                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 6 }}>
-                    <Field label={`${s.label} — name`}><Input value={s.name} onChange={(e) => setSigners((a) => a.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))} /></Field>
-                    <Field label={`${s.label} — email`}><Input value={s.email} onChange={(e) => setSigners((a) => a.map((x, idx) => idx === i ? { ...x, email: e.target.value } : x))} placeholder="required to sign" /></Field>
+                  <div key={i} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 12, marginBottom: 10 }}>
+                    <div style={{ fontWeight: 600, fontSize: 12.5, color: '#334155', marginBottom: 8 }}>{s.label}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <Field label="Representative name"><Input value={s.name || ''} onChange={(e) => setSigners((a) => a.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))} placeholder="Full name" /></Field>
+                      <Field label="Position / Title"><Input value={s.position || ''} onChange={(e) => setSigners((a) => a.map((x, idx) => idx === i ? { ...x, position: e.target.value } : x))} placeholder="e.g. Managing Director / Authorized Rep" /></Field>
+                      <Field label="Official email (required to sign)"><Input type="email" value={s.email || ''} onChange={(e) => setSigners((a) => a.map((x, idx) => idx === i ? { ...x, email: e.target.value } : x))} placeholder="email@domain.com" /></Field>
+                      <Field label="Official phone no"><Input value={s.phone || ''} onChange={(e) => setSigners((a) => a.map((x, idx) => idx === i ? { ...x, phone: e.target.value } : x))} placeholder="+880 1..." /></Field>
+                    </div>
                   </div>
                 ))}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
