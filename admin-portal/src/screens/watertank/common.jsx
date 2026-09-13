@@ -15,7 +15,7 @@ import { Spinner } from '../../ui/kit';
 // Every non-default console base, matched against the URL. Water Tank is the
 // default. Add a service line by giving it a SERVICE_UI entry (below) and, if its
 // base isn't one of these, listing it here — keeping one N-way source of truth.
-const SVC_BASES = ['/air-conditioning', '/land-property-assessment', '/loan-financial-support', '/property-documentation-verification', '/property-will-succession', '/removal-relocation', '/property-care-concierge', '/residential-interior-design', '/fitness-room-interior-design', '/commercial-interior-design'];
+const SVC_BASES = ['/air-conditioning', '/land-property-assessment', '/loan-financial-support', '/property-documentation-verification', '/property-will-succession', '/removal-relocation', '/property-care-concierge', '/residential-interior-design', '/fitness-room-interior-design', '/commercial-interior-design', '/custom-design-fit-out'];
 export const svcBase = () => {
   try {
     const p = window.location.pathname || '';
@@ -516,6 +516,50 @@ export const SERVICE_UI = {
       direct_cost_examples: 'Materials, furniture & workstations, partitions, signage, transport, day labour and permits',
     },
   },
+  '/custom-design-fit-out': {
+    label: 'Custom Design & Fit-Out',
+    full_label: 'Custom Design & Fit-Out',
+    short: 'Custom Fit-Out',
+    doc_code: 'CDFS', // SSPC-CDFS-… document numbers
+    internal_team: true, // Seventh Sky coordinates in-house; no external provider
+    wo_consumables_label: 'Materials & Consumables',
+    accent: '#0f766e', accent_ink: '#115e59', accent_soft: '#ccfbf1', // portal theming (teal-green)
+    equipment: {
+      section_label: 'Project Space Details',
+      type_label: 'Property Type',
+      type_options: ['Residential', 'Office', 'Retail Shop', 'Restaurant / Café', 'Showroom', 'Hospitality', 'Mixed-Use', 'Other'],
+      count_label: 'Number of Rooms / Zones',
+      capacity_label: 'Approximate Area',
+      capacity_placeholder: 'e.g. 2,500 sq ft',
+      source_label: 'Design Style',
+      source_options: ['Modern', 'Contemporary', 'Minimalist', 'Classic', 'Industrial', 'Bespoke', 'Brand-aligned', 'Mixed', 'Client to advise'],
+      unit_word: 'space',
+    },
+    // SOP Phase 1 — Consultation & Design Assessment + site survey.
+    assess: {
+      profile_label: 'Space & brief', profile_hint: 'Property, style, scope',
+      quality_label: 'Design assessment', quality_hint: 'Feasibility & requirements',
+      obs1_label: 'Design observations', obs1_ph: 'Bespoke elements, layout, finishes, services…',
+      obs2_label: 'Constraints / risks', obs2_ph: 'Structural walls, low ceiling, landlord rules, lead times…',
+      readings_label: 'On-site measurements',
+      readings: [
+        { key: 'total_area', ph: 'Total area (sq ft)' }, { key: 'rooms', ph: 'Number of rooms / zones' },
+        { key: 'ceiling_height', ph: 'Ceiling height (ft)' }, { key: 'budget', ph: 'Indicative budget (৳)' },
+        { key: 'timeline', ph: 'Target timeline (weeks)' },
+      ],
+    },
+    report_types: ['Site Visit', 'Design Concept', 'Progress', 'Handover', 'Completion Sign-Off'],
+    report_placeholder: 'e.g. Completed the consultation and site survey, agreed the concept and material palette, and prepared the custom fit-out scope for client approval.',
+    registers: {
+      incident_types: ['Property Damage', 'Injury', 'Fire', 'Electrical Incident', 'Water Damage', 'Material Defect', 'Other'],
+      warranty_hint: 'e.g. Design Services, Workmanship, Installation, Custom Furniture.',
+      location_placeholder: 'Room / area of the property…',
+      incident_blurb: 'Property damage, injury, electrical or water damage during the works',
+      warranty_scope: 'completed design, fit-out, installation and custom furniture work',
+      incident_log: 'property damage, injuries, electrical/water damage and material defects',
+      direct_cost_examples: 'Materials, custom furniture, joinery, partitions, transport, day labour and permits',
+    },
+  },
 };
 /** The active console's UI profile (label, full_label, equipment field labels). */
 export const svcProfile = () => SERVICE_UI[svcBase()] || SERVICE_UI['/water-tank'];
@@ -535,6 +579,7 @@ const LINE_TO_BASE = {
   residential_interior_design: '/residential-interior-design',
   fitness_room_interior_design: '/fitness-room-interior-design',
   commercial_interior_design: '/commercial-interior-design',
+  custom_design_fitout: '/custom-design-fit-out',
   water_tank: '/water-tank',
 };
 export const profileForLine = (serviceLine) =>

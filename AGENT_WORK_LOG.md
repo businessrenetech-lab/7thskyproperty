@@ -8081,3 +8081,11 @@ used "the last line starting with `import`", which landed inside a multi-line
   - `node scripts/e2eCommercialInterior.js`: 20 PASS / 0 FAIL (client → CSA[CIDS] → signed → project auto-opens + Schedule C invoices CIDI- → variation CIDW-V- → approve → completion sign-off/variations on → supplier/bill/part-pay/payables → provider & AMC refused → cross-line isolation).
   - Fitness 20/0, Residential 20/0 (no regression). admin-portal build clean.
 - Handoff: Commercial Interior Design live at /admin/commercial-interior-design (blue theme). Interior family now has 3 live consoles (Residential, Fitness Room, Commercial). Remaining: Custom Fit-Out, Furniture & Styling, Prayer Room, Space Planning — same recipe.
+
+### 2026-09-14 | Claude Opus 4.8 | COMPLETED | New Interior service line — Custom Design & Fit-Out (own console + routes)
+- Request: continue adding interior sub-lines. This is Custom Design & Fit-Out Solutions.
+- Source: `.../Interior Design/Custom Design and Fit-Out Solutions/` — read SOP (SSPC-CDFS-SOP-01 v0.1) + CSA (SSPC-CDFS-CSA-01 v0.2). SOP identical workflow → ops engine reused; CSA + bespoke design/fit-out vocabulary (residential/office/retail/hospitality) differ.
+- Backend: `custom_design_fitout` line (CDFS-* codes) in serviceLines.js; reuse RIDS stages/closure; `CDFS_PACK` (24 clauses + Schedules A–D) in wtCustomerAgreement.service; CDFS work-order doc pack; `seedCustomDesignFitoutCatalogue.js` (33-item schedule, seeded). Reports/contacts already covered by isInteriorLine().
+- Frontend: `customFitoutConsole` (teal-green accent, no Providers/AMC, Variations + Suppliers) in CONSOLES; App.jsx `/custom-design-fit-out/*` routes (48) wrapped in `CustomFitoutConsole`; InteriorServiceConsole export; common.jsx UI profile; api.js header map; SalesContacts scope; Layout launcher entry.
+- Verification: `node scripts/e2eCustomFitout.js` 20 PASS / 0 FAIL (client → CSA[CDFS] → signed → project auto-opens + Schedule C invoices CDFI- → variation CDFW-V- → approve → completion sign-off/variations on → supplier/bill/part-pay/payables → provider & AMC refused → isolation). admin build clean.
+- Handoff: Custom Design & Fit-Out live at /admin/custom-design-fit-out (teal-green). Interior family now 4 live consoles (Residential, Fitness Room, Commercial, Custom Fit-Out). Remaining: Furniture & Styling, Prayer Room, Space Planning.

@@ -494,7 +494,42 @@ const CIDS_PACK = {
   checklist_groups: CIDS_CHECKLIST_GROUPS,
   consumables_label: 'Materials, Furniture & Consumables',
 };
-const WO_PACKS = { water_tank: WT_PACK, air_conditioning: AC_PACK, land_property_assessment: LPAS_PACK, loan_financial_support: LFS_PACK, property_documentation_verification: PDV_PACK, property_will_succession: PWS_PACK, removal_relocation: RRS_PACK, property_care_concierge: PCC_PACK, residential_interior_design: RIDS_PACK, fitness_room_interior_design: FRIDS_PACK, commercial_interior_design: CIDS_PACK };
+// Custom Design & Fit-Out — same interior work-order structure, bespoke vocab.
+const CDFS_PROPERTY_TYPES = ['Residential', 'Office', 'Retail Shop', 'Restaurant / Café', 'Showroom', 'Hospitality', 'Mixed-Use', 'Other'];
+const CDFS_SERVICE_GROUPS = {
+  'Design & Planning': ['Concept Design', 'Space Planning', 'Interior Layout', 'Furniture Layout', 'Colour & Material Selection', '2D Drawings', '3D Visualisation'],
+  'Fit-Out & Installation': ['Office Fit-Out', 'Retail Fit-Out', 'Residential Fit-Out', 'Commercial Fit-Out', 'Carpentry & Joinery', 'Ceiling Installation', 'Flooring Installation', 'Partition & Glass Installation', 'Painting & Decoration', 'Electrical & Lighting', 'HVAC Coordination'],
+  'Furniture & Styling': ['Furniture Procurement', 'Custom Furniture', 'Decorative Styling', 'Window Furnishings', 'Signage', 'Display & Feature Installations'],
+  'Project Coordination': ['Project Management', 'Site Supervision', 'Vendor Coordination', 'Procurement', 'Installation', 'Handover'],
+};
+const CDFS_SPACE_FIELDS = [
+  ['property_type', 'Property Type'], ['design_style', 'Design Style / Concept'],
+  ['rooms_included', 'Rooms / Zones Included'], ['area', 'Approximate Area'],
+  ['deliverables', 'Deliverables'], ['materials_finishes', 'Materials & Finishes'],
+];
+const CDFS_WARRANTY_ROWS = [
+  ['design', 'Design Services'], ['workmanship', 'Workmanship'],
+  ['installation', 'Installation'], ['custom_furniture', 'Custom Furniture'],
+];
+const CDFS_CHECKLIST_GROUPS = {
+  'Before Project': ['Customer Service Agreement Signed', 'Quotation Approved', 'Work Order Approved', 'Design & Layout Approved', 'Deposit Received', 'Site Access & Permissions Confirmed'],
+  'During Project': ['Site Measurements Confirmed', 'Materials & Custom Items Procured', 'Work in Progress Photographed', 'Client Updated on Progress', 'Variations Approved (if any)'],
+  Completion: ['Works Completed to Scope', 'Site Cleaned & Handed Over', 'Snag List Cleared', 'Completion Sign-Off Signed', 'Final Invoice Issued', 'Warranty Summary Issued'],
+};
+const CDFS_PACK = {
+  doc_no: 'SSPC-CDFS-PWO-01',
+  header_subtitle: 'CUSTOM DESIGN & FIT-OUT SOLUTIONS',
+  division: 'Seventh Sky Interior Design Solutions',
+  document_type: 'custom_design_fitout_work_order',
+  property_types: CDFS_PROPERTY_TYPES,
+  service_groups: CDFS_SERVICE_GROUPS,
+  section4_label: 'Section 4 — Project Space & Details',
+  section4_fields: CDFS_SPACE_FIELDS,
+  warranty_rows: CDFS_WARRANTY_ROWS,
+  checklist_groups: CDFS_CHECKLIST_GROUPS,
+  consumables_label: 'Materials & Consumables',
+};
+const WO_PACKS = { water_tank: WT_PACK, air_conditioning: AC_PACK, land_property_assessment: LPAS_PACK, loan_financial_support: LFS_PACK, property_documentation_verification: PDV_PACK, property_will_succession: PWS_PACK, removal_relocation: RRS_PACK, property_care_concierge: PCC_PACK, residential_interior_design: RIDS_PACK, fitness_room_interior_design: FRIDS_PACK, commercial_interior_design: CIDS_PACK, custom_design_fitout: CDFS_PACK };
 // Resolve a pack by service_line key (or catalogue vertical / related_type prefix
 // for callers that pass those). Falls back to Water Tank.
 const packForWo = (v) => {

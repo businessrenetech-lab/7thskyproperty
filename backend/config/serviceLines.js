@@ -1278,6 +1278,112 @@ const SERVICE_LINES = {
       incident_types: ['Injury', 'Property Damage', 'Fire', 'Electrical Incident', 'Water Damage', 'Other'],
     },
   },
+
+  /* ── Custom Design & Fit-Out Solutions (Interior Design Solutions #4) ────────
+   * Sibling under the Interior Design parent — identical SOP workflow, so it
+   * reuses the same project stages, assessment, variations and costing. The CSA
+   * and vocabulary cover bespoke design + fit-out across residential, office,
+   * retail and hospitality. In-house delivery, no provider, no AMC
+   * (SSPC-CDFS-CSA-01 v0.2). */
+  custom_design_fitout: {
+    key: 'custom_design_fitout',
+    label: 'Custom Design & Fit-Out',
+    short: 'CDFS',
+    accent: '#0f766e',              // teal-green — distinct from the other interior lines
+    api_base: 'wt',
+    route_base: 'custom-design-fit-out',
+    env_tag: 'CDFS',                // ENV-CDFSCSA-…
+    catalogue_vertical: 'custom_design_fitout_csa',
+    parent: { key: 'interior_design', label: 'Interior Design Solutions' },
+    no_provider: true,
+    no_amc: true,
+    variations: true,
+    completion_signoff: true,
+    delivery_model: 'internal_team',
+    code_prefix: {
+      client: 'CDFS-C', project: 'CDFS-P', request: 'CDFR-', assessment: 'CDFA-',
+      quotation: 'CDFQ-', work_order: 'CDFW-', invoice: 'CDFI-',
+    },
+    required_docs: { compliance: [], insurance: [] },
+    service_categories: [],
+    related_type: {
+      customer: 'custom_design_fitout_customer_agreement',
+    },
+    agreement_template: {
+      customer: 'Custom Design & Fit-Out Solutions Customer Service Agreement',
+    },
+    ui: {
+      full_label: 'Custom Design & Fit-Out',
+      // From the SOP + CSA Clause 3 / Schedule A.
+      project_types: ['Design & Planning', 'Fit-Out & Installation', 'Furniture & Styling', 'Project Coordination', 'Full Fit-Out', 'Mixed Scope'],
+      categories: ['Design & Planning', 'Fit-Out', 'Installation', 'Furniture', 'Styling', 'Coordination'],
+      property_types: ['Residential', 'Office', 'Retail Shop', 'Restaurant / Café', 'Showroom', 'Hospitality', 'Mixed-Use', 'Other'],
+      service_catalogue: {
+        'Design & Planning Services': ['Concept Design', 'Space Planning', 'Interior Layout Design', 'Furniture Layout Planning', 'Office Design', 'Retail Design', 'Residential Design', 'Hospitality Design', 'Colour & Material Selection', '2D Design Drawings', '3D Visualisation'],
+        'Fit-Out & Installation': ['Office Fit-Out', 'Retail Fit-Out', 'Residential Fit-Out', 'Commercial Fit-Out', 'Carpentry & Joinery', 'Ceiling Installation', 'Flooring Installation', 'Partition & Glass Installation', 'Painting & Decoration', 'Electrical & Lighting Coordination', 'HVAC Coordination'],
+        'Furniture & Styling': ['Furniture Procurement', 'Custom Furniture', 'Decorative Styling', 'Window Furnishings', 'Signage Installation', 'Display & Feature Installations', 'Appliance Coordination'],
+        'Project Coordination': ['Site Assessment', 'Project Planning', 'Contractor Coordination', 'Supplier Coordination', 'Material Coordination', 'Installation Supervision', 'Progress Monitoring', 'Quality Coordination', 'Practical Completion & Handover'],
+      },
+      equipment: {
+        section_label: 'Project Space Details',
+        type_label: 'Property Type',
+        type_options: ['Residential', 'Office', 'Retail Shop', 'Restaurant / Café', 'Showroom', 'Hospitality', 'Mixed-Use', 'Other'],
+        count_label: 'Number of Rooms / Zones',
+        capacity_label: 'Approximate Area',
+        capacity_placeholder: 'e.g. 2,500 sq ft',
+        source_label: 'Design Style',
+        source_options: ['Modern', 'Contemporary', 'Minimalist', 'Classic', 'Industrial', 'Bespoke', 'Brand-aligned', 'Mixed', 'Client to advise'],
+      },
+      // SOP Phase 1 — Consultation & Design Assessment + site survey.
+      assess_materials: ['Concrete', 'Brick', 'Wood', 'Gypsum Board', 'Glass', 'Metal', 'Tiles', 'Marble', 'Laminate', 'Veneer', 'Existing Finishes', 'Other'],
+      assess_sources: ['Modern', 'Contemporary', 'Minimalist', 'Classic', 'Industrial', 'Bespoke', 'Brand-aligned', 'Mixed', 'Client to advise'],
+      assess_checks: [
+        // Consultation & Requirement Analysis (SOP Step 2)
+        { key: 'project_type', label: 'Project type & usage captured', group: 'Consultation' },
+        { key: 'design_vision', label: 'Design vision & bespoke requirements captured', group: 'Consultation' },
+        { key: 'fitout_scope', label: 'Fit-out / installation scope discussed', group: 'Consultation' },
+        { key: 'budget_captured', label: 'Project budget captured', group: 'Consultation' },
+        { key: 'timeline_expectation', label: 'Timeline expectation agreed', group: 'Consultation' },
+        // Site Assessment (SOP §5)
+        { key: 'site_survey', label: 'Site survey carried out', group: 'Site Survey' },
+        { key: 'measurements_taken', label: 'Measurements & layout recorded', group: 'Site Survey' },
+        { key: 'photography', label: 'Existing condition photographed', group: 'Site Survey' },
+        { key: 'services_points', label: 'Electrical / plumbing / HVAC points noted', group: 'Site Survey' },
+        // Design / Feasibility Assessment
+        { key: 'custom_feasibility', label: 'Custom / bespoke element feasibility reviewed', group: 'Design Assessment' },
+        { key: 'renovation_feasibility', label: 'Renovation / structural feasibility reviewed', group: 'Design Assessment' },
+        { key: 'permissions', label: 'Building / landlord permissions identified', group: 'Design Assessment' },
+        // Preliminary Feasibility Review (SOP Step 3)
+        { key: 'practicality', label: 'Project practicality assessed', group: 'Feasibility Review' },
+        { key: 'budget_alignment', label: 'Budget alignment reviewed', group: 'Feasibility Review' },
+        { key: 'operational_complexity', label: 'Operational complexity & risk factors reviewed', group: 'Feasibility Review' },
+      ],
+      assess_templates: [
+        { key: 'standard', label: 'Standard (all scopes)', extra: [] },
+        { key: 'residential', label: 'Residential', extra: [
+          { key: 'room_by_room', label: 'Room-by-room requirements captured', group: 'Consultation' },
+          { key: 'delivery_access', label: 'Delivery / lift access checked', group: 'Site Survey' },
+        ] },
+        { key: 'commercial', label: 'Office / Retail', extra: [
+          { key: 'occupancy', label: 'Occupancy / layout capacity captured', group: 'Consultation' },
+          { key: 'brand_alignment', label: 'Brand / identity alignment scoped', group: 'Design Assessment' },
+        ] },
+        { key: 'custom_furniture', label: 'Custom Furniture / Joinery', extra: [
+          { key: 'bespoke_drawings', label: 'Bespoke drawings / specifications captured', group: 'Design Assessment' },
+          { key: 'material_selection', label: 'Material / finish selection confirmed', group: 'Consultation' },
+        ] },
+      ],
+      assess_equipment: ['Measuring Tape / Laser Meter', 'Camera', 'Floor Plan / CAD', 'Material & Finish Samples', 'Laptop', 'Reference Deck'],
+      recommended_services: ['Site Assessment', 'Space Planning', '3D Visualisation', 'Office Fit-Out', 'Residential Fit-Out', 'Custom Furniture', 'Practical Completion & Handover'],
+      report_types: ['Site Visit', 'Design Concept', 'Progress', 'Handover', 'Completion Sign-Off'],
+      cost_categories: ['Materials', 'Custom Furniture', 'Joinery / Carpentry', 'Partitions & Glass', 'Painting', 'Electrical & Lighting', 'HVAC', 'Flooring', 'False Ceiling', 'Signage', 'Labour', 'Subcontractor', 'Transport & Installation', 'Permits / Govt', 'Design / Consultant', 'Misc'],
+      supplier_categories: ['Material Supplier', 'Furniture Supplier', 'Carpenter / Joiner', 'Partition / Glass Contractor', 'Painter', 'Electrician', 'HVAC Contractor', 'Flooring Contractor', 'False Ceiling Contractor', 'Signage Supplier', 'Labour Contractor', 'Subcontractor', 'Transport', 'Other'],
+      warranty_types: ['Design Services', 'Workmanship', 'Installation', 'Custom Furniture', 'Manufacturer'],
+      warranty_months: { 'Design Services': 12, Workmanship: 12, Installation: 12, 'Custom Furniture': 12, Manufacturer: 12 },
+      complaint_types: ['Design Quality', 'Workmanship', 'Incomplete Work', 'Damage During Work', 'Material Quality', 'Staff Conduct', 'Delays', 'Billing Dispute', 'Other'],
+      incident_types: ['Injury', 'Property Damage', 'Fire', 'Electrical Incident', 'Water Damage', 'Other'],
+    },
+  },
 };
 
 const DEFAULT_SERVICE_LINE = 'water_tank';

@@ -94,7 +94,7 @@ import WTPortalAccounts from './screens/watertank/PortalAccounts';
 import { ForgotPassword, ResetPassword, ChangePassword } from './screens/PasswordScreens';
 import WTClients from './screens/watertank/Clients';
 import InteriorVariations from './screens/watertank/InteriorVariations';
-import InteriorServiceConsole, { FitnessRoomInteriorConsole, CommercialInteriorConsole } from './screens/watertank/InteriorServiceConsole';
+import InteriorServiceConsole, { FitnessRoomInteriorConsole, CommercialInteriorConsole, CustomFitoutConsole } from './screens/watertank/InteriorServiceConsole';
 import WtSuppliers from './screens/watertank/WtSuppliers';
 import WTClientDetail from './screens/watertank/clients/ClientDashboard';
 import WTClientCreate from './screens/watertank/clients/ClientCreate';
@@ -648,6 +648,59 @@ export default function App() {
               <Route path="/commercial-interior-design/catalogue" element={<WaterTankCatalogue />} />
               <Route path="/commercial-interior-design/portal-accounts" element={<WTPortalAccounts />} />
               <Route path="/commercial-interior-design/settings" element={<WaterTankSettings />} />
+            </Route>
+            {/* ── Custom Design & Fit-Out console — same interior screens & SOP,
+                scoped to custom_design_fitout. Sibling under the Interior
+                Design Solutions parent. ── */}
+            <Route element={<RequireAuth><AdminGate><CustomFitoutConsole /></AdminGate></RequireAuth>}>
+              <Route path="/custom-design-fit-out" element={<WaterTankDashboard />} />
+              <Route path="/custom-design-fit-out/contacts" element={<SalesContacts scope="interior" />} />
+              <Route path="/custom-design-fit-out/clients" element={<WTClients />} />
+              <Route path="/custom-design-fit-out/clients/new" element={<WTClientCreate />} />
+              <Route path="/custom-design-fit-out/clients/:code" element={<WTClientDetail />} />
+              <Route path="/custom-design-fit-out/service-requests" element={<WTServiceRequests />} />
+              <Route path="/custom-design-fit-out/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/custom-design-fit-out/site-assessments" element={<WTSiteAssessments />} />
+              <Route path="/custom-design-fit-out/site-assessments/new" element={<WTAssessmentForm />} />
+              <Route path="/custom-design-fit-out/site-assessments/:code" element={<WTAssessmentDetail />} />
+              <Route path="/custom-design-fit-out/site-assessments/:code/edit" element={<WTAssessmentForm />} />
+              <Route path="/custom-design-fit-out/site-assessments/:code/quotation" element={<WTQuotationBuilder />} />
+              <Route path="/custom-design-fit-out/site-assessments/:code/quotation/:quoteCode/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/custom-design-fit-out/quotations" element={<WTQuotations />} />
+              <Route path="/custom-design-fit-out/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/custom-design-fit-out/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/custom-design-fit-out/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/custom-design-fit-out/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/custom-design-fit-out/work-orders" element={<WTWorkOrders />} />
+              <Route path="/custom-design-fit-out/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/custom-design-fit-out/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/custom-design-fit-out/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/custom-design-fit-out/projects" element={<WTProjects />} />
+              <Route path="/custom-design-fit-out/projects/new" element={<WTProjectForm />} />
+              <Route path="/custom-design-fit-out/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/custom-design-fit-out/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/custom-design-fit-out/variations" element={<InteriorVariations />} />
+              <Route path="/custom-design-fit-out/suppliers" element={<WtSuppliers />} />
+              <Route path="/custom-design-fit-out/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/custom-design-fit-out/agreements" element={<WTAgreementsHub />} />
+              <Route path="/custom-design-fit-out/reports" element={<WTReports />} />
+              <Route path="/custom-design-fit-out/reports/:kind" element={<WTReports />} />
+              <Route path="/custom-design-fit-out/service-reports" element={<WTServiceReports />} />
+              <Route path="/custom-design-fit-out/service-reports/:code" element={<WTServiceReports />} />
+              <Route path="/custom-design-fit-out/work-queue" element={<WTWorkQueue />} />
+              <Route path="/custom-design-fit-out/invoices" element={<WTInvoices />} />
+              <Route path="/custom-design-fit-out/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/custom-design-fit-out/payments" element={<WTPayments />} />
+              <Route path="/custom-design-fit-out/calendar" element={<WTCalendar />} />
+              <Route path="/custom-design-fit-out/registers" element={<WTRegisters />} />
+              <Route path="/custom-design-fit-out/registers/:kind" element={<WTRegisters />} />
+              <Route path="/custom-design-fit-out/registers/:kind/:code" element={<WTRegisters />} />
+              <Route path="/custom-design-fit-out/complaints" element={<WTComplaints />} />
+              <Route path="/custom-design-fit-out/complaints/:code" element={<WTComplaints />} />
+              <Route path="/custom-design-fit-out/communication" element={<WTCommLog />} />
+              <Route path="/custom-design-fit-out/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/custom-design-fit-out/portal-accounts" element={<WTPortalAccounts />} />
+              <Route path="/custom-design-fit-out/settings" element={<WaterTankSettings />} />
             </Route>
             {/* ── Land & Property Assessment console — Survey & Valuation, same
                 screens as Water Tank, scoped to land_property_assessment (first

@@ -869,12 +869,48 @@ export const commercialInteriorConsole = {
   exitTo: '/dashboard',
 };
 
+/* ── Custom Design & Fit-Out ────────────────────────────────────────────────
+ * Sibling under the Interior Design parent — identical in-house workflow (no
+ * Providers/Compliance, no AMC, Variations + Suppliers on). Rebased onto
+ * /custom-design-fit-out/* with a teal-green accent. Scoped to the
+ * custom_design_fitout service line by the header. */
+export const CUSTOM_FITOUT_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/custom-design-fit-out')
+  .map((g) => {
+    if (g.key.endsWith('delivery')) {
+      return { ...g, items: [...g.items.filter((it) => !/\/amc$/.test(it.to)), { to: '/custom-design-fit-out/variations', label: 'Variations', icon: FileSignature }] };
+    }
+    if (g.key.endsWith('finance')) {
+      return { ...g, items: [...g.items, { to: '/custom-design-fit-out/suppliers', label: 'Suppliers & Payables', icon: Truck }] };
+    }
+    return g;
+  })
+  .filter((g) => !g.key.endsWith('providers'));
+
+export const customFitoutConsole = {
+  slug: 'custom-design-fit-out',
+  storageKey: 'cdf.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Custom Design & Fit-Out',
+    icon: Home,
+    accent: '#0f766e',          // teal-green — distinct from the other interior lines
+    accentStrong: '#0e6b63',
+    accentInk: '#115e59',
+    accentTint: 'rgba(15,118,110,.12)',
+    accentTint2: '#ccfbf1',
+  },
+  navGroups: CUSTOM_FITOUT_NAV,
+  api: { capabilities: '/wt-ops/capabilities', workQueue: '/wt-ops/work-queue' },
+  exitTo: '/dashboard',
+};
+
 export const CONSOLES = {
   'water-tank': waterTankConsole,
   'air-conditioning': airConditioningConsole,
   'residential-interior-design': residentialInteriorConsole,
   'fitness-room-interior-design': fitnessRoomInteriorConsole,
   'commercial-interior-design': commercialInteriorConsole,
+  'custom-design-fit-out': customFitoutConsole,
   'land-property-assessment': landPropertyAssessmentConsole,
   'loan-financial-support': loanFinancialSupportConsole,
   'property-documentation-verification': propertyDocVerificationConsole,

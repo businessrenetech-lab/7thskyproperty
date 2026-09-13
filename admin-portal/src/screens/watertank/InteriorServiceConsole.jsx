@@ -1,6 +1,6 @@
 import React from 'react';
 import ServiceConsole from '../../ui/ServiceConsole';
-import { residentialInteriorConsole, fitnessRoomInteriorConsole, commercialInteriorConsole } from '../../config/consoles';
+import { residentialInteriorConsole, fitnessRoomInteriorConsole, commercialInteriorConsole, customFitoutConsole } from '../../config/consoles';
 
 /*
  * ResidentialInteriorConsole — the Residential Interior Design operations console.
@@ -31,4 +31,14 @@ export function FitnessRoomInteriorConsole() {
  */
 export function CommercialInteriorConsole() {
   return <ServiceConsole config={commercialInteriorConsole} />;
+}
+
+/*
+ * CustomFitoutConsole — sibling Interior Design console for Custom Design &
+ * Fit-Out (bespoke design + fit-out across residential/office/retail/hospitality).
+ * Identical shell and screens; teal-green accent, /custom-design-fit-out/* nav,
+ * scoped to the custom_design_fitout service line by the header.
+ */
+export function CustomFitoutConsole() {
+  return <ServiceConsole config={customFitoutConsole} />;
 }
