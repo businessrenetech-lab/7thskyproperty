@@ -11,8 +11,33 @@ const EnvelopeSigner = require('../models/EnvelopeSigner');
 const SignatureField = require('../models/SignatureField');
 const OwnerFeeSchedule = require('../models/OwnerFeeSchedule');
 const PropertyOwnerProfile = require('../models/PropertyOwnerProfile');
+const WorkOrder = require('../models/WorkOrder');
+const CareQuotation = require('../models/CareQuotation');
+const Property = require('../models/Property');
+const { generateCode } = require('../utils/codeGenerator');
 const { buildSignerDefs, persistSigners, dispatchEnvelope, emailFirstSigner } = require('../services/agreementSigners.service');
 const sequelize = require('../config/db.config');
+
+async function resolveRprmDefaults(body, user) {
+  const b = { ...(body.schedule_b || {}) };
+  if (!b.work_order_no) {
+    b.work_order_no = await generateCode(WorkOrder, 'work_order_code', 'SSPC-WO-');
+  }
+  if (!b.quotation_no) {
+    b.quotation_no = await generateCode(CareQuotation, 'quote_code', 'SSPC-QT-');
+  }
+
+  const org = {
+    name: 'Seventh Sky Property Care',
+    represented_by: body.org?.represented_by || user?.name || 'Authorized Signatory',
+    position: body.org?.position || (user?.role === 'super_admin' ? 'Managing Director' : 'Property Management Director'),
+    email: body.org?.email || user?.email || 'pm@seventhskyproperty.com',
+    phone: body.org?.phone || user?.phone || '+880 1700-000000',
+    ...(body.org || {}),
+  };
+
+  return { schedule_b: b, org };
+}
 
 // Editable Schedule C standard price catalog
 exports.getCatalog = asyncHandler(async (req, res) => {
@@ -21,16 +46,48 @@ exports.getCatalog = asyncHandler(async (req, res) => {
 
 // Builder metadata: Schedule A service groups + Schedule D checklist groups
 exports.getMeta = asyncHandler(async (req, res) => {
-  res.json({ service_groups: svc.SERVICE_GROUPS, checklist_groups: svc.CHECKLIST_GROUPS });
+  const nextWo = await generateCode(WorkOrder, 'work_order_code', 'SSPC-WO-');
+  const nextQt = await generateCode(CareQuotation, 'quote_code', 'SSPC-QT-');
+  res.json({
+    service_groups: svc.SERVICE_GROUPS,
+    checklist_groups: svc.CHECKLIST_GROUPS,
+    defaults: {
+      work_order_no: nextWo,
+      quotation_no: nextQt,
+      org: {
+        name: 'Seventh Sky Property Care',
+        represented_by: req.user?.name || 'Authorized Signatory',
+        position: req.user?.role === 'super_admin' ? 'Managing Director' : 'Property Management Director',
+        email: req.user?.email || 'pm@seventhskyproperty.com',
+        phone: req.user?.phone || '+880 1700-000000',
+      },
+    },
+  });
+});
+
+exports.getPropertyDefaults = asyncHandler(async (req, res) => {
+  const propertyId = req.params.propertyId;
+  const prop = await Property.findByPk(propertyId);
+  const nextWo = await generateCode(WorkOrder, 'work_order_code', 'SSPC-WO-');
+  const nextQt = await generateCode(CareQuotation, 'quote_code', 'SSPC-QT-');
+  res.json({
+    work_order_no: nextWo,
+    quotation_no: nextQt,
+    property_type: prop?.property_type || '',
+    property_address: prop?.address || '',
+    expected_rent: prop?.approved_monthly_rent || prop?.market_rent_min || '',
+    security_deposit: prop?.approved_monthly_rent ? prop.approved_monthly_rent * 2 : '',
+  });
 });
 
 // Live preview — compute pricing then render the full agreement HTML from builder inputs
 exports.preview = asyncHandler(async (req, res) => {
   const branchId = branchScope(req).branch_id;
   const body = req.body || {};
+  const { schedule_b, org } = await resolveRprmDefaults(body, req.user);
   const pricing = await svc.computePricing(body.pricing_input || {}, branchId);
-  const built = svc.buildResidentialPMAgreement({ ...body, pricing });
-  res.json({ ...built, pricing });
+  const built = svc.buildResidentialPMAgreement({ ...body, schedule_b, org, pricing });
+  res.json({ ...built, pricing, schedule_b, org });
 });
 
 // Persist the recurring management fee so it is actually charged: the owner-fee
@@ -70,8 +127,9 @@ exports.createAgreement = asyncHandler(async (req, res) => {
   if (!client.full_name) return res.status(400).json({ error: 'Landlord full name is required.' });
   if (!asDraft && !client.email) return res.status(400).json({ error: 'Landlord email is required to send for signature.' });
 
+  const { schedule_b, org } = await resolveRprmDefaults(body, req.user);
   const pricing = await svc.computePricing(body.pricing_input || {}, branchId);
-  const built = svc.buildResidentialPMAgreement({ ...body, pricing });
+  const built = svc.buildResidentialPMAgreement({ ...body, schedule_b, org, pricing });
   const expires = new Date(Date.now() + 30 * 864e5);
 
   const out = await sequelize.transaction(async (t) => {
@@ -93,7 +151,7 @@ exports.createAgreement = asyncHandler(async (req, res) => {
     // ("Client"/"Seventh Sky"/"Witness N"), so the captured signatures render.
     await persistSigners(env, buildSignerDefs({
       client: { ...client, contact_id: body.client_contact_id || null },
-      org: body.org || {}, witnesses: body.witnesses, user: req.user || {}, clientRole: 'landlord',
+      org, witnesses: body.witnesses, user: req.user || {}, clientRole: 'landlord',
     }), t);
     await syncRecurringFee(env, pricing, body.property_id, body.client_contact_id || null, t);
     if (asDraft) return { env, links: [] };
@@ -117,15 +175,16 @@ exports.updateAgreement = asyncHandler(async (req, res) => {
   if (env.status !== 'draft') return res.status(409).json({ error: 'Only a draft agreement can be edited. Use "Edit & reissue" for a sent one.' });
   const body = req.body || {}; const client = body.client || {};
   if (!client.full_name) return res.status(400).json({ error: 'Landlord full name is required.' });
+  const { schedule_b, org } = await resolveRprmDefaults(body, req.user);
   const pricing = await svc.computePricing(body.pricing_input || {}, branchId);
-  const built = svc.buildResidentialPMAgreement({ ...body, pricing });
+  const built = svc.buildResidentialPMAgreement({ ...body, schedule_b, org, pricing });
   await sequelize.transaction(async (t) => {
     await SignatureField.destroy({ where: { envelope_id: env.id }, transaction: t });
     await EnvelopeSigner.destroy({ where: { envelope_id: env.id }, transaction: t });
     await env.update({ title: `${built.title} — ${client.full_name}`, document_html: built.html, terms: built.terms, related_id: body.property_id || env.related_id }, { transaction: t });
     await persistSigners(env, buildSignerDefs({
       client: { ...client, contact_id: body.client_contact_id || null },
-      org: body.org || {}, witnesses: body.witnesses, user: req.user || {}, clientRole: 'landlord',
+      org, witnesses: body.witnesses, user: req.user || {}, clientRole: 'landlord',
     }), t);
   });
   res.json({ id: env.id, status: env.status, message: 'Draft updated.' });

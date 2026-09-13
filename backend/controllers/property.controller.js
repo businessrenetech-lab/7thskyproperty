@@ -336,9 +336,19 @@ exports.create = asyncHandler(async (req, res) => {
     return { property: p, project };
   });
 
+  // Automatically draft a marketing campaign for the newly created/listed property
+  let autoCampaignResult = null;
+  try {
+    const { autoDraftListingCampaign } = require('../services/marketingCampaignDraft.service');
+    autoCampaignResult = await autoDraftListingCampaign(result.property, req.user);
+  } catch (draftErr) {
+    console.warn('[Property Create] Marketing auto-draft warning:', draftErr.message);
+  }
+
   res.status(201).json({
     data: result.property,
     pm_project_id: result.project?.id || null,
+    marketing_campaign: autoCampaignResult?.campaign || null,
     message: result.project
       ? 'Property created. Rental-management workflow & onboarding checklist generated.'
       : 'Property created.',
@@ -443,7 +453,29 @@ exports.update = asyncHandler(async (req, res) => {
     console.warn('[Property Update] STR Profile sync warning:', syncErr.message);
   }
 
+  // Auto-draft marketing campaign if property is newly available/listed or published
+  if (['available', 'listed'].includes(p.status) || p.is_published === true) {
+    try {
+      const { autoDraftListingCampaign } = require('../services/marketingCampaignDraft.service');
+      await autoDraftListingCampaign(p, req.user);
+    } catch (draftErr) {
+      console.warn('[Property Update] Marketing auto-draft warning:', draftErr.message);
+    }
+  }
+
   res.json({ data: p, message: 'Property updated.' });
+});
+
+// Dedicated endpoint to draft or regenerate a marketing campaign for this property
+exports.draftCampaign = asyncHandler(async (req, res) => {
+  const p = await Property.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!p) return res.status(404).json({ error: 'Property not found.' });
+  const { autoDraftListingCampaign } = require('../services/marketingCampaignDraft.service');
+  const result = await autoDraftListingCampaign(p, req.user, { forceRegenerate: req.body.force === true });
+  if (!result.campaign) {
+    return res.status(500).json({ error: result.error || 'Failed to draft marketing campaign' });
+  }
+  res.json(result);
 });
 
 // ─── PROPERTY MEDIA (photos / videos gallery) ───────────────────────────────

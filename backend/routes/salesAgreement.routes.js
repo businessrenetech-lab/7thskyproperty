@@ -12,6 +12,7 @@ router.post('/contracts/:id/variation', ctrl.createVariation);
 // kind = purchase | sale
 router.get('/:kind/catalog', ctrl.getCatalog);
 router.get('/:kind/meta', ctrl.getMeta);
+router.get('/:kind/property-defaults/:propertyId', ctrl.getPropertyDefaults);
 router.post('/:kind/preview', ctrl.preview);
 router.get('/:kind/agreements', ctrl.listAgreements);
 router.post('/:kind/agreements', ctrl.createAgreement);

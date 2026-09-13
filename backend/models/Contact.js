@@ -53,6 +53,23 @@ const Contact = sequelize.define('Contact', {
   status: { type: DataTypes.ENUM('active', 'inactive', 'blacklisted'), defaultValue: 'active' },
   is_client: { type: DataTypes.BOOLEAN, defaultValue: false },
   created_by: DataTypes.INTEGER,
+  // Contact Lists and Real Estate Lead attributes (Migration 0127)
+  contact_list: { type: DataTypes.STRING(100), defaultValue: 'General Leads' },
+  contact_lists: { type: DataTypes.JSON, defaultValue: [] },
+  lead_status: { type: DataTypes.STRING(40), defaultValue: 'new' },
+  lead_source: DataTypes.STRING(100),
+  looking_for: DataTypes.STRING(40), // 'buy', 'rent', 'sell', 'invest', 'commercial'
+  preferred_areas: { type: DataTypes.JSON, defaultValue: [] },
+  property_types: { type: DataTypes.JSON, defaultValue: [] },
+  budget_min: DataTypes.DECIMAL(15, 2),
+  budget_max: DataTypes.DECIMAL(15, 2),
+  bedrooms_min: DataTypes.INTEGER,
+  bathrooms_min: DataTypes.INTEGER,
+  size_min_sft: DataTypes.INTEGER,
+  financing_status: DataTypes.STRING(60), // 'pre_approved', 'cash_buyer', 'needs_mortgage', etc.
+  urgency: DataTypes.STRING(40), // 'immediate', '1_3_months', '3_6_months', 'exploring'
+  last_contacted_at: DataTypes.DATE,
+  lead_notes: DataTypes.TEXT,
 }, {
   tableName: 'contacts',
   underscored: true,

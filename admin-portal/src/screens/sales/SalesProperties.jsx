@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Building2, Edit, ExternalLink, Filter, Plus, RefreshCw, Search,
   WalletCards, CheckCircle2, Clock, Tag, ArrowRight, ShieldCheck,
-  Briefcase, HandCoins, AlertCircle
+  Briefcase, HandCoins, AlertCircle, Megaphone, Sparkles
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../services/api";
@@ -279,6 +279,25 @@ export default function SalesProperties({
       header: "",
       render: (row) => (
         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={Megaphone}
+            title="Auto-Draft Marketing Campaign for this Property"
+            onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                toast.info("Generating luxury marketing campaign draft...");
+                const res = await api.post(`/properties/${row.id}/draft-campaign`);
+                toast.success(res.data?.message || "Marketing campaign ready!");
+                navigate('/residential/marketing', { state: { initialTab: 'campaigns' } });
+              } catch (err) {
+                toast.error(err.response?.data?.error || "Failed to draft campaign");
+              }
+            }}
+          >
+            Campaign
+          </Button>
           <Button
             size="sm"
             variant="ghost"
