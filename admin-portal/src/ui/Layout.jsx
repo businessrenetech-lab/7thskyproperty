@@ -62,6 +62,7 @@ const NAV = [
     { group: true, label: 'Interior Design Solutions' },
     { to: '/residential-interior-design', label: 'Residential Interior Design' },
     { to: '/fitness-room-interior-design', label: 'Fitness Room Interior Design' },
+    { to: '/commercial-interior-design', label: 'Commercial Interior Design' },
     { group: true, label: 'Doc Verification & Transfer' },
     { to: '/land-property-assessment', label: 'Land & Property Assessment' },
     { to: '/loan-financial-support', label: 'Loan & Financial Support' },

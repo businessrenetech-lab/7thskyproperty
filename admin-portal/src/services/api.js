@@ -56,6 +56,7 @@ api.interceptors.request.use(
         ['/property-care-concierge', 'property_care_concierge'],
         ['/residential-interior-design', 'residential_interior_design'],
         ['/fitness-room-interior-design', 'fitness_room_interior_design'],
+        ['/commercial-interior-design', 'commercial_interior_design'],
       ];
       const hit = SERVICE_LINE_BY_PATH.find(([frag]) => p.includes(frag));
       if (hit) config.headers['X-Service-Line'] = hit[1];

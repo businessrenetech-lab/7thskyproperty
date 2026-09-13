@@ -1170,6 +1170,114 @@ const SERVICE_LINES = {
       incident_types: ['Injury', 'Property Damage', 'Fire', 'Electrical Incident', 'Water Damage', 'Equipment Failure', 'Other'],
     },
   },
+
+  /* ── Commercial Interior Design (Interior Design Solutions #3) ───────────────
+   * Sibling of Residential / Fitness Room under the Interior Design parent — the
+   * SOP workflow is identical, so it reuses the same project stages, assessment,
+   * variations and costing; only the CSA and commercial vocabulary differ
+   * (office / retail / restaurant / showroom / hospitality fit-out). In-house
+   * delivery, no third-party provider, no AMC (SSPC-CIDS-CSA-01 v0.2). */
+  commercial_interior_design: {
+    key: 'commercial_interior_design',
+    label: 'Commercial Interior Design',
+    short: 'CIDS',
+    accent: '#1d4ed8',              // strong blue — corporate, distinct from RIDS purple / FRIDS red
+    api_base: 'wt',
+    route_base: 'commercial-interior-design',
+    env_tag: 'CIDS',                // ENV-CIDSCSA-…
+    catalogue_vertical: 'commercial_interior_design_csa',
+    parent: { key: 'interior_design', label: 'Interior Design Solutions' },
+    no_provider: true,
+    no_amc: true,
+    variations: true,
+    completion_signoff: true,
+    delivery_model: 'internal_team',
+    code_prefix: {
+      client: 'CIDS-C', project: 'CIDS-P', request: 'CIDR-', assessment: 'CIDA-',
+      quotation: 'CIDQ-', work_order: 'CIDW-', invoice: 'CIDI-',
+    },
+    required_docs: { compliance: [], insurance: [] },
+    service_categories: [],
+    related_type: {
+      customer: 'commercial_interior_design_customer_agreement',
+    },
+    agreement_template: {
+      customer: 'Commercial Interior Design Solutions Customer Service Agreement',
+    },
+    ui: {
+      full_label: 'Commercial Interior Design',
+      // From the SOP + CSA Clause 3 / Schedule A.
+      project_types: ['Commercial Interior Design', 'Fit-Out & Renovation', 'Furniture & Styling', 'Project Coordination', 'Full Fit-Out', 'Mixed Scope'],
+      categories: ['Design & Planning', 'Fit-Out', 'Renovation', 'Furniture', 'Styling', 'Coordination'],
+      property_types: ['Office', 'Retail Shop', 'Restaurant / Café', 'Showroom', 'Hotel / Hospitality', 'Clinic / Medical', 'Warehouse', 'Mixed-Use', 'Other'],
+      service_catalogue: {
+        'Commercial Interior Design': ['Office Interior Design', 'Retail Interior Design', 'Restaurant & Café Design', 'Showroom Design', 'Hotel & Hospitality Design', 'Commercial Space Planning', 'Workspace Optimisation', 'Reception & Waiting Area Design', 'Corporate Branding Integration', 'Lighting Design', 'Ceiling & Flooring Design', 'Smart Office Solutions'],
+        'Fit-Out & Renovation': ['Office Fit-Out', 'Retail Fit-Out', 'Restaurant Fit-Out', 'Commercial Renovation', 'Partition & Glass Installation', 'Carpentry & Joinery', 'Painting & Decoration', 'Flooring Installation', 'Ceiling Installation', 'Electrical & Lighting Coordination', 'HVAC Coordination'],
+        'Furniture & Styling': ['Furniture Selection', 'Furniture Procurement Coordination', 'Custom Furniture', 'Workstations', 'Reception Furniture', 'Decorative Accessories', 'Window Furnishings', 'Signage Coordination'],
+        'Project Coordination': ['Site Assessment', 'Project Planning', 'Contractor Coordination', 'Material Coordination', 'Supplier Coordination', 'Progress Monitoring', 'Quality Coordination', 'Practical Completion & Handover'],
+      },
+      equipment: {
+        section_label: 'Commercial Space Details',
+        type_label: 'Business Type',
+        type_options: ['Office', 'Retail Shop', 'Restaurant / Café', 'Showroom', 'Hotel / Hospitality', 'Clinic / Medical', 'Warehouse', 'Mixed-Use', 'Other'],
+        count_label: 'Number of Floors / Zones',
+        capacity_label: 'Approximate Area',
+        capacity_placeholder: 'e.g. 5,000 sq ft',
+        source_label: 'Design Style',
+        source_options: ['Modern', 'Corporate', 'Minimalist', 'Premium / Luxury', 'Industrial', 'Boutique', 'Brand-aligned', 'Mixed', 'Client to advise'],
+      },
+      // SOP Phase 1 — Consultation & Commercial Design Assessment + site survey.
+      assess_materials: ['Concrete', 'Brick', 'Gypsum Board', 'Glass', 'Aluminium', 'Tiles', 'Vinyl / Carpet', 'Wood', 'Metal', 'Acoustic Panels', 'Existing Finishes', 'Other'],
+      assess_sources: ['Modern', 'Corporate', 'Minimalist', 'Premium / Luxury', 'Industrial', 'Boutique', 'Brand-aligned', 'Mixed', 'Client to advise'],
+      assess_checks: [
+        // Consultation & Requirement Analysis (SOP Step 2)
+        { key: 'business_type', label: 'Business type & operational needs captured', group: 'Consultation' },
+        { key: 'brand_requirements', label: 'Brand / corporate identity requirements captured', group: 'Consultation' },
+        { key: 'fitout_scope', label: 'Fit-out / renovation scope discussed', group: 'Consultation' },
+        { key: 'budget_captured', label: 'Project budget captured', group: 'Consultation' },
+        { key: 'timeline_expectation', label: 'Timeline / occupancy date agreed', group: 'Consultation' },
+        // Commercial Site Assessment (SOP §5)
+        { key: 'site_survey', label: 'Commercial site survey carried out', group: 'Site Survey' },
+        { key: 'measurements_taken', label: 'Measurements & floor plan recorded', group: 'Site Survey' },
+        { key: 'photography', label: 'Existing condition photographed', group: 'Site Survey' },
+        { key: 'mep_points', label: 'MEP (electrical / HVAC / plumbing) points noted', group: 'Site Survey' },
+        { key: 'occupancy_capacity', label: 'Occupancy / workstation capacity captured', group: 'Site Survey' },
+        // Design / Feasibility Assessment
+        { key: 'space_planning', label: 'Space planning & workflow assessed', group: 'Design Assessment' },
+        { key: 'renovation_feasibility', label: 'Renovation feasibility reviewed', group: 'Design Assessment' },
+        { key: 'building_permissions', label: 'Building / landlord / fire permissions identified', group: 'Design Assessment' },
+        // Preliminary Feasibility Review (SOP Step 3)
+        { key: 'practicality', label: 'Project practicality assessed', group: 'Feasibility Review' },
+        { key: 'budget_alignment', label: 'Budget alignment reviewed', group: 'Feasibility Review' },
+        { key: 'operational_complexity', label: 'Operational complexity & risk factors reviewed', group: 'Feasibility Review' },
+      ],
+      assess_templates: [
+        { key: 'standard', label: 'Standard (all scopes)', extra: [] },
+        { key: 'office', label: 'Office', extra: [
+          { key: 'workstation_count', label: 'Workstation / seat count captured', group: 'Consultation' },
+          { key: 'meeting_rooms', label: 'Meeting / collaboration spaces scoped', group: 'Design Assessment' },
+        ] },
+        { key: 'retail_showroom', label: 'Retail / Showroom', extra: [
+          { key: 'display_layout', label: 'Display / merchandising layout scoped', group: 'Design Assessment' },
+          { key: 'storefront', label: 'Storefront / signage requirements noted', group: 'Site Survey' },
+        ] },
+        { key: 'restaurant', label: 'Restaurant / Café', extra: [
+          { key: 'kitchen_mep', label: 'Kitchen MEP & exhaust requirements noted', group: 'Site Survey' },
+          { key: 'seating_capacity', label: 'Seating capacity & flow scoped', group: 'Design Assessment' },
+          { key: 'food_permits', label: 'Food / fire safety permits needed?', group: 'Feasibility Review' },
+        ] },
+      ],
+      assess_equipment: ['Measuring Tape / Laser Meter', 'Camera', 'Floor Plan / CAD', 'Material & Finish Samples', 'Laptop', 'Brand Guidelines'],
+      recommended_services: ['Site Assessment', 'Commercial Space Planning', 'Office Fit-Out', 'Retail Fit-Out', 'Electrical & Lighting Coordination', 'HVAC Coordination', 'Furniture Procurement Coordination', 'Practical Completion & Handover'],
+      report_types: ['Site Visit', 'Design Concept', 'Progress', 'Handover', 'Completion Sign-Off'],
+      cost_categories: ['Materials', 'Furniture & Workstations', 'Partitions & Glass', 'Joinery / Carpentry', 'Painting', 'Electrical & Lighting', 'HVAC', 'Flooring', 'False Ceiling', 'Signage & Branding', 'Labour', 'Subcontractor', 'Transport & Installation', 'Permits / Govt', 'Design / Consultant', 'Misc'],
+      supplier_categories: ['Material Supplier', 'Furniture Supplier', 'Partition / Glass Contractor', 'Carpenter / Joiner', 'Painter', 'Electrician', 'HVAC Contractor', 'Flooring Contractor', 'False Ceiling Contractor', 'Signage Supplier', 'Labour Contractor', 'Subcontractor', 'Transport', 'Other'],
+      warranty_types: ['Design Services', 'Workmanship', 'Installation', 'Furniture', 'Manufacturer'],
+      warranty_months: { 'Design Services': 12, Workmanship: 12, Installation: 12, Furniture: 6, Manufacturer: 12 },
+      complaint_types: ['Design Quality', 'Workmanship', 'Incomplete Work', 'Damage During Work', 'Material Quality', 'Staff Conduct', 'Delays', 'Billing Dispute', 'Other'],
+      incident_types: ['Injury', 'Property Damage', 'Fire', 'Electrical Incident', 'Water Damage', 'Other'],
+    },
+  },
 };
 
 const DEFAULT_SERVICE_LINE = 'water_tank';

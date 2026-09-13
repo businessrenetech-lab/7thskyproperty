@@ -8061,3 +8061,23 @@ used "the last line starting with `import`", which landed inside a multi-line
   - `node scripts/e2eInteriorDesign.js`: 20/0 (no regression from the isInteriorLine generalization).
   - admin-portal `npm run build`: clean.
 - Handoff: Fitness Room Interior Design is a live console at /admin/fitness-room-interior-design with its own routes, red theme, faithful CSA, and the shared interior ops engine (no provider, auto-open project on signing). Remaining interior sub-lines (Commercial, Custom Fit-Out, Furniture & Styling, Prayer Room, Space Planning) can now be added the same way; the isInteriorLine helper means reports/contacts need no further edits.
+
+### 2026-09-14 | Claude Opus 4.8 | COMPLETED | New Interior service line — Commercial Interior Design (own console + routes)
+- Request: continue adding interior sub-lines (each its own dashboard + unique routes, shared ops engine). This is Commercial Interior Design.
+- Source: `.../Interior Design/Commercial Interior Design/` — read SOP (SSPC-CIDS-SOP-01 v0.1) + CSA (SSPC-CIDS-CSA-01 v0.2). SOP identical workflow to Residential/Fitness → ops engine reused; CSA + commercial vocabulary differ (office/retail/restaurant/showroom/hospitality fit-out).
+- Backend:
+  - `config/serviceLines.js`: new `commercial_interior_design` line (route_base commercial-interior-design, CIDS-* codes, no_provider/no_amc/variations/completion_signoff, delivery_model internal_team, commercial UI vocabulary/assessment/cost+supplier categories/warranty).
+  - `services/wtProject.service.js`: reuse RIDS stages + closure.
+  - `services/wtCustomerAgreement.service.js`: `CIDS_PACK` (23 clauses + Schedules faithful to CSA) registered in PACKS.
+  - `services/wtWorkOrderDoc.service.js`: `CIDS` work-order pack (Section 4 — Commercial Space & Project Details).
+  - `scripts/seedCommercialInteriorCatalogue.js`: 36-item CIDS price schedule (vertical commercial_interior_design_csa). Seeded.
+  - Reports + contacts already generalized via isInteriorLine() (from the Fitness Room build) — no per-line edits needed.
+- Frontend:
+  - `config/consoles.js`: `COMMERCIAL_INTERIOR_NAV` + `commercialInteriorConsole` (blue accent, drops Providers/AMC, adds Variations + Suppliers & Payables); registered in CONSOLES.
+  - `App.jsx`: `/commercial-interior-design/*` routes (48) wrapped in new `CommercialInteriorConsole`.
+  - `InteriorServiceConsole.jsx`: added `CommercialInteriorConsole` export.
+  - `common.jsx`: SVC_BASES + SERVICE_UI['/commercial-interior-design'] + LINE_TO_BASE. `api.js`: path→line map. `SalesContacts.jsx`: interior scope + svcBase. `Layout.jsx`: launcher entry.
+- Verification & Results:
+  - `node scripts/e2eCommercialInterior.js`: 20 PASS / 0 FAIL (client → CSA[CIDS] → signed → project auto-opens + Schedule C invoices CIDI- → variation CIDW-V- → approve → completion sign-off/variations on → supplier/bill/part-pay/payables → provider & AMC refused → cross-line isolation).
+  - Fitness 20/0, Residential 20/0 (no regression). admin-portal build clean.
+- Handoff: Commercial Interior Design live at /admin/commercial-interior-design (blue theme). Interior family now has 3 live consoles (Residential, Fitness Room, Commercial). Remaining: Custom Fit-Out, Furniture & Styling, Prayer Room, Space Planning — same recipe.

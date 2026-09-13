@@ -834,11 +834,47 @@ export const fitnessRoomInteriorConsole = {
   exitTo: '/dashboard',
 };
 
+/* ── Commercial Interior Design ─────────────────────────────────────────────
+ * Sibling of Residential / Fitness Room under the Interior Design parent —
+ * identical in-house workflow (no Providers/Compliance, no AMC, Variations +
+ * Suppliers on). Rebased onto /commercial-interior-design/* with a blue accent.
+ * Scoped to the commercial_interior_design service line by the header. */
+export const COMMERCIAL_INTERIOR_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/commercial-interior-design')
+  .map((g) => {
+    if (g.key.endsWith('delivery')) {
+      return { ...g, items: [...g.items.filter((it) => !/\/amc$/.test(it.to)), { to: '/commercial-interior-design/variations', label: 'Variations', icon: FileSignature }] };
+    }
+    if (g.key.endsWith('finance')) {
+      return { ...g, items: [...g.items, { to: '/commercial-interior-design/suppliers', label: 'Suppliers & Payables', icon: Truck }] };
+    }
+    return g;
+  })
+  .filter((g) => !g.key.endsWith('providers'));
+
+export const commercialInteriorConsole = {
+  slug: 'commercial-interior-design',
+  storageKey: 'cid.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Commercial Interior Design',
+    icon: Home,
+    accent: '#1d4ed8',          // blue — tells it apart from Residential purple / Fitness red
+    accentStrong: '#1e40af',
+    accentInk: '#1e3a8a',
+    accentTint: 'rgba(29,78,216,.12)',
+    accentTint2: '#dbeafe',
+  },
+  navGroups: COMMERCIAL_INTERIOR_NAV,
+  api: { capabilities: '/wt-ops/capabilities', workQueue: '/wt-ops/work-queue' },
+  exitTo: '/dashboard',
+};
+
 export const CONSOLES = {
   'water-tank': waterTankConsole,
   'air-conditioning': airConditioningConsole,
   'residential-interior-design': residentialInteriorConsole,
   'fitness-room-interior-design': fitnessRoomInteriorConsole,
+  'commercial-interior-design': commercialInteriorConsole,
   'land-property-assessment': landPropertyAssessmentConsole,
   'loan-financial-support': loanFinancialSupportConsole,
   'property-documentation-verification': propertyDocVerificationConsole,

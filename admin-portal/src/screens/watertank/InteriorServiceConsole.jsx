@@ -1,6 +1,6 @@
 import React from 'react';
 import ServiceConsole from '../../ui/ServiceConsole';
-import { residentialInteriorConsole, fitnessRoomInteriorConsole } from '../../config/consoles';
+import { residentialInteriorConsole, fitnessRoomInteriorConsole, commercialInteriorConsole } from '../../config/consoles';
 
 /*
  * ResidentialInteriorConsole — the Residential Interior Design operations console.
@@ -21,4 +21,14 @@ export default function ResidentialInteriorConsole() {
  */
 export function FitnessRoomInteriorConsole() {
   return <ServiceConsole config={fitnessRoomInteriorConsole} />;
+}
+
+/*
+ * CommercialInteriorConsole — sibling Interior Design console for Commercial
+ * (office/retail/restaurant/showroom/hospitality). Identical shell and screens;
+ * blue accent, /commercial-interior-design/* nav, scoped to the
+ * commercial_interior_design service line by the header.
+ */
+export function CommercialInteriorConsole() {
+  return <ServiceConsole config={commercialInteriorConsole} />;
 }
