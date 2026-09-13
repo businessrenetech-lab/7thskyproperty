@@ -10,6 +10,9 @@ const PropertyInvoice = require('../models/PropertyInvoice');
 const Payment = require('../models/Payment');
 const RegisterEntry = require('../models/RegisterEntry');
 const { generateCode } = require('../utils/codeGenerator');
+// Any interior sub-line (Residential, Fitness Room, …) uses the same 'interior'
+// contact scope, so treat its service-line key as an interior scope too.
+const { isInteriorLine } = require('../config/serviceLines');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
 
 const CONTACT_FIELDS = [
@@ -63,7 +66,7 @@ exports.list = asyncHandler(async (req, res) => {
         { contact_list: { [Op.like]: '%Landlord%' } },
       ],
     });
-  } else if (req.query.scope === 'interior' || req.query.scope === 'residential_interior_design') {
+  } else if (req.query.scope === 'interior' || isInteriorLine(req.query.scope)) {
     conditions.push({
       [Op.or]: [
         { looking_for: { [Op.in]: ['interior', 'renovation', 'fitout', 'design'] } },
@@ -403,7 +406,7 @@ exports.getContactLists = asyncHandler(async (req, res) => {
         { contact_list: { [Op.like]: '%Landlord%' } },
       ],
     });
-  } else if (req.query.scope === 'interior' || req.query.scope === 'residential_interior_design') {
+  } else if (req.query.scope === 'interior' || isInteriorLine(req.query.scope)) {
     conditions.push({
       [Op.or]: [
         { looking_for: { [Op.in]: ['interior', 'renovation', 'fitout', 'design'] } },
@@ -505,7 +508,7 @@ exports.getContactLists = asyncHandler(async (req, res) => {
       'Active Tenants',
       'Landlords / Lessors',
     ];
-  } else if (req.query.scope === 'interior' || req.query.scope === 'residential_interior_design') {
+  } else if (req.query.scope === 'interior' || isInteriorLine(req.query.scope)) {
     defaultLists = [
       'Interior Design Leads',
       'Full Home Renovation',

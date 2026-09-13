@@ -26,6 +26,9 @@
 const { Op, fn, col, where: sqlWhere } = require('sequelize');
 const M = require('../models/waterTankOps');
 const ledger = require('./wtLedger.service');
+// Interior-family lines (Residential, Fitness Room, …) share the supplier-payout
+// and project-profitability reports — gate on the family, not one line key.
+const { isInteriorLine } = require('../config/serviceLines');
 
 const num = (v) => Number(v || 0);
 const round2 = (v) => Math.round((num(v) + Number.EPSILON) * 100) / 100;
@@ -268,7 +271,7 @@ const REPORTS = {
       { key: 'amount', label: 'Paid', width: 68, align: 'right', money: true },
     ],
     async build({ branch_id, service_line, range, filters }) {
-      if (service_line === 'residential_interior_design' || filters.supplier) {
+      if (isInteriorLine(service_line) || filters.supplier) {
         return REPORTS['supplier-payouts'].build({ branch_id, service_line, range, filters });
       }
       const where = {};
@@ -493,7 +496,7 @@ const REPORTS = {
       });
 
       // For interior design and project-based lines, also include completed projects
-      if (service_line === 'residential_interior_design') {
+      if (isInteriorLine(service_line)) {
         const projWhere = {
           branch_id,
           service_line,
@@ -808,7 +811,7 @@ class ReportError extends Error {
 /** Build one report. Returns everything both the table and the PDF need. */
 async function run({ branch_id, service_line, kind, preset, from, to, filters = {} }) {
   let resolvedKind = kind;
-  if (kind === 'provider-payouts' && (service_line === 'residential_interior_design' || filters.supplier)) {
+  if (kind === 'provider-payouts' && (isInteriorLine(service_line) || filters.supplier)) {
     resolvedKind = 'supplier-payouts';
   }
   const def = REPORTS[resolvedKind];
@@ -842,7 +845,7 @@ async function run({ branch_id, service_line, kind, preset, from, to, filters = 
 
 /** What the reports hub needs to render its chooser. */
 const catalogue = (service_line) => {
-  const isInterior = service_line === 'residential_interior_design';
+  const isInterior = isInteriorLine(service_line);
   return Object.entries(REPORTS)
     .filter(([kind]) => {
       if (isInterior && kind === 'provider-payouts') return false;

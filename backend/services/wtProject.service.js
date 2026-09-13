@@ -145,8 +145,10 @@ const RIDS_CLOSURE = [
 
 // Per-line stage machine + closure. Default is the Water Tank list, so every
 // existing line is unchanged; Interior Design gets its own SOP phases/closure.
-const STAGES_BY_LINE = { residential_interior_design: RIDS_STAGES };
-const CLOSURE_BY_LINE = { residential_interior_design: RIDS_CLOSURE };
+// Fitness Room shares the identical interior SOP workflow, so it reuses the same
+// project stages and closure checklist as Residential Interior Design.
+const STAGES_BY_LINE = { residential_interior_design: RIDS_STAGES, fitness_room_interior_design: RIDS_STAGES };
+const CLOSURE_BY_LINE = { residential_interior_design: RIDS_CLOSURE, fitness_room_interior_design: RIDS_CLOSURE };
 const stagesFor = (serviceLine) => STAGES_BY_LINE[serviceLine] || STAGES;
 const closureFor = (serviceLine) => CLOSURE_BY_LINE[serviceLine] || CLOSURE_CHECKLIST;
 

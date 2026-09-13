@@ -1051,6 +1051,125 @@ const SERVICE_LINES = {
       incident_types: ['Injury', 'Property Damage', 'Fire', 'Electrical Incident', 'Water Damage', 'Other'],
     },
   },
+
+  /* ── Fitness Room Interior Design (Interior Design Solutions #2) ─────────────
+   * Sibling of Residential Interior Design under the Interior Design parent. The
+   * operational SOP is identical (Consultation & Assessment → Design Development →
+   * Execution & Coordination → Completion & Handover), so it reuses the same
+   * project stages, assessment engine, variations and costing; only the CSA and
+   * the fitness vocabulary differ. Seventh Sky delivers in-house — no third-party
+   * provider, no AMC — so a signed CSA auto-opens the project and proceeds
+   * internally, exactly like Residential Interior Design (SSPC-FRIDS-CSA-01 v0.2). */
+  fitness_room_interior_design: {
+    key: 'fitness_room_interior_design',
+    label: 'Fitness Room Interior Design',
+    short: 'FRIDS',
+    accent: '#dc2626',              // red — energetic, tells it apart from RIDS purple
+    api_base: 'wt',                 // shared /api/wt-* mount, scoped by the header
+    route_base: 'fitness-room-interior-design',
+    env_tag: 'FRIDS',               // ENV-FRIDSCSA-…
+    catalogue_vertical: 'fitness_room_interior_design_csa',
+    parent: { key: 'interior_design', label: 'Interior Design Solutions' },
+    // Behaviour flags — no provider side, no AMC; interior-specific modules on.
+    no_provider: true,
+    no_amc: true,
+    variations: true,
+    completion_signoff: true,
+    // Seventh Sky delivers/coordinates the project itself — reuse the internal-team
+    // work-order flow (allocate instead of assign), same as Residential Interior.
+    delivery_model: 'internal_team',
+    code_prefix: {
+      client: 'FRIDS-C', project: 'FRIDS-P', request: 'FRIDR-', assessment: 'FRIDA-',
+      quotation: 'FRIDQ-', work_order: 'FRIDW-', invoice: 'FRIDI-',
+    },
+    required_docs: { compliance: [], insurance: [] },
+    service_categories: [],
+    related_type: {
+      customer: 'fitness_room_interior_design_customer_agreement',
+    },
+    agreement_template: {
+      customer: 'Fitness Room Interior Design Solutions Customer Service Agreement',
+    },
+    ui: {
+      full_label: 'Fitness Room Interior Design',
+      // From the SOP + CSA Clause 3 / Schedule A.
+      project_types: ['Fitness Room Design & Planning', 'Fit-Out & Installation', 'Furniture, Equipment & Styling', 'Project Coordination', 'Full Facility Design', 'Mixed Scope'],
+      categories: ['Design & Planning', 'Fit-Out', 'Installation', 'Equipment', 'Styling', 'Coordination'],
+      property_types: ['Home Gym', 'Apartment Gym', 'Commercial Gym', 'Corporate Fitness Centre', 'Wellness Studio', 'Rehabilitation Centre', 'Hotel Fitness Centre', 'Other'],
+      // Consultation service picker (Schedule A groups → services).
+      service_catalogue: {
+        'Fitness Room Design & Planning': ['Home Gym Design', 'Commercial Gym Design', 'Corporate Fitness Centre Design', 'Wellness Studio Design', 'Rehabilitation Fitness Centre Design', 'Hotel Fitness Centre Design', 'Apartment Gym Design', 'Fitness Space Planning', 'Equipment Layout Planning', 'Functional Traffic Flow Planning', '2D Design Drawings', '3D Visualisation', 'Lighting Design'],
+        'Fit-Out & Installation': ['Gym Fit-Out', 'Renovation & Remodelling', 'Carpentry & Joinery', 'Flooring Installation', 'Ceiling Installation', 'Glass & Mirror Installation', 'Painting & Decoration', 'Electrical & Lighting Coordination', 'HVAC Coordination', 'Acoustic Treatment'],
+        'Furniture, Equipment & Styling': ['Fitness Equipment Procurement Coordination', 'Reception Area Design', 'Storage Solutions', 'Locker Area Design', 'Wellness & Recovery Area Design', 'Decorative Styling', 'Branding & Signage Coordination', 'Audio-Visual Equipment Coordination'],
+        'Project Coordination': ['Site Assessment', 'Project Planning', 'Contractor Coordination', 'Supplier Coordination', 'Material Coordination', 'Installation Supervision', 'Progress Monitoring', 'Quality Coordination', 'Practical Completion & Handover'],
+      },
+      // The shared project's generic equipment columns, relabelled for fitness rooms.
+      equipment: {
+        section_label: 'Fitness Space Details',
+        type_label: 'Fitness Facility Type',
+        type_options: ['Home Gym', 'Apartment Gym', 'Commercial Gym', 'Corporate Fitness Centre', 'Wellness Studio', 'Rehabilitation Centre', 'Hotel Fitness Centre', 'Other'],
+        count_label: 'Number of Zones / Areas',
+        capacity_label: 'Approximate Area',
+        capacity_placeholder: 'e.g. 1,200 sq ft',
+        source_label: 'Design Style',
+        source_options: ['Modern', 'Industrial', 'Minimalist', 'Premium / Luxury', 'Functional', 'Boutique Studio', 'Mixed', 'Client to advise'],
+      },
+      // SOP Phase 1 — Consultation & Fitness Room Design Assessment (SOP §5, §7):
+      // consultation + fitness room site inspection + operational assessment +
+      // renovation feasibility review. Grouped as the SOP structures it.
+      assess_materials: ['Concrete', 'Brick', 'Rubber Flooring', 'Vinyl / PVC', 'Gypsum Board', 'Tiles', 'Glass', 'Mirror', 'Metal', 'Acoustic Panels', 'Existing Finishes', 'Other'],
+      assess_sources: ['Modern', 'Industrial', 'Minimalist', 'Premium / Luxury', 'Functional', 'Boutique Studio', 'Mixed', 'Client to advise'],
+      assess_checks: [
+        // Consultation & Requirement Analysis (SOP Step 2)
+        { key: 'facility_type', label: 'Fitness facility type & usage captured', group: 'Consultation' },
+        { key: 'equipment_requirements', label: 'Equipment requirements captured', group: 'Consultation' },
+        { key: 'renovation_scope', label: 'Renovation / fit-out scope discussed', group: 'Consultation' },
+        { key: 'budget_captured', label: 'Project budget captured', group: 'Consultation' },
+        { key: 'timeline_expectation', label: 'Timeline expectation agreed', group: 'Consultation' },
+        // Fitness Room Property Assessment (SOP §5)
+        { key: 'site_inspection', label: 'Fitness room site inspection carried out', group: 'Site Inspection' },
+        { key: 'measurements_taken', label: 'Measurements & ceiling height recorded', group: 'Site Inspection' },
+        { key: 'photography', label: 'Existing condition photographed', group: 'Site Inspection' },
+        { key: 'floor_load', label: 'Floor load capacity for equipment noted', group: 'Site Inspection' },
+        { key: 'power_ventilation', label: 'Power, HVAC & ventilation points noted', group: 'Site Inspection' },
+        // Operational / Design Assessment
+        { key: 'equipment_layout', label: 'Equipment layout & traffic flow assessed', group: 'Design Assessment' },
+        { key: 'renovation_feasibility', label: 'Renovation feasibility reviewed', group: 'Design Assessment' },
+        { key: 'structural_constraints', label: 'Structural constraints / no-touch areas identified', group: 'Design Assessment' },
+        // Preliminary Feasibility Review (SOP Step 3)
+        { key: 'practicality', label: 'Project practicality assessed', group: 'Feasibility Review' },
+        { key: 'budget_alignment', label: 'Budget alignment reviewed', group: 'Feasibility Review' },
+        { key: 'operational_complexity', label: 'Operational complexity & risk factors reviewed', group: 'Feasibility Review' },
+      ],
+      assess_templates: [
+        { key: 'standard', label: 'Standard (all scopes)', extra: [] },
+        { key: 'home_gym', label: 'Home / Apartment Gym', extra: [
+          { key: 'noise_neighbours', label: 'Noise / neighbour impact considered', group: 'Design Assessment' },
+          { key: 'delivery_access', label: 'Delivery / lift access for equipment checked', group: 'Site Inspection' },
+        ] },
+        { key: 'commercial_gym', label: 'Commercial / Corporate Gym', extra: [
+          { key: 'occupancy_capacity', label: 'Occupancy / member capacity captured', group: 'Consultation' },
+          { key: 'reception_locker', label: 'Reception, locker & wellness areas scoped', group: 'Design Assessment' },
+          { key: 'permits', label: 'Building / fire / society permissions needed?', group: 'Feasibility Review' },
+        ] },
+        { key: 'wellness_studio', label: 'Wellness / Studio', extra: [
+          { key: 'acoustic_treatment', label: 'Acoustic treatment requirements noted', group: 'Design Assessment' },
+          { key: 'flooring_spec', label: 'Specialist flooring (yoga / studio) considered', group: 'Design Assessment' },
+        ] },
+      ],
+      assess_equipment: ['Measuring Tape / Laser Meter', 'Camera', 'Ceiling Height Gauge', 'Material & Finish Samples', 'Laptop / CAD', 'Equipment Spec Sheets'],
+      recommended_services: ['Site Assessment', 'Equipment Layout Planning', '3D Visualisation', 'Gym Fit-Out', 'Flooring Installation', 'Fitness Equipment Procurement Coordination', 'Acoustic Treatment', 'Practical Completion & Handover'],
+      report_types: ['Site Visit', 'Design Concept', 'Progress', 'Handover', 'Completion Sign-Off'],
+      // Project-costing categories for supplier bills + the cost sheet.
+      cost_categories: ['Fitness Equipment', 'Materials', 'Gym Flooring', 'Mirrors & Glass', 'Joinery / Carpentry', 'Painting', 'Electrical & Lighting', 'HVAC', 'Acoustic Treatment', 'Labour', 'Subcontractor', 'Transport & Installation', 'Permits / Govt', 'Design / Consultant', 'Misc'],
+      supplier_categories: ['Fitness Equipment Supplier', 'Material Supplier', 'Flooring Contractor', 'Glass & Mirror Contractor', 'Carpenter / Joiner', 'Painter', 'Electrician', 'HVAC Contractor', 'Acoustic Contractor', 'Labour Contractor', 'Subcontractor', 'Transport', 'Other'],
+      // From CSA Schedule D (Warranty Summary).
+      warranty_types: ['Design Services', 'Workmanship', 'Installation', 'Equipment Installation', 'Furniture Installation', 'Manufacturer'],
+      warranty_months: { 'Design Services': 12, Workmanship: 12, Installation: 12, 'Equipment Installation': 12, 'Furniture Installation': 6, Manufacturer: 12 },
+      complaint_types: ['Design Quality', 'Workmanship', 'Incomplete Work', 'Damage During Work', 'Equipment Issue', 'Material Quality', 'Staff Conduct', 'Delays', 'Billing Dispute', 'Other'],
+      incident_types: ['Injury', 'Property Damage', 'Fire', 'Electrical Incident', 'Water Damage', 'Equipment Failure', 'Other'],
+    },
+  },
 };
 
 const DEFAULT_SERVICE_LINE = 'water_tank';
@@ -1072,6 +1191,18 @@ function serviceLineForRelatedType(relatedType) {
 }
 
 /**
+ * True when a service line belongs to the Interior Design Solutions family
+ * (parent.key === 'interior_design'). Interior sub-lines (Residential, Fitness
+ * Room, and future Commercial / Prayer Room / etc.) share the same operations
+ * engine, so features gated on "is this interior" should use this rather than
+ * naming a single line — new sub-lines then work with no further edits.
+ */
+function isInteriorLine(key) {
+  const sl = SERVICE_LINES[key];
+  return !!(sl && sl.parent && sl.parent.key === 'interior_design');
+}
+
+/**
  * The record-code prefix for a service line and entity kind (client, project,
  * request, assessment, quotation, work_order, invoice, provider). So an Air
  * Conditioning client is coded ACCM-C…, not WTCM-C…. Falls back to the Water
@@ -1088,5 +1219,6 @@ module.exports = {
   DEFAULT_SERVICE_LINE,
   getServiceLine,
   serviceLineForRelatedType,
+  isInteriorLine,
   codePrefix,
 };

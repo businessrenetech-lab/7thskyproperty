@@ -61,6 +61,7 @@ const NAV = [
     // Residential is live; the other sections light up here as they are built.
     { group: true, label: 'Interior Design Solutions' },
     { to: '/residential-interior-design', label: 'Residential Interior Design' },
+    { to: '/fitness-room-interior-design', label: 'Fitness Room Interior Design' },
     { group: true, label: 'Doc Verification & Transfer' },
     { to: '/land-property-assessment', label: 'Land & Property Assessment' },
     { to: '/loan-financial-support', label: 'Loan & Financial Support' },

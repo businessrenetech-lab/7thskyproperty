@@ -94,7 +94,7 @@ import WTPortalAccounts from './screens/watertank/PortalAccounts';
 import { ForgotPassword, ResetPassword, ChangePassword } from './screens/PasswordScreens';
 import WTClients from './screens/watertank/Clients';
 import InteriorVariations from './screens/watertank/InteriorVariations';
-import InteriorServiceConsole from './screens/watertank/InteriorServiceConsole';
+import InteriorServiceConsole, { FitnessRoomInteriorConsole } from './screens/watertank/InteriorServiceConsole';
 import WtSuppliers from './screens/watertank/WtSuppliers';
 import WTClientDetail from './screens/watertank/clients/ClientDashboard';
 import WTClientCreate from './screens/watertank/clients/ClientCreate';
@@ -542,6 +542,59 @@ export default function App() {
               <Route path="/residential-interior-design/catalogue" element={<WaterTankCatalogue />} />
               <Route path="/residential-interior-design/portal-accounts" element={<WTPortalAccounts />} />
               <Route path="/residential-interior-design/settings" element={<WaterTankSettings />} />
+            </Route>
+            {/* ── Fitness Room Interior Design console — same interior screens &
+                SOP as Residential, scoped to fitness_room_interior_design.
+                Sibling under the Interior Design Solutions parent. ── */}
+            <Route element={<RequireAuth><AdminGate><FitnessRoomInteriorConsole /></AdminGate></RequireAuth>}>
+              <Route path="/fitness-room-interior-design" element={<WaterTankDashboard />} />
+              <Route path="/fitness-room-interior-design/contacts" element={<SalesContacts scope="interior" />} />
+              <Route path="/fitness-room-interior-design/clients" element={<WTClients />} />
+              <Route path="/fitness-room-interior-design/clients/new" element={<WTClientCreate />} />
+              <Route path="/fitness-room-interior-design/clients/:code" element={<WTClientDetail />} />
+              <Route path="/fitness-room-interior-design/service-requests" element={<WTServiceRequests />} />
+              <Route path="/fitness-room-interior-design/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/fitness-room-interior-design/site-assessments" element={<WTSiteAssessments />} />
+              <Route path="/fitness-room-interior-design/site-assessments/new" element={<WTAssessmentForm />} />
+              <Route path="/fitness-room-interior-design/site-assessments/:code" element={<WTAssessmentDetail />} />
+              <Route path="/fitness-room-interior-design/site-assessments/:code/edit" element={<WTAssessmentForm />} />
+              <Route path="/fitness-room-interior-design/site-assessments/:code/quotation" element={<WTQuotationBuilder />} />
+              <Route path="/fitness-room-interior-design/site-assessments/:code/quotation/:quoteCode/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/fitness-room-interior-design/quotations" element={<WTQuotations />} />
+              <Route path="/fitness-room-interior-design/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/fitness-room-interior-design/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/fitness-room-interior-design/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/fitness-room-interior-design/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/fitness-room-interior-design/work-orders" element={<WTWorkOrders />} />
+              <Route path="/fitness-room-interior-design/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/fitness-room-interior-design/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/fitness-room-interior-design/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/fitness-room-interior-design/projects" element={<WTProjects />} />
+              <Route path="/fitness-room-interior-design/projects/new" element={<WTProjectForm />} />
+              <Route path="/fitness-room-interior-design/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/fitness-room-interior-design/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/fitness-room-interior-design/variations" element={<InteriorVariations />} />
+              <Route path="/fitness-room-interior-design/suppliers" element={<WtSuppliers />} />
+              <Route path="/fitness-room-interior-design/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/fitness-room-interior-design/agreements" element={<WTAgreementsHub />} />
+              <Route path="/fitness-room-interior-design/reports" element={<WTReports />} />
+              <Route path="/fitness-room-interior-design/reports/:kind" element={<WTReports />} />
+              <Route path="/fitness-room-interior-design/service-reports" element={<WTServiceReports />} />
+              <Route path="/fitness-room-interior-design/service-reports/:code" element={<WTServiceReports />} />
+              <Route path="/fitness-room-interior-design/work-queue" element={<WTWorkQueue />} />
+              <Route path="/fitness-room-interior-design/invoices" element={<WTInvoices />} />
+              <Route path="/fitness-room-interior-design/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/fitness-room-interior-design/payments" element={<WTPayments />} />
+              <Route path="/fitness-room-interior-design/calendar" element={<WTCalendar />} />
+              <Route path="/fitness-room-interior-design/registers" element={<WTRegisters />} />
+              <Route path="/fitness-room-interior-design/registers/:kind" element={<WTRegisters />} />
+              <Route path="/fitness-room-interior-design/registers/:kind/:code" element={<WTRegisters />} />
+              <Route path="/fitness-room-interior-design/complaints" element={<WTComplaints />} />
+              <Route path="/fitness-room-interior-design/complaints/:code" element={<WTComplaints />} />
+              <Route path="/fitness-room-interior-design/communication" element={<WTCommLog />} />
+              <Route path="/fitness-room-interior-design/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/fitness-room-interior-design/portal-accounts" element={<WTPortalAccounts />} />
+              <Route path="/fitness-room-interior-design/settings" element={<WaterTankSettings />} />
             </Route>
             {/* ── Land & Property Assessment console — Survey & Valuation, same
                 screens as Water Tank, scoped to land_property_assessment (first

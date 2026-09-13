@@ -422,7 +422,44 @@ const RIDS_PACK = {
   checklist_groups: RIDS_CHECKLIST_GROUPS,
   consumables_label: 'Finishes & Consumables',
 };
-const WO_PACKS = { water_tank: WT_PACK, air_conditioning: AC_PACK, land_property_assessment: LPAS_PACK, loan_financial_support: LFS_PACK, property_documentation_verification: PDV_PACK, property_will_succession: PWS_PACK, removal_relocation: RRS_PACK, property_care_concierge: PCC_PACK, residential_interior_design: RIDS_PACK };
+// Fitness Room — same interior work-order structure, fitness vocabulary.
+const FRIDS_PROPERTY_TYPES = ['Home Gym', 'Apartment Gym', 'Commercial Gym', 'Corporate Fitness Centre', 'Wellness Studio', 'Rehabilitation Centre', 'Hotel Fitness Centre', 'Other'];
+const FRIDS_SERVICE_GROUPS = {
+  'Fitness Room Design & Planning': ['Fitness Space Planning', 'Equipment Layout Planning', 'Functional Traffic Flow', 'Colour & Material Selection', '2D Drawings', '3D Visualisation', 'Lighting Design'],
+  'Fit-Out & Installation': ['Gym Fit-Out', 'Renovation & Remodelling', 'Carpentry & Joinery', 'Flooring Installation', 'Ceiling Installation', 'Glass & Mirror Installation', 'Painting & Decoration', 'Electrical & Lighting', 'HVAC Coordination', 'Acoustic Treatment'],
+  'Furniture, Equipment & Styling': ['Fitness Equipment Coordination', 'Reception Area', 'Locker Area', 'Storage Solutions', 'Wellness & Recovery Area', 'Decorative Styling', 'Branding & Signage', 'Audio-Visual Equipment'],
+  'Project Coordination': ['Project Management', 'Site Supervision', 'Vendor Coordination', 'Procurement', 'Installation', 'Handover'],
+};
+const FRIDS_SPACE_FIELDS = [
+  ['property_type', 'Property Type'], ['facility_type', 'Fitness Facility Type'],
+  ['design_style', 'Design Theme / Concept'], ['rooms_included', 'Zones / Areas Included'],
+  ['area', 'Approximate Area'], ['equipment_requirements', 'Equipment Requirements'],
+  ['materials_finishes', 'Materials & Finishes'],
+];
+const FRIDS_WARRANTY_ROWS = [
+  ['design', 'Design Services'], ['workmanship', 'Workmanship'],
+  ['installation', 'Installation'], ['equipment_installation', 'Equipment Installation'],
+  ['furniture_installation', 'Furniture Installation'],
+];
+const FRIDS_CHECKLIST_GROUPS = {
+  'Before Project': ['Customer Service Agreement Signed', 'Quotation Approved', 'Work Order Approved', 'Design & Layout Approved', 'Deposit Received', 'Site Access Confirmed'],
+  'During Project': ['Site Measurements Confirmed', 'Equipment & Materials Procured', 'Work in Progress Photographed', 'Client Updated on Progress', 'Variations Approved (if any)'],
+  Completion: ['Works Completed to Scope', 'Equipment Installed & Tested', 'Site Cleaned & Handed Over', 'Snag List Cleared', 'Completion Sign-Off Signed', 'Final Invoice Issued', 'Warranty Summary Issued'],
+};
+const FRIDS_PACK = {
+  doc_no: 'SSPC-FRIDS-PWO-01',
+  header_subtitle: 'FITNESS ROOM INTERIOR DESIGN SOLUTIONS',
+  division: 'Seventh Sky Interior Design Solutions',
+  document_type: 'fitness_room_interior_design_work_order',
+  property_types: FRIDS_PROPERTY_TYPES,
+  service_groups: FRIDS_SERVICE_GROUPS,
+  section4_label: 'Section 4 — Fitness Space & Project Details',
+  section4_fields: FRIDS_SPACE_FIELDS,
+  warranty_rows: FRIDS_WARRANTY_ROWS,
+  checklist_groups: FRIDS_CHECKLIST_GROUPS,
+  consumables_label: 'Equipment, Finishes & Consumables',
+};
+const WO_PACKS = { water_tank: WT_PACK, air_conditioning: AC_PACK, land_property_assessment: LPAS_PACK, loan_financial_support: LFS_PACK, property_documentation_verification: PDV_PACK, property_will_succession: PWS_PACK, removal_relocation: RRS_PACK, property_care_concierge: PCC_PACK, residential_interior_design: RIDS_PACK, fitness_room_interior_design: FRIDS_PACK };
 // Resolve a pack by service_line key (or catalogue vertical / related_type prefix
 // for callers that pass those). Falls back to Water Tank.
 const packForWo = (v) => {

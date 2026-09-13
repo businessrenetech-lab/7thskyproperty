@@ -8039,3 +8039,25 @@ used "the last line starting with `import`", which landed inside a multi-line
   - `npm run build` in admin-portal: built in 7.97s, 0 errors (PASS).
 - Rationale: the signing → work-order → project-open path (`wtWorkOrder.createFromSignedAgreement` → `identity.ensureProject`) is line-agnostic and already ran for every `*_customer_agreement`. The provider-assignment gate (assign vs internal allocate) and provider nav were what differed; setting the delivery flags removes the gate so the project opens and proceeds internally, exactly as Interior Design does.
 - Handoff: On a signed Customer Service Agreement, all Doc Verification & Transfer lines now auto-open the project and proceed in-house with no provider step; provider endpoints/nav are gone. AMC remains available on these lines by design.
+
+### 2026-09-13 17:45 | Claude Opus 4.8 | COMPLETED | New Interior service line — Fitness Room Interior Design (own console + routes)
+- Request: "for interior services ... create different dashboards and unique routes for each interiors services ... each one has there independent [availability] but operations same .. just like property doc verifications ... now create [...] Fitness Room read sops...agreements..."
+- Source: `C:\Users\ADMIN\Downloads\...\Interior Design\Fitness Room\` — read the SOP (SSPC-FRIDS-SOP-01 v0.1), Customer Service Agreement (SSPC-FRIDS-CSA-01 v0.2) and workflows xlsx. Confirmed the SOP is structurally identical to Residential Interior Design (4 phases), so the ops engine is reused; only the CSA + fitness vocabulary differ.
+- Backend:
+  - `config/serviceLines.js`: new `fitness_room_interior_design` line (route_base fitness-room-interior-design, FRIDS-* codes, no_provider/no_amc/variations/completion_signoff, delivery_model internal_team, fitness UI vocabulary/assessment/cost+supplier categories/warranty). Added `isInteriorLine(key)` helper (parent.key === 'interior_design') and exported it.
+  - `services/wtProject.service.js`: reuse RIDS stages + closure for the fitness line.
+  - `services/wtCustomerAgreement.service.js`: `FRIDS_PACK` (24 clauses + Schedules A–D faithful to the CSA) registered in PACKS.
+  - `services/wtWorkOrderDoc.service.js`: `FRIDS` work-order pack (Section 4 — Fitness Space & Project Details).
+  - `services/wtReports.service.js` + `controllers/contact.controller.js`: generalized the hardcoded `residential_interior_design` checks to `isInteriorLine(...)` so every interior sub-line (incl. future Commercial/Prayer Room/etc.) shares supplier-payout/profitability reports and the 'interior' contact scope with no per-line edits.
+  - `scripts/seedFitnessRoomCatalogue.js`: 34-item FRIDS price schedule (vertical fitness_room_interior_design_csa). Seeded.
+- Frontend:
+  - `config/consoles.js`: `FITNESS_ROOM_NAV` + `fitnessRoomInteriorConsole` (red accent, drops Providers/AMC, adds Variations + Suppliers & Payables); registered in CONSOLES.
+  - `App.jsx`: `/fitness-room-interior-design/*` routes (48) wrapped in new `FitnessRoomInteriorConsole`.
+  - `screens/watertank/InteriorServiceConsole.jsx`: added `FitnessRoomInteriorConsole` export.
+  - `screens/watertank/common.jsx`: SVC_BASES + SERVICE_UI['/fitness-room-interior-design'] + LINE_TO_BASE entry.
+  - `services/api.js`: path→line header map entry. `screens/sales/SalesContacts.jsx`: interior scope + svcBase include fitness. `ui/Layout.jsx`: launcher entry under Interior Design Solutions.
+- Verification & Results:
+  - `node scripts/e2eFitnessRoom.js`: 20 PASS / 0 FAIL (client → CSA[FRIDS] → signed → project auto-opens + Schedule C invoices FRIDI- → variation FRIDW-V- → approve → completion sign-off/variations on → supplier/bill/part-pay/payables → provider & AMC refused → cross-line isolation).
+  - `node scripts/e2eInteriorDesign.js`: 20/0 (no regression from the isInteriorLine generalization).
+  - admin-portal `npm run build`: clean.
+- Handoff: Fitness Room Interior Design is a live console at /admin/fitness-room-interior-design with its own routes, red theme, faithful CSA, and the shared interior ops engine (no provider, auto-open project on signing). Remaining interior sub-lines (Commercial, Custom Fit-Out, Furniture & Styling, Prayer Room, Space Planning) can now be added the same way; the isInteriorLine helper means reports/contacts need no further edits.

@@ -796,10 +796,49 @@ export const residentialInteriorConsole = {
   exitTo: '/dashboard',
 };
 
+/* ── Fitness Room Interior Design ───────────────────────────────────────────
+ * Sibling of Residential Interior Design under the Interior Design parent —
+ * identical in-house workflow (no Providers/Compliance group, no AMC, Variations
+ * + Suppliers on). Rebased onto /fitness-room-interior-design/* with a red accent.
+ * Scoped to the fitness_room_interior_design service line by the header. */
+export const FITNESS_ROOM_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/fitness-room-interior-design')
+  .map((g) => {
+    // drop AMC (no annual maintenance for one-off projects); add Variations
+    if (g.key.endsWith('delivery')) {
+      return { ...g, items: [...g.items.filter((it) => !/\/amc$/.test(it.to)), { to: '/fitness-room-interior-design/variations', label: 'Variations', icon: FileSignature }] };
+    }
+    // Finance group gains Suppliers & Payables (accounts payable / project costing).
+    if (g.key.endsWith('finance')) {
+      return { ...g, items: [...g.items, { to: '/fitness-room-interior-design/suppliers', label: 'Suppliers & Payables', icon: Truck }] };
+    }
+    return g;
+  })
+  // drop the whole Providers & Compliance group — no provider on this line
+  .filter((g) => !g.key.endsWith('providers'));
+
+export const fitnessRoomInteriorConsole = {
+  slug: 'fitness-room-interior-design',
+  storageKey: 'frid.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Fitness Room Interior Design',
+    icon: Home,
+    accent: '#dc2626',          // red — tells it apart from Residential Interior purple
+    accentStrong: '#b91c1c',
+    accentInk: '#991b1b',
+    accentTint: 'rgba(220,38,38,.12)',
+    accentTint2: '#fee2e2',
+  },
+  navGroups: FITNESS_ROOM_NAV,
+  api: { capabilities: '/wt-ops/capabilities', workQueue: '/wt-ops/work-queue' },
+  exitTo: '/dashboard',
+};
+
 export const CONSOLES = {
   'water-tank': waterTankConsole,
   'air-conditioning': airConditioningConsole,
   'residential-interior-design': residentialInteriorConsole,
+  'fitness-room-interior-design': fitnessRoomInteriorConsole,
   'land-property-assessment': landPropertyAssessmentConsole,
   'loan-financial-support': loanFinancialSupportConsole,
   'property-documentation-verification': propertyDocVerificationConsole,
