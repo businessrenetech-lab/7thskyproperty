@@ -1384,6 +1384,113 @@ const SERVICE_LINES = {
       incident_types: ['Injury', 'Property Damage', 'Fire', 'Electrical Incident', 'Water Damage', 'Other'],
     },
   },
+
+  /* ── Furniture & Styling Consultation (Interior Design Solutions #5) ─────────
+   * Sibling under the Interior Design parent — identical SOP workflow (4 phases:
+   * Consultation & Styling Assessment → Furniture & Styling Planning →
+   * Implementation → Completion & Handover), so it reuses the same project
+   * stages, assessment, variations and costing. The CSA and vocabulary cover
+   * furniture consultation, interior styling and procurement coordination.
+   * In-house delivery, no provider, no AMC (SSPC-FSCS-CSA-01 v0.2). */
+  furniture_styling_consultation: {
+    key: 'furniture_styling_consultation',
+    label: 'Furniture & Styling Consultation',
+    short: 'FSCS',
+    accent: '#c026d3',              // fuchsia/magenta — distinct from the other interior lines
+    api_base: 'wt',
+    route_base: 'furniture-styling-consultation',
+    env_tag: 'FSCS',                // ENV-FSCSCSA-…
+    catalogue_vertical: 'furniture_styling_consultation_csa',
+    parent: { key: 'interior_design', label: 'Interior Design Solutions' },
+    no_provider: true,
+    no_amc: true,
+    variations: true,
+    completion_signoff: true,
+    delivery_model: 'internal_team',
+    code_prefix: {
+      client: 'FSCS-C', project: 'FSCS-P', request: 'FSCR-', assessment: 'FSCA-',
+      quotation: 'FSCQ-', work_order: 'FSCW-', invoice: 'FSCI-',
+    },
+    required_docs: { compliance: [], insurance: [] },
+    service_categories: [],
+    related_type: {
+      customer: 'furniture_styling_consultation_customer_agreement',
+    },
+    agreement_template: {
+      customer: 'Furniture & Styling Consultation Customer Service Agreement',
+    },
+    ui: {
+      full_label: 'Furniture & Styling Consultation',
+      // From the SOP + CSA Clause 3 / Schedule A.
+      project_types: ['Furniture Consultation', 'Interior Styling', 'Furniture Procurement & Coordination', 'Project Coordination', 'Full Styling', 'Mixed Scope'],
+      categories: ['Consultation', 'Styling', 'Procurement', 'Coordination'],
+      property_types: ['Apartment', 'House', 'Villa', 'Office', 'Retail Shop', 'Showroom', 'Hospitality', 'Other'],
+      service_catalogue: {
+        'Furniture Consultation': ['Residential Furniture Consultation', 'Commercial Furniture Consultation', 'Office Furniture Planning', 'Workspace Furniture Consultation', 'Furniture Layout Planning', 'Space Optimisation', 'Furniture Selection Advice', 'Custom Furniture Consultation'],
+        'Interior Styling': ['Residential Styling', 'Commercial Styling', 'Office Styling', 'Decorative Styling', 'Colour Consultation', 'Soft Furnishing Selection', 'Window Furnishing Consultation', 'Artwork & Decorative Item Selection', 'Display & Feature Styling'],
+        'Furniture Procurement & Coordination': ['Furniture Sourcing Coordination', 'Supplier Coordination', 'Custom Furniture Coordination', 'Furniture Procurement', 'Decorative Item Procurement', 'Furniture Delivery Coordination', 'Installation Coordination', 'Styling Setup Coordination', 'Final Presentation Coordination'],
+        'Project Coordination': ['Site Assessment', 'Budget Planning', 'Project Planning', 'Contractor Coordination', 'Supplier Coordination', 'Installation Supervision', 'Progress Monitoring', 'Quality Coordination', 'Practical Completion & Handover'],
+      },
+      equipment: {
+        section_label: 'Space & Styling Details',
+        type_label: 'Property Type',
+        type_options: ['Apartment', 'House', 'Villa', 'Office', 'Retail Shop', 'Showroom', 'Hospitality', 'Other'],
+        count_label: 'Number of Rooms / Zones',
+        capacity_label: 'Approximate Area',
+        capacity_placeholder: 'e.g. 1,500 sq ft',
+        source_label: 'Styling Theme',
+        source_options: ['Modern', 'Contemporary', 'Minimalist', 'Classic', 'Scandinavian', 'Bohemian', 'Luxury', 'Mixed', 'Client to advise'],
+      },
+      // SOP Phase 1 — Consultation & Styling Assessment + site inspection.
+      assess_materials: ['Wood', 'Upholstery / Fabric', 'Leather', 'Metal', 'Glass', 'Rattan / Cane', 'Laminate', 'Veneer', 'Existing Furniture', 'Other'],
+      assess_sources: ['Modern', 'Contemporary', 'Minimalist', 'Classic', 'Scandinavian', 'Bohemian', 'Luxury', 'Mixed', 'Client to advise'],
+      assess_checks: [
+        // Consultation & Requirement Analysis (SOP Step 2)
+        { key: 'styling_vision', label: 'Styling vision & theme captured', group: 'Consultation' },
+        { key: 'furniture_requirements', label: 'Furniture requirements captured', group: 'Consultation' },
+        { key: 'colour_scheme', label: 'Colour scheme & mood preference captured', group: 'Consultation' },
+        { key: 'budget_captured', label: 'Furnishing budget captured', group: 'Consultation' },
+        { key: 'timeline_expectation', label: 'Timeline expectation agreed', group: 'Consultation' },
+        // Site Inspection & Styling Assessment (SOP §5)
+        { key: 'site_inspection', label: 'Site inspection carried out', group: 'Site Inspection' },
+        { key: 'measurements_taken', label: 'Room & furniture measurements recorded', group: 'Site Inspection' },
+        { key: 'photography', label: 'Existing space & furniture photographed', group: 'Site Inspection' },
+        { key: 'existing_furniture', label: 'Existing furniture to retain / reuse noted', group: 'Site Inspection' },
+        { key: 'delivery_access', label: 'Delivery / lift access for furniture checked', group: 'Site Inspection' },
+        // Styling Assessment
+        { key: 'layout_assessment', label: 'Furniture layout & flow assessed', group: 'Styling Assessment' },
+        { key: 'lighting_natural', label: 'Natural light & focal points assessed', group: 'Styling Assessment' },
+        { key: 'styling_scope', label: 'Styling / decor scope defined', group: 'Styling Assessment' },
+        // Preliminary Feasibility Review (SOP Step 3)
+        { key: 'practicality', label: 'Project practicality assessed', group: 'Feasibility Review' },
+        { key: 'budget_alignment', label: 'Budget alignment reviewed', group: 'Feasibility Review' },
+      ],
+      assess_templates: [
+        { key: 'standard', label: 'Standard (all scopes)', extra: [] },
+        { key: 'full_home_styling', label: 'Full Home Styling', extra: [
+          { key: 'room_by_room', label: 'Room-by-room styling requirements captured', group: 'Consultation' },
+          { key: 'phasing', label: 'Phased styling / procurement discussed', group: 'Feasibility Review' },
+        ] },
+        { key: 'procurement', label: 'Furniture Procurement', extra: [
+          { key: 'supplier_shortlist', label: 'Supplier / product shortlist prepared', group: 'Styling Assessment' },
+          { key: 'lead_times', label: 'Furniture lead times noted', group: 'Feasibility Review' },
+        ] },
+        { key: 'commercial_styling', label: 'Commercial / Office Styling', extra: [
+          { key: 'brand_alignment', label: 'Brand / identity alignment scoped', group: 'Styling Assessment' },
+          { key: 'workstation_needs', label: 'Workstation / functional needs captured', group: 'Consultation' },
+        ] },
+      ],
+      assess_equipment: ['Measuring Tape / Laser Meter', 'Camera', 'Material & Fabric Samples', 'Colour Swatches', 'Laptop / Mood Board', 'Furniture Catalogues'],
+      recommended_services: ['Furniture Consultation', 'Furniture Layout Planning', 'Colour Consultation', 'Soft Furnishing Selection', 'Furniture Procurement', 'Styling Setup Coordination', 'Final Presentation Coordination'],
+      report_types: ['Site Visit', 'Styling Concept', 'Progress', 'Handover', 'Completion Sign-Off'],
+      cost_categories: ['Furniture', 'Custom Furniture', 'Soft Furnishings', 'Decorative Items', 'Artwork', 'Curtains & Blinds', 'Rugs & Textiles', 'Lighting Fixtures', 'Styling Props', 'Labour', 'Subcontractor', 'Transport & Delivery', 'Installation', 'Design / Consultant', 'Misc'],
+      supplier_categories: ['Furniture Supplier', 'Custom Furniture Maker', 'Soft Furnishing Supplier', 'Decor / Accessories Supplier', 'Curtain / Blind Supplier', 'Artwork Supplier', 'Lighting Supplier', 'Installation / Assembly Contractor', 'Labour Contractor', 'Transport', 'Other'],
+      warranty_types: ['Consultation Services', 'Styling Services', 'Furniture Installation', 'Custom Furniture', 'Manufacturer'],
+      warranty_months: { 'Consultation Services': 6, 'Styling Services': 6, 'Furniture Installation': 12, 'Custom Furniture': 12, Manufacturer: 12 },
+      complaint_types: ['Styling Quality', 'Furniture Quality', 'Incomplete Work', 'Damage During Work', 'Wrong Item Supplied', 'Delays', 'Billing Dispute', 'Staff Conduct', 'Other'],
+      incident_types: ['Injury', 'Property Damage', 'Furniture Damage', 'Fire', 'Water Damage', 'Other'],
+    },
+  },
 };
 
 const DEFAULT_SERVICE_LINE = 'water_tank';

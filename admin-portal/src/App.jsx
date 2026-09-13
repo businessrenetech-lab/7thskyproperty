@@ -94,7 +94,7 @@ import WTPortalAccounts from './screens/watertank/PortalAccounts';
 import { ForgotPassword, ResetPassword, ChangePassword } from './screens/PasswordScreens';
 import WTClients from './screens/watertank/Clients';
 import InteriorVariations from './screens/watertank/InteriorVariations';
-import InteriorServiceConsole, { FitnessRoomInteriorConsole, CommercialInteriorConsole, CustomFitoutConsole } from './screens/watertank/InteriorServiceConsole';
+import InteriorServiceConsole, { FitnessRoomInteriorConsole, CommercialInteriorConsole, CustomFitoutConsole, FurnitureStylingConsole } from './screens/watertank/InteriorServiceConsole';
 import WtSuppliers from './screens/watertank/WtSuppliers';
 import WTClientDetail from './screens/watertank/clients/ClientDashboard';
 import WTClientCreate from './screens/watertank/clients/ClientCreate';
@@ -701,6 +701,59 @@ export default function App() {
               <Route path="/custom-design-fit-out/catalogue" element={<WaterTankCatalogue />} />
               <Route path="/custom-design-fit-out/portal-accounts" element={<WTPortalAccounts />} />
               <Route path="/custom-design-fit-out/settings" element={<WaterTankSettings />} />
+            </Route>
+            {/* ── Furniture & Styling Consultation console — same interior screens
+                & SOP, scoped to furniture_styling_consultation. Sibling under
+                the Interior Design Solutions parent. ── */}
+            <Route element={<RequireAuth><AdminGate><FurnitureStylingConsole /></AdminGate></RequireAuth>}>
+              <Route path="/furniture-styling-consultation" element={<WaterTankDashboard />} />
+              <Route path="/furniture-styling-consultation/contacts" element={<SalesContacts scope="interior" />} />
+              <Route path="/furniture-styling-consultation/clients" element={<WTClients />} />
+              <Route path="/furniture-styling-consultation/clients/new" element={<WTClientCreate />} />
+              <Route path="/furniture-styling-consultation/clients/:code" element={<WTClientDetail />} />
+              <Route path="/furniture-styling-consultation/service-requests" element={<WTServiceRequests />} />
+              <Route path="/furniture-styling-consultation/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/furniture-styling-consultation/site-assessments" element={<WTSiteAssessments />} />
+              <Route path="/furniture-styling-consultation/site-assessments/new" element={<WTAssessmentForm />} />
+              <Route path="/furniture-styling-consultation/site-assessments/:code" element={<WTAssessmentDetail />} />
+              <Route path="/furniture-styling-consultation/site-assessments/:code/edit" element={<WTAssessmentForm />} />
+              <Route path="/furniture-styling-consultation/site-assessments/:code/quotation" element={<WTQuotationBuilder />} />
+              <Route path="/furniture-styling-consultation/site-assessments/:code/quotation/:quoteCode/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/furniture-styling-consultation/quotations" element={<WTQuotations />} />
+              <Route path="/furniture-styling-consultation/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/furniture-styling-consultation/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/furniture-styling-consultation/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/furniture-styling-consultation/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/furniture-styling-consultation/work-orders" element={<WTWorkOrders />} />
+              <Route path="/furniture-styling-consultation/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/furniture-styling-consultation/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/furniture-styling-consultation/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/furniture-styling-consultation/projects" element={<WTProjects />} />
+              <Route path="/furniture-styling-consultation/projects/new" element={<WTProjectForm />} />
+              <Route path="/furniture-styling-consultation/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/furniture-styling-consultation/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/furniture-styling-consultation/variations" element={<InteriorVariations />} />
+              <Route path="/furniture-styling-consultation/suppliers" element={<WtSuppliers />} />
+              <Route path="/furniture-styling-consultation/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/furniture-styling-consultation/agreements" element={<WTAgreementsHub />} />
+              <Route path="/furniture-styling-consultation/reports" element={<WTReports />} />
+              <Route path="/furniture-styling-consultation/reports/:kind" element={<WTReports />} />
+              <Route path="/furniture-styling-consultation/service-reports" element={<WTServiceReports />} />
+              <Route path="/furniture-styling-consultation/service-reports/:code" element={<WTServiceReports />} />
+              <Route path="/furniture-styling-consultation/work-queue" element={<WTWorkQueue />} />
+              <Route path="/furniture-styling-consultation/invoices" element={<WTInvoices />} />
+              <Route path="/furniture-styling-consultation/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/furniture-styling-consultation/payments" element={<WTPayments />} />
+              <Route path="/furniture-styling-consultation/calendar" element={<WTCalendar />} />
+              <Route path="/furniture-styling-consultation/registers" element={<WTRegisters />} />
+              <Route path="/furniture-styling-consultation/registers/:kind" element={<WTRegisters />} />
+              <Route path="/furniture-styling-consultation/registers/:kind/:code" element={<WTRegisters />} />
+              <Route path="/furniture-styling-consultation/complaints" element={<WTComplaints />} />
+              <Route path="/furniture-styling-consultation/complaints/:code" element={<WTComplaints />} />
+              <Route path="/furniture-styling-consultation/communication" element={<WTCommLog />} />
+              <Route path="/furniture-styling-consultation/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/furniture-styling-consultation/portal-accounts" element={<WTPortalAccounts />} />
+              <Route path="/furniture-styling-consultation/settings" element={<WaterTankSettings />} />
             </Route>
             {/* ── Land & Property Assessment console — Survey & Valuation, same
                 screens as Water Tank, scoped to land_property_assessment (first

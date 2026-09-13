@@ -1,6 +1,6 @@
 import React from 'react';
 import ServiceConsole from '../../ui/ServiceConsole';
-import { residentialInteriorConsole, fitnessRoomInteriorConsole, commercialInteriorConsole, customFitoutConsole } from '../../config/consoles';
+import { residentialInteriorConsole, fitnessRoomInteriorConsole, commercialInteriorConsole, customFitoutConsole, furnitureStylingConsole } from '../../config/consoles';
 
 /*
  * ResidentialInteriorConsole — the Residential Interior Design operations console.
@@ -41,4 +41,14 @@ export function CommercialInteriorConsole() {
  */
 export function CustomFitoutConsole() {
   return <ServiceConsole config={customFitoutConsole} />;
+}
+
+/*
+ * FurnitureStylingConsole — sibling Interior Design console for Furniture &
+ * Styling Consultation (furniture consultation, interior styling, procurement).
+ * Identical shell and screens; fuchsia accent, /furniture-styling-consultation/*
+ * nav, scoped to the furniture_styling_consultation service line by the header.
+ */
+export function FurnitureStylingConsole() {
+  return <ServiceConsole config={furnitureStylingConsole} />;
 }

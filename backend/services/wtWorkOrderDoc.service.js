@@ -529,7 +529,42 @@ const CDFS_PACK = {
   checklist_groups: CDFS_CHECKLIST_GROUPS,
   consumables_label: 'Materials & Consumables',
 };
-const WO_PACKS = { water_tank: WT_PACK, air_conditioning: AC_PACK, land_property_assessment: LPAS_PACK, loan_financial_support: LFS_PACK, property_documentation_verification: PDV_PACK, property_will_succession: PWS_PACK, removal_relocation: RRS_PACK, property_care_concierge: PCC_PACK, residential_interior_design: RIDS_PACK, fitness_room_interior_design: FRIDS_PACK, commercial_interior_design: CIDS_PACK, custom_design_fitout: CDFS_PACK };
+// Furniture & Styling — same interior work-order structure, styling vocabulary.
+const FSCS_PROPERTY_TYPES = ['Apartment', 'House', 'Villa', 'Office', 'Retail Shop', 'Showroom', 'Hospitality', 'Other'];
+const FSCS_SERVICE_GROUPS = {
+  'Furniture Consultation': ['Furniture Layout Planning', 'Space Optimisation', 'Furniture Selection Advice', 'Custom Furniture Consultation'],
+  'Interior Styling': ['Decorative Styling', 'Colour Coordination', 'Soft Furnishing Selection', 'Window Furnishings', 'Artwork & Decor', 'Display & Feature Styling'],
+  'Furniture Procurement & Coordination': ['Furniture Sourcing', 'Custom Furniture', 'Decorative Item Procurement', 'Delivery Coordination', 'Installation Coordination', 'Styling Setup', 'Final Presentation'],
+  'Project Coordination': ['Project Management', 'Site Supervision', 'Supplier Coordination', 'Procurement', 'Installation', 'Handover'],
+};
+const FSCS_SPACE_FIELDS = [
+  ['property_type', 'Property Type'], ['design_style', 'Styling Theme'],
+  ['rooms_included', 'Rooms / Zones Included'], ['area', 'Approximate Area'],
+  ['furniture_requirements', 'Furniture Requirements'], ['materials_finishes', 'Colour Scheme / Finishes'],
+];
+const FSCS_WARRANTY_ROWS = [
+  ['consultation', 'Consultation Services'], ['styling', 'Styling Services'],
+  ['furniture_installation', 'Furniture Installation'], ['custom_furniture', 'Custom Furniture'],
+];
+const FSCS_CHECKLIST_GROUPS = {
+  'Before Project': ['Customer Service Agreement Signed', 'Quotation Approved', 'Work Order Approved', 'Furniture & Styling Selections Approved', 'Deposit Received', 'Delivery / Access Confirmed'],
+  'During Project': ['Site Measurements Confirmed', 'Furniture & Decor Procured', 'Delivery Scheduled', 'Client Updated on Progress', 'Variations Approved (if any)'],
+  Completion: ['Furniture Installed & Placed', 'Styling Setup Completed', 'Final Presentation Done', 'Snag List Cleared', 'Completion Sign-Off Signed', 'Final Invoice Issued', 'Warranty Summary Issued'],
+};
+const FSCS_PACK = {
+  doc_no: 'SSPC-FSCS-PWO-01',
+  header_subtitle: 'FURNITURE & STYLING CONSULTATION',
+  division: 'Seventh Sky Interior Design Solutions',
+  document_type: 'furniture_styling_consultation_work_order',
+  property_types: FSCS_PROPERTY_TYPES,
+  service_groups: FSCS_SERVICE_GROUPS,
+  section4_label: 'Section 4 — Space & Styling Details',
+  section4_fields: FSCS_SPACE_FIELDS,
+  warranty_rows: FSCS_WARRANTY_ROWS,
+  checklist_groups: FSCS_CHECKLIST_GROUPS,
+  consumables_label: 'Furniture, Decor & Consumables',
+};
+const WO_PACKS = { water_tank: WT_PACK, air_conditioning: AC_PACK, land_property_assessment: LPAS_PACK, loan_financial_support: LFS_PACK, property_documentation_verification: PDV_PACK, property_will_succession: PWS_PACK, removal_relocation: RRS_PACK, property_care_concierge: PCC_PACK, residential_interior_design: RIDS_PACK, fitness_room_interior_design: FRIDS_PACK, commercial_interior_design: CIDS_PACK, custom_design_fitout: CDFS_PACK, furniture_styling_consultation: FSCS_PACK };
 // Resolve a pack by service_line key (or catalogue vertical / related_type prefix
 // for callers that pass those). Falls back to Water Tank.
 const packForWo = (v) => {

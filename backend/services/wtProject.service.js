@@ -147,8 +147,8 @@ const RIDS_CLOSURE = [
 // existing line is unchanged; Interior Design gets its own SOP phases/closure.
 // Fitness Room shares the identical interior SOP workflow, so it reuses the same
 // project stages and closure checklist as Residential Interior Design.
-const STAGES_BY_LINE = { residential_interior_design: RIDS_STAGES, fitness_room_interior_design: RIDS_STAGES, commercial_interior_design: RIDS_STAGES, custom_design_fitout: RIDS_STAGES };
-const CLOSURE_BY_LINE = { residential_interior_design: RIDS_CLOSURE, fitness_room_interior_design: RIDS_CLOSURE, commercial_interior_design: RIDS_CLOSURE, custom_design_fitout: RIDS_CLOSURE };
+const STAGES_BY_LINE = { residential_interior_design: RIDS_STAGES, fitness_room_interior_design: RIDS_STAGES, commercial_interior_design: RIDS_STAGES, custom_design_fitout: RIDS_STAGES, furniture_styling_consultation: RIDS_STAGES };
+const CLOSURE_BY_LINE = { residential_interior_design: RIDS_CLOSURE, fitness_room_interior_design: RIDS_CLOSURE, commercial_interior_design: RIDS_CLOSURE, custom_design_fitout: RIDS_CLOSURE, furniture_styling_consultation: RIDS_CLOSURE };
 const stagesFor = (serviceLine) => STAGES_BY_LINE[serviceLine] || STAGES;
 const closureFor = (serviceLine) => CLOSURE_BY_LINE[serviceLine] || CLOSURE_CHECKLIST;
 
