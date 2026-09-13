@@ -119,7 +119,7 @@ function resolveRange({ preset, from, to } = {}) {
  */
 async function eventsIn({ branch_id, service_line, range, subject_type, where = {} }) {
   const clause = {
-    branch_id,
+    ...(branch_id ? { branch_id } : {}),
     ...(service_line ? { service_line } : {}),
     ...(subject_type ? { subject_type } : {}),
     [Op.and]: [effectiveDateBetween(range.from, range.to)],
@@ -167,6 +167,8 @@ const EVENT_LABEL = {
   client_refund_reversal: 'Refund reversed',
   provider_payout: 'Provider payout',
   provider_payout_reversal: 'Payout reversed',
+  supplier_payout: 'Supplier payout',
+  supplier_payout_reversal: 'Supplier payout reversed',
   direct_disbursement: 'Direct cost',
   direct_disbursement_reversal: 'Direct cost reversed',
 };
@@ -266,6 +268,9 @@ const REPORTS = {
       { key: 'amount', label: 'Paid', width: 68, align: 'right', money: true },
     ],
     async build({ branch_id, service_line, range, filters }) {
+      if (service_line === 'residential_interior_design' || filters.supplier) {
+        return REPORTS['supplier-payouts'].build({ branch_id, service_line, range, filters });
+      }
       const where = {};
       if (filters.provider) where.provider_name = filters.provider;
       const rows = await eventsIn({ branch_id, service_line, range, subject_type: 'work_order', where });
@@ -292,6 +297,76 @@ const REPORTS = {
           ],
           breakdowns: [
             { title: 'By provider', items: groupTotals(shaped, (r) => r.provider_name, (r) => r.amount) },
+            { title: 'By method', items: groupTotals(shaped, (r) => r.method, (r) => r.amount) },
+          ],
+        },
+      };
+    },
+  },
+
+  /* 2b ─ Supplier payout transactions (for interior design and material/trade suppliers) */
+  'supplier-payouts': {
+    title: 'Supplier Payout Transactions',
+    subtitle: 'What Seventh Sky has paid to materials, furniture, and trade suppliers',
+    columns: [
+      { key: 'date', label: 'Date', width: 62 },
+      { key: 'code', label: 'Voucher / Code', width: 72 },
+      { key: 'supplier_name', label: 'Supplier', width: 134 },
+      { key: 'category', label: 'Category', width: 104 },
+      { key: 'project_code', label: 'Project', width: 78 },
+      { key: 'method', label: 'Method', width: 66 },
+      { key: 'reference', label: 'Reference', width: 78 },
+      { key: 'amount', label: 'Paid', width: 68, align: 'right', money: true },
+    ],
+    async build({ branch_id, service_line, range, filters }) {
+      const where = {
+        ...(branch_id ? { branch_id } : {}),
+        ...(service_line ? { service_line } : {}),
+        status: 'Paid',
+        paid_on: { [Op.between]: [range.from, range.to] },
+      };
+      if (filters.supplier || filters.provider) {
+        where.payee = filters.supplier || filters.provider;
+      }
+      if (filters.category) where.category = filters.category;
+      if (filters.project) where.project_code = filters.project;
+      if (filters.method) where.method = filters.method;
+
+      where[Op.or] = [
+        { payee_type: 'Supplier' },
+        { disbursement_type: 'supplier' },
+      ];
+
+      const rows = await M.WtProjectDisbursement.findAll({
+        where,
+        order: [['paid_on', 'ASC'], ['id', 'ASC']],
+        raw: true,
+      });
+
+      const shaped = rows.map((d) => ({
+        date: d.paid_on,
+        code: d.voucher_no || d.code,
+        supplier_name: d.payee || '—',
+        category: d.category || 'Materials',
+        project_code: d.project_code || '—',
+        method: d.method || 'bank_transfer',
+        reference: d.reference || d.batch_ref || '—',
+        amount: round2(num(d.amount)),
+        _id: d.id,
+      }));
+
+      const paid = round2(shaped.reduce((s, r) => s + r.amount, 0));
+      return {
+        rows: shaped,
+        summary: {
+          headline: [
+            { label: 'Paid to suppliers', value: paid, money: true, tone: 'out' },
+            { label: 'Payments', value: shaped.filter((r) => r.amount > 0).length },
+            { label: 'Suppliers paid', value: new Set(shaped.map((r) => r.supplier_name)).size },
+          ],
+          breakdowns: [
+            { title: 'By supplier', items: groupTotals(shaped, (r) => r.supplier_name, (r) => r.amount) },
+            { title: 'By category', items: groupTotals(shaped, (r) => r.category, (r) => r.amount) },
             { title: 'By method', items: groupTotals(shaped, (r) => r.method, (r) => r.amount) },
           ],
         },
@@ -417,6 +492,45 @@ const REPORTS = {
         };
       });
 
+      // For interior design and project-based lines, also include completed projects
+      if (service_line === 'residential_interior_design') {
+        const projWhere = {
+          branch_id,
+          service_line,
+          status: 'Completed',
+        };
+        if (filters.client) projWhere[Op.or] = [{ client_name: filters.client }, { client_code: filters.client }];
+        const projRows = await M.WtProject.findAll({ where: projWhere, raw: true });
+        for (const p of projRows) {
+          const finishedAt = p.actual_completion || (p.closed_at ? String(new Date(p.closed_at).toISOString()).slice(0, 10) : null);
+          const startedAt = p.actual_start || p.start_date;
+          const days = startedAt && finishedAt
+            ? Math.max(0, Math.round((new Date(finishedAt) - new Date(startedAt)) / 864e5))
+            : (p.duration_days || 1);
+
+          let contractVal = num(p.contract_value);
+          if (contractVal === 0) {
+            const pInvs = await M.WtInvoice.findAll({ where: { project_id: p.code, status: { [Op.ne]: 'Void' } }, raw: true });
+            contractVal = pInvs.reduce((s, inv) => s + num(inv.amount), 0);
+          }
+
+          shaped.push({
+            completed_at: finishedAt,
+            code: p.code,
+            client_name: p.client_name,
+            site_address: p.site_address || p.property_title || 'Client Premises',
+            provider_name: 'Internal Team',
+            category: p.project_type || 'Interior Design',
+            days,
+            verified: p.closure_checklist ? 'Yes' : 'No',
+            total_contract: round2(contractVal),
+            _fee: 0,
+            _ss: round2(contractVal),
+            _late: false,
+          });
+        }
+      }
+
       const withDays = shaped.filter((r) => r.days != null);
       const onTime = shaped.filter((r) => !r._late).length;
       const value = round2(shaped.reduce((s, r) => s + r.total_contract, 0));
@@ -446,6 +560,107 @@ const REPORTS = {
     },
   },
 
+  /* 4b ─ Project Profitability & Margins (for interior design and project-based lines) */
+  'project-profitability': {
+    title: 'Project Profitability & Margins',
+    subtitle: 'Contract value invoiced, supplier costs, direct expenses and gross margins per project',
+    columns: [
+      { key: 'project_code', label: 'Project', width: 78 },
+      { key: 'client_name', label: 'Client', width: 130 },
+      { key: 'status', label: 'Status', width: 70 },
+      { key: 'invoiced', label: 'Invoiced', width: 75, align: 'right', money: true },
+      { key: 'collected', label: 'Collected', width: 75, align: 'right', money: true },
+      { key: 'supplier_cost', label: 'Supplier Cost', width: 75, align: 'right', money: true },
+      { key: 'direct_cost', label: 'Direct Cost', width: 70, align: 'right', money: true },
+      { key: 'total_cost', label: 'Total Cost', width: 75, align: 'right', money: true },
+      { key: 'gross_margin', label: 'Gross Margin', width: 75, align: 'right', money: true },
+      { key: 'margin_pct', label: 'Margin %', width: 60, align: 'right' },
+    ],
+    async build({ branch_id, service_line, range, filters }) {
+      const projWhere = {
+        branch_id,
+        ...(service_line ? { service_line } : {}),
+      };
+      if (filters.project) projWhere.code = filters.project;
+      if (filters.client) {
+        projWhere[Op.or] = [{ client_name: filters.client }, { client_code: filters.client }];
+      }
+
+      const projects = await M.WtProject.findAll({
+        where: projWhere,
+        order: [['id', 'DESC']],
+        raw: true,
+      });
+
+      const invWhere = {
+        branch_id,
+        ...(service_line ? { service_line } : {}),
+        status: { [Op.ne]: 'Void' },
+      };
+      const allInvoices = await M.WtInvoice.findAll({ where: invWhere, raw: true });
+
+      const disbWhere = {
+        branch_id,
+        ...(service_line ? { service_line } : {}),
+        status: 'Paid',
+      };
+      const allDisbursements = await M.WtProjectDisbursement.findAll({ where: disbWhere, raw: true });
+
+      const shaped = projects.map((p) => {
+        const pInvs = allInvoices.filter((inv) => inv.project_id === p.code);
+        const invoiced = round2(pInvs.reduce((s, inv) => s + num(inv.amount), 0));
+        const collected = round2(pInvs.reduce((s, inv) => s + num(inv.paid_amount), 0));
+
+        const pDisbs = allDisbursements.filter((d) => d.project_code === p.code);
+        const supplier_cost = round2(pDisbs.filter((d) => d.payee_type === 'Supplier' || d.disbursement_type === 'supplier')
+          .reduce((s, d) => s + num(d.amount), 0));
+        const direct_cost = round2(pDisbs.filter((d) => d.payee_type !== 'Supplier' && d.disbursement_type !== 'supplier')
+          .reduce((s, d) => s + num(d.amount), 0));
+        const total_cost = round2(supplier_cost + direct_cost);
+        const gross_margin = round2(invoiced - total_cost);
+        const margin_pct = invoiced > 0 ? `${Math.round((gross_margin / invoiced) * 100)}%` : '—';
+
+        return {
+          project_code: p.code,
+          client_name: p.client_name,
+          status: p.status,
+          invoiced,
+          collected,
+          supplier_cost,
+          direct_cost,
+          total_cost,
+          gross_margin,
+          margin_pct,
+          _margin_num: invoiced > 0 ? round2((gross_margin / invoiced) * 100) : 0,
+        };
+      }).filter((r) => r.invoiced > 0 || r.total_cost > 0 || r.status === 'Completed' || r.status === 'In Progress');
+
+      const totalInvoiced = round2(shaped.reduce((s, r) => s + r.invoiced, 0));
+      const totalCollected = round2(shaped.reduce((s, r) => s + r.collected, 0));
+      const totalSupplier = round2(shaped.reduce((s, r) => s + r.supplier_cost, 0));
+      const totalCost = round2(shaped.reduce((s, r) => s + r.total_cost, 0));
+      const totalMargin = round2(totalInvoiced - totalCost);
+      const overallMarginPct = totalInvoiced > 0 ? `${Math.round((totalMargin / totalInvoiced) * 100)}%` : '—';
+
+      return {
+        rows: shaped,
+        summary: {
+          headline: [
+            { label: 'Total Invoiced', value: totalInvoiced, money: true, tone: 'in' },
+            { label: 'Collected', value: totalCollected, money: true, tone: 'in' },
+            { label: 'Total Costs', value: totalCost, money: true, tone: 'out' },
+            { label: 'Gross Margin', value: totalMargin, money: true, tone: 'net' },
+            { label: 'Overall Margin %', value: overallMarginPct },
+          ],
+          breakdowns: [
+            { title: 'Gross margin by project', items: shaped.map((r) => ({ name: `${r.project_code} · ${r.client_name}`, total: r.gross_margin })).sort((a, b) => b.total - a.total) },
+            { title: 'Costs by category', items: groupTotals(allDisbursements, (d) => d.category, (d) => d.amount) },
+          ],
+        },
+      };
+    },
+  },
+
   /* 5 ─ The reconciliation report */
   'bank-statement': {
     title: 'Bank Statement — Money In and Out',
@@ -465,33 +680,97 @@ const REPORTS = {
       const rows = await eventsIn({ branch_id, service_line, range, where });
 
       /*
-       * The opening balance is everything that happened BEFORE the range. A
-       * statement that starts from zero mid-year is not a statement — the
-       * running balance has to continue from somewhere real or it cannot be
-       * reconciled against an actual bank account.
+       * Also fetch paid project/supplier disbursements that do not have a money_event_id.
+       * This ensures supplier disbursements and direct expenses are fully accounted for
+       * in the bank statement and running cash reconciliation.
        */
-      const prior = await M.WtMoneyEvent.findAll({
-        where: { branch_id, ...(service_line ? { service_line } : {}), [Op.and]: [effectiveDateBefore(range.from)] },
+      const disbWhere = {
+        ...(branch_id ? { branch_id } : {}),
+        ...(service_line ? { service_line } : {}),
+        status: 'Paid',
+        money_event_id: null,
+        paid_on: { [Op.between]: [range.from, range.to] },
+      };
+      if (filters.method) disbWhere.method = filters.method;
+      const rangeDisbs = await M.WtProjectDisbursement.findAll({ where: disbWhere, raw: true });
+
+      /*
+       * The opening balance is everything that happened BEFORE the range.
+       * Incorporate prior money events AND prior non-linked paid disbursements.
+       */
+      const priorEvents = await M.WtMoneyEvent.findAll({
+        where: {
+          ...(branch_id ? { branch_id } : {}),
+          ...(service_line ? { service_line } : {}),
+          [Op.and]: [effectiveDateBefore(range.from)],
+        },
         attributes: ['direction', 'amount', 'event_type'], raw: true,
       });
-      const opening = round2(prior.reduce((s, e) => s
-        + (e.direction === 'in' ? num(e.amount) : -ledger.cashOut(e)), 0));
+      const priorDisbs = await M.WtProjectDisbursement.findAll({
+        where: {
+          ...(branch_id ? { branch_id } : {}),
+          ...(service_line ? { service_line } : {}),
+          status: 'Paid',
+          money_event_id: null,
+          paid_on: { [Op.lt]: range.from },
+        },
+        attributes: ['amount'], raw: true,
+      });
 
-      let balance = opening;
-      const shaped = rows.map((e) => {
+      const priorEventBalance = priorEvents.reduce((s, e) => s
+        + (e.direction === 'in' ? num(e.amount) : -ledger.cashOut(e)), 0);
+      const priorDisbTotal = priorDisbs.reduce((s, d) => s + num(d.amount), 0);
+      const opening = round2(priorEventBalance - priorDisbTotal);
+
+      // Transform events
+      const eventItems = rows.map((e) => {
         const isIn = e.direction === 'in';
-        const inAmt = isIn ? num(e.amount) : 0;
-        const outAmt = isIn ? 0 : ledger.cashOut(e);
-        balance = round2(balance + inAmt - outAmt);
         const who = e.client_name || e.provider_name || '';
         return {
           date: e.received_on,
+          id: e.id,
+          sortKey: `${e.received_on || ''}_0_${String(e.id).padStart(8, '0')}`,
           particulars: [EVENT_LABEL[e.event_type] || e.event_type, who, e.subject_code]
             .filter(Boolean).join(' · '),
           method: e.method,
           reference: e.reference || e.batch_ref,
-          in: inAmt,
-          out: outAmt,
+          in: isIn ? num(e.amount) : 0,
+          out: isIn ? 0 : ledger.cashOut(e),
+        };
+      });
+
+      // Transform non-linked paid disbursements
+      const disbItems = rangeDisbs.map((d) => {
+        const isSupplier = d.payee_type === 'Supplier' || d.disbursement_type === 'supplier';
+        const who = d.payee || 'Direct Cost';
+        const pcode = d.project_code || '';
+        const cat = d.category || '';
+        return {
+          date: d.paid_on || (d.created_at ? String(new Date(d.created_at).toISOString()).slice(0, 10) : null),
+          id: d.id,
+          sortKey: `${d.paid_on || ''}_1_${String(d.id).padStart(8, '0')}`,
+          particulars: [isSupplier ? 'Supplier payout' : 'Direct cost', who, pcode, cat]
+            .filter(Boolean).join(' · '),
+          method: d.method || 'bank_transfer',
+          reference: d.reference || d.voucher_no || d.code,
+          in: 0,
+          out: round2(num(d.amount)),
+        };
+      });
+
+      // Merge and sort in exact chronological order
+      const allItems = [...eventItems, ...disbItems].sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+
+      let balance = opening;
+      const shaped = allItems.map((item) => {
+        balance = round2(balance + item.in - item.out);
+        return {
+          date: item.date,
+          particulars: item.particulars,
+          method: item.method,
+          reference: item.reference,
+          in: item.in,
+          out: item.out,
           balance,
         };
       });
@@ -528,16 +807,29 @@ class ReportError extends Error {
 
 /** Build one report. Returns everything both the table and the PDF need. */
 async function run({ branch_id, service_line, kind, preset, from, to, filters = {} }) {
-  const def = REPORTS[kind];
+  let resolvedKind = kind;
+  if (kind === 'provider-payouts' && (service_line === 'residential_interior_design' || filters.supplier)) {
+    resolvedKind = 'supplier-payouts';
+  }
+  const def = REPORTS[resolvedKind];
   if (!def) throw new ReportError(404, `There is no "${kind}" report.`);
 
   const range = resolveRange({ preset, from, to });
   const out = await def.build({ branch_id, service_line, range, filters });
 
+  let service_title = 'Property Care';
+  try {
+    const { getServiceLine } = require('../config/serviceLines');
+    const sl = getServiceLine(service_line);
+    if (sl?.label) service_title = sl.label;
+  } catch {}
+
   return {
-    kind,
+    kind: resolvedKind,
     title: def.title,
     subtitle: def.subtitle,
+    service_line: service_line || 'water_tank',
+    service_title,
     range: { preset: range.preset, from: range.from, to: range.to, label: range.label },
     columns: def.columns,
     rows: out.rows,
@@ -549,8 +841,17 @@ async function run({ branch_id, service_line, kind, preset, from, to, filters = 
 }
 
 /** What the reports hub needs to render its chooser. */
-const catalogue = () => Object.entries(REPORTS).map(([kind, d]) => ({
-  kind, title: d.title, subtitle: d.subtitle,
-}));
+const catalogue = (service_line) => {
+  const isInterior = service_line === 'residential_interior_design';
+  return Object.entries(REPORTS)
+    .filter(([kind]) => {
+      if (isInterior && kind === 'provider-payouts') return false;
+      if (!isInterior && kind === 'supplier-payouts') return false;
+      return true;
+    })
+    .map(([kind, d]) => ({
+      kind, title: d.title, subtitle: d.subtitle,
+    }));
+};
 
 module.exports = { run, catalogue, resolveRange, PRESETS, REPORTS, ReportError };

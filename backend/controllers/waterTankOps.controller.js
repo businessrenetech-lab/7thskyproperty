@@ -777,7 +777,7 @@ exports.search = asyncHandler(async (req, res) => {
 // Aggregate for the Operations Dashboard.
 exports.dashboard = asyncHandler(async (req, res) => {
   const scope = scoped(req);
-  const [sr, amc, inv, providers, projects, quotes, wos, complaints, assessments] = await Promise.all([
+  const [sr, amc, inv, providers, projects, quotes, wos, complaints, assessments, disbursements] = await Promise.all([
     M.WtServiceRequest.findAll({ where: scope, raw: true }),
     M.WtAmcContract.findAll({ where: scope, raw: true }),
     M.WtInvoice.findAll({ where: scope, raw: true }),
@@ -787,6 +787,7 @@ exports.dashboard = asyncHandler(async (req, res) => {
     M.WtWorkOrder.findAll({ where: scope, raw: true }),
     M.WtComplaint.findAll({ where: scope, raw: true }),
     M.WtSiteAssessment.findAll({ where: scope, raw: true }),
+    M.WtProjectDisbursement.findAll({ where: scope, raw: true }),
   ]);
   const eq = (v, s) => String(v || '').toLowerCase() === s;
   const amcActive = amc.filter((a) => eq(a.status, 'active'));
@@ -813,6 +814,10 @@ exports.dashboard = asyncHandler(async (req, res) => {
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
   const paid = inv.filter((i) => eq(i.status, 'paid'));
   const paidThisMonth = paid.filter((i) => new Date(i.updatedAt || i.createdAt) >= monthStart);
+  const totalCollected = inv.reduce((s, i) => s + (num(i.paid_amount) || (eq(i.status, 'paid') ? num(i.amount) : 0)), 0);
+  const totalDisbursed = disbursements.filter((d) => eq(d.status, 'paid')).reduce((s, d) => s + num(d.amount), 0);
+  const fundsHolding = Math.round((totalCollected - totalDisbursed) * 100) / 100;
+
   const finance = {
     outstanding: pendingInv.reduce((s, i) => s + iOut(i), 0),
     outstanding_count: pendingInv.length,
@@ -823,6 +828,9 @@ exports.dashboard = asyncHandler(async (req, res) => {
     pending_payout: inv.filter((i) => eq(i.provider_payout, 'pending')).reduce((s, i) => s + iAmt(i), 0),
     pending_payout_count: inv.filter((i) => eq(i.provider_payout, 'pending')).length,
     invoiced_total: inv.reduce((s, i) => s + iAmt(i), 0),
+    funds_holding: fundsHolding,
+    collected_total: totalCollected,
+    disbursed_total: totalDisbursed,
   };
 
   // ── real complaint/SLA figures ──

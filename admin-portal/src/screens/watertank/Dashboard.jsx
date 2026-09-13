@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, UserPlus, Shield, CreditCard, Star, RefreshCw, ChevronRight, AlertCircle } from 'lucide-react';
+import { Briefcase, UserPlus, Shield, CreditCard, Star, RefreshCw, ChevronRight, AlertCircle, Users, ArrowRight } from 'lucide-react';
 import api from '../../services/api';
 import { Spinner } from '../../ui/kit';
-import { useSvcNav, Pill, dateFmt, bdt, EmptyState } from './common';
+import { useSvcNav, Pill, dateFmt, bdt, EmptyState, svcLabel, svcBase } from './common';
 
 /*
- * Water Tank — Operations Dashboard.
+ * Water Tank & Service Lines — Operations Dashboard.
  * Layout is the 1:1 rebuild of Figma node 2:9 (recoloured to 7th Sky via wt-scope.css);
  * every figure is live from GET /wt-ops/dashboard — nothing here is a placeholder.
  */
@@ -35,13 +35,36 @@ export default function WaterTankDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [recentContacts, setRecentContacts] = useState([]);
+  const [contactsCount, setContactsCount] = useState(0);
+  const [leadsByStatus, setLeadsByStatus] = useState({ new: 0, contacted: 0, qualified: 0, in_progress: 0 });
 
   const load = () => {
     setLoading(true); setError('');
+    const base = svcBase();
+    const currentScope = base.includes('interior') ? 'interior' : base.replace('/', '');
+
     api.get('/wt-ops/dashboard')
       .then((r) => setData(r.data))
       .catch((e) => { setData(null); setError(e.response?.data?.error || 'Could not load the dashboard'); })
       .finally(() => setLoading(false));
+
+    api.get(`/contacts?scope=${encodeURIComponent(currentScope)}&limit=10`)
+      .then((r) => {
+        const list = r.data?.data || [];
+        setRecentContacts(list);
+        setContactsCount(r.data?.total || list.length);
+        const counts = { new: 0, contacted: 0, qualified: 0, in_progress: 0 };
+        list.forEach((c) => {
+          const st = c.lead_status || 'new';
+          if (counts[st] !== undefined) counts[st]++;
+          else if (['site_visit_scheduled', 'viewing_scheduled'].includes(st)) counts.contacted++;
+          else if (['proposal_sent', 'under_review'].includes(st)) counts.in_progress++;
+          else counts.new++;
+        });
+        setLeadsByStatus(counts);
+      })
+      .catch(() => {});
   };
   useEffect(load, []);
 
@@ -57,7 +80,7 @@ export default function WaterTankDashboard() {
    */
   const KPIS = [
     { icon: Briefcase, tint: 'var(--wt-accent-tint)', color: 'var(--wt-accent)', label: 'Total Active Projects', value: k.active_projects ?? '—', sub: k.active_projects_sub || '', to: '/water-tank/projects?tab=Open' },
-    { icon: UserPlus, tint: 'rgba(37,99,235,0.10)', color: 'var(--wt-blue)', label: 'New Leads', value: k.new_leads ?? '—', sub: 'awaiting assessment', to: '/water-tank/service-requests?tab=New' },
+    { icon: UserPlus, tint: 'rgba(37,99,235,0.10)', color: 'var(--wt-blue)', label: 'New Leads', value: k.new_leads ?? (contactsCount || '—'), sub: `${contactsCount || 0} active contacts & leads`, to: '/water-tank/contacts?tab=leads' },
     { icon: Shield, tint: 'rgba(5,150,105,0.10)', color: 'var(--wt-green)', label: 'AMC Contracts Active', value: k.amc_active ?? '—', sub: k.amc_annual_value ? `Value: ${bdt(k.amc_annual_value)} annually` : 'No active contracts', to: '/water-tank/amc?status=Active' },
     { icon: CreditCard, tint: 'rgba(225,29,72,0.10)', color: 'var(--wt-red)', label: 'Pending Invoices', value: k.pending_invoice_amount != null ? bdt(k.pending_invoice_amount) : '—', sub: `${k.overdue_invoice_count || 0} invoice${k.overdue_invoice_count === 1 ? '' : 's'} overdue`, to: '/water-tank/invoices?tab=Overdue' },
   ];
@@ -88,11 +111,14 @@ export default function WaterTankDashboard() {
     <>
       <div className="wt-head">
         <div>
-          <h1 className="wt-title">Operations Dashboard</h1>
-          <p className="wt-subtitle">Seventh Sky Operations Management System</p>
+          <h1 className="wt-title">{svcLabel()} · Operations Dashboard</h1>
+          <p className="wt-subtitle">Seventh Sky Operations &amp; Client Management System</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {/* The one front door. Every water-tank job starts as a Service Request;
+          <button className="wt-btn" onClick={() => nav('/water-tank/contacts')} style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 650, borderColor: 'var(--wt-accent)', color: 'var(--wt-accent)' }}>
+            <Users size={14} /> Contacts &amp; Leads
+          </button>
+          {/* The one front door. Every job starts as a Service Request;
               the direct assessment/quotation/project creates are in-flow shortcuts. */}
           <button className="wt-btn primary" onClick={() => nav('/water-tank/service-requests/new')}>
             <UserPlus size={14} /> New Service Request
@@ -134,6 +160,84 @@ export default function WaterTankDashboard() {
             </div>
           </button>
         ))}
+      </div>
+
+      {/* ── Contacts & Leads Hub (CRM) ── */}
+      <div className="wt-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="wt-panel-head">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 6, background: 'var(--wt-accent-tint, rgba(147,51,234,0.12))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--wt-accent, #9333ea)' }}>
+              <Users size={16} />
+            </div>
+            <div>
+              <h2 className="wt-section-title" style={{ margin: 0 }}>{svcLabel()} · Contacts &amp; Leads Hub</h2>
+              <span className="muted" style={{ fontSize: 12 }}>{contactsCount} active contacts &amp; prospective clients recorded</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button className="wt-btn sm primary" onClick={() => nav('/water-tank/contacts?new=1')} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <UserPlus size={13} /> Add Contact
+            </button>
+            <button className="wt-link" onClick={() => nav('/water-tank/contacts')} style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 650 }}>
+              View All <ArrowRight size={13} />
+            </button>
+          </div>
+        </div>
+
+        {/* Lead status pipeline chips */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {[
+            { label: 'New', count: leadsByStatus.new || 0, bg: '#eff6ff', fg: '#1d4ed8' },
+            { label: 'Contacted / Scheduled', count: leadsByStatus.contacted || 0, bg: '#fef3c7', fg: '#b45309' },
+            { label: 'Qualified', count: leadsByStatus.qualified || 0, bg: '#f3e8ff', fg: '#7e22ce' },
+            { label: 'In Progress / Quoted', count: leadsByStatus.in_progress || 0, bg: '#ecfdf5', fg: '#047857' },
+          ].map((chip) => (
+            <div key={chip.label} style={{ background: chip.bg, color: chip.fg, padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 650, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>{chip.label}</span>
+              <span style={{ background: 'rgba(0,0,0,0.08)', borderRadius: 10, padding: '1px 7px', fontSize: 11 }}>{chip.count}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Showcase Table */}
+        <table className="wt-tbl">
+          <thead>
+            <tr>
+              <th style={{ width: 90 }}>Code</th>
+              <th>Contact / Organization</th>
+              <th style={{ width: 150 }}>Requirement / Scope</th>
+              <th style={{ width: 130 }}>Phone / WhatsApp</th>
+              <th style={{ width: 110 }}>Budget</th>
+              <th style={{ width: 100 }}>Status</th>
+              <th style={{ width: 70 }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentContacts.slice(0, 5).map((c) => (
+              <tr key={c.id} className="click" onClick={() => nav(`/water-tank/contacts?focus=${encodeURIComponent(c.contact_code || c.id)}`)}>
+                <td className="id">{c.contact_code || `CT-${c.id}`}</td>
+                <td>
+                  <div style={{ fontWeight: 600, color: 'var(--wt-ink)' }}>{c.full_name}</div>
+                  {c.company_name && <div style={{ fontSize: 11, color: 'var(--wt-muted)' }}>{c.company_name}</div>}
+                </td>
+                <td className="muted" style={{ maxWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {c.contact_list || c.looking_for || 'General Inquiry'}
+                </td>
+                <td style={{ fontSize: 12 }}>{c.primary_phone || c.whatsapp || '—'}</td>
+                <td style={{ fontWeight: 600 }}>{c.budget_max ? bdt(c.budget_max) : (c.budget_min ? bdt(c.budget_min) : '—')}</td>
+                <td><Pill value={c.lead_status || 'new'} sm /></td>
+                <td style={{ textAlign: 'right' }}>
+                  <span className="wt-link" style={{ fontSize: 12 }}>Open &rarr;</span>
+                </td>
+              </tr>
+            ))}
+            {!recentContacts.length && (
+              <tr className="wt-empty-row">
+                <td colSpan={7}>No contacts or leads recorded yet for this service. Click &ldquo;Add Contact&rdquo; to create one.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       <div className="wt-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -203,13 +307,13 @@ export default function WaterTankDashboard() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
             {[
               ['Invoiced to date', bdt(fin.invoiced_total), `${fin.outstanding_count || 0} unsettled`],
+              ['Funds Holding (Escrow)', bdt(fin.funds_holding != null ? fin.funds_holding : 0), (fin.funds_holding || 0) >= 0 ? 'Retained client funds' : 'Deficit (Adjust after client payments)'],
               ['Collected this month', bdt(fin.paid_this_month), `${fin.paid_this_month_count || 0} invoice${fin.paid_this_month_count === 1 ? '' : 's'}`],
-              ['Overdue', bdt(fin.overdue_amount), `${fin.overdue_count || 0} account${fin.overdue_count === 1 ? '' : 's'}`],
-              ['Provider payouts due', bdt(fin.pending_payout), `${fin.pending_payout_count || 0} pending`],
+              ['Overdue receivables', bdt(fin.overdue_amount), `${fin.overdue_count || 0} account${fin.overdue_count === 1 ? '' : 's'}`],
             ].map(([label, value, sub]) => (
               <div key={label}>
                 <div style={{ fontSize: 11, color: 'var(--wt-muted)' }}>{label}</div>
-                <div style={{ fontSize: 19, fontWeight: 800 }}>{value}</div>
+                <div style={{ fontSize: 19, fontWeight: 800, color: label.includes('Funds Holding') ? ((fin.funds_holding || 0) < 0 ? 'var(--wt-red)' : 'var(--wt-green)') : 'var(--wt-ink)' }}>{value}</div>
                 <div style={{ fontSize: 11, color: 'var(--wt-muted)' }}>{sub}</div>
               </div>
             ))}

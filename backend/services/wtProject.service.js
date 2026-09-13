@@ -612,6 +612,7 @@ function computeFinancials(project, invoices, workOrders, disbursements) {
     gross_margin: round2(contractValue - committed),
     margin_pct: contractValue > 0 ? Math.round(((contractValue - committed) / contractValue) * 100) : 0,
     net_position: round2(collected - disbursed),
+    funds_holding: round2(collected - disbursed),
     deposit_required: !!project.deposit_required,
     deposit_amount: round2(project.deposit_amount),
     deposit_received: !!project.deposit_received_at,

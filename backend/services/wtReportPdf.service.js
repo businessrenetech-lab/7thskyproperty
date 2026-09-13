@@ -60,10 +60,11 @@ function layout(columns) {
 }
 
 function letterhead(doc, report, branding) {
+  const serviceTitle = (branding?.service_label || report?.service_title || 'WATER TANK CLEANING & MAINTENANCE').toUpperCase();
   doc.fontSize(14).fillColor(NAVY).font('Helvetica-Bold')
     .text(branding.name || 'Seventh Sky Property Care', M, M, { width: W * 0.55 });
   doc.fontSize(7.5).fillColor(CYAN).font('Helvetica-Bold')
-    .text('WATER TANK CLEANING & MAINTENANCE', { width: W * 0.55 });
+    .text(serviceTitle, { width: W * 0.55 });
   doc.fontSize(7.5).fillColor(MUTED).font('Helvetica');
   [branding.address, branding.phone, branding.email].filter(Boolean)
     .forEach((l) => doc.text(l, { width: W * 0.55 }));

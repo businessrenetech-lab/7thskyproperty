@@ -250,10 +250,10 @@ exports.overview = asyncHandler(async (req, res) => {
   ]);
 
   const codes = new Set(projects.map((p) => p.code));
-  const scoped = (rows, key) => rows.filter((r) => codes.has(r[key]));
-  const projInv = scoped(invoices, 'project_id');
-  const projWo = scoped(workOrders, 'project_id');
-  const projDb = scoped(disbursements, 'project_code');
+  const filterByCodes = (rows, key) => rows.filter((r) => codes.has(r[key]));
+  const projInv = filterByCodes(invoices, 'project_id');
+  const projWo = filterByCodes(workOrders, 'project_id');
+  const projDb = filterByCodes(disbursements, 'project_code');
 
   const open = projects.filter((p) => !eq(p.status, 'completed') && !eq(p.status, 'cancelled'));
   const completed = projects.filter((p) => eq(p.status, 'completed'));

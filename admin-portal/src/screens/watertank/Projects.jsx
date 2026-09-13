@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Plus, Search, Repeat, AlertTriangle, FolderOpen, CheckCircle2, Wallet, Loader2,
+  Plus, Search, Repeat, AlertTriangle, FolderOpen, CheckCircle2, Wallet, Loader2, Landmark,
 } from 'lucide-react';
 import api from '../../services/api';
 import { useSvcNav,
-  WtHead, WtTabs, Pill, dateFmt, bdt, Loading, EmptyState, useUrlTab, toast, errText,
+  WtHead, WtTabs, Pill, dateFmt, bdt, Loading, EmptyState, useUrlTab, toast, errText, svcLabel,
 } from './common';
 
 /*
  * Projects index — SSPC-WTCM-SOP-01.
- * The rollups (progress, value, receivable, AMC) come from the server so the
+ * The rollups (progress, value, receivable, AMC, funds holding) come from the server so the
  * table is not doing arithmetic over a client-side copy of the whole database.
  */
 
@@ -64,7 +64,7 @@ export default function Projects() {
     <>
       <WtHead
         title="Projects"
-        subtitle="Every water-tank engagement from service request to AMC handover — SOP-01 Sec. 4. A project usually forms once a quotation is approved."
+        subtitle={`Every ${svcLabel()} engagement from intake to completion — track delivery progress, client receivables, and retained funds holding.`}
       >
         <button className="wt-btn" onClick={() => nav('/water-tank/projects/new')}><Plus size={15} /> New Project</button>
       </WtHead>
@@ -77,12 +77,23 @@ export default function Projects() {
             sub={ov.at_risk ? `${ov.at_risk} due within 3 days` : 'None due within 3 days'} />
           <IdxKpi icon={CheckCircle2} tone="green" label="Completed" value={ov.completed}
             sub={ov.on_time_pct == null ? 'No completions yet' : `${ov.on_time_pct}% delivered on time`} />
-          <IdxKpi icon={Repeat} tone="accent" label="Under AMC" value={ov.under_amc}
-            sub="Recurring maintenance contracts" />
-          <IdxKpi icon={Wallet} tone="slate" label="Contract value" value={money(ov.financials.contract_value)}
-            sub={`${money(ov.financials.collected)} collected`} />
-          <IdxKpi icon={Wallet} tone={ov.financials.receivable > 0 ? 'amber' : 'green'} label="Receivable" value={money(ov.financials.receivable)}
-            sub={`${money(ov.financials.disbursed)} disbursed`} />
+          {ov.under_amc > 0 && (
+            <IdxKpi icon={Repeat} tone="accent" label="Under AMC" value={ov.under_amc}
+              sub="Recurring maintenance contracts" />
+          )}
+          <IdxKpi icon={Wallet} tone="slate" label="Contract value" value={money(ov.financials?.contract_value)}
+            sub={`${money(ov.financials?.collected)} collected`} />
+          <IdxKpi icon={Wallet} tone={Number(ov.financials?.receivable) > 0 ? 'amber' : 'green'} label="Receivable" value={money(ov.financials?.receivable)}
+            sub={`${money(ov.financials?.disbursed)} disbursed`} />
+          <IdxKpi
+            icon={Landmark}
+            tone={(ov.financials?.funds_holding || 0) < 0 ? 'red' : 'green'}
+            label="Funds Holding"
+            value={money(ov.financials?.funds_holding)}
+            sub={(ov.financials?.funds_holding || 0) >= 0
+              ? `Retained funds in escrow (${money(ov.financials?.collected)} in − ${money(ov.financials?.disbursed)} out)`
+              : `Deficit: ${money(Math.abs(ov.financials?.funds_holding))} (Adjust after client payments)`}
+          />
         </div>
       )}
 
@@ -124,39 +135,58 @@ export default function Projects() {
               <th style={{ width: 120 }}>Target</th>
               <th style={{ width: 130, textAlign: 'right' }}>Value</th>
               <th style={{ width: 130, textAlign: 'right' }}>Receivable</th>
+              <th style={{ width: 140, textAlign: 'right' }}>Funds Holding</th>
               <th style={{ width: 110 }}>Status</th>
             </tr></thead>
             <tbody>
-              {shown.map((r) => (
-                <tr key={r.id} className="click" onClick={() => nav(`/water-tank/projects/${r.code}`)}>
-                  <td className="id">{r.code}</td>
-                  <td>
-                    <strong style={{ display: 'block', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</strong>
-                    <span style={{ fontSize: 11.5, color: 'var(--wt-muted)' }}>
-                      {[r.assigned_provider || 'No provider', r.district].filter(Boolean).join(' · ')}
-                    </span>
-                    {!!r.under_amc && <span className="wt-tag amc"><Repeat size={10} /> AMC</span>}
-                    {r.overdue && <span className="wt-tag red">Overdue</span>}
-                    {!r.overdue && r.at_risk && <span className="wt-tag amber">Due soon</span>}
-                  </td>
-                  <td className="muted">{r.client_name || '—'}</td>
-                  <td><span style={{ fontSize: 12.5 }}>{r.stage}</span></td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div className="wt-progress"><span style={{ width: `${r.progress_pct || 0}%` }} /></div>
-                      <span style={{ fontSize: 11.5, color: 'var(--wt-muted)', width: 30 }}>{r.progress_pct || 0}%</span>
-                    </div>
-                  </td>
-                  <td className="muted" style={{ color: r.overdue ? 'var(--wt-red)' : undefined }}>{dateFmt(r.target_completion)}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 700 }}>{money(r.financials?.contract_value)}</td>
-                  <td style={{ textAlign: 'right', color: Number(r.financials?.receivable) > 0 ? 'var(--wt-red)' : 'var(--wt-muted)' }}>
-                    {money(r.financials?.receivable)}
-                  </td>
-                  <td><Pill value={r.status} sm /></td>
-                </tr>
-              ))}
+              {shown.map((r) => {
+                const holding = r.financials?.funds_holding != null ? Number(r.financials.funds_holding) : (Number(r.financials?.collected || 0) - Number(r.financials?.disbursed || 0));
+                return (
+                  <tr key={r.id} className="click" onClick={() => nav(`/water-tank/projects/${r.code}`)}>
+                    <td className="id">{r.code}</td>
+                    <td>
+                      <strong style={{ display: 'block', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</strong>
+                      <span style={{ fontSize: 11.5, color: 'var(--wt-muted)' }}>
+                        {[r.assigned_provider || 'No provider', r.district].filter(Boolean).join(' · ')}
+                      </span>
+                      {!!r.under_amc && <span className="wt-tag amc"><Repeat size={10} /> AMC</span>}
+                      {r.overdue && <span className="wt-tag red">Overdue</span>}
+                      {!r.overdue && r.at_risk && <span className="wt-tag amber">Due soon</span>}
+                    </td>
+                    <td className="muted">{r.client_name || '—'}</td>
+                    <td><span style={{ fontSize: 12.5 }}>{r.stage}</span></td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div className="wt-progress"><span style={{ width: `${r.progress_pct || 0}%` }} /></div>
+                        <span style={{ fontSize: 11.5, color: 'var(--wt-muted)', width: 30 }}>{r.progress_pct || 0}%</span>
+                      </div>
+                    </td>
+                    <td className="muted" style={{ color: r.overdue ? 'var(--wt-red)' : undefined }}>{dateFmt(r.target_completion)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{money(r.financials?.contract_value)}</td>
+                    <td style={{ textAlign: 'right', color: Number(r.financials?.receivable) > 0 ? 'var(--wt-red)' : 'var(--wt-muted)' }}>
+                      {money(r.financials?.receivable)}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 700, color: holding < 0 ? 'var(--wt-red)' : holding > 0 ? 'var(--wt-green)' : 'var(--wt-muted)' }}>
+                        {money(holding)}
+                      </div>
+                      {holding < 0 && (
+                        <div style={{ fontSize: 10.5, color: 'var(--wt-red)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                          Deficit (To adjust)
+                        </div>
+                      )}
+                      {holding > 0 && (
+                        <div style={{ fontSize: 10, color: 'var(--wt-green)', whiteSpace: 'nowrap' }}>
+                          In escrow
+                        </div>
+                      )}
+                    </td>
+                    <td><Pill value={r.status} sm /></td>
+                  </tr>
+                );
+              })}
               {!shown.length && (
-                <tr className="wt-empty-row"><td colSpan={9}>
+                <tr className="wt-empty-row"><td colSpan={10}>
                   {q || stage || amcOnly ? 'Nothing matches those filters.' : `No projects in “${tab}”.`}
                 </td></tr>
               )}

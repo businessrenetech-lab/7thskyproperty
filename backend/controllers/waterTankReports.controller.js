@@ -16,7 +16,7 @@ const { getBranding } = require('../services/wtBranding.service');
 /** Only the filters a report understands; anything else is ignored, not obeyed. */
 const pickFilters = (q) => {
   const out = {};
-  for (const k of ['client', 'provider', 'project', 'category', 'method']) {
+  for (const k of ['client', 'provider', 'supplier', 'project', 'category', 'method']) {
     if (q[k] && String(q[k]).trim()) out[k] = String(q[k]).trim();
   }
   return out;
@@ -24,7 +24,8 @@ const pickFilters = (q) => {
 
 /** GET /wt-reports — what reports exist, and the date presets they all share. */
 exports.catalogue = asyncHandler(async (req, res) => {
-  res.json({ reports: reports.catalogue(), presets: reports.PRESETS });
+  const service_line = resolveServiceLine(req);
+  res.json({ reports: reports.catalogue(service_line), presets: reports.PRESETS });
 });
 
 /** GET /wt-reports/:kind — the report as data. */
@@ -49,9 +50,10 @@ exports.run = asyncHandler(async (req, res) => {
 /** GET /wt-reports/:kind/pdf — the same report, branded. */
 exports.pdf = asyncHandler(async (req, res) => {
   try {
+    const service_line = resolveServiceLine(req);
     const out = await reports.run({
       branch_id: resolveBranchId(req),
-      service_line: resolveServiceLine(req),
+      service_line,
       kind: req.params.kind,
       preset: req.query.preset,
       from: req.query.from,
@@ -59,7 +61,13 @@ exports.pdf = asyncHandler(async (req, res) => {
       filters: pickFilters(req.query),
     });
     const branding = await getBranding().catch(() => ({}));
-    const buf = await pdfSvc.buildReportPdf(out, branding);
+    const { getServiceLine } = require('../config/serviceLines');
+    const serviceMeta = getServiceLine(service_line);
+    const pdfBranding = {
+      ...branding,
+      service_label: serviceMeta?.label || (branding && branding.service_label) || 'Property Care',
+    };
+    const buf = await pdfSvc.buildReportPdf(out, pdfBranding);
 
     const name = `${req.params.kind}-${out.range.from}-to-${out.range.to}.pdf`;
     res.setHeader('Content-Type', 'application/pdf');

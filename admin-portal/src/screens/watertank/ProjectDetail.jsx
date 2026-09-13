@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Pencil, Plus, Repeat, AlertTriangle, TrendingUp, Wallet, Banknote, ArrowDownRight,
   CalendarClock, Building2, User, HardHat, Check, X, Trash2, Archive, FileText,
-  ShieldCheck, Clock, Receipt, ChevronRight,
+  ShieldCheck, Clock, Receipt, ChevronRight, Landmark,
 } from 'lucide-react';
 import api from '../../services/api';
 import { useSvcNav,
@@ -31,50 +31,43 @@ export default function ProjectDetail() {
   const nav = useSvcNav();
   const [d, setD] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [tab, setTab] = useState('Overview');
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    try { const r = await api.get(`/wt-projects/${code}`); setD(r.data); }
-    catch { setD(null); }
+    setLoading(true); setError('');
+    try {
+      const { data } = await api.get(`/wt-projects/${code}`);
+      setD(data);
+    } catch (e) { setError(errText(e, 'Could not load project')); }
     finally { setLoading(false); }
   }, [code]);
   useEffect(() => { load(); }, [load]);
 
-  const setStage = async (stage, acknowledge = false) => {
+  const setStage = async (targetStage) => {
     setBusy(true);
     try {
-      const r = await api.post(`/wt-projects/${code}/stage`, { stage, acknowledge });
-      toast.ok(`${code} → ${stage}`);
-      if (r.data.warning) toast.err(r.data.warning);
-      await load();
-    } catch (e) {
-      const data = e?.response?.data;
-      if (data?.requires_acknowledgement) {
-        // The SOP precondition is not met. Say so plainly and let ops decide —
-        // a job that genuinely started must still be recordable.
-        // eslint-disable-next-line no-alert
-        if (window.confirm(`${data.warning}\n\nMove to “${stage}” anyway?`)) return setStage(stage, true);
-      } else toast.err(errText(e, 'Could not change the stage'));
-    } finally { setBusy(false); }
+      const { data } = await api.post(`/wt-projects/${code}/stage`, { stage: targetStage });
+      setD((prev) => (prev ? { ...prev, project: data.project, stage: data.stage } : prev));
+      toast.ok(`Moved to ${targetStage}`);
+    } catch (e) { toast.err(errText(e, 'Could not change stage')); }
+    finally { setBusy(false); }
   };
 
   if (loading) return <Loading />;
-  if (!d) return (
-    <>
-      <WtHead title="Project not found" crumb={<div className="wt-crumb"><span className="lnk" onClick={() => nav('/water-tank/projects')}>Projects</span></div>} />
-      <div className="wt-card"><EmptyState eyebrow="404" title={`No project with code ${code}`}
-        action={<button className="wt-btn primary" onClick={() => nav('/water-tank/projects')}>Back to Projects</button>} /></div>
-    </>
-  );
+  if (error || !d) {
+    return (
+      <EmptyState eyebrow="Project" title="Could not load project" hint={error || 'Project not found.'}
+        action={<button className="wt-btn" onClick={() => nav('/water-tank/projects')}>Back to projects</button>} />
+    );
+  }
 
-  const { project: p, stage, client, property, provider, amc, financials: fin, related, disbursements } = d;
-  const stages = stage.stages || [];
-  const daysToTarget = p.target_completion
-    ? Math.ceil((new Date(p.target_completion) - Date.now()) / 864e5) : null;
-  const open = !['completed', 'cancelled'].includes(String(p.status || '').toLowerCase());
-  const overdue = open && daysToTarget != null && daysToTarget < 0;
+  const { project: p, client, property, provider, amc, financials: fin, related, disbursements, costing } = d;
+  const stages = d.stage.stages || [];
+  const stage = d.stage;
+  const daysToTarget = p.days_to_target ?? (p.target_completion ? Math.ceil((new Date(p.target_completion) - Date.now()) / 864e5) : null);
+  const overdue = !['completed', 'cancelled'].includes(String(p.status).toLowerCase()) && daysToTarget != null && daysToTarget < 0;
 
   return (
     <>
@@ -125,6 +118,15 @@ export default function ProjectDetail() {
           sub={fin.receivable > 0 ? 'Outstanding from client' : 'Nothing outstanding'} />
         <Kpi icon={ArrowDownRight} tone="amber" label="Disbursed" value={money(fin.disbursed)}
           sub={`${money(fin.provider_paid)} to providers`} />
+        <Kpi
+          icon={Landmark}
+          tone={(fin.funds_holding != null ? fin.funds_holding : fin.net_position) < 0 ? 'red' : 'green'}
+          label="Funds Holding"
+          value={money(fin.funds_holding != null ? fin.funds_holding : fin.net_position)}
+          sub={(fin.funds_holding != null ? fin.funds_holding : fin.net_position) >= 0
+            ? 'Retained client funds held in escrow'
+            : `Deficit: ${money(Math.abs(fin.funds_holding != null ? fin.funds_holding : fin.net_position))} (Adjust after client payments)`}
+        />
         <Kpi icon={CalendarClock} tone={overdue ? 'red' : daysToTarget != null && daysToTarget <= 3 ? 'amber' : 'slate'}
           label="Target completion" value={p.target_completion ? dateFmt(p.target_completion) : '—'}
           sub={daysToTarget == null ? 'No target set' : overdue ? `${Math.abs(daysToTarget)} day(s) overdue` : `${daysToTarget} day(s) to go`} />
@@ -512,9 +514,12 @@ function Billing({ d, reload }) {
         <NetCell label="Collected" value={money(fin.collected)} tone="green" />
         <NetCell label="Receivable" value={money(fin.receivable)} tone={fin.receivable > 0 ? 'red' : 'slate'} />
         <NetCell label="Disbursed" value={money(fin.disbursed)} tone="amber" />
-        <NetCell label="Gross margin" value={money(fin.gross_margin)} sub={pct(fin.margin_pct)} tone={fin.gross_margin >= 0 ? 'green' : 'red'} />
-        <NetCell label="Net position" value={money(fin.net_position)} sub="Collected − disbursed"
-          tone={fin.net_position >= 0 ? 'green' : 'red'} />
+        <NetCell
+          label="Funds holding"
+          value={money(fin.funds_holding != null ? fin.funds_holding : fin.net_position)}
+          sub={(fin.funds_holding != null ? fin.funds_holding : fin.net_position) >= 0 ? 'Retained in escrow' : 'Deficit (Adjust after client payments)'}
+          tone={(fin.funds_holding != null ? fin.funds_holding : fin.net_position) >= 0 ? 'green' : 'red'}
+        />
       </div>
 
       {!!p.deposit_required && (

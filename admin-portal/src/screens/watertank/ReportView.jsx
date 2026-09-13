@@ -86,11 +86,24 @@ function cell(col, row) {
   return String(v);
 }
 
-const toneColour = (tone) => (tone === 'in' ? 'var(--wt-green)' : tone === 'out' ? 'var(--wt-red)' : undefined);
+const toneColour = (tone) => {
+  if (tone === 'in') return 'var(--wt-green)';
+  if (tone === 'out') return 'var(--wt-red)';
+  if (tone === 'net') return 'var(--wt-accent-ink, #0b6f97)';
+  return undefined;
+};
+
+const cellColor = (c, row) => {
+  if (!c.money || num(row[c.key]) === 0) return undefined;
+  if (c.key === 'out' || c.key.includes('cost')) return 'var(--wt-red)';
+  if (c.key === 'in' || c.key === 'collected') return 'var(--wt-green)';
+  if (c.key === 'gross_margin' || c.key === 'margin') return num(row[c.key]) >= 0 ? 'var(--wt-green)' : 'var(--wt-red)';
+  return undefined;
+};
 
 export default function ReportView({
   kind,
-  filters = {},
+  filters,
   compact = false,
   title: titleOverride,
   defaultPreset = '30d',
@@ -101,23 +114,26 @@ export default function ReportView({
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
 
-  const params = useCallback(() => {
-    const p = { preset: range.preset, ...filters };
+  const filtersJson = JSON.stringify(filters || {});
+
+  const getParams = useCallback(() => {
+    const p = { preset: range.preset, ...(filters || {}) };
     if (range.preset === 'custom') {
       if (range.from) p.from = range.from;
       if (range.to) p.to = range.to;
     }
     return p;
-  }, [range, filters]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range.preset, range.from, range.to, filtersJson]);
 
   const load = useCallback(() => {
     setLoading(true); setErr('');
-    api.get(`/wt-reports/${kind}`, { params: params() })
+    api.get(`/wt-reports/${kind}`, { params: getParams() })
       .then((r) => { setData(r.data); onLoaded?.(r.data); })
       .catch((e) => { setData(null); setErr(errText(e, 'Could not build this report')); })
       .finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, params]);
+  }, [kind, getParams]);
 
   useEffect(() => {
     // A custom range with no dates yet would ask the server for a default it
@@ -128,7 +144,7 @@ export default function ReportView({
   }, [load]);
 
   const openPdf = () => {
-    const qs = new URLSearchParams(params()).toString();
+    const qs = new URLSearchParams(getParams()).toString();
     const url = `${api.defaults.baseURL || ''}/wt-reports/${kind}/pdf?${qs}`;
     const w = window.open(url, '_blank');
     if (!w) toast.err('Allow pop-ups to open the PDF.');
@@ -150,11 +166,11 @@ export default function ReportView({
       <DateRangeBar value={range} onChange={setRange} right={actions} />
 
       {/* What narrowed this report, stated rather than implied. */}
-      {Object.entries(filters).filter(([, v]) => v).length > 0 && (
+      {Object.entries(filters || {}).filter(([, v]) => v).length > 0 && (
         <div className="wt-note" style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           <Filter size={13} style={{ flexShrink: 0, marginTop: 2 }} />
           <span style={{ fontSize: 12.5 }}>
-            Showing only {Object.entries(filters).filter(([, v]) => v).map(([k, v]) => `${k} ${v}`).join(', ')}.
+            Showing only {Object.entries(filters || {}).filter(([, v]) => v).map(([k, v]) => `${k} ${v}`).join(', ')}.
           </span>
         </div>
       )}
@@ -215,11 +231,7 @@ export default function ReportView({
                           <td key={c.key} style={{
                             textAlign: c.align === 'right' ? 'right' : 'left',
                             fontWeight: c.money && num(row[c.key]) !== 0 ? 700 : undefined,
-                            // Money in green, money out red, on every report — so
-                            // a reader never has to work out which column this is.
-                            color: c.money && num(row[c.key]) !== 0
-                              ? (c.key === 'out' ? 'var(--wt-red)' : c.key === 'in' ? 'var(--wt-green)' : undefined)
-                              : undefined,
+                            color: cellColor(c, row),
                             whiteSpace: c.key === 'particulars' ? 'normal' : 'nowrap',
                           }}>
                             {cell(c, row)}

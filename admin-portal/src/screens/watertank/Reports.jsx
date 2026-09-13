@@ -1,25 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Navigate } from 'react-router-dom';
+import { useParams, Navigate } from 'react-router-dom';
 import {
-  Users, Truck, Building2, ClipboardCheck, Landmark,
+  Users, Truck, Building2, ClipboardCheck, Landmark, Package, TrendingUp,
 } from 'lucide-react';
-import { useSvcNav, WtHead, WtTabs, svcBase } from './common';
+import { useSvcNav, WtHead, WtTabs, svcBase, svcProfile } from './common';
 import ReportView from './ReportView';
 
 /*
  * The accounting reports hub.
  *
- * Five reports, one date filter, one PDF renderer. They are tabs rather than
- * five sidebar entries because an operator comparing what came in against what
- * went out should not have to navigate between them — and because the date range
- * they have chosen survives the switch.
- *
- * The reports themselves live on the server as definitions; this screen only
- * decides which one to ask for and what to call it in the nav. Adding the sixth
- * is a line here and a definition there.
+ * Adaptive across service lines:
+ * For Residential Interior Design (internal team / supplier-driven model),
+ * it serves Client Payments, Supplier Payouts, Direct Costs, Project Profitability,
+ * Project Handover, and Bank Statement.
+ * For provider-driven models (Water Tank, AC), it serves Client Payments,
+ * Provider Payouts, Seventh Sky Payments, Service Completion, and Bank Statement.
  */
 
-const REPORTS = [
+const STANDARD_REPORTS = [
   {
     kind: 'client-payments',
     label: 'Client Payments',
@@ -52,50 +50,104 @@ const REPORTS = [
   },
 ];
 
+const INTERIOR_REPORTS = [
+  {
+    kind: 'client-payments',
+    label: 'Client Payments',
+    icon: Users,
+    blurb: 'Every receipt, deposit and milestone payment received from interior clients.',
+  },
+  {
+    kind: 'supplier-payouts',
+    label: 'Supplier Payouts',
+    icon: Package,
+    blurb: 'What Seventh Sky has paid to materials, furniture, joinery, and trade suppliers.',
+  },
+  {
+    kind: 'seventh-sky',
+    label: 'Direct Costs',
+    icon: Building2,
+    blurb: 'Direct on-site expenses, transport, permits, and petty cash disbursements.',
+  },
+  {
+    kind: 'project-profitability',
+    label: 'Project Profitability',
+    icon: TrendingUp,
+    blurb: 'Contract value invoiced vs supplier & direct costs vs gross margins per project.',
+  },
+  {
+    kind: 'service-completion',
+    label: 'Project Handover',
+    icon: ClipboardCheck,
+    blurb: 'Completed interior design projects, handover checklists, and delivery timelines.',
+  },
+  {
+    kind: 'bank-statement',
+    label: 'Bank Statement',
+    icon: Landmark,
+    blurb: 'Every cash movement in date order with a running bank balance.',
+  },
+];
+
+const EMPTY_FILTERS = {};
+
 export default function Reports() {
   const { kind } = useParams();
   const nav = useSvcNav();
+  const base = svcBase();
+  const profile = svcProfile();
+  const isInterior = base.includes('residential-interior-design') || !!profile.internal_team;
+
+  const reportList = isInterior ? INTERIOR_REPORTS : STANDARD_REPORTS;
 
   /*
-   * `/water-tank/reports/RPT-0001` used to open a SERVICE report, and links to
-   * that shape exist in the wild — in the work queue, in emails, in someone's
-   * bookmarks. Rather than break them, they are recognised by their prefix and
-   * forwarded to where service reports now live.
+   * Legacy RPT- prefix redirect for service reports.
    */
   if (kind && /^RPT-/i.test(kind)) {
-    return <Navigate to={`${svcBase()}/service-reports/${kind}`} replace />;
+    return <Navigate to={`${base}/service-reports/${kind}`} replace />;
   }
 
-  const found = REPORTS.find((r) => r.kind === kind);
-  const [tab, setTab] = useState(found?.label || REPORTS[0].label);
+  /*
+   * If on interior design and visiting /provider-payouts, forward to /supplier-payouts.
+   */
+  if (isInterior && kind === 'provider-payouts') {
+    return <Navigate to={`${base}/reports/supplier-payouts`} replace />;
+  }
+
+  const found = reportList.find((r) => r.kind === kind);
+  const [tab, setTab] = useState(found?.label || reportList[0].label);
 
   useEffect(() => {
     if (found && found.label !== tab) setTab(found.label);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind]);
+  }, [kind, isInterior]);
 
-  const current = REPORTS.find((r) => r.label === tab) || REPORTS[0];
+  const current = reportList.find((r) => r.label === tab) || reportList[0];
 
   const goTab = (label) => {
     setTab(label);
-    const next = REPORTS.find((r) => r.label === label);
-    if (next) nav(`/water-tank/reports/${next.kind}`);
+    const next = reportList.find((r) => r.label === label);
+    if (next) nav(`${base}/reports/${next.kind}`);
   };
 
   return (
     <>
       <WtHead
-        title="Reports"
-        subtitle="Money in, money out, and the work behind it — every report downloadable as a branded PDF"
+        title={isInterior ? 'Financial & Operational Reports' : 'Reports'}
+        subtitle={
+          isInterior
+            ? 'Client receipts, supplier disbursements, project margins, and bank reconciliation for Residential Interior Design'
+            : 'Money in, money out, and the work behind it — every report downloadable as a branded PDF'
+        }
       />
 
-      <WtTabs tabs={REPORTS.map((r) => ({ value: r.label, label: r.label }))} value={tab} onChange={goTab} />
+      <WtTabs tabs={reportList.map((r) => ({ value: r.label, label: r.label }))} value={tab} onChange={goTab} />
 
       <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 14px' }}>{current.blurb}</p>
 
       {/* Keyed on the report so switching tabs remounts cleanly rather than
           briefly drawing the previous report's rows under the new columns. */}
-      <ReportView key={current.kind} kind={current.kind} />
+      <ReportView key={current.kind} kind={current.kind} filters={EMPTY_FILTERS} />
     </>
   );
 }
