@@ -76,6 +76,10 @@ function shapeEnvelope(env) {
   const complete = signers.length > 0 && signed.length === signers.length;
   const expiresIn = daysTo(env.expires_at);
 
+  const primarySigner = signers.find((s) => eq(s.role, 'client') || eq(s.role, 'customer') || eq(s.role, 'tenant') || eq(s.role, 'buyer') || eq(s.role, 'landlord'))
+    || signers.find((s) => !eq(s.role, 'staff_countersign') && !eq(s.role, 'witness') && !eq(s.role, 'internal_approver'))
+    || signers[0] || null;
+
   return {
     id: env.id,
     envelope_code: env.envelope_code,
@@ -93,6 +97,10 @@ function shapeEnvelope(env) {
     expiring_soon: !complete && expiresIn != null && expiresIn >= 0 && expiresIn <= 7,
     expired: !complete && expiresIn != null && expiresIn < 0,
     content_hash: env.content_hash || null,
+    // client / counterparty contact
+    client_name: primarySigner?.name || null,
+    client_email: primarySigner?.email || null,
+    client_role: primarySigner?.role || null,
     // the headline the user asked for
     signers,
     signed_count: signed.length,
@@ -135,11 +143,6 @@ exports.list = asyncHandler(async (req, res) => {
     ? rtypes[family]
     : { [Op.in]: Object.values(rtypes) };
   if (status) where.status = status;
-  if (q && String(q).trim()) {
-    const like = { [Op.like]: `%${String(q).trim()}%` };
-    where[Op.or] = [{ envelope_code: like }, { title: like }];
-  }
-
   const rows = await SigningEnvelope.findAll({
     where,
     include: [{ model: EnvelopeSigner, as: 'signers' }],
@@ -147,6 +150,19 @@ exports.list = asyncHandler(async (req, res) => {
   });
 
   let out = rows.map((r) => shapeEnvelope(r.get({ plain: true })));
+  if (q && String(q).trim()) {
+    const term = String(q).trim().toLowerCase();
+    out = out.filter((r) =>
+      String(r.envelope_code || '').toLowerCase().includes(term) ||
+      String(r.title || '').toLowerCase().includes(term) ||
+      String(r.client_name || '').toLowerCase().includes(term) ||
+      String(r.client_email || '').toLowerCase().includes(term) ||
+      (r.signers || []).some((s) =>
+        String(s.name || '').toLowerCase().includes(term) ||
+        String(s.email || '').toLowerCase().includes(term)
+      )
+    );
+  }
   // "show me only what is waiting on someone"
   if (awaiting === 'true') out = out.filter((r) => !r.fully_signed && r.pending_count > 0);
   res.json(out);

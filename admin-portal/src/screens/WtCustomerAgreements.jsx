@@ -436,8 +436,19 @@ async function copyLink(a, toast) {
   }
 }
 
-function Builder({ onDone, onCancel, projectCode, user, profile }) {
+export function CustomerAgreementBuilder({
+  onDone,
+  onCancel,
+  onClose,
+  projectCode,
+  user: propUser,
+  profile: propProfile,
+  isModal = false,
+}) {
   const toast = useToast();
+  const auth = useAuth();
+  const user = propUser || auth?.user;
+  const profile = propProfile || svcProfile();
   const accent = profile.accent || '#9333ea';
   const accentSoft = profile.accent_soft || '#f3e8ff';
   const docCode = `SSPC-${profile.doc_code || 'RIDS'}-CSA-01`;
@@ -806,7 +817,7 @@ function Builder({ onDone, onCancel, projectCode, user, profile }) {
         boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button type="button" className="pm-btn" onClick={onCancel} style={{ padding: '6px 12px' }}>
+          <button type="button" className="pm-btn" onClick={onClose || onCancel} style={{ padding: '6px 12px' }}>
             <ArrowLeft size={14} /> Back
           </button>
           <div>
@@ -887,6 +898,17 @@ function Builder({ onDone, onCancel, projectCode, user, profile }) {
           >
             <Send size={14} /> {busy ? 'Sending…' : 'Send for signature'}
           </button>
+          {(onClose || isModal) && (
+            <button
+              type="button"
+              className="pm-btn"
+              onClick={onClose || onCancel}
+              title="Close window"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+            >
+              <X size={14} /> Close
+            </button>
+          )}
         </div>
       </div>
 
@@ -1735,7 +1757,7 @@ function Builder({ onDone, onCancel, projectCode, user, profile }) {
         </div>
 
         {/* ── Right Column: Sticky Live Agreement Preview ── */}
-        <div style={{ position: 'sticky', top: 75, height: 'calc(100vh - 95px)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ position: 'sticky', top: 75, height: isModal ? 'calc(96vh - 120px)' : 'calc(100vh - 95px)', display: 'flex', flexDirection: 'column' }}>
           <div className="pm-card" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', borderRadius: 12, border: '1px solid var(--line, #e2e8f0)' }}>
             
             {/* Header */}
@@ -1876,3 +1898,6 @@ function Builder({ onDone, onCancel, projectCode, user, profile }) {
     </div>
   );
 }
+
+const Builder = CustomerAgreementBuilder;
+export { Builder };

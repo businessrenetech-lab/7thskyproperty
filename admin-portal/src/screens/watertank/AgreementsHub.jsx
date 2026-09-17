@@ -1,11 +1,25 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   FileSignature, Users, HardHat, ClipboardList, Search, Send, Eye, Download, Ban,
   Check, Clock, AlertTriangle, Copy, RefreshCw, Loader2, X, ShieldCheck, CalendarClock,
+  Plus, Sparkles, Mail,
 } from 'lucide-react';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { CustomerAgreementBuilder } from '../WtCustomerAgreements';
 import { useSvcNav, WtHead, WtTabs, Pill, Loading, EmptyState, dateFmt, dateTimeFmt, toast, errText, svcProfile, svcBase } from './common';
+
+function getClientSigner(r) {
+  if (r.client_name || r.client_email) {
+    return { name: r.client_name, email: r.client_email, role: r.client_role || 'client' };
+  }
+  const signers = r.signers || [];
+  return signers.find((s) => ['client', 'customer', 'tenant', 'buyer', 'landlord'].includes(s.role))
+    || signers.find((s) => !['staff_countersign', 'witness', 'internal_approver'].includes(s.role))
+    || signers[0]
+    || null;
+}
 
 /*
  * Agreements register — central signing console for every agreement out for
@@ -25,12 +39,19 @@ const ALL_FAMILIES = [
 
 export default function AgreementsHub() {
   const nav = useSvcNav();
+  const { user } = useAuth();
   const profile = svcProfile();
   const isInternalOnly = Boolean(profile.internal_team || profile.no_provider);
 
   const families = useMemo(() => {
     return isInternalOnly ? ALL_FAMILIES.filter((f) => f.key !== 'provider') : ALL_FAMILIES;
   }, [isInternalOnly]);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showNewAgreementWindow, setShowNewAgreementWindow] = useState(() => {
+    return searchParams.get('new') === 'client' || searchParams.get('new') === 'customer';
+  });
+  const projectCode = searchParams.get('project') || null;
 
   const [rows, setRows] = useState([]);
   const [ov, setOv] = useState(null);
@@ -40,6 +61,19 @@ export default function AgreementsHub() {
   const [awaitingOnly, setAwaitingOnly] = useState(false);
   const [open, setOpen] = useState(null);
   const [busy, setBusy] = useState('');
+
+  const closeNewAgreementWindow = useCallback(() => {
+    setShowNewAgreementWindow(false);
+    if (searchParams.get('new')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('new');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const openNewAgreementWindow = useCallback(() => {
+    setShowNewAgreementWindow(true);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,8 +104,13 @@ export default function AgreementsHub() {
     const fam = families.find((f) => f.label === tab)?.key;
     return rows.filter((r) => (tab === 'All' || r.family === fam)
       && (!awaitingOnly || (!r.fully_signed && r.pending_count > 0))
-      && (!term || [r.envelope_code, r.title, ...(r.signers || []).map((s) => s.name)]
-        .some((v) => String(v || '').toLowerCase().includes(term))));
+      && (!term || [
+        r.envelope_code,
+        r.title,
+        r.client_name,
+        r.client_email,
+        ...(r.signers || []).flatMap((s) => [s.name, s.email]),
+      ].some((v) => String(v || '').toLowerCase().includes(term))));
   }, [rows, tab, q, awaitingOnly, families]);
 
   const resend = async (row, signerId) => {
@@ -169,7 +208,7 @@ export default function AgreementsHub() {
         <button className="wt-btn" onClick={load} disabled={loading}>
           <RefreshCw size={14} className={loading ? 'wt-spin' : ''} /> Refresh
         </button>
-        <button className="wt-btn primary" onClick={() => nav(`${svcBase()}/agreements/customer`)}>
+        <button className="wt-btn primary" onClick={openNewAgreementWindow}>
           <Users size={14} /> New client agreement
         </button>
         {!isInternalOnly && (
@@ -282,11 +321,12 @@ export default function AgreementsHub() {
             <thead>
               <tr>
                 <th style={{ width: 170 }}>Reference &amp; Type</th>
+                <th style={{ width: 220 }}>Client &amp; Email</th>
                 <th>Document &amp; Scope</th>
-                <th style={{ width: 220 }}>Parties Signed</th>
-                <th style={{ width: 220 }}>Waiting On</th>
-                <th style={{ width: 120 }}>Status</th>
-                <th style={{ width: 210, textAlign: 'right' }}>Actions</th>
+                <th style={{ width: 200 }}>Parties Signed</th>
+                <th style={{ width: 200 }}>Waiting On</th>
+                <th style={{ width: 110 }}>Status</th>
+                <th style={{ width: 200, textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -334,6 +374,52 @@ export default function AgreementsHub() {
                         {r.family_label}
                       </span>
                     </div>
+                  </td>
+                  <td>
+                    {(() => {
+                      const client = getClientSigner(r);
+                      if (!client?.name) {
+                        return <span className="muted" style={{ fontSize: 12, color: 'var(--wt-muted)' }}>—</span>;
+                      }
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <strong
+                              style={{
+                                fontSize: 13,
+                                color: 'var(--wt-ink, #0f172a)',
+                                fontWeight: 700,
+                              }}
+                            >
+                              {client.name}
+                            </strong>
+                          </div>
+                          {client.email ? (
+                            <a
+                              href={`mailto:${client.email}`}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                fontSize: 11.5,
+                                color: 'var(--wt-accent, #9333ea)',
+                                textDecoration: 'none',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4.5,
+                                marginTop: 1,
+                              }}
+                              title={`Email: ${client.email}`}
+                            >
+                              <Mail size={12} style={{ color: 'var(--wt-muted, #94a3b8)', flexShrink: 0 }} />
+                              <span style={{ maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {client.email}
+                              </span>
+                            </a>
+                          ) : (
+                            <span style={{ fontSize: 11, color: 'var(--wt-muted)' }}>No email</span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td>
                     <strong
@@ -476,7 +562,7 @@ export default function AgreementsHub() {
               ))}
               {!shown.length && (
                 <tr className="wt-empty-row">
-                  <td colSpan={6} style={{ textAlign: 'center', padding: 36 }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: 36 }}>
                     <div style={{ fontSize: 13, color: 'var(--wt-muted)', marginBottom: 8 }}>
                       {q || awaitingOnly ? 'Nothing matches those filters.' : `No agreements registered under “${tab}”.`}
                     </div>
@@ -503,6 +589,159 @@ export default function AgreementsHub() {
           busy={busy}
           onCountersign={(signer) => countersign(open, signer)}
         />
+      )}
+
+      {showNewAgreementWindow && (
+        <div
+          className="wt-modal-overlay"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.72)',
+            backdropFilter: 'blur(6px)',
+            zIndex: 1200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            overflow: 'hidden',
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') closeNewAgreementWindow();
+          }}
+        >
+          <div
+            className="wt-modal"
+            role="dialog"
+            aria-modal="true"
+            style={{
+              width: '100%',
+              maxWidth: '1600px',
+              height: '96vh',
+              maxHeight: '96vh',
+              borderRadius: 14,
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.45)',
+              overflow: 'hidden',
+              background: '#f8fafc',
+              border: '1px solid rgba(226, 232, 240, 0.8)',
+            }}
+          >
+            {/* Window Top Title Bar */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 20px',
+                background: '#0f172a',
+                color: '#ffffff',
+                borderBottom: '1px solid #1e293b',
+                flexShrink: 0,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    background: profile.accent ? `${profile.accent}33` : 'rgba(255,255,255,0.15)',
+                    color: profile.accent || '#c084fc',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                  }}
+                >
+                  <FileSignature size={18} />
+                </span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    New {profile.label} Client Agreement
+                    <span
+                      style={{
+                        fontSize: 11,
+                        background: 'rgba(255,255,255,0.15)',
+                        color: '#e2e8f0',
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        fontFamily: 'monospace',
+                        fontWeight: 600,
+                      }}
+                    >
+                      SSPC-{profile.doc_code || 'RIDS'}-CSA-01
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: '#4ade80',
+                        background: 'rgba(74, 222, 128, 0.15)',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      In-Page Drafting Window
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2 }}>
+                    Draft, schedule pricing, and dispatch legal contract without leaving Agreements Hub
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={closeNewAgreementWindow}
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    borderRadius: 7,
+                    color: '#f8fafc',
+                    padding: '6px 14px',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)';
+                    e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)';
+                  }}
+                >
+                  <X size={15} /> Close window
+                </button>
+              </div>
+            </div>
+
+            {/* Window Body: Scrollable CustomerAgreementBuilder */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 24px' }}>
+              <CustomerAgreementBuilder
+                isModal
+                user={user}
+                profile={profile}
+                projectCode={projectCode}
+                onClose={closeNewAgreementWindow}
+                onCancel={closeNewAgreementWindow}
+                onDone={async () => {
+                  closeNewAgreementWindow();
+                  await load();
+                  toast.ok('Client agreement dispatched — list updated');
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
