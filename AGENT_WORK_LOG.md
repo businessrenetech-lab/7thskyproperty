@@ -8151,3 +8151,128 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Change: rewrote `salesAgreementRender.buildAgreement` (+ its kvTable/scheduleC/checkboxGroups/signSlot helpers) to the PM design language — cover page, TOC page, Plus Jakarta Sans, badge schedules, styled signatures — kept fully generic (cfg-driven) so all four sales agreements get it. Preserved: multi-party (co-owner/co-buyer) signing, the exact eSign anchors (data-sign-field/party), and the terms payload. getCatalog/computePricing untouched.
 - Verified: all 4 render with cover+TOC+Jakarta Sans+25 clauses; sign anchors correct (single: Seventh Sky/Client/Witness 1-2; multi: Client 1/Client 2); e2eCommercialSales 13/0; residential & commercial previews via API show the new design with the right header (Residential vs Commercial Property Services). PDFs derive from the same HTML, so they match too.
 - Handoff: residential + commercial sale & purchase agreement windows and PDFs now match the PM/Tenancy design. Note: I did the sales-agreement DOCUMENT redesign; the builder-screen chrome (form layout) is unchanged — say if you also want the builder windows themselves restyled.
+
+### 2026-09-17 22:15 | Antigravity (Gemini 3.6 Pro) | STARTED | Harmonize agreement builder windows and documents to match Property Management standard
+- Request: Inspect agreement design across residential sales, purchase, customer agreements, and compare against property management agreements (both builder window and document/PDF). Make all agreement windows and PDFs look similar to the Property Management agreements, ensuring all sections are properly designed and consistent.
+- Scope: Agreement builder windows (`SalesAgreementScreen.jsx`, `WtCustomerAgreements.jsx`, `RprmAgreements.jsx`, `TmAgreements.jsx`), agreement render services (`salesAgreementRender.js`, `wtCustomerAgreement.service.js`, `rprmAgreement.service.js`, `rptmAgreement.service.js`), related CSS and styling.
+- Changes: None yet.
+- Verification: Will compare window UI sections, visual chrome, document HTML/PDF layout, typography, and test across all verticals.
+- Handoff: Inspecting builder window sections and document renders to identify exact visual gaps.
+
+### 2026-09-17 22:35 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Harmonize Residential & Commercial Sale and Purchase agreement windows and tables to match PM standard
+- Request: "others was fine...just work on residential sale buy ad commercial sale buy" — make all 4 sales agreement windows (Residential Sale RPSS, Residential Purchase RPPS, Commercial Sale CPSS, Commercial Purchase CPPS) and list tables match the Property Management (RPRM) standard.
+- Scope: `admin-portal/src/screens/sales/SalesAgreementScreen.jsx`, `backend/controllers/salesAgreement.controller.js`, `admin-portal/dist/*`.
+- Key Changes:
+  1. Agreement List Table: Added `Contract value` column (`Reference | Party | Contract value | Status | Actions`). Rendered party name and email beneath (`s?.name || a.terms?.client?.full_name` and `s?.email || a.terms?.client?.email`). Formatted contract value using `bdt(a.total_contract_value || a.terms?.pricing_summary?.total_contract_value)`. Added `Open` and `Download` buttons using `Eye` and `Download` icons with fallback to `active_link` if `signed_document` is null, exactly matching `RprmAgreements.jsx`.
+  2. Section 1 (Parties & Property): Moved Bound Property combo picker up into Section 1 alongside Contact picker (`1. Parties — ${km.party} & Property`), loading property defaults via `property-defaults/:id` upon selection. Placed Effective Date alongside Property Type. Maintained primary client and additional co-signers.
+  3. Section 2 (Schedule B Terms): Aligned header to `2. Schedule B — ${kind === 'purchase' ? 'Search Criteria & Acquisition Terms' : 'Commercial & Property Terms'}`. Removed duplicate property combo pickers from both purchase and sale parameter forms. Included official tracking codes (WO / QT with generate buttons), full purchase search parameters (with commercial intended use options), and sale listing covenants.
+  4. Top Pinned Action Bar: Added dynamic titles and badges for both Residential (`SSPC-RPSS-01 (v0.2)`, `SSPC-RPPS-01 (v0.2)`) and Commercial (`SSPC-CPSS-01 (v0.2)`, `SSPC-CPPS-01 (v0.2)`). Dynamic button labels: `Update draft` / `Save as draft`, and `Send for signature` / `Send to ${party} for signature`.
+  5. Quick Jump Bar: Standardized SECTIONS across all 4 agreements: `1. Parties — ${party} & Property`, `2. Schedule B — Acquisition/Commercial Terms`, `3. Schedule A — Scope`, `4. Schedule C — Pricing`, `5. Schedule D — Checklist & Signers`.
+  6. Backend: Stored `total_contract_value` in `createAgreement` and `updateAgreement`, and resolved fallback from terms in `listAgreements`.
+- Verification:
+  - Frontend: `npm run build` completed cleanly with exit code 0 (2066 modules transformed).
+  - Backend: Ran verification script across all 4 agreements (RPSS, RPPS, CPSS, CPPS); verified 100% pass on Cover Page, Table of Contents, 4 Schedules (A, B, C, D), eSign signature anchors (`data-sign-field="signature"`), WO/QT codes, and total contract value calculations.
+### 2026-09-17 22:45 | Antigravity (Gemini 3.8 Flash) | STARTED | Harmonize Property Management & Sales agreement tables and builder windows to Services standard
+- Request: "make property management residential and commercial sale, purchase, agreements lists tables same as services agreements table table see attached.......also the agreement builder design window should also be identical......."
+- Scope:
+  - `backend/controllers/rprm.controller.js`
+  - `backend/controllers/rptm.controller.js`
+  - `backend/controllers/salesAgreement.controller.js`
+  - `backend/controllers/signing.controller.js`
+  - `backend/routes/signing.routes.js`
+  - `admin-portal/src/screens/agreements/AgreementRegisterView.jsx` (New unified reusable agreement register component)
+  - `admin-portal/src/screens/sales/SalesAgreementScreen.jsx`
+  - `admin-portal/src/screens/RprmAgreements.jsx`
+  - `admin-portal/src/screens/TmAgreements.jsx`
+- Intended Changes:
+  1. Backend controllers: Expose `signer_order`, full `signers` array, `expires_at`, `content_hash`, and terms for RPRM and RPTM. Add per-signer link and signed HTML endpoints in `signing.controller.js`.
+  2. Frontend: Implement unified `AgreementRegisterView` matching `AgreementsHub.jsx` (`media_1789663126780.png`) with 6 KPI cards, filter tabs with count badges, search bar + awaiting toggle + count indicator, 7-column table (Reference & Type, Client/Party & Email, Document & Scope, Parties Signed with progress bar & checkmark chips, Waiting On with Countersign button, Status pill, Actions: Open drawer, Edit/Send, Resend, Signed/Preview), sliding audit drawer modal, and dark `#0f172a` In-Page Drafting Window modal hosting the 2-column live builder.
+  3. Wire `SalesAgreementScreen.jsx` (Residential Sale, Residential Purchase, Commercial Sale, Commercial Purchase), `RprmAgreements.jsx` (Property Management Rental), and `TmAgreements.jsx` (Tenancy Management) to use this standard.
+- Verification: Test endpoints with curl/node script, build frontend with `npm run build`, and verify UI rendering and interactions.
+
+### 2026-09-17 22:52 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Harmonize Property Management & Sales agreement tables and builder windows to Services standard
+- Request: "make property management residential and commercial sale, purchase, agreements lists tables same as services agreements table table see attached.......also the agreement builder design window should also be identical......."
+- Scope:
+  - `backend/controllers/signing.controller.js`
+  - `backend/routes/signing.routes.js`
+  - `backend/controllers/rprm.controller.js`
+  - `backend/controllers/rptm.controller.js`
+  - `backend/controllers/salesAgreement.controller.js`
+  - `admin-portal/src/screens/agreements/AgreementRegisterView.jsx` (NEW)
+  - `admin-portal/src/screens/sales/SalesAgreementScreen.jsx`
+  - `admin-portal/src/screens/RprmAgreements.jsx`
+  - `admin-portal/src/screens/TmAgreements.jsx`
+  - `admin-portal/dist/*`
+- Key Changes:
+  1. Backend Signing & List Controllers:
+     - Extended `signing.controller.js` and `signing.routes.js` with `getSigningLink` (`POST /api/signing/envelopes/:id/signing-link/:signerId`) and `getSignedHtml` (`GET /api/signing/envelopes/:id/signed`) to provide universal per-signer link generation/refresh and executed HTML with embedded signatures and SHA-256 integrity hash across all envelope verticals.
+     - Updated `listAgreements` in `rprm.controller.js`, `rptm.controller.js`, and `salesAgreement.controller.js` to include `signer_order`, full `signers` array (with `name`, `email`, `role`, `status`, `signed_at`), `signer` primary object, `client_name`, `client_email`, `content_hash`, `expires_at`, and `total_contract_value`.
+  2. Unified Reusable Agreement Register (`AgreementRegisterView.jsx`):
+     - Built 1:1 reproduction of the Services Agreements Register (`AgreementsHub.jsx` as shown in user attachment `media_1789663126780.png`):
+     - 6 Overview KPI Cards: Total Agreements, Signatures Outstanding (dynamic tone-aware), Fully Executed, Expiring in 7 Days, Declined / Voided, and By Type/Family.
+     - Dynamic category/status filter tabs with real-time count badges.
+     - Search & filter bar: Search input with clear button, "Awaiting signature only" checkbox toggle, "Reset filters", and "Showing X of Y" counter.
+     - 7-Column Register Table:
+       1. Reference & Type: Envelope code with click-to-copy pill, document family icon, and title.
+       2. Client / Party & Email: Formatted name with mailto link.
+       3. Document & Scope: Contract value in BDT, sent / executed dates, and expiration badges.
+       4. Parties Signed: Completed/total count, %, progress bar, and numbered/check/cross status chips per signatory.
+       5. Waiting On: Next awaiting party indicator with direct "Countersign" action button, or "✓ All parties signed".
+       6. Status: Color-coded status badge (`good`, `warn`, `info`, `grey`, `bad`).
+       7. Actions: "Open" audit drawer, "Edit" / "Send" for drafts, "Resend" with fresh signing link, and "Signed" / "Preview" for executed documents.
+     - Slide-over `AuditDrawer` modal: Detailed signer sequence checklist with direct link copy, countersign action, timestamps, SHA-256 integrity hash, and envelope voiding with reason prompt.
+     - In-Page Drafting Window Modal Chrome: Dark `#0f172a` title bar with doc code badge, green `In-Page Drafting Window` pill, subtitle, and close button, hosting the full 2-column live editor and iframe preview.
+  3. Vertical Integration:
+     - `SalesAgreementScreen.jsx`: Wired `AgreementRegisterView` for Residential Sale (RPSS), Residential Purchase (RPPS), Commercial Sale (CPSS), and Commercial Purchase (CPPS).
+     - `RprmAgreements.jsx`: Wired `AgreementRegisterView` for Residential Property Rental Management (RPRM) with `isModal` support in `Builder`.
+     - `TmAgreements.jsx`: Wired `AgreementRegisterView` for Residential Property Tenancy Management (RPTM) with `isModal` support in `Builder`.
+- Verification:
+  - Backend controller syntax: Verified `node --check` passed across all modified backend controllers and routes (exit code 0).
+  - Backend database verification: Tested `listAgreements` directly against MySQL for RPRM (33 envelopes), RPTM (21 envelopes), and Sales (12 envelopes); all signers, orders, client names, and fields returned properly.
+  - Frontend production build: `npm run build` in `admin-portal` succeeded with 0 errors (2,067 modules transformed, exit code 0).
+- Handoff: Property Management (Rental & Tenancy) and Sales & Purchase (Residential & Commercial) now share the exact same register table design, KPI overview, audit drawer, and in-page drafting modal chrome as the Services agreements.
+
+### 2026-09-17 22:58 | Antigravity (Gemini 3.8 Flash) | STARTED | Fix duplicate tabs, tab badge styling, and KPI Card 6 in AgreementRegisterView
+- Request: "Unified 7-Column Agreement Register Table & Overview improve this page ui more please...small bugs Dynamic Filter Tabs see not properly designed.... all tabs showing twice"
+- Scope: `admin-portal/src/screens/agreements/AgreementRegisterView.jsx`, `admin-portal/src/screens/RprmAgreements.jsx`, `admin-portal/src/screens/TmAgreements.jsx`, `admin-portal/src/screens/sales/SalesAgreementScreen.jsx`.
+- Intended Changes:
+  1. Deduplicate tab list in `AgreementRegisterView.jsx` so "All" is never rendered twice.
+  2. Fix tab badge class name to `.wt-tab-n` and apply pill badge styles so counts have proper margins, pill backgrounds, and contrast without sticking directly to the text.
+  3. Refactor Card 6 (`By Type` / `Document Type`) so it doesn't duplicate the status tabs as families.
+  4. Streamline tab definitions across RPRM, RPTM, and Sales to distinct status tabs (`All`, `Awaiting Signature`, `Drafts`, `Fully Executed`, `Declined / Voided`) without redundant single-role tabs that duplicate "All".
+- Verification: Frontend `npm run build`, inspect tab rendering and styling.
+
+### 2026-09-17 23:01 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Fix duplicate tabs, tab badge styling, and KPI Card 6 in AgreementRegisterView
+- Request: "Unified 7-Column Agreement Register Table & Overview improve this page ui more please...small bugs Dynamic Filter Tabs see not properly designed.... all tabs showing twice"
+- Scope:
+  - `admin-portal/src/screens/agreements/AgreementRegisterView.jsx`
+  - `admin-portal/src/screens/RprmAgreements.jsx`
+  - `admin-portal/src/screens/TmAgreements.jsx`
+  - `admin-portal/src/screens/sales/SalesAgreementScreen.jsx`
+  - `admin-portal/dist/*`
+- Key Changes:
+  1. Tab De-duplication:
+     - Implemented `normalizedTabs` with a `Set` deduplication filter in `AgreementRegisterView.jsx`. Guaranteed that `'All'` is present exactly once, even if passed in `tabs` or prepended.
+  2. Tab Pill & Badge Redesign:
+     - Upgraded tab badge markup to use `.wt-tab-n` with dedicated pill styles: `min-width: 20px`, `height: 18px`, `border-radius: 999px`, `font-size: 11px`, `font-weight: 800`, with `margin-left: 4px` preventing counts from sticking to tab text (`Landlord Agreements0` -> `Landlord Agreements [0]`).
+     - Added active state highlight: active tab gets solid accent background (`accent`), white text (`#ffffff`), bottom border, and translucent white badge (`rgba(255, 255, 255, 0.28)`), matching Figma and `AgreementsHub.jsx`.
+     - Inactive tabs render with transparent background, muted slate text, and light grey badge (`#e2e8f0`).
+  3. KPI Card 6 Refactor:
+     - Filtered out generic status keys (`all`, `awaiting`, `draft`, `completed`, `declined`, `voided`) from `overview.by_family`.
+     - When single document vertical is present, renders a clean `Document Type` card with template code badge and total/awaiting metrics without duplicating the tab row above it.
+  4. Streamlined Vertical Tabs:
+     - Removed redundant single-role tab in `RprmAgreements.jsx` (which mirrored `All`) and updated to standard actionable tabs: `All`, `Awaiting Signature`, `Drafts`, `Fully Executed`, `Declined / Voided`.
+     - Updated `TmAgreements.jsx` and `SalesAgreementScreen.jsx` with the same clean status tab hierarchy.
+- Verification:
+  - Frontend production build: `npm run build` in `admin-portal` passed with exit code 0 (2,067 modules transformed, 11.42s).
+- Handoff: Dynamic filter tabs now render with exact pill badge spacing and styling with no duplicate tabs or status card overlap.
+
+
+
+
+### 2026-09-17 | Claude Opus 4.8 | COMPLETED | WT Service Provider Master Agreement migrated to V0.2 content
+- Request: check the Water Tank services (Service Provider Master) agreement properly uses the provided document contents (Water Tank CM - Service Provider Master Agreement - V0.2).
+- Diagnosis: the provider agreement rendered from the seeded AgreementTemplate whose source_filename was V0.1.docx (old 63-clause / Schedules A–E). The correct V0.2 clause text existed only as a dead in-file CLAUSES array in wtProviderAgreement.service.js (never wired to buildAgreement, which reads template.content_html). So the signed provider agreement was V0.1, not V0.2.
+- Fix (chosen approach: re-seed template to V0.2, keep the 45 fill placeholders): rewrote scripts/seedProviderAgreement.js CONTENT_HTML to the V0.2 body — 25 clauses (PURPOSE→EXECUTION) + Schedule A Authorised Services (svc_*/amc_* ticks), Schedule B Standard Service Price Schedule ({{provider_rate_schedule}}), Schedule C Insurance & Licence Checklist ({{insurance_mandatory}}/{{insurance_optional}} + business-doc & technical-licence checklists), Schedule D Work Order Summary + execution block. Kept all 45 placeholders and the FIELDS/SIGNERS so the builder form, provider KYC intake and eSign all keep working. Updated source_filename/description metadata to V0.2. Re-ran the seed (idempotent → updated template #3).
+- Verified: DB template now 25 clauses, V0.2 titles, Schedules A–D only (no E/F), 45 placeholders; buildAgreement render → doc SSPC-WTCM-SDPMA-01, placeholders substitute (commission %, bank, provider rep), 0 unresolved tokens, no old "Future Services" clause. PDF derives from this HTML so it matches.
+- Handoff: WT Service Provider agreement window + PDF now use the V0.2 contents. AC / other service-line provider masters were NOT changed (scope was Water Tank per the user's choice) — flag if they should also be checked/migrated.
