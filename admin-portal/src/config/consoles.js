@@ -399,6 +399,7 @@ export const RESIDENTIAL_NAV = [
     items: [
       { to: '/residential/properties', label: 'Properties', icon: Building2 },
       { to: '/residential/agreements/sale', label: 'Sale Agreements', icon: FileSignature },
+      { to: '/residential/price-schedule', label: 'Price Schedule', icon: Tags },
     ],
   },
   {
@@ -517,6 +518,7 @@ export const COMMERCIAL_NAV = [
   { key: 'com-selling', label: 'Selling', items: [
     { to: '/commercial/properties', label: 'Properties', icon: Building2 },
     { to: '/commercial/agreements/sale', label: 'Sale Agreements', icon: FileSignature },
+    { to: '/commercial/price-schedule', label: 'Price Schedule', icon: Tags },
   ] },
   { key: 'com-assurance', label: 'Assurance', items: [
     { to: '/commercial/compliance?category=commercial', label: 'Compliance', icon: ShieldCheck },

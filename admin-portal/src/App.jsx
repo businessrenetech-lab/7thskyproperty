@@ -14,6 +14,7 @@ import Agreements from './screens/Agreements';
 import AgreementTemplates from './screens/AgreementTemplates';
 import DealsBoard from './screens/DealsBoard';
 import PropertySellDashboard from './screens/PropertySellDashboard';
+import SalesPriceSchedule from './screens/sales/SalesPriceSchedule';
 import SalesEnquiries from './screens/SalesEnquiries';
 import SalesPropertyFile from './screens/sales/SalesPropertyFile';
 import SettlementDesk from './screens/sales/settlement-desk/SettlementDesk';
@@ -1328,6 +1329,7 @@ export default function App() {
               <Route path="/residential/introductions" element={<SalesIntroductions />} />
               <Route path="/residential/calendar" element={<SalesCalendar />} />
               <Route path="/residential/agreements/sale" element={<SaleAgreements />} />
+              <Route path="/residential/price-schedule" element={<SalesPriceSchedule scope="residential" title="Residential · Price Schedules" />} />
               <Route path="/residential/contracts" element={<SalesContracts />} />
               <Route path="/residential/inbox" element={<SalesInbox />} />
               <Route path="/residential/reports" element={<SalesReports />} />
@@ -1375,6 +1377,7 @@ export default function App() {
               <Route path="/commercial/introductions" element={<SalesIntroductions />} />
               <Route path="/commercial/calendar" element={<SalesCalendar category="commercial" />} />
               <Route path="/commercial/agreements/sale" element={<SaleAgreements category="commercial" />} />
+              <Route path="/commercial/price-schedule" element={<SalesPriceSchedule scope="commercial" title="Commercial · Price Schedules" />} />
               <Route path="/commercial/contracts" element={<SalesContracts />} />
               <Route path="/commercial/inbox" element={<SalesInbox />} />
               <Route path="/commercial/reports" element={<SalesReports />} />
