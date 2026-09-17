@@ -219,7 +219,7 @@ export default function SalesAgreementScreen({ kind, category = 'residential' })
   const [builderPrefill, setBuilderPrefill] = useState(null);
 
   if (mode === 'build') {
-    return <Builder kind={kind} prefill={builderPrefill || editEnvelope?.prefill || prefill} editId={editEnvelope?.id || null}
+    return <Builder kind={kind} category={category} prefill={builderPrefill || editEnvelope?.prefill || prefill} editId={editEnvelope?.id || null}
       onDone={() => { setMode('list'); setEditEnvelope(null); setBuilderPrefill(null); load(); }}
       onCancel={() => { setMode('list'); setEditEnvelope(null); setBuilderPrefill(null); }} />;
   }
@@ -298,7 +298,7 @@ async function downloadSigned(a, toast) {
   } catch { toast.error('Could not download the signed copy'); }
 }
 
-function Builder({ kind, prefill, editId, onDone, onCancel }) {
+function Builder({ kind, category = 'residential', prefill, editId, onDone, onCancel }) {
   const km = KIND_META[kind];
   const toast = useToast();
   const { user } = useAuth();

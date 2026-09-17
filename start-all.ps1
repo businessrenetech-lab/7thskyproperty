@@ -10,8 +10,9 @@ Write-Host ""
 $baseDir = $PSScriptRoot
 
 $components = @(
-    @{ Name = "Backend API";  Dir = "backend";      Cmd = '$env:PORT = "50001"; node server.js';              Port = 50001 },
-    @{ Name = "Admin Portal"; Dir = "admin-portal"; Cmd = "npm run dev -- --host 127.0.0.1 --port 3005"; Port = 3005 }
+    @{ Name = "Backend API";  Dir = "backend";      Cmd = '$env:PORT = "50001"; node server.js';                Port = 50001 },
+    @{ Name = "Website";      Dir = "website-mock";  Cmd = "npm run dev -- --host 127.0.0.1 --port 3005";        Port = 3005 },
+    @{ Name = "Admin Portal"; Dir = "admin-portal"; Cmd = "npm run dev -- --host 127.0.0.1 --port 30005";       Port = 30005 }
 )
 
 foreach ($comp in $components) {
@@ -32,6 +33,7 @@ Write-Host "  ========================================================" -Foregro
 Write-Host "    ALL SERVICES LAUNCHED" -ForegroundColor Cyan
 Write-Host "  ========================================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  Admin    : http://127.0.0.1:3005/admin/" -ForegroundColor White
+Write-Host "  Website  : http://127.0.0.1:3005/" -ForegroundColor White
+Write-Host "  Admin    : http://127.0.0.1:30005/admin/" -ForegroundColor White
 Write-Host "  Backend  : http://127.0.0.1:50001" -ForegroundColor White
 Write-Host ""
