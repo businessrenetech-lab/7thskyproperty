@@ -1,9 +1,15 @@
 // backend/services/salesAgreementRender.js
 //
-// Shared rendering + pricing for the residential sales service agreements
-// (RPPS / RPSS). Mirrors rprmAgreement.service's building blocks, generalised
-// to take a vertical (catalogue scope) and a kind config (clauses, doc no,
-// party). Each build returns { title, doc_no, html, terms }.
+// Shared rendering + pricing for the property sales service agreements
+// (RPPS / RPSS / CPPS / CPSS). Generalised to take a vertical (catalogue scope)
+// and a kind config (clauses, doc no, party, schedules). Each build returns
+// { title, doc_no, html, terms }.
+//
+// The document design matches the Property Management / Tenancy agreements — a
+// dedicated cover page, a one-page Table of Contents, card-style schedules and a
+// styled execution block — so every agreement window and PDF looks the same.
+// The eSign anchors (data-sign-*) are preserved exactly, and multi-party
+// (co-owner / co-buyer) signing still works.
 const ServiceItem = require('../models/ServiceItem');
 
 const money = (v) => '৳' + Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -87,132 +93,294 @@ async function computePricing(vertical, input = {}, branchId) {
   return { lines: selected, summary, payment_schedule };
 }
 
-// ── HTML blocks ─────────────────────────────────────────────────────────
-const kvTable = (rows) => `<table style="width:100%;border-collapse:collapse;margin:8px 0;">${rows.map(([k, v]) => `<tr><td style="padding:6px 10px;border:1px solid #d9dee6;background:#f6f8fb;width:38%;font-weight:600;font-size:12.5px;">${esc(k)}</td><td style="padding:6px 10px;border:1px solid #d9dee6;font-size:12.5px;">${v == null ? '__________' : esc(v)}</td></tr>`).join('')}</table>`;
+// ── HTML building blocks (Property Management design language) ────────────
+
+// A rounded card key/value table (used for the parties and Schedule B).
+const kvTable = (rows) => `
+<div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.02);margin:8px 0;">
+  <table style="width:100%;border-collapse:collapse;">
+    ${rows.map(([k, v]) => `
+      <tr style="border-bottom:1px solid #f1f5f9;">
+        <td style="padding:9px 14px;background:#f8fafc;width:36%;font-weight:600;font-size:12px;color:#475569;border-right:1px solid #f1f5f9;">${esc(k)}</td>
+        <td style="padding:9px 14px;font-size:12.5px;color:#0f172a;font-weight:500;">${v == null || v === '' ? '<span style="color:#94a3b8;">__________</span>' : esc(v)}</td>
+      </tr>`).join('')}
+  </table>
+</div>`;
+
+// A schedule section wrapper: navy badge + title.
+const scheduleHead = (id, code, title) => `
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+    <span style="background:#012a4e;color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:0.8px;">${esc(code)}</span>
+    <h2 id="${id}" style="font-size:15px;color:#012a4e;font-weight:800;margin:0;">${esc(title)}</h2>
+  </div>`;
 
 function scheduleC(pricing) {
-  const rows = pricing.lines.map((l) => `<tr>
-    <td style="padding:6px 8px;border:1px solid #d9dee6;font-size:12px;">${esc(l.code)}</td>
-    <td style="padding:6px 8px;border:1px solid #d9dee6;font-size:12px;">${esc(l.name)}</td>
-    <td style="padding:6px 8px;border:1px solid #d9dee6;font-size:12px;">${esc(l.unit || '')}</td>
-    <td style="padding:6px 8px;border:1px solid #d9dee6;font-size:12px;text-align:right;color:#6b7280;">${esc(l.std_label)}</td>
-    <td style="padding:6px 8px;border:1px solid #d9dee6;font-size:12px;text-align:right;font-weight:700;">${l.price_type === 'included' ? 'Included' : l.price_type === 'percent' ? esc(l.price_label || 'As agreed') : money(l.agreed_price)}</td>
-  </tr>`).join('');
+  const rows = pricing.lines.map((l) => `
+    <tr style="border-bottom:1px solid #f1f5f9;">
+      <td style="padding:9px 12px;font-size:11.5px;font-weight:700;color:#003768;">${esc(l.code)}</td>
+      <td style="padding:9px 12px;font-size:12px;color:#1e293b;font-weight:600;">${esc(l.name)}</td>
+      <td style="padding:9px 12px;font-size:11.5px;color:#64748b;">${esc(l.unit || '')}</td>
+      <td style="padding:9px 12px;font-size:11.5px;text-align:right;color:#64748b;">${esc(l.std_label)}</td>
+      <td style="padding:9px 12px;font-size:12px;text-align:right;font-weight:700;color:#0f172a;">${l.price_type === 'included' ? '<span style="display:inline-block;padding:2px 8px;border-radius:9999px;background:#e0f2fe;color:#0369a1;font-size:10.5px;font-weight:700;">Included</span>' : l.price_type === 'percent' ? esc(l.price_label || 'As agreed') : money(l.agreed_price)}</td>
+    </tr>`).join('');
   const s = pricing.summary;
   const commissionLabel = s.commission_mode === 'percent' && s.commission_percent
     ? `Professional Success Fee / Commission (${s.commission_percent}%)`
     : 'Professional Success Fee / Commission';
   const sumRows = [
     ['Professional Service Fees', money(s.professional_service_fees)],
-    ['Coordination Fees', money(s.coordination_fees)],
     [commissionLabel, money(s.commission)],
     ['Third-Party Costs (if applicable)', money(s.third_party_costs)],
     ['Administrative Charges', money(s.administrative_charges)],
     ['Discount', '– ' + money(s.discount)],
     [`VAT (${s.vat_percent}%)`, money(s.vat)],
-  ].map(([k, v]) => `<tr><td style="padding:5px 10px;border:1px solid #d9dee6;font-size:12.5px;">${k}</td><td style="padding:5px 10px;border:1px solid #d9dee6;font-size:12.5px;text-align:right;">${v}</td></tr>`).join('');
-  const payRows = pricing.payment_schedule.map((p) => `<tr><td style="padding:5px 10px;border:1px solid #d9dee6;font-size:12.5px;">${esc(p.stage)}</td><td style="padding:5px 10px;border:1px solid #d9dee6;font-size:12.5px;text-align:right;">${money(p.amount)}</td><td style="padding:5px 10px;border:1px solid #d9dee6;font-size:12.5px;">${esc(p.due || '')}</td></tr>`).join('');
+  ].map(([k, v]) => `
+    <tr style="border-bottom:1px solid #f1f5f9;">
+      <td style="padding:7px 12px;font-size:12px;color:#475569;">${k}</td>
+      <td style="padding:7px 12px;font-size:12px;text-align:right;font-weight:600;color:#0f172a;">${v}</td>
+    </tr>`).join('');
+  const payRows = pricing.payment_schedule.map((p) => `
+    <tr style="border-bottom:1px solid #f1f5f9;">
+      <td style="padding:8px 12px;font-size:12px;font-weight:600;color:#1e293b;">${esc(p.stage)}</td>
+      <td style="padding:8px 12px;font-size:12px;text-align:right;font-weight:700;color:#0f172a;">${money(p.amount)}</td>
+      <td style="padding:8px 12px;font-size:11.5px;color:#64748b;">${esc(p.due || '')}</td>
+    </tr>`).join('');
 
   return `
-  <h2 id="sched-c" style="font-size:15px;color:#003768;margin:22px 0 6px;">SCHEDULE C — Standard Price Schedule (Standard vs Agreed)</h2>
-  <table style="width:100%;border-collapse:collapse;margin:8px 0;">
-    <thead><tr>${['Code', 'Service', 'Unit', 'Standard Price (BDT)', 'Agreed Price (BDT)'].map((h) => `<th style="padding:7px 8px;border:1px solid #d9dee6;background:#eef3f8;font-size:11.5px;text-align:${h.includes('Price') ? 'right' : 'left'};">${h}</th>`).join('')}</tr></thead>
-    <tbody>${rows || '<tr><td colspan="5" style="padding:12px;text-align:center;color:#9aa4b2;border:1px solid #d9dee6;">No services selected yet.</td></tr>'}</tbody>
-  </table>
-  <div style="font-weight:700;font-size:13px;color:#003768;margin:16px 0 4px;">Project Cost Summary</div>
-  <table style="width:100%;border-collapse:collapse;">${sumRows}
-    <tr><td style="padding:7px 10px;border:1px solid #003768;background:#003768;color:#fff;font-weight:700;">TOTAL CONTRACT VALUE</td><td style="padding:7px 10px;border:1px solid #003768;background:#003768;color:#fff;font-weight:700;text-align:right;">${money(s.total_contract_value)}</td></tr>
-  </table>
-  <div style="font-weight:700;font-size:13px;color:#003768;margin:16px 0 4px;">Payment Schedule</div>
-  <table style="width:100%;border-collapse:collapse;"><thead><tr>${['Payment Stage', 'Amount (BDT)', 'Due Date'].map((h) => `<th style="padding:6px 10px;border:1px solid #d9dee6;background:#eef3f8;font-size:11.5px;text-align:${h.includes('Amount') ? 'right' : 'left'};">${h}</th>`).join('')}</tr></thead><tbody>${payRows}</tbody></table>`;
+  <div style="margin:26px 0 16px;">
+    ${scheduleHead('sched-c', 'SCHEDULE C', 'Price Schedule (Standard vs Agreed)')}
+    <div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#ffffff;margin:10px 0 16px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+            ${['Code', 'Service', 'Unit', 'Standard Price (BDT)', 'Agreed Price (BDT)'].map((h) => `<th style="padding:9px 12px;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.5px;text-align:${h.includes('Price') ? 'right' : 'left'};">${h}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>${rows || '<tr><td colspan="5" style="padding:14px;text-align:center;color:#94a3b8;">No services selected yet.</td></tr>'}</tbody>
+      </table>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px;">
+      <div>
+        <div style="font-weight:700;font-size:12px;color:#012a4e;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.6px;">Project Cost Summary</div>
+        <div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+          <table style="width:100%;border-collapse:collapse;">
+            ${sumRows}
+            <tr style="background:#003768;color:#ffffff;">
+              <td style="padding:9px 12px;font-weight:800;font-size:12px;letter-spacing:0.5px;">TOTAL CONTRACT VALUE</td>
+              <td style="padding:9px 12px;font-weight:800;font-size:13px;text-align:right;">${money(s.total_contract_value)}</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div style="font-weight:700;font-size:12px;color:#012a4e;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.6px;">Payment Schedule</div>
+        <div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+                ${['Payment Stage', 'Amount (BDT)', 'Due Date'].map((h) => `<th style="padding:8px 12px;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.5px;text-align:${h.includes('Amount') ? 'right' : 'left'};">${h}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>${payRows}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>`;
 }
 
-// A grouped checkbox list (Schedule A services / Schedule D checklist). Every
-// taxonomy item renders with a ticked box (☑, bold) when its label is in the
-// selected set, otherwise an empty box (☐) — so the signed agreement shows
-// exactly what was chosen.
-function checkboxGroups(groups, selected) {
+// Grouped checkbox card list (Schedule A services / Schedule D checklist). Every
+// taxonomy item renders selected (navy tick + highlighted chip) or not.
+function checkboxGroups(id, code, title, groups, selected) {
   const set = new Set((selected || []).map((s) => String(s).trim().toLowerCase()));
-  return (groups || []).map(([group, items]) => `
-    <div style="margin:12px 0 4px;font-weight:700;font-size:12.5px;color:#003768;">${esc(group)}</div>
-    <div style="columns:2;column-gap:28px;font-size:12.5px;line-height:2;">
-      ${items.map((it) => {
+  const body = (groups || []).map(([g, items]) => `
+    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:12px 16px;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,0.02);">
+      <div style="margin:0 0 8px;font-weight:700;font-size:11.5px;color:#003768;text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;gap:6px;">
+        <span style="width:5px;height:5px;border-radius:50%;background:#00AEEF;"></span>${esc(g)}
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
+        ${items.map((it) => {
     const on = set.has(String(it).trim().toLowerCase());
-    // CSS-drawn box (filled navy tick when selected) — reliable in PDF/print
-    // where the ☑/☐ glyphs are missing or indistinguishable.
     const box = on
       ? '<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #003768;background:#003768;color:#fff;text-align:center;line-height:12px;font-size:11px;font-weight:700;vertical-align:middle;margin-right:6px;">&#10003;</span>'
       : '<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #9aa4b2;background:#fff;vertical-align:middle;margin-right:6px;"></span>';
-    return `<div style="break-inside:avoid;">${box}<span style="${on ? 'font-weight:700;color:#0f172a;' : 'color:#4b5563;'}">${esc(it)}</span></div>`;
+    return `<span style="font-size:11.5px;display:inline-flex;align-items:center;padding:3px 7px;border-radius:6px;${on ? 'background:#f0f9ff;font-weight:700;color:#0f172a;border:1px solid #bae6fd;' : 'color:#475569;background:#f8fafc;border:1px solid #f1f5f9;'}">${box}${esc(it)}</span>`;
   }).join('')}
+      </div>
     </div>`).join('');
+  return `<div style="margin:26px 0 16px;">${scheduleHead(id, code, title)}${body}</div>`;
 }
 
+// Signature slot — anchors match the SignatureField labels so a captured
+// signature lands in its own box. Preserved exactly from the eSign contract.
 const signSlot = (label) => `
   <div data-sign-anchor="${esc(label)}" style="margin-top:8px;">
-    <div style="font-size:11px;color:#6b7280;">Signature</div>
-    <div data-sign-field="signature" data-sign-party="${esc(label)}" style="height:46px;border-bottom:1px solid #333;margin:2px 0 6px;"></div>
-    <div style="font-size:11px;color:#6b7280;">Date signed</div>
-    <div data-sign-field="date_signed" data-sign-party="${esc(label)}" style="height:20px;border-bottom:1px solid #333;"></div>
+    <div style="font-size:10.5px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Signature</div>
+    <div data-sign-field="signature" data-sign-party="${esc(label)}"
+         style="min-height:46px;border-bottom:1.5px solid #0f2942;margin:2px 0 6px;display:flex;align-items:flex-end;"></div>
+    <div style="font-size:10.5px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Date signed</div>
+    <div data-sign-field="date_signed" data-sign-party="${esc(label)}"
+         style="min-height:20px;border-bottom:1.5px solid #0f2942;display:flex;align-items:flex-end;"></div>
   </div>`;
 
 /**
- * Generic builder. `cfg` = { doc_no, version, title, party ('Buyer'|'Seller'),
- * clauses:[[title, htmlBody]] }. `data` = { effective_date, org, client{...},
- * property_type, services[], schedule_b{...}, pricing, checklist[] }.
+ * Generic builder. `cfg` = { doc_no, version, title, header_label, party,
+ * client_heading, client_footer, clauses:[[title, htmlBody]], schedule_a,
+ * schedule_b_fields, schedule_d, schedule_*_title }. `data` = { effective_date,
+ * org, client{...}/clients[], property_type, services[], schedule_b{...},
+ * pricing, checklist[], witnesses[] }.
  */
 function buildAgreement(cfg, data = {}) {
   const org = data.org || {};
   const c = data.client || {};
   const b = data.schedule_b || {};
   const pricing = data.pricing || { lines: [], summary: {}, payment_schedule: [] };
-  const CLAUSES = cfg.clauses;
+  const CLAUSES = cfg.clauses || [];
+  const nClauses = CLAUSES.length;
+  const partyWord = cfg.party || 'Client';
+  const headerLabel = cfg.header_label || 'Seventh Sky Residential Property Services';
+  const tagline = headerLabel.replace(/^Seventh Sky\s*/i, '') || 'Property Services';
 
-  const toc = `
-  <div style="border:1px solid #d9dee6;border-radius:10px;padding:14px 18px;margin:14px 0;background:#f8fafc;">
-    <div style="font-weight:700;font-size:13px;color:#003768;margin-bottom:8px;">Table of Contents</div>
-    <ol style="columns:2;column-gap:32px;margin:0;padding-left:18px;font-size:12.5px;line-height:1.9;list-style:none;">
-      ${CLAUSES.map(([t], i) => `<li><a href="#cl-${i + 1}" style="color:#1e3a8a;text-decoration:none;">${esc(t)}</a></li>`).join('')}
-      <li><a href="#sched-a" style="color:#1e3a8a;text-decoration:none;">Schedule A — Selected Services</a></li>
-      <li><a href="#sched-b" style="color:#1e3a8a;text-decoration:none;">Schedule B — Engagement Summary</a></li>
-      <li><a href="#sched-c" style="color:#1e3a8a;text-decoration:none;">Schedule C — Price Schedule</a></li>
-      ${cfg.schedule_d ? `<li><a href="#sched-d" style="color:#1e3a8a;text-decoration:none;">${esc((cfg.schedule_d_title || 'Schedule D').replace(/^SCHEDULE /, 'Schedule '))}</a></li>` : ''}
-    </ol>
-  </div>`;
-
-  // A sale/purchase can have multiple co-owners (vendors) or co-buyers, each of
-  // whom must sign. `data.clients` (array) drives it; single `data.client` still
-  // works unchanged. Each party gets its own signature anchor "Client N".
+  // Multiple co-owners (vendors) or co-buyers, each of whom must sign.
   const clients = (Array.isArray(data.clients) && data.clients.length) ? data.clients : [c];
   const multiParty = clients.length > 1;
   const clientAnchor = (i) => (multiParty ? `Client ${i + 1}` : 'Client');
-  const clientHeading = (i) => (multiParty
-    ? `${(cfg.party || 'Client').toUpperCase()} ${i + 1}`
-    : (cfg.client_heading || `${cfg.party} (Client)`));
+  const clientHeading = (i) => (multiParty ? `${partyWord.toUpperCase()} ${i + 1}` : (cfg.client_heading || `${partyWord} (Client)`));
+  const primary = clients[0] || c;
 
+  // ── 1. Cover page ─────────────────────────────────────────────────────────
+  const coverPage = `
+  <div class="agreement-page agreement-cover-page" style="box-sizing:border-box;min-height:1020px;page-break-after:always;break-after:page;display:flex;flex-direction:column;justify-content:space-between;padding:52px 48px 40px;background:#ffffff;border-bottom:2px solid #e2e8f0;">
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1.5px solid #012a4e;padding-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#012a4e 0%,#003768 50%,#00AEEF 100%);display:flex;align-items:center;justify-content:center;color:#ffffff;font-weight:800;font-size:19px;letter-spacing:-0.5px;box-shadow:0 3px 10px rgba(1,42,78,0.18);">7S</div>
+          <div>
+            <div style="font-size:15px;font-weight:800;color:#012a4e;letter-spacing:0.8px;text-transform:uppercase;">Seventh Sky Property Care</div>
+            <div style="font-size:10.5px;font-weight:600;color:#00AEEF;letter-spacing:1px;text-transform:uppercase;">${esc(tagline)}</div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <span style="display:inline-block;padding:3px 10px;border-radius:9999px;background:#e0f2fe;color:#0369a1;font-size:10.5px;font-weight:700;border:1px solid #bae6fd;">STANDARD SERVICE AGREEMENT</span>
+          <div style="font-size:10.5px;color:#64748b;margin-top:3px;font-weight:500;">DOC REF: ${esc(cfg.doc_no)} · v${esc(cfg.version || '0.2')}</div>
+        </div>
+      </div>
+      <div style="margin-top:80px;">
+        <div style="display:inline-flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;color:#00AEEF;text-transform:uppercase;letter-spacing:2px;margin-bottom:14px;">
+          <span style="width:20px;height:2px;background:#00AEEF;display:inline-block;"></span>Property Advisory &amp; Transaction Services
+        </div>
+        <h1 style="font-size:32px;font-weight:800;color:#012a4e;line-height:1.2;margin:0 0 16px;letter-spacing:-0.6px;">${esc(cfg.title)}</h1>
+        <div style="width:70px;height:4px;background:linear-gradient(90deg,#012a4e,#00AEEF);border-radius:2px;margin-bottom:20px;"></div>
+        <p style="font-size:13.5px;color:#475569;line-height:1.65;max-width:580px;margin:0;">
+          The terms under which Seventh Sky provides the agreed property services, setting out scope, fees, coordination standards and execution between Seventh Sky Property Care and the ${esc(partyWord)}.
+        </p>
+      </div>
+    </div>
+    <div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px;">
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+          <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#00AEEF;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;border-radius:50%;background:#00AEEF;"></span>Prepared For · ${esc(cfg.client_heading || `${partyWord} (Client)`)}</div>
+          <div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px;">${or(primary.full_name)}${multiParty ? ` <span style="font-size:11px;color:#64748b;font-weight:500;">(+${clients.length - 1} co-${partyWord.toLowerCase()})</span>` : ''}</div>
+          <div style="font-size:11.5px;color:#475569;line-height:1.5;">
+            <div><strong>Address:</strong> ${or(primary.property_address || primary.address)}</div>
+            <div><strong>NID / Passport:</strong> ${or(primary.nid)}</div>
+            <div><strong>Contact:</strong> ${or(primary.phone)} · ${or(primary.email)}</div>
+          </div>
+        </div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+          <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#012a4e;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;border-radius:50%;background:#012a4e;"></span>Service Provider</div>
+          <div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px;">${esc(org.name || 'Seventh Sky Private Limited')}</div>
+          <div style="font-size:11.5px;color:#475569;line-height:1.5;">
+            <div><strong>Represented By:</strong> ${or(org.represented_by, 'Authorized Signatory')}</div>
+            <div><strong>Position:</strong> ${or(org.position, 'Sales & Acquisition Director')}</div>
+            <div><strong>Contact:</strong> ${or(org.phone)} · ${or(org.email)}</div>
+            <div><strong>Jurisdiction:</strong> Dhaka, People's Republic of Bangladesh</div>
+          </div>
+        </div>
+      </div>
+      <div style="border-top:1px solid #e2e8f0;padding-top:14px;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#64748b;">
+        <div>Effective Date: <strong style="color:#0f172a;">${or(data.effective_date)}</strong> · Governing Law: <strong style="color:#0f172a;">Laws of Bangladesh</strong></div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:6px;height:6px;background:#10b981;border-radius:50%;"></span><span>Electronic Signature &amp; SHA-256 Audit Trail Protected</span></div>
+      </div>
+    </div>
+  </div>`;
+
+  // ── 2. Dedicated Table of Contents (Page 2) ───────────────────────────────
+  const half = Math.ceil(nClauses / 2);
+  const tocClause = ([t], i) => `
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding:2px 0;">
+      <a href="#cl-${i + 1}" style="color:#1e293b;text-decoration:none;font-size:11px;font-weight:500;display:inline-flex;align-items:center;gap:5px;">
+        <span style="color:#00AEEF;font-weight:700;">${String(i + 1).padStart(2, '0')}.</span><span>${esc(t)}</span>
+      </a>
+      <span style="flex:1;border-bottom:1px dotted #cbd5e1;margin:0 6px;"></span>
+      <span style="font-size:10px;color:#94a3b8;font-weight:600;">§${i + 1}</span>
+    </div>`;
+  const schedLink = (id, letter, label, tag) => `
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding:2px 0;">
+      <a href="#${id}" style="color:#1e293b;text-decoration:none;font-size:11px;font-weight:600;"><span style="color:#00AEEF;">${letter}.</span> ${esc(label)}</a>
+      <span style="flex:1;border-bottom:1px dotted #cbd5e1;margin:0 6px;"></span>
+      <span style="font-size:10px;color:#94a3b8;font-weight:600;">${esc(tag)}</span>
+    </div>`;
+  const tocPage = `
+  <div class="agreement-page agreement-toc-page" style="box-sizing:border-box;min-height:1020px;page-break-before:always;page-break-after:always;break-after:page;padding:48px 48px 36px;background:#ffffff;border-bottom:2px solid #e2e8f0;display:flex;flex-direction:column;justify-content:space-between;">
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #012a4e;padding-bottom:12px;margin-bottom:20px;">
+        <div>
+          <div style="font-size:10.5px;font-weight:700;color:#00AEEF;letter-spacing:1.2px;text-transform:uppercase;">Document Roadmap</div>
+          <h2 style="font-size:22px;font-weight:800;color:#012a4e;margin:2px 0 0;">Table of Contents</h2>
+        </div>
+        <span style="display:inline-block;padding:3px 10px;border-radius:9999px;background:#f1f5f9;color:#334155;font-size:10.5px;font-weight:700;border:1px solid #e2e8f0;">${nClauses} CLAUSES · 4 SCHEDULES</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;column-gap:28px;align-items:start;">
+        <div>${CLAUSES.slice(0, half).map((cl, i) => tocClause(cl, i)).join('')}</div>
+        <div>
+          ${CLAUSES.slice(half).map((cl, i) => tocClause(cl, half + i)).join('')}
+          <div style="margin-top:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px;">
+            <div style="font-size:10px;font-weight:800;color:#012a4e;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;border-bottom:1px solid #e2e8f0;padding-bottom:2px;">Schedules &amp; Signatures</div>
+            ${schedLink('sched-a', 'A', 'Schedule A — Selected Services', 'Scope')}
+            ${schedLink('sched-b', 'B', 'Schedule B — Engagement Summary', 'Details')}
+            ${schedLink('sched-c', 'C', 'Schedule C — Price Schedule', 'Pricing')}
+            ${schedLink('sched-d', 'D', 'Schedule D — Checklist', 'Checklist')}
+            <div style="display:flex;justify-content:space-between;align-items:baseline;padding:2px 0;margin-top:2px;">
+              <a href="#signatures-section" style="color:#012a4e;text-decoration:none;font-size:11px;font-weight:700;"><span style="color:#10b981;">✓</span> Execution Block — Signatures</a>
+              <span style="flex:1;border-bottom:1px dotted #cbd5e1;margin:0 6px;"></span>
+              <span style="font-size:10px;color:#10b981;font-weight:700;">Attest</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="border-top:1px dashed #cbd5e1;padding-top:10px;display:flex;justify-content:space-between;font-size:10.5px;color:#64748b;">
+      <span>Document: ${esc(cfg.doc_no)}</span><span>Page 2 · Table of Contents</span>
+    </div>
+  </div>`;
+
+  // ── 3. Body ───────────────────────────────────────────────────────────────
   const clientPartyBlocks = clients.map((cl, i) => `
-  <div style="font-weight:700;color:#003768;margin-top:8px;">${i === 0 ? 'AND — ' : ''}${esc(clientHeading(i))}</div>
-  ${kvTable([['Full Name', cl.full_name], ['National ID / Passport No.', cl.nid], ['Current Address', cl.property_address || cl.address], ['Phone', cl.phone], ['Email', cl.email], ['Represented by (if applicable)', cl.rep], ['Relationship / Position', cl.rep_position]])}`).join('');
+    <div style="font-size:11px;font-weight:800;color:#00AEEF;text-transform:uppercase;letter-spacing:0.8px;margin:12px 0 4px;">${i === 0 ? 'AND — ' : ''}${esc(clientHeading(i))}</div>
+    ${kvTable([['Full Name', cl.full_name], ['National ID / Passport No.', cl.nid], ['Address', cl.property_address || cl.address], ['Phone', cl.phone], ['Email', cl.email], ['Represented by (if applicable)', cl.rep], ['Relationship / Position', cl.rep_position]])}`).join('');
 
   const parties = `
-  <p style="margin:14px 0 6px;">This Agreement is made on: <b>${or(data.effective_date)}</b></p>
-  <div style="font-weight:700;color:#003768;margin-top:8px;">BETWEEN — SEVENTH SKY PRIVATE LIMITED</div>
-  ${kvTable([['Trading Name', org.name || 'Seventh Sky Property Care'], ['Address', org.address], ['Phone', org.phone], ['Email', org.email], ['Represented by', org.represented_by], ['Position', org.position]])}
-  ${clientPartyBlocks}
-  <p style="font-size:12px;color:#4b5563;margin:6px 0 0;">(${esc(cfg.client_footer || 'the Client')}${multiParty ? ', jointly and severally' : ''}.) Together referred to as "the Parties."</p>`;
+  <div style="margin:8px 0 16px;">
+    <p style="margin:0 0 10px;font-size:13px;color:#334155;">This Agreement is made on: <b style="color:#012a4e;">${or(data.effective_date)}</b></p>
+    <div style="font-size:11px;font-weight:800;color:#00AEEF;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;">BETWEEN — SEVENTH SKY PRIVATE LIMITED</div>
+    ${kvTable([['Trading Name', org.name || 'Seventh Sky Property Care'], ['Address', org.address], ['Phone', org.phone], ['Email', org.email], ['Represented by', org.represented_by], ['Position', org.position]])}
+    ${clientPartyBlocks}
+    <p style="font-size:11.5px;color:#64748b;margin:6px 0 0;">(${esc(cfg.client_footer || 'the Client')}${multiParty ? ', jointly and severally' : ''}.) Together referred to as "the Parties."</p>
+  </div>`;
 
   const clausesHtml = CLAUSES.map(([t, body], i) => `
-    <div style="margin:16px 0;">
-      <h2 id="cl-${i + 1}" style="font-size:14.5px;color:#003768;margin:0 0 4px;">${esc(t)}</h2>
-      <div style="font-size:13px;">${body}</div>
+    <div style="margin:14px 0;padding:12px 16px;border:1px solid #f1f5f9;border-radius:10px;background:#ffffff;box-shadow:0 1px 2px rgba(0,0,0,0.01);">
+      <h2 id="cl-${i + 1}" style="font-size:13.5px;color:#012a4e;font-weight:800;margin:0 0 6px;display:flex;align-items:center;gap:8px;">
+        <span style="display:inline-block;background:#e0f2fe;color:#0369a1;font-size:10.5px;font-weight:800;padding:2px 6px;border-radius:4px;border:1px solid #bae6fd;">${String(i + 1).padStart(2, '0')}</span>${esc(t)}
+      </h2>
+      <div style="font-size:12.5px;color:#334155;line-height:1.65;">${body}</div>
     </div>`).join('');
 
-  const schedA = `<h2 id="sched-a" style="font-size:15px;color:#003768;margin:22px 0 6px;">${esc(cfg.schedule_a_title || 'SCHEDULE A — Selected Services')}</h2>
-    <p style="font-size:12px;color:#4b5563;margin:0 0 4px;">Only the services ticked below form part of this Agreement.</p>
-    ${cfg.schedule_a ? checkboxGroups(cfg.schedule_a, data.services) : `<div style="font-size:12.5px;">${(data.services && data.services.length) ? esc(data.services.join(', ')) : 'As selected in Schedule C and the approved Work Order.'}</div>`}`;
+  const schedA = cfg.schedule_a
+    ? checkboxGroups('sched-a', 'SCHEDULE A', cfg.schedule_a_title || 'SCHEDULE A — Selected Services', cfg.schedule_a, data.services)
+    : `<div style="margin:26px 0 16px;">${scheduleHead('sched-a', 'SCHEDULE A', cfg.schedule_a_title || 'SCHEDULE A — Selected Services')}<div style="font-size:12.5px;color:#334155;">${(data.services && data.services.length) ? esc(data.services.join(', ')) : 'As selected in Schedule C and the approved Work Order.'}</div></div>`;
 
-  // Schedule B — summary field list is per-kind; values come from schedule_b +
-  // the client/property context, with a computed selected-services string.
   const bValues = {
     ...b,
     client_name: clients.map((cl) => cl.full_name).filter(Boolean).join(' & ') || c.full_name,
@@ -225,47 +393,76 @@ function buildAgreement(cfg, data = {}) {
     expected_date: b.expected_date || b.timeframe || '',
     selected_services_text: (data.services && data.services.length) ? data.services.join(', ') : null,
   };
-  const schedB = `<h2 id="sched-b" style="font-size:15px;color:#003768;margin:22px 0 6px;">${esc(cfg.schedule_b_title || 'SCHEDULE B — Engagement Summary')}</h2>${kvTable(
+  const schedB = `<div style="margin:26px 0 16px;">${scheduleHead('sched-b', 'SCHEDULE B', cfg.schedule_b_title || 'SCHEDULE B — Engagement Summary')}${kvTable(
     (cfg.schedule_b_fields || [['Client', 'client_name'], ['Special Requirements', 'special_requirements']]).map(([label, key]) => [label, bValues[key]]),
-  )}`;
+  )}</div>`;
   const schedC = scheduleC(pricing);
+  const schedD = cfg.schedule_d
+    ? checkboxGroups('sched-d', 'SCHEDULE D', cfg.schedule_d_title || 'SCHEDULE D — Checklist', cfg.schedule_d, data.checklist)
+    : `<div style="margin:26px 0 16px;">${scheduleHead('sched-d', 'SCHEDULE D', cfg.schedule_d_title || 'SCHEDULE D — Checklist')}</div>`;
 
-  const schedD = cfg.schedule_d ? `<h2 id="sched-d" style="font-size:15px;color:#003768;margin:22px 0 6px;">${esc(cfg.schedule_d_title || 'SCHEDULE D — Checklist')}</h2>
-    ${checkboxGroups(cfg.schedule_d, data.checklist)}` : '';
-
-  // Seventh Sky first, then one signature block per client (each with its own
-  // anchor so every co-owner / co-buyer signature is captured and rendered).
-  const sigCells = [
-    `<div style="border-top:1px solid #333;padding-top:6px;font-size:12px;"><b>Seventh Sky Private Limited</b><br/>Name: ${or(org.represented_by)}<br/>Position: ${or(org.position)}${signSlot('Seventh Sky')}</div>`,
-    ...clients.map((cl, i) => `<div style="border-top:1px solid #333;padding-top:6px;font-size:12px;"><b>${esc(multiParty ? `${cfg.party} ${i + 1}` : `Client (${cfg.party})`)}</b><br/>Name: ${or(cl.full_name)}${signSlot(clientAnchor(i))}</div>`),
-  ];
-  const sigRows = [];
-  for (let i = 0; i < sigCells.length; i += 2) {
-    sigRows.push(`<tr><td style="width:50%;vertical-align:top;padding:0 16px 12px;">${sigCells[i]}</td><td style="width:50%;vertical-align:top;padding:0 16px 12px;">${sigCells[i + 1] || ''}</td></tr>`);
+  // Execution block — Seventh Sky, then one card per client, then witnesses.
+  const partyCard = (eyebrow, name, sub, anchor) => `
+    <div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+      <div style="font-size:10.5px;font-weight:700;color:#00AEEF;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;">${esc(eyebrow)}</div>
+      <div style="font-size:13.5px;font-weight:800;color:#012a4e;">${esc(name)}</div>
+      ${sub}
+      ${signSlot(anchor)}
+    </div>`;
+  const ssCard = partyCard('Service Provider', org.name || 'Seventh Sky Private Limited',
+    `<div style="font-size:11.5px;color:#475569;margin-top:2px;">Name: <strong>${or(org.represented_by)}</strong></div><div style="font-size:11.5px;color:#475569;">Position: <strong>${or(org.position)}</strong></div>${org.email ? `<div style="font-size:11px;color:#64748b;">Email: ${esc(org.email)}</div>` : ''}`, 'Seventh Sky');
+  const clientCards = clients.map((cl, i) => partyCard(
+    multiParty ? `${partyWord} ${i + 1}` : `${partyWord} (Client)`,
+    or(cl.full_name),
+    `<div style="font-size:11.5px;color:#475569;margin-top:2px;">NID / Passport: <strong>${or(cl.nid)}</strong></div>`,
+    clientAnchor(i)));
+  const execCards = [ssCard, ...clientCards];
+  const execRows = [];
+  for (let i = 0; i < execCards.length; i += 2) {
+    execRows.push(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:${i === 0 ? '0' : '14px'};">${execCards[i]}${execCards[i + 1] || '<div></div>'}</div>`);
   }
   const signatures = `
-  <h2 style="font-size:15px;color:#003768;margin:26px 0 6px;">Signatures</h2>
-  <table style="width:100%;margin-top:6px;">${sigRows.join('')}</table>
-  <table style="width:100%;margin-top:14px;"><tr>
-    ${(data.witnesses || [{}, {}]).slice(0, 2).map((w, i) => `<td style="width:50%;vertical-align:top;padding:0 16px;"><div style="border-top:1px solid #333;padding-top:6px;font-size:12px;"><b>Witness ${i + 1}</b><br/>Name: ${or(w.name)}<br/>NID / Passport: ${or(w.nid)}${signSlot(`Witness ${i + 1}`)}</div></td>`).join('')}
-  </tr></table>`;
+  <div id="signatures-section" style="margin-top:24px;page-break-inside:avoid;break-inside:avoid;">
+    <h2 style="font-size:16px;color:#012a4e;font-weight:800;margin:0 0 12px;">Signatures</h2>
+    ${execRows.join('')}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px;">
+      ${(data.witnesses || [{}, {}]).slice(0, 2).map((w, i) => `
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px;">
+          <div style="font-size:10.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;">Witness Attestation</div>
+          <div style="font-size:13px;font-weight:800;color:#012a4e;">Witness ${i + 1}</div>
+          <div style="font-size:11.5px;color:#475569;margin-top:2px;">Name: <strong>${or(w.name)}</strong></div>
+          <div style="font-size:11.5px;color:#475569;">NID / Passport: <strong>${or(w.nid)}</strong></div>
+          ${signSlot(`Witness ${i + 1}`)}
+        </div>`).join('')}
+    </div>
+  </div>`;
 
   const html = `
-  <div style="font-family: Georgia,'Times New Roman',serif;color:#1f2430;line-height:1.6;font-size:14px;max-width:820px;margin:0 auto;">
-    <div style="text-align:center;border-bottom:3px double #003768;padding-bottom:12px;">
-      <div style="font-size:20px;font-weight:bold;color:#003768;">${esc(cfg.header_label || 'Seventh Sky Residential Property Services')}</div>
-      <div style="font-size:16px;font-weight:bold;margin-top:12px;text-transform:uppercase;">${esc(cfg.title)}</div>
-      <div style="font-size:11px;color:#6b7280;margin-top:4px;">Document No: ${cfg.doc_no} · Version: ${cfg.version} · Effective Date: ${or(data.effective_date)}</div>
+  <div class="sales-doc" style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;line-height:1.65;font-size:13.5px;max-width:840px;margin:0 auto;background:#ffffff;">
+    <style>
+      @media print {
+        body { background:#fff !important; padding:0 !important; }
+        .sales-doc { max-width:100% !important; margin:0 !important; }
+        .agreement-cover-page { min-height:100vh !important; page-break-after:always !important; break-after:page !important; }
+        .agreement-toc-page { min-height:100vh !important; page-break-before:always !important; page-break-after:always !important; break-after:page !important; }
+        .no-break { page-break-inside:avoid !important; break-inside:avoid !important; }
+      }
+      .sales-doc a:hover { color:#00AEEF !important; }
+    </style>
+    ${coverPage}
+    ${tocPage}
+    <div class="agreement-page agreement-body-page" style="padding:32px 48px 48px;">
+      ${parties}
+      ${clausesHtml}
+      ${schedA}
+      ${schedB}
+      ${schedC}
+      ${schedD}
+      <div style="margin-top:22px;padding:12px 16px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;font-size:11px;color:#64748b;line-height:1.5;">
+        This Agreement becomes effective when signed by all Parties through the Seventh Sky electronic signing system. The electronic record, audit trail and content hash constitute proof of execution.
+      </div>
+      ${signatures}
     </div>
-    ${toc}
-    ${parties}
-    ${clausesHtml}
-    ${schedA}
-    ${schedB}
-    ${schedC}
-    ${schedD}
-    <div style="margin-top:22px;padding-top:10px;border-top:1px solid #d1d5db;font-size:11px;color:#6b7280;">This Agreement becomes effective when signed by all Parties through the Seventh Sky electronic signing system. The electronic record, audit trail and content hash constitute proof of execution.</div>
-    ${signatures}
   </div>`;
 
   const terms = {
