@@ -104,7 +104,7 @@ const emptyState = () => ({
   },
 });
 
-export default function SalesAgreementScreen({ kind }) {
+export default function SalesAgreementScreen({ kind, category = 'residential' }) {
   const km = KIND_META[kind];
   const toast = useToast();
   const location = useLocation();
@@ -133,7 +133,7 @@ export default function SalesAgreementScreen({ kind }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const r = await api.get(`${km.base}/agreements`); setList(Array.isArray(r.data) ? r.data : []); }
+    try { const r = await api.get(`${km.base}/agreements`, { params: { category } }); setList(Array.isArray(r.data) ? r.data : []); }
     finally { setLoading(false); }
   }, [km.base]);
   useEffect(() => { load(); }, [load]);
@@ -202,12 +202,12 @@ export default function SalesAgreementScreen({ kind }) {
   };
 
   const sendDraft = async (a) => {
-    try { await api.post(`${km.base}/agreements/${a.id}/send`); toast.success('Agreement sent for signature'); load(); }
+    try { await api.post(`${km.base}/agreements/${a.id}/send`, undefined, { params: { category } }); toast.success('Agreement sent for signature'); load(); }
     catch (e) { toast.error(e.response?.data?.error || 'Could not send'); }
   };
   const reissue = async (a) => {
     try {
-      const r = await api.post(`/sales-agreements/contracts/${a.id}/variation`);
+      const r = await api.post(`/sales-agreements/contracts/${a.id}/variation`, undefined, { params: { category } });
       toast.success('Original voided — edit and reissue');
       setEditEnvelope(null);
       // reopen builder prefilled from the variation payload
@@ -375,8 +375,8 @@ function Builder({ kind, prefill, editId, onDone, onCancel }) {
 
   // Load catalog & meta
   useEffect(() => {
-    api.get(`${km.base}/catalog`).then((r) => setCatalog(Array.isArray(r.data) ? r.data : [])).catch(() => {});
-    api.get(`${km.base}/meta`).then((r) => {
+    api.get(`${km.base}/catalog`, { params: { category } }).then((r) => setCatalog(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    api.get(`${km.base}/meta`, { params: { category } }).then((r) => {
       const m = r.data || {};
       const defs = m.defaults || {};
       setMeta(m);
@@ -486,7 +486,7 @@ function Builder({ kind, prefill, editId, onDone, onCancel }) {
         { ...d.client, contact_id: d.client_contact_id || null },
         ...((d.additional_clients || []).filter((p) => (p.full_name || '').trim()))
       ];
-      const r = await api.post(`${km.base}/preview`, { ...d, clients: parties }).catch(() => null);
+      const r = await api.post(`${km.base}/preview`, { ...d, clients: parties }, { params: { category } }).catch(() => null);
       if (r?.data) setPreview(r.data);
     } catch (e) {
       console.error(e);
@@ -530,7 +530,7 @@ function Builder({ kind, prefill, editId, onDone, onCancel }) {
     }
     if (id) {
       try {
-        const res = await api.get(`${km.base}/property-defaults/${id}`);
+        const res = await api.get(`${km.base}/property-defaults/${id}`, { params: { category } });
         if (res.data) {
           setD((p) => ({
             ...p,
@@ -568,13 +568,13 @@ function Builder({ kind, prefill, editId, onDone, onCancel }) {
     setBusy(true);
     try {
       if (editId) {
-        await api.put(`${km.base}/agreements/${editId}`, payload);
-        if (!asDraft) await api.post(`${km.base}/agreements/${editId}/send`);
+        await api.put(`${km.base}/agreements/${editId}`, payload, { params: { category } });
+        if (!asDraft) await api.post(`${km.base}/agreements/${editId}/send`, undefined, { params: { category } });
         try { localStorage.removeItem(draftStorageKey); } catch {}
         toast.success(asDraft ? 'Draft updated' : 'Agreement sent for signature');
         onDone();
       } else {
-        const r = await api.post(`${km.base}/agreements`, { ...payload, save_as_draft: asDraft });
+        const r = await api.post(`${km.base}/agreements`, { ...payload, save_as_draft: asDraft }, { params: { category } });
         try { localStorage.removeItem(draftStorageKey); } catch {}
         if (asDraft) { toast.success('Draft saved'); onDone(); }
         else { setSent(r.data); toast.success(`Agreement sent to the ${km.party.toLowerCase()} for signature`); }
@@ -836,7 +836,7 @@ function Builder({ kind, prefill, editId, onDone, onCancel }) {
                   <div style={{ display: 'grid', gap: 14, gridTemplateColumns: '1fr 1fr' }}>
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label style={lbl}>Target / Shortlisted Property (optional — auto-populates criteria if already identified)</label>
-                      <Combo endpoint="/properties?category=residential" labelFn={(p) => `${p.property_code || ''} · ${p.title || p.address || ''}`} value={d.property_id ? Number(d.property_id) : ''} onChange={onProperty} placeholder="Search a shortlisted residential property (optional)…" />
+                      <Combo endpoint={`/properties?category=${category}`} labelFn={(p) => `${p.property_code || ''} · ${p.title || p.address || ''}`} value={d.property_id ? Number(d.property_id) : ''} onChange={onProperty} placeholder="Search a shortlisted property (optional)…" />
                     </div>
                     <div>
                       <label style={lbl}>Preferred Property Type *</label>
@@ -907,7 +907,7 @@ function Builder({ kind, prefill, editId, onDone, onCancel }) {
                   <div style={{ display: 'grid', gap: 14, gridTemplateColumns: '1fr 1fr' }}>
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label style={lbl}>Linked property (optional — auto-populates defaults)</label>
-                      <Combo endpoint="/properties?category=residential" labelFn={(p) => `${p.property_code || ''} · ${p.title || p.address || ''}`} value={d.property_id ? Number(d.property_id) : ''} onChange={onProperty} placeholder="Search a residential property…" />
+                      <Combo endpoint={`/properties?category=${category}`} labelFn={(p) => `${p.property_code || ''} · ${p.title || p.address || ''}`} value={d.property_id ? Number(d.property_id) : ''} onChange={onProperty} placeholder="Search a property…" />
                     </div>
                     <div>
                       <label style={lbl}>Property type</label>

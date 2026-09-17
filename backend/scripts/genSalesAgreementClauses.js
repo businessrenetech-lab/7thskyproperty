@@ -11,6 +11,8 @@ const SRC = path.join(__dirname, '..', '..', 'docs', 'superpowers');
 const JOBS = [
   { txt: 'Residential Property Purchase Service Agreement - V0.2.txt', out: 'rppsClauses.js' },
   { txt: 'Residential Property Sale Service Agreement - V0.2.txt', out: 'rpssClauses.js' },
+  { txt: 'Commercial Property Purchase Service Agreement - V0.2.txt', out: 'cppsClauses.js' },
+  { txt: 'Commercial Property Sale Service Agreement - V0.2.txt', out: 'cpssClauses.js' },
 ];
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -48,7 +50,13 @@ for (const job of JOBS) {
   // The TOC lists headings with " PAGEREF" — skip those.
   const bodyLines = raw.filter((l) => !/PAGEREF|_Toc|\\h \d/.test(l));
   const start = bodyLines.findIndex((l) => /^1\.\s+PURPOSE/i.test(l.trim()));
-  const endMarker = bodyLines.findIndex((l, i) => i > start && /^SCHEDULE\s+A\b/i.test(l.trim()));
+  // End the clause region at the FIRST of "SCHEDULE A" or the "SIGNATURES" block
+  // (which sits between clause 25 and Schedule A). Cutting at SIGNATURES keeps the
+  // execution-signature table out of clause 25 — the renderer draws its own.
+  const endA = bodyLines.findIndex((l, i) => i > start && /^SCHEDULE\s+A\b/i.test(l.trim()));
+  const endSig = bodyLines.findIndex((l, i) => i > start && /^SIGNATURES?\s*$/i.test(l.trim()));
+  const ends = [endA, endSig].filter((i) => i > 0);
+  const endMarker = ends.length ? Math.min(...ends) : -1;
   const region = bodyLines.slice(start, endMarker > 0 ? endMarker : undefined);
 
   const clauses = [];

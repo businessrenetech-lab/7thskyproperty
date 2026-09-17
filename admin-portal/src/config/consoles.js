@@ -499,6 +499,87 @@ export const buyerConsole = {
   navGroups: BUYER_NAV,
 };
 
+/* ── Commercial Sales ────────────────────────────────────────────────────────
+ * The same sales engine as Residential, rendered with category="commercial".
+ * Its console mirrors the Residential Sell / Buyer sidebars rebased onto
+ * /commercial/* so every sell-dashboard click stays inside the commercial area
+ * (see salesBase() in screens/sales/paths.js) — fully isolated from residential. */
+export const COMMERCIAL_NAV = [
+  { key: 'com-home', label: 'Home', items: [
+    { to: '/commercial/sell', label: 'Sale Dashboard', icon: LayoutGrid, end: true },
+    { to: '/commercial/work-queue', label: 'My Work Queue', icon: Inbox },
+    { to: '/commercial/inbox', label: 'Sales Inbox', icon: Inbox },
+    { to: '/commercial/calendar', label: 'Calendar', icon: CalendarDays },
+    { to: '/commercial/reports', label: 'Reports', icon: BarChart3 },
+    { to: '/commercial/contacts', label: 'Contacts', icon: Users },
+    { to: '/commercial/marketing', label: 'Marketing', icon: Megaphone },
+  ] },
+  { key: 'com-selling', label: 'Selling', items: [
+    { to: '/commercial/properties', label: 'Properties', icon: Building2 },
+    { to: '/commercial/agreements/sale', label: 'Sale Agreements', icon: FileSignature },
+  ] },
+  { key: 'com-assurance', label: 'Assurance', items: [
+    { to: '/commercial/compliance?category=commercial', label: 'Compliance', icon: ShieldCheck },
+    { to: '/commercial/contracts', label: 'Contracts', icon: FileText },
+    { to: '/commercial/introductions', label: 'Introductions', icon: ShieldCheck },
+    { to: '/commercial/workflows?vertical_key=commercial_sale', label: 'Checklists / Workflows', icon: Folder },
+  ] },
+  { key: 'com-money', label: 'Money', items: [
+    { to: '/commercial/accounting', label: 'Accounting', icon: Landmark },
+    { to: '/commercial/settlements', label: 'Settlements (Bulk)', icon: HandCoins },
+  ] },
+  { key: 'com-switch', label: 'Switch', items: [
+    { to: '/commercial/buyer-service', label: '→ Buyer Service', icon: Briefcase },
+  ] },
+];
+
+export const COMMERCIAL_BUYER_NAV = [
+  { key: 'com-buyer-home', label: 'Home', items: [
+    { to: '/commercial/buyer-service', label: 'Buyer Dashboard', icon: LayoutGrid, end: true },
+    { to: '/commercial/buyer/work-queue', label: 'My Work Queue', icon: Inbox },
+    { to: '/commercial/buyer/calendar', label: 'Calendar', icon: CalendarDays },
+    { to: '/commercial/enquiry', label: 'Buyer Enquiries', icon: MessageSquareQuote },
+  ] },
+  { key: 'com-buying', label: 'Buying', items: [
+    { to: '/commercial/buy', label: 'Buy Deals', icon: Briefcase },
+    { to: '/commercial/mandates', label: 'Buyer Mandates', icon: ClipboardList },
+    { to: '/commercial/agreements/purchase', label: 'Purchase Agreements', icon: FileSignature },
+  ] },
+  { key: 'com-directory', label: 'Directory & Money', items: [
+    { to: '/commercial/buyer/contacts', label: 'Contacts', icon: Users },
+    { to: '/commercial/buyer-invoices', label: 'Buyer Invoices', icon: Landmark },
+  ] },
+  { key: 'com-buyer-switch', label: 'Switch', items: [
+    { to: '/commercial/sell', label: '→ Sale Dashboard', icon: LayoutGrid },
+  ] },
+];
+
+export const commercialConsole = {
+  slug: 'commercial',
+  storageKey: 'com.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Commercial Sales',
+    icon: Building2,
+    accent: '#0284c7',          // sky-600 — tells Commercial apart from Residential emerald
+    accentStrong: '#0369a1',
+    accentInk: '#075985',
+    accentTint: 'rgba(2,132,199,.12)',
+    accentTint2: '#e0f2fe',
+  },
+  navGroups: COMMERCIAL_NAV,
+  api: {},
+  contentClass: 'pm-scope',
+  exitTo: '/dashboard',
+};
+
+export const commercialBuyerConsole = {
+  ...commercialConsole,
+  storageKey: 'com.buyer.nav.collapsed',
+  brand: { ...commercialConsole.brand, sub: 'Commercial Buyer Service' },
+  navGroups: COMMERCIAL_BUYER_NAV,
+};
+
 /* ── Air Conditioning ──────────────────────────────────────────────────────
  * Air Conditioning runs the exact same workflow as Water Tank, so its console is
  * derived from the Water Tank nav — the same groups and screens, rebased onto
@@ -1028,4 +1109,5 @@ export const CONSOLES = {
   'short-stay': shortStayConsole,
   'property-management': propertyMgmtConsole,
   residential: residentialConsole,
+  commercial: commercialConsole,
 };

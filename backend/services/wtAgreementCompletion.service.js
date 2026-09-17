@@ -25,7 +25,7 @@ const principalRoleFor = (relatedType) => {
   // Residential sales service agreements (RPPS purchase / RPSS sale) — the
   // client is the buyer/seller; they + Seventh Sky's countersigner receive the
   // fully-executed PDF, exactly as the water-tank customer agreements do.
-  if (t === 'sale_purchase_agreement' || t === 'sale_sale_agreement') return 'client';
+  if (['sale_purchase_agreement', 'sale_sale_agreement', 'commercial_purchase_agreement', 'commercial_sale_agreement'].includes(t)) return 'client';
   // Rental management (RPRM) / tenancy management (RPTM) — the landlord/tenant
   // client + Seventh Sky's countersigner receive the fully-executed PDF.
   if (t === 'property_management_agreement') return 'landlord';

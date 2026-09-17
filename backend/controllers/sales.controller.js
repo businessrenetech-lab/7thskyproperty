@@ -532,7 +532,7 @@ exports.getPropertyFile = asyncHandler(async (req, res) => {
   // multi-signer agreement method. Surfaced so onboarding reflects and links to
   // them rather than the legacy party_role flow.
   const saleAgreementEnvelopes = await SigningEnvelope.findAll({
-    where: { branch_id: property.branch_id, related_id: property.id, related_type: { [Op.in]: ['sale_purchase_agreement', 'sale_sale_agreement'] } },
+    where: { branch_id: property.branch_id, related_id: property.id, related_type: { [Op.in]: ['sale_purchase_agreement', 'sale_sale_agreement', 'commercial_purchase_agreement', 'commercial_sale_agreement'] } },
     include: [{ model: EnvelopeSigner, as: 'signers', attributes: ['id', 'name', 'email', 'role', 'status'] }],
     order: [['created_at', 'DESC']],
   });
@@ -540,7 +540,7 @@ exports.getPropertyFile = asyncHandler(async (req, res) => {
     const p = plain(e);
     const signers = (p.signers || []).map((s) => ({ id: s.id, name: s.name, role: s.role, status: s.status }));
     return {
-      id: p.id, envelope_code: p.envelope_code, kind: p.related_type === 'sale_sale_agreement' ? 'sale' : 'purchase',
+      id: p.id, envelope_code: p.envelope_code, kind: String(p.related_type).includes('purchase') ? 'purchase' : 'sale',
       status: p.status, sent_at: p.sent_at, completed_at: p.completed_at, expires_at: p.expires_at,
       signers, signed_count: signers.filter((s) => s.status === 'signed').length, total_signers: signers.length,
     };

@@ -35,11 +35,8 @@ const NAV = [
    */
   { to: '/short-stay', label: 'Short Term Stay', icon: Hotel },
   { key: 'commercial', label: 'Commercial', icon: Building2, children: [
-    { to: '/commercial/sell', label: 'Sales / Sell Dashboard' },
-    { to: '/commercial/buy', label: 'Buy' },
-    { to: '/commercial/enquiry', label: 'Buyer Enquiries' },
-    { to: '/compliance?category=commercial', label: 'Compliance' },
-    { to: '/projects?vertical_key=commercial_rent,commercial_sale', label: 'Checklists / Workflows' },
+    { to: '/commercial/sell', label: 'Sale' },
+    { to: '/commercial/rent', label: 'Rent' },
   ] },
   { key: 'rural', label: 'Rural Properties', icon: Trees, children: [
     { to: '/rural/sell', label: 'Sales / Sell Dashboard' },

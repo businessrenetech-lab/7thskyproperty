@@ -31,7 +31,7 @@ const SCHEDULE_C_OTHER = {
    unchanged). */
 async function scheduleCFor({ property_id, branch_id }, options = {}) {
   const env = await SigningEnvelope.findOne({
-    where: { branch_id, related_id: property_id, related_type: 'sale_sale_agreement', status: 'completed' },
+    where: { branch_id, related_id: property_id, related_type: ['sale_sale_agreement', 'commercial_sale_agreement'], status: 'completed' },
     order: [['completed_at', 'DESC'], ['id', 'DESC']], ...options,
   });
   if (!env) return { found: false, envelope_code: null, professional: 0, third_party: 0, admin: 0, vat: 0 };

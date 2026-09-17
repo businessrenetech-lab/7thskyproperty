@@ -142,6 +142,7 @@ import ShortStayHub from './screens/ShortStayHub';
 import ShortStayConsole from './screens/shortstay/ShortStayConsole';
 import PropertyMgmtConsole from './screens/PropertyMgmtConsole';
 import ResidentialConsole from './screens/ResidentialConsole';
+import CommercialConsole, { CommercialBuyerConsole } from './screens/CommercialConsole';
 import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
 import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
 import Signing from './screens/Signing';
@@ -292,9 +293,6 @@ export default function App() {
               <Route path="/short-term-stay/properties/:profileId/edit" element={<LegacyRedirect to="/short-stay/properties/:profileId/edit" />} />
               <Route path="/short-term-stay/*" element={<ShortStayTabRedirect />} />
               <Route path="/agreements/short-term-rental" element={<LegacyRedirect to="/short-stay/agreements" />} />
-              <Route path="/commercial/buy" element={<DealsBoard category="commercial" dealType="buy" title="Commercial · Buy" desc="Commercial buyer service — deals, buyers, agreements, commission and expenses." />} />
-              <Route path="/commercial/sell" element={<PropertySellDashboard category="commercial" title="Commercial · Sell" desc="Commercial seller service — listings, owners, agreements and settlement." />} />
-              <Route path="/commercial/enquiry" element={<SalesEnquiries category="commercial" title="Commercial · Buyer Enquiries" desc="Every buyer who enquired on a commercial sale property." />} />
               <Route path="/rural/buy" element={<DealsBoard category="rural" dealType="buy" title="Rural · Buy" desc="Rural buyer service — farms, lands, buyers, agreements, commission and expenses." />} />
               <Route path="/rural/sell" element={<PropertySellDashboard category="rural" title="Rural · Sell" desc="Rural seller service — farms, lands, owners, agreements, commission and settlement." />} />
               <Route path="/rural/enquiry" element={<SalesEnquiries category="rural" title="Rural · Buyer Enquiries" desc="Every buyer who enquired on a rural sale property." />} />
@@ -1355,6 +1353,54 @@ export default function App() {
               <Route path="/residential/mandates/:id" element={<BuyerMandateDetail />} />
               <Route path="/residential/enquiry" element={<SalesEnquiries category="residential" title="Residential · Buyer Enquiries" desc="Every buyer who enquired on a residential sale property." />} />
               <Route path="/residential/agreements/purchase" element={<PurchaseAgreements />} />
+            </Route>
+
+            {/* ── Commercial Sales — its own console, the same sales screens as
+                Residential rendered with category="commercial", rebased onto
+                /commercial/* and fully isolated (commercial agreements, listings
+                and enquiries only). Rent is a separate line (coming next). ── */}
+            <Route element={<RequireAuth><AdminGate><CommercialConsole /></AdminGate></RequireAuth>}>
+              <Route path="/commercial" element={<Navigate to="/commercial/sell" replace />} />
+              <Route path="/commercial/sell" element={<PropertySellDashboard category="commercial" title="Commercial · Sale" desc="Commercial seller service — listings, owners, agreements, commission and settlement." />} />
+              <Route path="/commercial/properties" element={<SalesProperties category="commercial" title="Commercial · Properties" desc="Manage commercial sale listings, lifecycle stages, vendor representations, and property files." />} />
+              <Route path="/commercial/property/:id" element={<SalesPropertyFile />} />
+              <Route path="/commercial/property/:id/settlement" element={<SettlementDesk />} />
+              <Route path="/commercial/properties/new" element={<PropertyWizard />} />
+              <Route path="/commercial/properties/new/:id" element={<PropertyWizard />} />
+              <Route path="/commercial/compliance" element={<Compliance />} />
+              <Route path="/commercial/workflows" element={<Projects />} />
+              <Route path="/commercial/settlements" element={<SalesBulkSettlement />} />
+              <Route path="/commercial/accounting" element={<AccountingOverview />} />
+              <Route path="/commercial/work-queue" element={<SalesWorkQueue />} />
+              <Route path="/commercial/introductions" element={<SalesIntroductions />} />
+              <Route path="/commercial/calendar" element={<SalesCalendar category="commercial" />} />
+              <Route path="/commercial/agreements/sale" element={<SaleAgreements category="commercial" />} />
+              <Route path="/commercial/contracts" element={<SalesContracts />} />
+              <Route path="/commercial/inbox" element={<SalesInbox />} />
+              <Route path="/commercial/reports" element={<SalesReports />} />
+              <Route path="/commercial/contacts" element={<SalesContacts scope="sales" />} />
+              <Route path="/commercial/marketing" element={<SalesMarketingHub />} />
+              <Route path="/commercial/contacts/clients" element={<Clients />} />
+              <Route path="/commercial/clients" element={<Navigate to="/commercial/contacts/clients" replace />} />
+              {/* Rent line is a separate build — placeholder entry point. */}
+              <Route path="/commercial/rent" element={<PropertySellDashboard category="commercial" title="Commercial · Rent (coming soon)" desc="Commercial rental & tenancy management — coming next." />} />
+            </Route>
+
+            {/* Commercial BUYER Service — buyer-only sidebar, category="commercial". */}
+            <Route element={<RequireAuth><AdminGate><CommercialBuyerConsole /></AdminGate></RequireAuth>}>
+              <Route path="/commercial/buyer-service" element={<BuyerServiceDashboard />} />
+              <Route path="/commercial/buyer/work-queue" element={<SalesWorkQueue dealScope="buy" />} />
+              <Route path="/commercial/buyer/calendar" element={<SalesCalendar category="commercial" scope="buy" />} />
+              <Route path="/commercial/buyer/contacts" element={<SalesContacts scope="buy" />} />
+              <Route path="/commercial/buyer/marketing" element={<SalesMarketingHub scope="buy" />} />
+              <Route path="/commercial/buyer/clients" element={<Clients />} />
+              <Route path="/commercial/buyer-invoices" element={<BuyerInvoices />} />
+              <Route path="/commercial/buy" element={<DealsBoard category="commercial" dealType="buy" title="Commercial · Buy" desc="Commercial buyer service — deals, buyers, agreements, commission and expenses." />} />
+              <Route path="/commercial/buy/:dealId" element={<BuyerDealFile />} />
+              <Route path="/commercial/mandates" element={<BuyerMandates />} />
+              <Route path="/commercial/mandates/:id" element={<BuyerMandateDetail />} />
+              <Route path="/commercial/enquiry" element={<SalesEnquiries category="commercial" title="Commercial · Buyer Enquiries" desc="Every buyer who enquired on a commercial sale property." />} />
+              <Route path="/commercial/agreements/purchase" element={<PurchaseAgreements category="commercial" />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />

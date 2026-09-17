@@ -13,7 +13,7 @@
  * it wrong. When Commercial and Rural get consoles of their own, this is the one
  * line that changes.
  */
-const CONSOLE_CATEGORIES = { residential: '/residential' };
+const CONSOLE_CATEGORIES = { residential: '/residential', commercial: '/commercial' };
 
 /** The base path a sales screen should navigate under, for this category. */
 export const salesBase = (category) => CONSOLE_CATEGORIES[category] || '/sales';
@@ -39,7 +39,7 @@ export const propertyWizardPath = (category, id, query = '') => {
 
 /** Client profile path for a category (inside console for residential, global /clients for others). */
 export const clientProfilePath = (category, { clientId, contactId } = {}) => {
-  const base = category === 'residential' ? '/residential/contacts/clients' : '/clients';
+  const base = CONSOLE_CATEGORIES[category] ? `${CONSOLE_CATEGORIES[category]}/contacts/clients` : '/clients';
   if (clientId) return `${base}?client=${clientId}`;
   if (contactId) return `${base}?contact=${contactId}`;
   return base;

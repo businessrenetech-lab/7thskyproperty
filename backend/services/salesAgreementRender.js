@@ -253,7 +253,7 @@ function buildAgreement(cfg, data = {}) {
   const html = `
   <div style="font-family: Georgia,'Times New Roman',serif;color:#1f2430;line-height:1.6;font-size:14px;max-width:820px;margin:0 auto;">
     <div style="text-align:center;border-bottom:3px double #003768;padding-bottom:12px;">
-      <div style="font-size:20px;font-weight:bold;color:#003768;">Seventh Sky Residential Property Services</div>
+      <div style="font-size:20px;font-weight:bold;color:#003768;">${esc(cfg.header_label || 'Seventh Sky Residential Property Services')}</div>
       <div style="font-size:16px;font-weight:bold;margin-top:12px;text-transform:uppercase;">${esc(cfg.title)}</div>
       <div style="font-size:11px;color:#6b7280;margin-top:4px;">Document No: ${cfg.doc_no} · Version: ${cfg.version} · Effective Date: ${or(data.effective_date)}</div>
     </div>

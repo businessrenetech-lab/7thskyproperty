@@ -9,6 +9,8 @@ const { Op } = require('sequelize');
 const { asyncHandler, branchScope, resolveBranchId } = require('../utils/controllerHelpers');
 const rpps = require('../services/rppsAgreement.service');
 const rpss = require('../services/rpssAgreement.service');
+const cpps = require('../services/cppsAgreement.service');
+const cpss = require('../services/cpssAgreement.service');
 const SigningEnvelope = require('../models/SigningEnvelope');
 const EnvelopeSigner = require('../models/EnvelopeSigner');
 const SignatureField = require('../models/SignatureField');
@@ -18,21 +20,34 @@ const CareQuotation = require('../models/CareQuotation');
 const { generateCode } = require('../utils/codeGenerator');
 const sequelize = require('../config/db.config');
 
-const KIND = {
-  purchase: { svc: rpps, build: 'buildRppsAgreement', related_type: 'sale_purchase_agreement', signer: 'buyer', party: 'Buyer', code: 'RPPS' },
-  sale: { svc: rpss, build: 'buildRpssAgreement', related_type: 'sale_sale_agreement', signer: 'seller', party: 'Seller', code: 'RPSS' },
+// One controller, two property classes (category = residential | commercial),
+// each with two kinds (purchase | sale). Residential and commercial agreements
+// carry DISTINCT related_types so their lists never mix — the isolation the
+// commercial console requires. Category comes from ?category= (GET) or the body
+// (POST/PUT); anything but "commercial" resolves to residential.
+const REGISTRY = {
+  residential: {
+    purchase: { svc: rpps, build: 'buildRppsAgreement', related_type: 'sale_purchase_agreement', signer: 'buyer', party: 'Buyer', code: 'RPPS', sched: 'purchase', header: 'Seventh Sky Residential Property Services' },
+    sale: { svc: rpss, build: 'buildRpssAgreement', related_type: 'sale_sale_agreement', signer: 'seller', party: 'Seller', code: 'RPSS', sched: 'sale', header: 'Seventh Sky Residential Property Services' },
+  },
+  commercial: {
+    purchase: { svc: cpps, build: 'buildCppsAgreement', related_type: 'commercial_purchase_agreement', signer: 'buyer', party: 'Buyer', code: 'CPPS', sched: 'purchase_commercial', header: 'Seventh Sky Commercial Property Services' },
+    sale: { svc: cpss, build: 'buildCpssAgreement', related_type: 'commercial_sale_agreement', signer: 'seller', party: 'Seller', code: 'CPSS', sched: 'sale_commercial', header: 'Seventh Sky Commercial Property Services' },
+  },
 };
-const K = (req) => KIND[req.params.kind] || null;
+const catOf = (req) => (String(req.query.category || (req.body && req.body.category) || req.params.category || 'residential').toLowerCase() === 'commercial' ? 'commercial' : 'residential');
+const K = (req) => (REGISTRY[catOf(req)] || {})[req.params.kind] || null;
 
 // ── Contracts hub (sub-project B): buckets over the sales agreement envelopes ──
-const SALE_RELATED = ['sale_purchase_agreement', 'sale_sale_agreement'];
-const kindOf = (rt) => (rt === 'sale_sale_agreement' ? 'sale' : 'purchase');
+const relatedFor = (cat) => Object.values(REGISTRY[cat] || REGISTRY.residential).map((k) => k.related_type);
+const kindOf = (rt) => (String(rt).includes('purchase') ? 'purchase' : 'sale');
 const DAY = 86400000;
 
 exports.contracts = asyncHandler(async (req, res) => {
-  const where = { ...branchScope(req), related_type: { [Op.in]: SALE_RELATED } };
-  if (req.query.kind === 'purchase') where.related_type = 'sale_purchase_agreement';
-  if (req.query.kind === 'sale') where.related_type = 'sale_sale_agreement';
+  const cat = catOf(req);
+  const where = { ...branchScope(req), related_type: { [Op.in]: relatedFor(cat) } };
+  if (req.query.kind === 'purchase') where.related_type = REGISTRY[cat].purchase.related_type;
+  if (req.query.kind === 'sale') where.related_type = REGISTRY[cat].sale.related_type;
   if (req.query.search) where[Op.or] = [{ title: { [Op.like]: `%${req.query.search}%` } }, { envelope_code: { [Op.like]: `%${req.query.search}%` } }];
   const rows = await SigningEnvelope.findAll({ where, include: [{ model: EnvelopeSigner, as: 'signers', attributes: ['id', 'contact_id', 'name', 'email', 'role', 'status'] }], order: [['created_at', 'DESC']] });
   const now = Date.now();
@@ -59,7 +74,7 @@ exports.contracts = asyncHandler(async (req, res) => {
 });
 
 exports.createVariation = asyncHandler(async (req, res) => {
-  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req), related_type: { [Op.in]: SALE_RELATED } } });
+  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req), related_type: { [Op.in]: relatedFor(catOf(req)) } } });
   if (!env) return res.status(404).json({ error: 'Agreement not found.' });
   // A completed agreement can't be casually superseded (would need a tracked
   // supersedes chain — deferred). An OPEN agreement is voided as it's replaced.
@@ -85,9 +100,16 @@ exports.getCatalog = asyncHandler(async (req, res) => {
 
 exports.getMeta = asyncHandler(async (req, res) => {
   const k = K(req); if (!k) return res.status(404).json({ error: 'Unknown agreement kind' });
-  const sched = require('../services/salesAgreementSchedules')[req.params.kind] || {};
+  const sched = require('../services/salesAgreementSchedules')[k.sched] || {};
   const nextWo = await generateCode(WorkOrder, 'work_order_code', 'SSPC-WO-');
   const nextQt = await generateCode(CareQuotation, 'quote_code', 'SSPC-QT-');
+  const org = {
+    name: k.header,
+    represented_by: req.user?.name || req.user?.full_name || 'Authorized Signatory',
+    position: req.user?.role === 'super_admin' ? 'Managing Director' : 'Sales & Acquisition Director',
+    email: req.user?.email || 'sales@seventhskyproperty.com',
+    phone: req.user?.phone || '+880 1700-000000',
+  };
   res.json({
     party: k.party, code: k.code, signer: k.signer,
     client_heading: sched.client_heading, commission_label: sched.commission_label,
@@ -95,24 +117,8 @@ exports.getMeta = asyncHandler(async (req, res) => {
     schedule_b_fields: sched.schedule_b_fields || [],
     work_order_no: nextWo,
     quotation_no: nextQt,
-    org: {
-      name: 'Seventh Sky Residential Property Services',
-      represented_by: req.user?.name || req.user?.full_name || 'Authorized Signatory',
-      position: req.user?.role === 'super_admin' ? 'Managing Director' : 'Sales & Acquisition Director',
-      email: req.user?.email || 'sales@seventhskyproperty.com',
-      phone: req.user?.phone || '+880 1700-000000',
-    },
-    defaults: {
-      work_order_no: nextWo,
-      quotation_no: nextQt,
-      org: {
-        name: 'Seventh Sky Residential Property Services',
-        represented_by: req.user?.name || req.user?.full_name || 'Authorized Signatory',
-        position: req.user?.role === 'super_admin' ? 'Managing Director' : 'Sales & Acquisition Director',
-        email: req.user?.email || 'sales@seventhskyproperty.com',
-        phone: req.user?.phone || '+880 1700-000000',
-      },
-    },
+    org,
+    defaults: { work_order_no: nextWo, quotation_no: nextQt, org },
   });
 });
 

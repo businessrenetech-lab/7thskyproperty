@@ -143,7 +143,7 @@ exports.getBuyerDeal = asyncHandler(async (req, res) => {
   const EnvelopeSigner = require('../models/EnvelopeSigner');
   const PropertyInvoice = require('../models/PropertyInvoice');
   const agreementEnvelopes = deal.property_id ? await SigningEnvelope.findAll({
-    where: { ...branchScope(req), related_id: deal.property_id, related_type: 'sale_purchase_agreement' },
+    where: { ...branchScope(req), related_id: deal.property_id, related_type: ['sale_purchase_agreement', 'commercial_purchase_agreement'] },
     include: [{ model: EnvelopeSigner, as: 'signers', attributes: ['id', 'name', 'role', 'status'] }],
     order: [['created_at', 'DESC']],
   }) : [];

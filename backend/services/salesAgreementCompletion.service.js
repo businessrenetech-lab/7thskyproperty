@@ -10,7 +10,7 @@ const { SaleProfile } = require('../models/SalesModels');
 const EnvelopeSigner = require('../models/EnvelopeSigner');
 const { generateCode } = require('../utils/codeGenerator');
 
-const SALE_RELATED = ['sale_purchase_agreement', 'sale_sale_agreement'];
+const SALE_RELATED = ['sale_purchase_agreement', 'sale_sale_agreement', 'commercial_purchase_agreement', 'commercial_sale_agreement'];
 const asObj = (v) => { if (v && typeof v === 'object') return v; try { return JSON.parse(v || '{}'); } catch { return {}; } };
 const asArr = (v) => { if (Array.isArray(v)) return v; try { const p = JSON.parse(v || '[]'); return Array.isArray(p) ? p : []; } catch { return []; } };
 const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
@@ -74,7 +74,7 @@ async function onCompleted(envelope, { transaction } = {}) {
       const profile = await SaleProfile.findOne({ where: { property_id: envelope.related_id, branch_id: envelope.branch_id }, transaction });
       if (profile) {
         const patch = { agreement_status: 'signed' };
-        if (envelope.related_type === 'sale_sale_agreement') {
+        if (['sale_sale_agreement', 'commercial_sale_agreement'].includes(envelope.related_type)) {
           const mode = terms.commission_mode;
           const amount = num(terms.commission);
           const percent = num(terms.commission_percent);

@@ -68,4 +68,75 @@ const SALE = {
   ],
 };
 
-module.exports = { purchase: PURCHASE, sale: SALE };
+// ── Commercial Property Sale (SSPC-CPSS-01) — signed with the Seller ──────────
+// Transcribed VERBATIM from "Commercial Property - Sale Service Agreement V0.2".
+const COMMERCIAL_SALE = {
+  party: 'Seller',
+  client_heading: 'PROPERTY OWNER / SELLER (CLIENT)',
+  client_footer: 'Hereinafter referred to as the "Seller" or "Client"',
+  commission_label: 'Professional Sales Commission / Success Fee — % of Final Sale Price (or as agreed)',
+  schedule_a_title: 'SCHEDULE A — Selected Commercial Property Sale Services',
+  schedule_a: [
+    ['Property Assessment & Sales Strategy', ['Initial Consultation', 'Commercial Property Assessment', 'Market Analysis', 'Pricing Strategy', 'Sales Strategy']],
+    ['Property Preparation', ['Cleaning Coordination', 'Repairs & Maintenance Coordination', 'Renovation Coordination', 'Property Presentation Coordination', 'Compliance Preparation Support']],
+    ['Marketing & Promotion', ['Professional Photography Coordination', 'Drone Photography Coordination', 'Commercial Property Listing', 'Online Marketing', 'Social Media Promotion', 'Advertising Campaigns']],
+    ['Buyer Management', ['Buyer Enquiry Management', 'Buyer Qualification', 'Inspection Coordination', 'Offer Coordination', 'Negotiation Support']],
+    ['Documentation & Settlement', ['Ownership Documentation Coordination', 'Sale Documentation Coordination', 'Conveyancing Coordination', 'Settlement Coordination', 'Property Handover Coordination']],
+    ['Additional Services', ['Property Valuation Coordination', 'Engineering Inspection Coordination', 'Survey Coordination', 'Legal Documentation Coordination', 'Business Sale Coordination (if applicable)', 'Other']],
+  ],
+  schedule_b_title: 'SCHEDULE B — Commercial Property Sale Summary',
+  schedule_b_fields: [
+    ['Client Reference No.', 'client_ref_no'], ['Work Order No.', 'work_order_no'], ['Property Owner', 'client_name'],
+    ['Property Address', 'property_address'], ['Property Type', 'property_type'], ['Ownership Status', 'ownership_status'],
+    ['Current Tenancy (if applicable)', 'current_tenancy'], ['Existing Business Use', 'existing_business_use'],
+    ['Estimated Market Value', 'market_value'], ['Agreed Listing Price', 'listing_price'], ['Minimum Acceptable Sale Price', 'min_price'],
+    ['Selected Service Package', 'selected_services_text'], ['Exclusive Listing Period (if applicable)', 'exclusive_period'],
+    ['Special Conditions', 'special_requirements'],
+  ],
+  schedule_d_title: 'SCHEDULE D — Commercial Property Sale Checklist',
+  schedule_d: [
+    ['Property Assessment', ['Initial Consultation Completed', 'Property Details Confirmed', 'Agreement Signed', 'Quotation / Work Order Approved']],
+    ['Property Preparation', ['Property Ready for Marketing', 'Photography Completed', 'Marketing Materials Approved', 'Listing Published']],
+    ['Buyer Management', ['Buyer Enquiries Managed', 'Property Inspections Completed', 'Offers Received', 'Negotiations Completed']],
+    ['Settlement', ['Sale Documentation Coordinated', 'Settlement Completed', 'Property Handover Completed', 'Final Invoice Issued', 'File Closed']],
+  ],
+};
+
+// ── Commercial Property Purchase (SSPC-CPPS-01) — signed with the Buyer ───────
+// Transcribed VERBATIM from "Commercial Property - Purchase Service Agreement V0.2".
+const COMMERCIAL_PURCHASE = {
+  party: 'Buyer',
+  client_heading: 'PROPERTY BUYER / PURCHASER (CLIENT)',
+  client_footer: 'Hereinafter referred to as the "Buyer", "Purchaser", or "Client"',
+  commission_label: 'Professional Success Fee / Commission — % of Purchase Price (or as agreed)',
+  schedule_a_title: 'SCHEDULE A — Selected Commercial Property Purchase Services',
+  schedule_a: [
+    ['Buyer Consultation', ['Initial Consultation', 'Commercial Property Requirement Assessment', 'Budget Planning Guidance', 'Investment Strategy Discussion', 'Commercial Market Guidance']],
+    ['Commercial Property Search', ['Commercial Property Search', 'Property Shortlisting', 'Seller Communication', 'Property Inspection Coordination', 'Property Evaluation Assistance']],
+    ['Due Diligence & Purchase Coordination', ['Due Diligence Coordination', 'Ownership Document Coordination', 'Document Verification Coordination', 'Negotiation Support', 'Purchase Agreement Coordination', 'Settlement Coordination', 'Registration Coordination', 'Property Handover Coordination']],
+    ['Additional Services', ['Bank Loan Coordination', 'Property Valuation Coordination', 'Engineering Inspection Coordination', 'Land Survey Coordination', 'Legal Documentation Coordination', 'Other']],
+  ],
+  schedule_b_title: 'SCHEDULE B — Commercial Property Purchase Summary',
+  schedule_b_fields: [
+    ['Client Reference No.', 'client_ref_no'], ['Work Order No.', 'work_order_no'],
+    ['Preferred Property Type', 'property_type'], ['Preferred Location', 'preferred_location'],
+    ['Intended Business Use', 'intended_use'], ['Estimated Purchase Budget', 'budget_range'],
+    ['Financing Method', 'finance_method'], ['Preferred Property Size', 'property_size'],
+    ['Expected Purchase Timeframe', 'expected_date'], ['Investment Objectives', 'investment_objectives'],
+    ['Selected Service Package', 'selected_services_text'], ['Special Requirements', 'special_requirements'],
+  ],
+  schedule_d_title: 'SCHEDULE D — Commercial Property Purchase Checklist',
+  schedule_d: [
+    ['Buyer Consultation', ['Client Consultation Completed', 'Requirements Confirmed', 'Agreement Signed', 'Quotation / Work Order Approved']],
+    ['Property Search & Evaluation', ['Suitable Properties Identified', 'Property Inspections Completed', 'Due Diligence Coordinated', 'Negotiations Completed']],
+    ['Purchase Process', ['Purchase Documentation Coordinated', 'Finance Coordination Completed (if applicable)', 'Settlement Coordinated', 'Property Handover Completed']],
+    ['Completion', ['Services Completed', 'Final Invoice Issued', 'File Closed']],
+  ],
+};
+
+module.exports = {
+  purchase: PURCHASE,
+  sale: SALE,
+  purchase_commercial: COMMERCIAL_PURCHASE,
+  sale_commercial: COMMERCIAL_SALE,
+};

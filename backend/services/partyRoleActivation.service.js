@@ -376,7 +376,7 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
     // Sales service agreement signed (RPPS/RPSS) → draft agency-fee invoices from
     // the signed payment schedule + flag the engagement. Idempotent + best-effort:
     // a failure here must never roll back a completed signature.
-    if (['sale_purchase_agreement', 'sale_sale_agreement'].includes(envelope.related_type)) {
+    if (['sale_purchase_agreement', 'sale_sale_agreement', 'commercial_purchase_agreement', 'commercial_sale_agreement'].includes(envelope.related_type)) {
       try {
         const salesBilling = require('./salesAgreementCompletion.service');
         const { invoices } = await salesBilling.onCompleted(envelope, { transaction: tx });
