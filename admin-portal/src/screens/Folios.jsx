@@ -18,7 +18,7 @@ export default function Folios() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { data } = await api.get(`/folios?type=${tab}&limit=100${scope.category === 'commercial' ? '&property_category=commercial' : ''}`); setRows(data.data || []); }
+    try { const { data } = await api.get(`/folios?type=${tab}&limit=100&property_category=${scope.category}`); setRows(data.data || []); }
     catch { toast.error('Failed to load folios'); }
     finally { setLoading(false); }
   }, [tab, toast]);

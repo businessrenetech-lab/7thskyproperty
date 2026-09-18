@@ -119,7 +119,7 @@ export default function RentalProperties() {
     setLoading(true);
     try {
       const q = search ? `&search=${encodeURIComponent(search)}` : '';
-      const catQ = isCommercial ? '&category=commercial' : '';
+      const catQ = `&category=${scope.category}`;
       const { data } = await api.get(`/properties?tab=${activeTab}&include_counts=true${q}${catQ}&limit=100`);
       setRows(data.data || []);
       if (data.tab_counts) setTabCounts(data.tab_counts);

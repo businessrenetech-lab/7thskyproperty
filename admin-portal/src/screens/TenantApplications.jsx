@@ -71,7 +71,7 @@ export default function TenantApplications({ propertyId = null, embedded = false
       if (propertyId) params.set('property_id', propertyId);
       if (statusFilter !== 'all') params.set('status', statusFilter);
       if (search) params.set('search', search);
-      if (scope.category === 'commercial') params.set('category', 'commercial');
+      params.set('category', scope.category);
       const { data } = await api.get(`/tenant-applications?${params.toString()}`);
       setRows(data.data || []);
       setCounts(data.status_counts || {});

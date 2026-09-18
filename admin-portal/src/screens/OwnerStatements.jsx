@@ -54,7 +54,7 @@ export default function OwnerStatements({ propertyId = null, ownerContactId = nu
       if (ownerContactId) params.set('owner_contact_id', ownerContactId);
       if (status !== 'all') params.set('status', status);
       if (period) params.set('period_label', period);
-      if (scope.category === 'commercial') params.set('property_category', 'commercial');
+      params.set('property_category', scope.category);
       const { data } = await api.get(`/owner-statements?${params.toString()}`);
       setRows(data.data || []);
       setCounts(data.status_counts || {});

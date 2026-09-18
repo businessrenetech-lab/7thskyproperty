@@ -52,6 +52,7 @@ const Contact = sequelize.define('Contact', {
   notes: DataTypes.TEXT,
   status: { type: DataTypes.ENUM('active', 'inactive', 'blacklisted'), defaultValue: 'active' },
   is_client: { type: DataTypes.BOOLEAN, defaultValue: false },
+  category: DataTypes.STRING(20), // 'residential' | 'commercial' — hard property-category segment (Migration 0128)
   created_by: DataTypes.INTEGER,
   // Contact Lists and Real Estate Lead attributes (Migration 0127)
   contact_list: { type: DataTypes.STRING(100), defaultValue: 'General Leads' },

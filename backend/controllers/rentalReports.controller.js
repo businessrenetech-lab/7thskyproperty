@@ -107,6 +107,7 @@ exports.rentRoll = asyncHandler(async (req, res) => {
 // ═══ ARREARS AGING ═════════════════════════════════════════════════════════
 exports.arrearsAging = asyncHandler(async (req, res) => {
   const bw = branchClause(req, 'rl');
+  const joinP = req.query.property_category ? 'JOIN properties p ON p.id = rl.property_id' : '';
   const [buckets] = await sequelize.query(
     `SELECT
        SUM(CASE WHEN DATEDIFF(CURDATE(), rl.due_date) BETWEEN 0 AND 30 THEN (rl.rent_due - rl.rent_received) ELSE 0 END) AS d0_30,
@@ -114,8 +115,8 @@ exports.arrearsAging = asyncHandler(async (req, res) => {
        SUM(CASE WHEN DATEDIFF(CURDATE(), rl.due_date) BETWEEN 61 AND 90 THEN (rl.rent_due - rl.rent_received) ELSE 0 END) AS d61_90,
        SUM(CASE WHEN DATEDIFF(CURDATE(), rl.due_date) > 90 THEN (rl.rent_due - rl.rent_received) ELSE 0 END) AS d90_plus,
        SUM(rl.rent_due - rl.rent_received) AS total
-       FROM rental_ledger rl
-      WHERE rl.rent_due > rl.rent_received AND rl.due_date <= CURDATE() ${bw.sql}`,
+       FROM rental_ledger rl ${joinP}
+      WHERE rl.rent_due > rl.rent_received AND rl.due_date <= CURDATE() ${bw.sql}${catClauseP(req)}`,
     { replacements: bw.params }
   );
   const b = buckets[0] || {};
@@ -130,13 +131,14 @@ exports.arrearsAging = asyncHandler(async (req, res) => {
 // ═══ COLLECTION RATE ═══════════════════════════════════════════════════════
 exports.collectionRate = asyncHandler(async (req, res) => {
   const bw = branchClause(req, 'rl');
+  const joinP = req.query.property_category ? 'JOIN properties p ON p.id = rl.property_id' : '';
   const period = req.query.period || new Date().toISOString().slice(0, 7); // YYYY-MM
   const [row] = await sequelize.query(
     `SELECT
        COALESCE(SUM(rl.rent_due), 0) AS due,
        COALESCE(SUM(rl.rent_received), 0) AS received
-       FROM rental_ledger rl
-      WHERE rl.period_label = :period ${bw.sql}`,
+       FROM rental_ledger rl ${joinP}
+      WHERE rl.period_label = :period ${bw.sql}${catClauseP(req)}`,
     { replacements: { ...bw.params, period } }
   );
   const due = num(row[0]?.due);
@@ -199,11 +201,12 @@ exports.expiringLeases = asyncHandler(async (req, res) => {
 // ═══ APPLICATION FUNNEL ════════════════════════════════════════════════════
 exports.applicationFunnel = asyncHandler(async (req, res) => {
   const bw = branchClause(req, 'ta');
+  const joinP = req.query.property_category ? 'JOIN properties p ON p.id = ta.property_id' : '';
   const stages = ['submitted', 'screening', 'verification', 'awaiting_documents', 'awaiting_owner_approval', 'approved', 'rejected', 'converted'];
   const counts = {};
   for (const s of stages) {
     const [row] = await sequelize.query(
-      `SELECT COUNT(*) AS c FROM tenant_applications ta WHERE ta.status = :s ${bw.sql}`,
+      `SELECT COUNT(*) AS c FROM tenant_applications ta ${joinP} WHERE ta.status = :s ${bw.sql}${catClauseP(req)}`,
       { replacements: { ...bw.params, s } }
     );
     counts[s] = num(row[0]?.c);

@@ -19,7 +19,7 @@ export default function LandlordBills() {
   const [drawer, setDrawer] = useState(null);
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
-  const load = useCallback(async () => { setLoading(true); try { const { data } = await api.get(`/billing/landlord-bills?limit=100${scope.category === 'commercial' ? '&property_category=commercial' : ''}`); setRows(data.data || []); } catch { toast.error('Failed to load landlord bills'); } finally { setLoading(false); } }, [toast]);
+  const load = useCallback(async () => { setLoading(true); try { const { data } = await api.get(`/billing/landlord-bills?limit=100&property_category=${scope.category}`); setRows(data.data || []); } catch { toast.error('Failed to load landlord bills'); } finally { setLoading(false); } }, [toast]);
   useEffect(() => { load(); }, [load]);
   const openCreate = () => setForm({ landlord_folio_id: null, bill_account_id: null, provider_id: null, description: '', full_bill_amount: '', tenant_pays_part: false, tenant_tenancy_id: null, tenant_amount: '', tenant_due_date: '', tenant_invoice_account_id: null, tenant_invoice_description: '', due_date: '', uploaded_bill_url: '' }) || setDrawer('create');
   const create = async () => {

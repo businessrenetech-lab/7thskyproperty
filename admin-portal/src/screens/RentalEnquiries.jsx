@@ -37,7 +37,7 @@ export function EnquiryBoard({ compact = false, onConverted }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/rental-enquiries?view=kanban${scope.category === 'commercial' ? '&category=commercial' : ''}`);
+      const { data } = await api.get(`/rental-enquiries?view=kanban&category=${scope.category}`);
       setBoard(data.board || {});
     } catch (e) { toast.error('Failed to load enquiries'); }
     finally { setLoading(false); }

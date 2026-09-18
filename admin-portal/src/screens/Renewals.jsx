@@ -25,7 +25,7 @@ export default function Renewals() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { data } = await api.get(`/property-management/renewals${scope.category === 'commercial' ? '?property_category=commercial' : ''}`); setData(data); }
+    try { const { data } = await api.get(`/property-management/renewals?property_category=${scope.category}`); setData(data); }
     catch { toast.error('Failed to load renewals'); } finally { setLoading(false); }
   }, [toast]);
   useEffect(() => { load(); }, [load]);

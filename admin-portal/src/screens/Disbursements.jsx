@@ -45,7 +45,7 @@ function OwnerPayoutsTab() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { data } = await api.get(`/disbursements/owner-balances${scope.category === 'commercial' ? '?property_category=commercial' : ''}`); setRows(data.data || []); setTotal(data.total_held || 0); }
+    try { const { data } = await api.get(`/disbursements/owner-balances?property_category=${scope.category}`); setRows(data.data || []); setTotal(data.total_held || 0); }
     catch { toast.error('Failed to load owner balances'); } finally { setLoading(false); }
   }, [toast]);
   useEffect(() => { load(); }, [load]);

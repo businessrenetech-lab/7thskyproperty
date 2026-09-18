@@ -108,7 +108,7 @@ function ControlScreen({ type }) {
     try {
       const qs = [];
       if (search) qs.push(`search=${encodeURIComponent(search)}`);
-      if (scope.category === 'commercial') qs.push('property_category=commercial');
+      qs.push('property_category=' + scope.category);
       const q = qs.length ? `?${qs.join('&')}` : '';
       const { data } = await api.get(`${cfg.endpoint}${q}`);
       setRows(data.data || []);

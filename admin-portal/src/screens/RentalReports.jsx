@@ -15,7 +15,7 @@ export default function RentalReports() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { data } = await api.get(`/rental-reports/overview${scope.category === 'commercial' ? '?property_category=commercial' : ''}`); setData(data.data); }
+    try { const { data } = await api.get(`/rental-reports/overview?property_category=${scope.category}`); setData(data.data); }
     catch { toast.error('Failed to load reports'); } finally { setLoading(false); }
   }, [toast]);
   useEffect(() => { load(); }, [load]);

@@ -26,7 +26,7 @@ export default function Invoices() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/billing/tenant-invoices?limit=100${scope.category === 'commercial' ? '&property_category=commercial' : ''}`);
+      const { data } = await api.get(`/billing/tenant-invoices?limit=100&property_category=${scope.category}`);
       const all = data.data || [];
       const q = search.toLowerCase();
       setRows(q ? all.filter((r) => `${r.invoice_code} ${r.payable_name} ${r.notes}`.toLowerCase().includes(q)) : all);

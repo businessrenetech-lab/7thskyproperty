@@ -21,7 +21,7 @@ export default function DepositSettlements() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { data } = await api.get(`/deposit-settlements${scope.category === 'commercial' ? '?property_category=commercial' : ''}`); setRows(data.data || []); }
+    try { const { data } = await api.get(`/deposit-settlements?property_category=${scope.category}`); setRows(data.data || []); }
     catch { toast.error('Failed to load settlements'); } finally { setLoading(false); }
   }, [toast]);
   useEffect(() => { load(); }, [load]);

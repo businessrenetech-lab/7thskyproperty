@@ -29,6 +29,7 @@ const CONTACT_FIELDS = [
   'preferred_areas', 'property_types', 'budget_min', 'budget_max',
   'bedrooms_min', 'bathrooms_min', 'size_min_sft', 'financing_status', 'urgency',
   'last_contacted_at', 'lead_notes',
+  'category', // residential | commercial — property-category segment (Migration 0128)
 ];
 
 function deriveFullName(body) {
@@ -170,18 +171,11 @@ exports.list = asyncHandler(async (req, res) => {
   if (req.query.looking_for && req.query.looking_for !== 'all') {
     where.looking_for = req.query.looking_for;
   }
-  // Commercial rent console: narrow rental leads to those flagged commercial —
-  // by looking_for or by a commercial property type in property_types. Contacts
-  // have no hard category field, so this is a best-effort segment filter.
-  if (req.query.category === 'commercial') {
-    const kw = ['commercial', 'office', 'retail', 'shop', 'showroom', 'warehouse', 'industrial'];
-    where[Op.and] = [
-      ...(where[Op.and] || []),
-      { [Op.or]: [
-        { looking_for: 'commercial' },
-        ...kw.map((k) => ({ property_types: { [Op.like]: `%${k}%` } })),
-      ] },
-    ];
+  // Property-category isolation (residential vs commercial console). Exact match
+  // on the hard `category` column (backfilled in migration 0128, set on create),
+  // so each console shows only its own directory in both directions.
+  if (req.query.category === 'commercial' || req.query.category === 'residential') {
+    where.category = req.query.category;
   }
 
   // Sorting
@@ -208,6 +202,8 @@ exports.create = asyncHandler(async (req, res) => {
   if (!data.full_name) return res.status(400).json({ error: 'A name (full_name, first/last, or company_name) is required.' });
   data.branch_id = resolveBranchId(req, req.body.branch_id);
   data.created_by = req.user?.id || null;
+  // Stamp the property-category segment from body or console context; default residential.
+  data.category = data.category || req.query.category || 'residential';
   data.contact_code = await generateCode(Contact, 'contact_code', 'SSPC-CT-');
 
   const contact = await Contact.create(data);

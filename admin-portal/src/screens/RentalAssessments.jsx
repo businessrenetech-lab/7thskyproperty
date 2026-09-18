@@ -286,7 +286,7 @@ export default function RentalAssessments() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { data } = await api.get(`/rental-assessments?limit=200${scope.category === 'commercial' ? '&category=commercial' : ''}`); setRows(data.data || []); }
+    try { const { data } = await api.get(`/rental-assessments?limit=200&category=${scope.category}`); setRows(data.data || []); }
     catch { toast.error('Failed to load assessments'); }
     finally { setLoading(false); }
   }, [toast]);

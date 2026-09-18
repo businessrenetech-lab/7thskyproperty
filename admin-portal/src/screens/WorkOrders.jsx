@@ -41,7 +41,7 @@ export default function WorkOrders() {
     setLoading(true);
     try {
       const p = new URLSearchParams({ limit: 100, include_counts: 'true' });
-      if (scope.category === 'commercial') p.set('property_category', 'commercial');
+      p.set('property_category', scope.category);
       if (search) p.set('search', search);
       if (stage === 'pending_owner') p.set('approval_status', 'pending_owner');
       else if (stage !== 'all') p.set('tenant_visible_status', stage);

@@ -18,7 +18,7 @@ export default function Inspections() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const p = new URLSearchParams({ limit: 50 }); if (type) p.set('type', type); if (scope.category === 'commercial') p.set('property_category', 'commercial'); const { data } = await api.get(`/inspections?${p}`); setRows(data.data || []); }
+    try { const p = new URLSearchParams({ limit: 50 }); if (type) p.set('type', type); p.set('property_category', scope.category); const { data } = await api.get(`/inspections?${p}`); setRows(data.data || []); }
     catch { toast.error('Failed to load inspections'); } finally { setLoading(false); }
   }, [type, toast]);
   useEffect(() => { load(); }, [load]);

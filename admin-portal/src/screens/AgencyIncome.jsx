@@ -28,7 +28,7 @@ export default function AgencyIncome() {
     setLoading(true);
     // scope=pm → only property-management + tenancy agreement fees (this is the PM
     // console's income view; sales fees live under the residential/sales section).
-    try { const r = await api.get(`/invoices/agency-income?scope=pm${scope.category === 'commercial' ? '&property_category=commercial' : ''}`); setData(r.data); }
+    try { const r = await api.get(`/invoices/agency-income?scope=pm&property_category=${scope.category}`); setData(r.data); }
     catch { toast.error('Failed to load agency income'); }
     finally { setLoading(false); }
   }, [toast]);

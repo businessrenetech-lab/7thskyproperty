@@ -109,8 +109,8 @@ export default function PropertyMgmtDashboard() {
   const nav = useNavigate();
   const scope = usePmScope();
   const bp = scope.basePath;
-  const catQ = scope.category === 'commercial' ? '&category=commercial' : '';
-  const catQ1 = scope.category === 'commercial' ? '?category=commercial' : '';
+  const catQ = `&category=${scope.category}`;
+  const catQ1 = `?category=${scope.category}`;
   const toast = useToast();
   
   // Dashboard stats and data

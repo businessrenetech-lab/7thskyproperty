@@ -54,7 +54,7 @@ const getInitials = (name) => {
 export default function SalesContacts({ scope }) {
   const navigate = useNavigate();
   const pmScope = usePmScope();
-  const catQ = pmScope.category === 'commercial' ? '&category=commercial' : '';
+  const catQ = `&category=${pmScope.category}`;
   const location = useLocation();
   const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const isRentalScope = scope === 'rental' || queryParams.get('scope') === 'rental';
@@ -1216,6 +1216,7 @@ export default function SalesContacts({ scope }) {
         area: contactForm.area.trim() || null,
         city: contactForm.city.trim() || 'Dhaka',
         notes: contactForm.notes,
+        category: pmScope.category || 'residential',
       });
       toast.success('Contact created successfully');
       setNewContactDrawer(false);

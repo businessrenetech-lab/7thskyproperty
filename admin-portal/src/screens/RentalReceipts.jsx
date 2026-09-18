@@ -18,7 +18,7 @@ export default function RentalReceipts() {
   const [running, setRunning] = useState(false);
   const [selected, setSelected] = useState(null);
   const [pay, setPay] = useState({ amount: '', method: 'cash', reference: '' });
-  const load = useCallback(async () => { setLoading(true); try { const { data } = await api.get(`/billing/rental-receipts?period_label=${period}&limit=100${scope.category === 'commercial' ? '&property_category=commercial' : ''}`); setRows(data.data || []); } catch { toast.error('Failed to load rental receipts'); } finally { setLoading(false); } }, [period, toast]);
+  const load = useCallback(async () => { setLoading(true); try { const { data } = await api.get(`/billing/rental-receipts?period_label=${period}&limit=100&property_category=${scope.category}`); setRows(data.data || []); } catch { toast.error('Failed to load rental receipts'); } finally { setLoading(false); } }, [period, toast]);
   useEffect(() => { load(); }, [load]);
   const generate = async () => { setRunning(true); try { const { data } = await api.post('/billing/rental-receipts/generate', { period_label: period, receipt_day: 5 }); toast.success(data.message || 'Rental receipts generated'); load(); } catch (e) { toast.error(e.response?.data?.error || 'Generate failed'); } finally { setRunning(false); } };
   const recordPayment = async () => { if (!num(pay.amount)) return toast.error('Enter amount'); try { await api.post(`/billing/rental-receipts/${selected.id}/payments`, pay); toast.success('Receipt payment recorded and landlord balance updated'); setSelected(null); setPay({ amount: '', method: 'cash', reference: '' }); load(); } catch (e) { toast.error(e.response?.data?.error || 'Payment failed'); } };
