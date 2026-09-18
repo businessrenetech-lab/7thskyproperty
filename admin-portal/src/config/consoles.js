@@ -360,6 +360,46 @@ export const propertyMgmtConsole = {
   exitTo: '/dashboard',
 };
 
+/* ── Commercial · Rent ─────────────────────────────────────────────────────
+ * The commercial rental & tenancy management console. It runs the SAME Property
+ * Management screens, scoped to commercial via PmScopeProvider, so the residential
+ * ops stack is reused rather than duplicated. Its nav is the PM nav rebased onto
+ * /commercial/rent/*; a few links are commercial-specific (agreements, price
+ * schedule).
+ */
+const rebasePmNav = (groups, from, to) => groups.map((g) => ({
+  ...g,
+  items: (g.items || []).map((it) => (it.to ? { ...it, to: it.to.replace(from, to) } : it)),
+}));
+
+// The Agreements group ships with the commercial agreement builders (next phase);
+// until then it is left out rather than pointing at residential documents.
+export const COMMERCIAL_RENT_NAV = rebasePmNav(
+  PROPERTY_MGMT_NAV.filter((g) => g.key !== 'agreements'),
+  '/property-management',
+  '/commercial/rent',
+);
+
+export const commercialRentConsole = {
+  slug: 'commercial/rent',
+  storageKey: 'cmr.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Commercial · Rent',
+    icon: Building2,
+    // Sky-blue, distinct from PM violet — commercial rent reads as its own console.
+    accent: '#0284c7',
+    accentStrong: '#0369a1',
+    accentInk: '#075985',
+    accentTint: 'rgba(2,132,199,.12)',
+    accentTint2: '#e0f2fe',
+  },
+  navGroups: COMMERCIAL_RENT_NAV,
+  api: {},
+  contentClass: 'pm-scope',
+  exitTo: '/dashboard',
+};
+
 /* ── Residential Sales ─────────────────────────────────────────────────── */
 
 /*

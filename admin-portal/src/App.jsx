@@ -142,6 +142,7 @@ import CareAmc from './screens/CareAmc';
 import ShortStayHub from './screens/ShortStayHub';
 import ShortStayConsole from './screens/shortstay/ShortStayConsole';
 import PropertyMgmtConsole from './screens/PropertyMgmtConsole';
+import CommercialRentConsole from './screens/CommercialRentConsole';
 import ResidentialConsole from './screens/ResidentialConsole';
 import CommercialConsole, { CommercialBuyerConsole } from './screens/CommercialConsole';
 import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
@@ -1386,8 +1387,6 @@ export default function App() {
               <Route path="/commercial/marketing" element={<SalesMarketingHub />} />
               <Route path="/commercial/contacts/clients" element={<Clients />} />
               <Route path="/commercial/clients" element={<Navigate to="/commercial/contacts/clients" replace />} />
-              {/* Rent line is a separate build — placeholder entry point. */}
-              <Route path="/commercial/rent" element={<PropertySellDashboard category="commercial" title="Commercial · Rent (coming soon)" desc="Commercial rental & tenancy management — coming next." />} />
             </Route>
 
             {/* Commercial BUYER Service — buyer-only sidebar, category="commercial". */}
@@ -1405,6 +1404,46 @@ export default function App() {
               <Route path="/commercial/mandates/:id" element={<BuyerMandateDetail />} />
               <Route path="/commercial/enquiry" element={<SalesEnquiries category="commercial" title="Commercial · Buyer Enquiries" desc="Every buyer who enquired on a commercial sale property." />} />
               <Route path="/commercial/agreements/purchase" element={<PurchaseAgreements category="commercial" />} />
+            </Route>
+
+            {/* Commercial · Rent — the commercial rental & tenancy management console.
+                Reuses the Property Management operational screens verbatim; the
+                CommercialRentConsole wraps them in a PmScopeProvider so each screen
+                operates on commercial properties and keeps its links inside
+                /commercial/rent/*. Agreements + price schedules arrive next phase. */}
+            <Route element={<RequireAuth><AdminGate><CommercialRentConsole /></AdminGate></RequireAuth>}>
+              <Route path="/commercial/rent" element={<PropertyMgmtDashboard />} />
+              <Route path="/commercial/rent/rentals" element={<RentalProperties />} />
+              <Route path="/commercial/rent/rentals/new" element={<PropertyWizard />} />
+              <Route path="/commercial/rent/rentals/new/:id" element={<PropertyWizard />} />
+              <Route path="/commercial/rent/contacts" element={<SalesContacts scope="rental" />} />
+              <Route path="/commercial/rent/applications" element={<TenantApplications />} />
+              <Route path="/commercial/rent/enquiries" element={<RentalEnquiries />} />
+              <Route path="/commercial/rent/assessments" element={<RentalAssessments />} />
+              <Route path="/commercial/rent/statements" element={<OwnerStatements />} />
+              <Route path="/commercial/rent/renewals" element={<Renewals />} />
+              <Route path="/commercial/rent/vacancies" element={<Vacancies />} />
+              <Route path="/commercial/rent/settlements" element={<DepositSettlements />} />
+              <Route path="/commercial/rent/reports" element={<RentalReports />} />
+              <Route path="/commercial/rent/disbursements" element={<Disbursements />} />
+              <Route path="/commercial/rent/utilities" element={<UtilityBills />} />
+              <Route path="/commercial/rent/tenant-requests" element={<TenantRequests />} />
+              <Route path="/commercial/rent/arrears" element={<ArrearsActions />} />
+              <Route path="/commercial/rent/marketing" element={<MarketingActivities />} />
+              <Route path="/commercial/rent/expense-approvals" element={<ExpenseApprovals />} />
+              <Route path="/commercial/rent/risks" element={<PropertyRisks />} />
+              <Route path="/commercial/rent/work-orders" element={<WorkOrders />} />
+              <Route path="/commercial/rent/inspections" element={<Inspections />} />
+              <Route path="/commercial/rent/compliance" element={<Compliance />} />
+              <Route path="/commercial/rent/workflows" element={<Projects />} />
+              <Route path="/commercial/rent/invoices" element={<Invoices />} />
+              <Route path="/commercial/rent/receipts" element={<RentalReceipts />} />
+              <Route path="/commercial/rent/collect-rent" element={<BulkRentCollection />} />
+              <Route path="/commercial/rent/disburse-owners" element={<BulkOwnerDisbursement />} />
+              <Route path="/commercial/rent/inbox" element={<Communication />} />
+              <Route path="/commercial/rent/folios" element={<Folios />} />
+              <Route path="/commercial/rent/landlord-bills" element={<LandlordBills />} />
+              <Route path="/commercial/rent/agency-income" element={<AgencyIncome />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />
