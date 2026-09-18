@@ -26,7 +26,7 @@ const PRINT_STYLE = `<style>
     tfoot { display: table-footer-group; }
     li { break-inside: avoid; page-break-inside: avoid; }
     img, svg, figure { break-inside: avoid; page-break-inside: avoid; }
-    [data-sign-field], #signatures-section, .sig-block, .keep-together {
+    [data-sign-field], .sig-block, .keep-together {
       break-inside: avoid; page-break-inside: avoid;
     }
     /* Cover / Table-of-Contents were fixed-height cards that floated their footer
@@ -34,6 +34,15 @@ const PRINT_STYLE = `<style>
        inline page-break-after keeps them on their own page. */
     .agreement-page, .agreement-cover-page, .agreement-toc-page {
       min-height: 0 !important; max-height: none !important;
+    }
+    /* Each schedule starts on its own page, and the signatures block is the final
+       page on its own. Every family tags these anchors the same way, so this
+       applies to sale/purchase, PM, tenancy, STS and the service-line agreements
+       alike — and to already-signed documents, not just new ones. Each schedule /
+       the signatures also tries to stay whole on its page. */
+    #sched-a, #sched-b, #sched-c, #sched-d, #signatures-section {
+      break-before: page; page-break-before: always;
+      break-inside: avoid; page-break-inside: avoid;
     }
   }
 </style>`;
