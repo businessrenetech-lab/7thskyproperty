@@ -40,9 +40,11 @@ export default function AgreementPreviewPane({
   liveLabel = 'Live Preview · Auto-updates as you edit',
   emptyHint,
   stickyTop = 90,
+  heightCss,
+  wrapperStyle,
 }) {
   return (
-    <div style={{ position: 'sticky', top: stickyTop, height: `calc(100vh - ${stickyTop + 20}px)`, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'sticky', top: stickyTop, height: heightCss || `calc(100vh - ${stickyTop + 20}px)`, display: 'flex', flexDirection: 'column', ...wrapperStyle }}>
       <div className="pm-card" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--pm-sh2)' }}>
 
         {/* Header */}

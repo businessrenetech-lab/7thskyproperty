@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { Spinner } from '../ui/kit';
+import AgreementPreviewPane from './agreements/AgreementPreviewPane';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -171,6 +172,7 @@ export function ProviderAgreementBuilder({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
   const [error, setError] = useState('');
   const [providerSearch, setProviderSearch] = useState('');
   const [showFullPreview, setShowFullPreview] = useState(false);
@@ -456,18 +458,26 @@ export function ProviderAgreementBuilder({
     setPreviewing(true);
     try {
       const r = await api.post('/wt-agreements/provider/preview', getPayload());
-      setPreview(r.data);
+      if (r?.data) { setPreview(r.data); setPreviewError(false); }
+      else setPreviewError(true);
       setError('');
     } catch (e) {
       console.error('[ProviderPreview]', e);
+      setPreviewError(true);
     } finally {
       setPreviewing(false);
     }
   }, [selectedProvider, getPayload]);
 
-  // Debounced auto-preview
+  // First preview paints immediately once a provider is chosen; later edits debounced.
+  const firstPreviewRun = useRef(true);
   useEffect(() => {
-    if (!selectedProvider) return;
+    if (!selectedProvider) return undefined;
+    if (firstPreviewRun.current) {
+      firstPreviewRun.current = false;
+      refreshPreview();
+      return undefined;
+    }
     const t = setTimeout(() => {
       refreshPreview();
     }, 450);
@@ -1550,108 +1560,20 @@ export function ProviderAgreementBuilder({
         </div>
 
         {/* Right Column: Sticky Live Agreement Preview */}
-        <div
-          style={{
-            flex: '1 1 42%',
-            minWidth: 420,
-            position: 'sticky',
-            top: 75,
-            height: isModal ? 'calc(96vh - 120px)' : 'calc(100vh - 95px)',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <div
-            className="pm-card"
-            style={{
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
-              borderRadius: 12,
-              border: '1px solid var(--line, #e2e8f0)',
-            }}
-          >
-            {/* Header */}
-            <div
-              style={{
-                padding: '12px 18px',
-                borderBottom: '1px solid var(--line, #e2e8f0)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                background: 'var(--surface, #ffffff)',
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--navy, #0f172a)', letterSpacing: '-0.2px' }}>
-                  {preview?.title || `Master Service Delivery Provider Agreement`}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--muted, #64748b)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
-                  Live Preview · Real-time A4 rendering ({docCode})
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {previewing && <Spinner size={14} />}
-                <button
-                  type="button"
-                  className="pm-btn"
-                  style={{ padding: '4px 10px', fontSize: 12 }}
-                  onClick={() => setShowFullPreview(true)}
-                  disabled={!preview?.html}
-                >
-                  <Maximize2 size={13} /> Full preview
-                </button>
-              </div>
-            </div>
-
-            {/* Frame Body */}
-            <div style={{ flex: 1, background: '#f8fafc', padding: 12, overflow: 'hidden' }}>
-              {preview?.html ? (
-                <iframe
-                  ref={previewRef}
-                  title="Provider Agreement live preview"
-                  srcDoc={preview.html}
-                  sandbox="allow-same-origin"
-                  onLoad={() => {
-                    try {
-                      previewRef.current?.contentWindow?.scrollTo(0, previewScroll.current);
-                    } catch {}
-                  }}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    border: 0,
-                    borderRadius: 8,
-                    background: '#ffffff',
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 12,
-                    color: 'var(--muted, #64748b)',
-                    padding: 24,
-                    textAlign: 'center',
-                  }}
-                >
-                  <Spinner />
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>
-                    {selectedProvider ? 'Generating live document preview…' : 'Select a service provider to load live preview'}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <AgreementPreviewPane
+          title={preview?.title || 'Master Service Delivery Provider Agreement'}
+          html={preview?.html}
+          previewing={previewing}
+          error={previewError}
+          onFullPreview={() => setShowFullPreview(true)}
+          onRetry={refreshPreview}
+          previewRef={previewRef}
+          previewScrollRef={previewScroll}
+          stickyTop={75}
+          heightCss={isModal ? 'calc(96vh - 120px)' : 'calc(100vh - 95px)'}
+          wrapperStyle={{ flex: '1 1 42%', minWidth: 420 }}
+          emptyHint={selectedProvider ? undefined : 'Select a service provider to load live preview'}
+        />
       </div>
 
       {/* ── In-App Full Document Preview Modal ── */}
