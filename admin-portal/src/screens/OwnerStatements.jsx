@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, FileText, RefreshCw, Send, Download, Filter, Building2, Calendar, Wallet } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, DataTable, StatusBadge, Drawer, Spinner, Badge, Button, Field, Input, Select, Textarea, KV } from '../ui/kit';
 import { Combo } from '../ui/pickers';
@@ -27,6 +28,7 @@ const STATUS_TABS = [
  * Also embeddable via propertyId for the per-property statements tab.
  */
 export default function OwnerStatements({ propertyId = null, ownerContactId = null, embedded = false }) {
+  const scope = usePmScope();
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [counts, setCounts] = useState({});
@@ -52,6 +54,7 @@ export default function OwnerStatements({ propertyId = null, ownerContactId = nu
       if (ownerContactId) params.set('owner_contact_id', ownerContactId);
       if (status !== 'all') params.set('status', status);
       if (period) params.set('period_label', period);
+      if (scope.category === 'commercial') params.set('property_category', 'commercial');
       const { data } = await api.get(`/owner-statements?${params.toString()}`);
       setRows(data.data || []);
       setCounts(data.status_counts || {});

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Play, Wallet, Download, Mail, BellRing, FolderInput } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, Button, DataTable, Drawer, Field, Input, Select, Spinner, StatusBadge, Badge } from '../ui/kit';
 
@@ -9,6 +10,7 @@ const num = (v) => Number(v || 0);
 const thisPeriod = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
 
 export default function RentalReceipts() {
+  const scope = usePmScope();
   const toast = useToast();
   const [period, setPeriod] = useState(thisPeriod());
   const [rows, setRows] = useState([]);
@@ -16,7 +18,7 @@ export default function RentalReceipts() {
   const [running, setRunning] = useState(false);
   const [selected, setSelected] = useState(null);
   const [pay, setPay] = useState({ amount: '', method: 'cash', reference: '' });
-  const load = useCallback(async () => { setLoading(true); try { const { data } = await api.get(`/billing/rental-receipts?period_label=${period}&limit=100`); setRows(data.data || []); } catch { toast.error('Failed to load rental receipts'); } finally { setLoading(false); } }, [period, toast]);
+  const load = useCallback(async () => { setLoading(true); try { const { data } = await api.get(`/billing/rental-receipts?period_label=${period}&limit=100${scope.category === 'commercial' ? '&property_category=commercial' : ''}`); setRows(data.data || []); } catch { toast.error('Failed to load rental receipts'); } finally { setLoading(false); } }, [period, toast]);
   useEffect(() => { load(); }, [load]);
   const generate = async () => { setRunning(true); try { const { data } = await api.post('/billing/rental-receipts/generate', { period_label: period, receipt_day: 5 }); toast.success(data.message || 'Rental receipts generated'); load(); } catch (e) { toast.error(e.response?.data?.error || 'Generate failed'); } finally { setRunning(false); } };
   const recordPayment = async () => { if (!num(pay.amount)) return toast.error('Enter amount'); try { await api.post(`/billing/rental-receipts/${selected.id}/payments`, pay); toast.success('Receipt payment recorded and landlord balance updated'); setSelected(null); setPay({ amount: '', method: 'cash', reference: '' }); load(); } catch (e) { toast.error(e.response?.data?.error || 'Payment failed'); } };

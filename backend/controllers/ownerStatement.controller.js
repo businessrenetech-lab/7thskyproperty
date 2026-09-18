@@ -18,8 +18,9 @@ exports.list = asyncHandler(async (req, res) => {
   if (req.query.property_id) where.property_id = req.query.property_id;
   if (req.query.period_label) where.period_label = req.query.period_label;
   if (req.query.status) where.status = req.query.status;
+  const propI = req.query.property_category ? { ...propInc, where: { category: req.query.property_category }, required: true } : propInc;
   const { rows, count } = await OwnerStatement.findAndCountAll({
-    where, include: [ownerInc, propInc], limit, offset,
+    where, include: [ownerInc, propI], limit, offset,
     order: [['period_label', 'DESC'], ['created_at', 'DESC']],
   });
 
