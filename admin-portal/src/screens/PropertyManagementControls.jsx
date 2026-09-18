@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, RefreshCw } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { usePmScope } from '../config/pmScope';
 import { PageHead, DataTable, Drawer, Field, Input, Select, Textarea, Button, Spinner, StatusBadge, Badge, SearchInput } from '../ui/kit';
 import { Combo } from '../ui/pickers';
 
@@ -93,6 +94,7 @@ function renderCell(row, key) {
 function ControlScreen({ type }) {
   const cfg = CONFIGS[type];
   const toast = useToast();
+  const scope = usePmScope();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -104,7 +106,10 @@ function ControlScreen({ type }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const q = search ? `?search=${encodeURIComponent(search)}` : '';
+      const qs = [];
+      if (search) qs.push(`search=${encodeURIComponent(search)}`);
+      if (scope.category === 'commercial') qs.push('property_category=commercial');
+      const q = qs.length ? `?${qs.join('&')}` : '';
       const { data } = await api.get(`${cfg.endpoint}${q}`);
       setRows(data.data || []);
     } catch { toast.error(`Failed to load ${cfg.title.toLowerCase()}`); }

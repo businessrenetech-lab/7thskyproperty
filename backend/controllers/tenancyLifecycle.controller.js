@@ -190,11 +190,12 @@ const ownerInc = { model: Contact, as: 'owner', attributes: ['id', 'full_name', 
 exports.renewalsDashboard = asyncHandler(async (req, res) => {
   const bw = branchScope(req);
   const where = { status: 'active', ...bw };
+  const propI = req.query.property_category ? { ...propInc, where: { category: req.query.property_category }, required: true } : propInc;
   const buckets = { d30: [], d60: [], d90: [], in_flight: [] };
 
   const in_flight = await Tenancy.findAll({
     where: { ...bw, renewal_status: { [Op.in]: ['proposed', 'owner_approved', 'tenant_accepted'] } },
-    include: [propInc, tenantInc],
+    include: [propI, tenantInc],
     order: [['renewal_proposed_at', 'DESC']],
   });
   buckets.in_flight = in_flight;
@@ -212,9 +213,9 @@ exports.renewalsDashboard = asyncHandler(async (req, res) => {
     renewal_status: { [Op.in]: ['none', 'declined'] },
     ...(inflightIds.length ? { id: { [Op.notIn]: inflightIds } } : {}),
   };
-  buckets.d30 = await Tenancy.findAll({ where: { ...commonWhere, lease_end: { [Op.between]: [nowIso, plus(30)] } }, include: [propInc, tenantInc], order: [['lease_end', 'ASC']] });
-  buckets.d60 = await Tenancy.findAll({ where: { ...commonWhere, lease_end: { [Op.gt]: plus(30), [Op.lte]: plus(60) } }, include: [propInc, tenantInc], order: [['lease_end', 'ASC']] });
-  buckets.d90 = await Tenancy.findAll({ where: { ...commonWhere, lease_end: { [Op.gt]: plus(60), [Op.lte]: plus(90) } }, include: [propInc, tenantInc], order: [['lease_end', 'ASC']] });
+  buckets.d30 = await Tenancy.findAll({ where: { ...commonWhere, lease_end: { [Op.between]: [nowIso, plus(30)] } }, include: [propI, tenantInc], order: [['lease_end', 'ASC']] });
+  buckets.d60 = await Tenancy.findAll({ where: { ...commonWhere, lease_end: { [Op.gt]: plus(30), [Op.lte]: plus(60) } }, include: [propI, tenantInc], order: [['lease_end', 'ASC']] });
+  buckets.d90 = await Tenancy.findAll({ where: { ...commonWhere, lease_end: { [Op.gt]: plus(60), [Op.lte]: plus(90) } }, include: [propI, tenantInc], order: [['lease_end', 'ASC']] });
 
   res.json({
     data: buckets,

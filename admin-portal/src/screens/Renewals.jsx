@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { CalendarClock, RefreshCw, Send } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, Spinner, Badge, Button, Field, Input, Textarea, Drawer } from '../ui/kit';
 
@@ -15,6 +16,7 @@ const IN_FLIGHT_META = {
 };
 
 export default function Renewals() {
+  const scope = usePmScope();
   const toast = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,7 +25,7 @@ export default function Renewals() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { data } = await api.get('/property-management/renewals'); setData(data); }
+    try { const { data } = await api.get(`/property-management/renewals${scope.category === 'commercial' ? '?property_category=commercial' : ''}`); setData(data); }
     catch { toast.error('Failed to load renewals'); } finally { setLoading(false); }
   }, [toast]);
   useEffect(() => { load(); }, [load]);

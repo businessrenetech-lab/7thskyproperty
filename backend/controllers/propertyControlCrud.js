@@ -26,7 +26,14 @@ function makeController({ Model, fields, codeField, codePrefix, searchFields = [
       if (req.query[key] !== undefined && req.query[key] !== '') where[key] = req.query[key];
     }
     Object.assign(where, searchWhere(searchFields, req.query.search) || {});
-    const { rows, count } = await Model.findAndCountAll({ where, include, limit, offset, order: [['created_at', 'DESC']] });
+    // Commercial rent console scopes these controls to commercial properties.
+    let inc = include;
+    if (req.query.property_category) {
+      inc = include.map((i) => (i && i.as === 'property'
+        ? { ...i, where: { ...(i.where || {}), category: req.query.property_category }, required: true }
+        : i));
+    }
+    const { rows, count } = await Model.findAndCountAll({ where, include: inc, limit, offset, order: [['created_at', 'DESC']] });
     res.json({ data: rows, pagination: { page, limit, total: count, pages: Math.ceil(count / limit) } });
   });
 
