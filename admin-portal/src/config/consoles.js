@@ -323,6 +323,7 @@ export const PROPERTY_MGMT_NAV = [
        */
       { to: '/property-management/agreements', label: 'PM Agreements', icon: FileSignature },
       { to: '/property-management/tenancy-agreements', label: 'TM Agreements', icon: FileSignature },
+      { to: '/property-management/price-schedule', label: 'Price Schedule', icon: Tags },
     ],
   },
   {

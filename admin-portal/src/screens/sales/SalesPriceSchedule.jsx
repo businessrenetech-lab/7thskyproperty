@@ -24,7 +24,7 @@ const typeLabel = (it) => {
 };
 const blankRow = (vertical) => ({ vertical, name: '', unit: 'Service', standard_price: 0, price_type: 'fixed', price_label: '' });
 
-export default function SalesPriceSchedule({ scope = 'residential', title }) {
+export default function SalesPriceSchedule({ scope = 'residential', title, verticals }) {
   const [schedules, setSchedules] = useState([]);
   const [vertical, setVertical] = useState(null);
   const [data, setData] = useState(null);
@@ -41,13 +41,17 @@ export default function SalesPriceSchedule({ scope = 'residential', title }) {
     api.get('/sales-catalog/schedules', { params: { scope } })
       .then((r) => {
         if (!alive) return;
-        const rows = Array.isArray(r.data) ? r.data : [];
+        // Optionally narrow to a subset of verticals (e.g. only the Property
+        // Management schedules when embedded in the PM console).
+        const rows = (Array.isArray(r.data) ? r.data : [])
+          .filter((row) => !verticals || verticals.includes(row.vertical));
         setSchedules(rows);
-        setVertical((v) => v || rows[0]?.vertical || null);
+        setVertical((v) => (v && rows.some((row) => row.vertical === v) ? v : rows[0]?.vertical || null));
       })
       .catch((e) => setErr(e?.response?.data?.error || 'Could not load the price schedules.'));
     return () => { alive = false; };
-  }, [scope]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope, (verticals || []).join(',')]);
 
   const load = (v) => {
     if (!v) return;

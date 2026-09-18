@@ -1299,6 +1299,7 @@ export default function App() {
               <Route path="/property-management/agency-income" element={<AgencyIncome />} />
               <Route path="/property-management/agreements" element={<RprmAgreements />} />
               <Route path="/property-management/tenancy-agreements" element={<TmAgreements />} />
+              <Route path="/property-management/price-schedule" element={<SalesPriceSchedule scope="residential" verticals={['residential_pm', 'tenancy_mgmt']} title="Property Management · Price Schedules" />} />
             </Route>
 
             {/* Residential Sales — the fourth separated console.
