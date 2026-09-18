@@ -90,6 +90,32 @@ exports.envelopeLinks = asyncHandler(async (req, res) => {
   } });
 });
 
+exports.getSigningLink = asyncHandler(async (req, res) => {
+  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req) }, include: [{ model: EnvelopeSigner, as: 'signers' }] });
+  if (!env) return res.status(404).json({ error: 'Envelope not found.' });
+  const signer = (env.signers || []).find((s) => String(s.id) === String(req.params.signerId));
+  if (!signer) return res.status(404).json({ error: 'Signer not found.' });
+  if (!signer.access_token || (signer.token_expires_at && new Date(signer.token_expires_at) < new Date())) {
+    const expires = new Date(Date.now() + 14 * 86400000);
+    await signer.update({ access_token: crypto.randomBytes(24).toString('hex'), token_expires_at: expires });
+  }
+  const base = process.env.SIGN_BASE_URL || `${req.protocol}://${req.get('host')}/admin/sign`;
+  res.json({
+    signing_path: `/admin/sign/${signer.access_token}`,
+    url: `${base}/${signer.access_token}`,
+    signer: { id: signer.id, name: signer.name, email: signer.email, role: signer.role },
+  });
+});
+
+exports.getSignedHtml = asyncHandler(async (req, res) => {
+  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!env) return res.status(404).json({ error: 'Envelope not found.' });
+  const allSigners = await EnvelopeSigner.findAll({ where: { envelope_id: env.id }, raw: true });
+  const allFields = await SignatureField.findAll({ where: { envelope_id: env.id }, raw: true });
+  const applied = require('../services/wtSignedDocument.service').applySignatures(env.document_html, allSigners, allFields);
+  res.json({ html: applied.html, content_hash: env.content_hash, unsigned_parties: applied.unsigned });
+});
+
 exports.createEnvelope = asyncHandler(async (req, res) => {
   const { title, template_id, agreement_id, related_type, related_id, message, signing_order_enforced = true, signers = [], fields = [] } = req.body;
   if (!title || !signers.length) return res.status(400).json({ error: 'title and at least one signer are required.' });

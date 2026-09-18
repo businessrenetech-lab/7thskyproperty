@@ -153,10 +153,26 @@ exports.listAgreements = asyncHandler(async (req, res) => {
   const k = K(req); if (!k) return res.status(404).json({ error: 'Unknown agreement kind' });
   const rows = await SigningEnvelope.findAll({
     where: { ...branchScope(req), related_type: k.related_type },
-    include: [{ model: EnvelopeSigner, as: 'signers', attributes: ['id', 'contact_id', 'name', 'email', 'role', 'status', 'signed_at'] }],
+    include: [{ model: EnvelopeSigner, as: 'signers', attributes: ['id', 'contact_id', 'signer_order', 'name', 'email', 'role', 'status', 'signed_at'] }],
     order: [['created_at', 'DESC']],
   });
-  res.json(rows);
+  const mapped = rows.map((r) => {
+    const plain = r.get({ plain: true });
+    let t = plain.terms;
+    if (typeof t === 'string') { try { t = JSON.parse(t); } catch { t = {}; } }
+    if (plain.total_contract_value == null && t?.pricing_summary?.total_contract_value != null) {
+      plain.total_contract_value = t.pricing_summary.total_contract_value;
+    }
+    plain.signers = (plain.signers || []).slice().sort((a, b) => (a.signer_order || 0) - (b.signer_order || 0)).map((s) => ({
+      ...s,
+      order: s.signer_order,
+    }));
+    const primary = plain.signers.find((s) => s.role === 'client') || plain.signers[0] || null;
+    plain.client_name = primary?.name || t?.client?.full_name || null;
+    plain.client_email = primary?.email || t?.client?.email || null;
+    return plain;
+  });
+  res.json(mapped);
 });
 
 // Multi-party signer construction is shared (Client + Seventh Sky countersign +
@@ -193,6 +209,7 @@ exports.createAgreement = asyncHandler(async (req, res) => {
       branch_id: branchId, envelope_code: `ENV-${k.code}-${Date.now().toString().slice(-6)}`,
       title: `${built.title} — ${partyNames || client.full_name}`, document_html: built.html,
       related_type: k.related_type, related_id: body.property_id || null,
+      total_contract_value: pricing?.summary?.total_contract_value || null,
       status: 'draft', expires_at: expires, signing_order_enforced: true,
       kyc_role: k.signer, terms: built.terms, created_by: req.user?.id || null,
     }, { transaction: t });
@@ -228,7 +245,13 @@ exports.updateAgreement = asyncHandler(async (req, res) => {
   await sequelize.transaction(async (t) => {
     await SignatureField.destroy({ where: { envelope_id: env.id }, transaction: t });
     await EnvelopeSigner.destroy({ where: { envelope_id: env.id }, transaction: t });
-    await env.update({ title: `${built.title} — ${partyNames || client.full_name}`, document_html: built.html, terms: built.terms, related_id: body.property_id || env.related_id }, { transaction: t });
+    await env.update({
+      title: `${built.title} — ${partyNames || client.full_name}`,
+      document_html: built.html,
+      terms: built.terms,
+      total_contract_value: pricing?.summary?.total_contract_value || null,
+      related_id: body.property_id || env.related_id,
+    }, { transaction: t });
     await persistSigners(env, signerDefsFor(body, org, req), t);
   });
   res.json({ id: env.id, status: env.status, message: 'Draft updated.' });

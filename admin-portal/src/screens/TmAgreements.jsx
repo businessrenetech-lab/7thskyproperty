@@ -3,8 +3,10 @@ import { Plus, Send, Copy, Eye, Check, Download, Pencil, RefreshCw, FileSignatur
 import api from './../services/api';
 import { Spinner } from '../ui/kit';
 import { Combo } from '../ui/pickers';
+import { useLocation } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import AgreementRegisterView from './agreements/AgreementRegisterView';
 
 const bdt = (v) => '৳' + Number(v || 0).toLocaleString('en-BD');
 const sel = { border: '1px solid var(--line)', borderRadius: 10, padding: '9px 12px', background: 'var(--surface)', font: 'inherit', color: 'var(--ink)', width: '100%' };
@@ -32,75 +34,88 @@ export default function TmAgreements() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const r = await api.get('/rptm/agreements'); setList(Array.isArray(r.data) ? r.data : []); }
-    finally { setLoading(false); }
+    try {
+      const r = await api.get('/rptm/agreements');
+      setList(Array.isArray(r.data) ? r.data : []);
+    } finally {
+      setLoading(false);
+    }
   }, []);
   useEffect(() => { load(); }, [load]);
 
   // Arriving from a Tenant Application with a prefill → open the builder pre-filled.
   useEffect(() => {
-    if (location.state?.prefill) { setEditState({ id: null, prefill: location.state.prefill }); setMode('build'); }
+    if (location.state?.prefill) {
+      setEditState({ id: null, prefill: location.state.prefill });
+      setMode('build');
+    }
   }, [location.state]);
 
   const done = () => { setMode('list'); setEditState(null); load(); };
-  if (mode === 'build') return <Builder editId={editState?.id} prefill={editState?.prefill} onDone={done} onCancel={done} />;
-  const chip = (s) => ({ completed: 'good', active: 'good', sent: 'warn', viewed: 'info', partially_signed: 'warn', declined: 'bad', voided: 'grey', draft: 'grey' }[s] || 'grey');
+  const openNew = () => { setEditState(null); setMode('build'); };
 
   const editDraft = async (a) => {
-    try { const r = await api.get(`/signing/envelopes/${a.id}`); setEditState({ id: a.id, prefill: prefillFromEnvelope(r.data?.data || {}) }); setMode('build'); }
-    catch { toast.error('Could not open the draft'); }
-  };
-  const resend = async (a) => {
-    try { await api.post(`/rptm/agreements/${a.id}/send`); toast.success('Agreement sent for signature'); load(); }
-    catch (e) { toast.error(e.response?.data?.error || 'Could not send'); }
+    try {
+      const r = await api.get(`/signing/envelopes/${a.id}`);
+      setEditState({ id: a.id, prefill: prefillFromEnvelope(r.data?.data || {}) });
+      setMode('build');
+    } catch {
+      toast.error('Could not open the draft');
+    }
   };
 
+  const sendDraft = async (a) => {
+    try {
+      await api.post(`/rptm/agreements/${a.id}/send`);
+      toast.success('Agreement sent for signature');
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.error || 'Could not send');
+    }
+  };
+
+  const tabs = useMemo(() => [
+    { key: 'all', label: 'All' },
+    { key: 'awaiting', label: 'Awaiting Signature', filterFn: (r) => !r.fully_signed && r.pending_count > 0 && r.status !== 'voided' && r.status !== 'declined' },
+    { key: 'draft', label: 'Drafts', filterFn: (r) => r.status === 'draft' },
+    { key: 'completed', label: 'Fully Executed', filterFn: (r) => r.fully_signed || r.status === 'completed' || r.status === 'active' },
+    { key: 'declined', label: 'Declined / Voided', filterFn: (r) => r.status === 'declined' || r.status === 'voided' || r.declined_count > 0 },
+  ], []);
+
+  const modalTitle = editState?.id
+    ? `Edit Draft #${editState.id} — Tenancy Management Agreement`
+    : 'New Tenancy Management Agreement';
+
   return (
-    <div className="pm-scope">
-      <div className="pm-head">
-        <div>
-          <div className="pm-eyebrow">Agreements</div>
-          <h1>Tenancy Management Agreements</h1>
-          <div className="pm-meta">Residential Property Tenancy Management Service Agreements — build, price and send to tenants for e-signature.</div>
-        </div>
-        <div className="pm-head-actions">
-          <button className="pm-btn primary" onClick={() => { setEditState(null); setMode('build'); }}>
-            <Plus size={15} /> New agreement
-          </button>
-        </div>
-      </div>
-      {loading ? <div style={{ padding: 48, textAlign: 'center' }}><Spinner /></div> : (
-        <div className="pm-card"><div className="pm-card-body" style={{ padding: 0 }}>
-          <table className="pm-tbl">
-            <thead><tr><th>Reference</th><th>Tenant</th><th>Contract value</th><th>Status</th><th style={{ textAlign: 'right' }}>Actions</th></tr></thead>
-            <tbody>
-              {list.map((a) => {
-                const open = ['sent', 'viewed', 'partially_signed'].includes(a.status);
-                const completed = a.status === 'completed' || a.status === 'active';
-                return (
-                  <tr key={a.id}>
-                    <td><strong style={{ color: 'var(--navy)' }}>{a.envelope_code}</strong></td>
-                    <td>{a.signer?.name || '—'}<div className="ph" style={{ fontSize: 11.5, color: 'var(--muted)' }}>{a.signer?.email || ''}</div></td>
-                    <td>{a.total_contract_value != null ? bdt(a.total_contract_value) : '—'}</td>
-                    <td><span className={`pm-chip ${chip(a.status)}`}><span className="d" />{a.status}</span></td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                        {a.status === 'draft' && <button className="pm-btn" style={aBtn} onClick={() => editDraft(a)}><Pencil size={13} /> Edit</button>}
-                        {a.status === 'draft' && <button className="pm-btn primary" style={aBtn} onClick={() => resend(a)}><Send size={13} /> Send</button>}
-                        {open && <button className="pm-btn" style={aBtn} onClick={() => copyLink(a, toast)}><Copy size={13} /> Copy link</button>}
-                        {completed && <button className="pm-btn" style={aBtn} onClick={() => openDoc(a, toast)}><Eye size={13} /> Open</button>}
-                        {completed && <button className="pm-btn" style={aBtn} onClick={() => downloadDoc(a, toast)}><Download size={13} /> Download</button>}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {!list.length && <tr><td colSpan={5} style={{ textAlign: 'center', padding: 30, color: 'var(--muted)' }}>No agreements yet. Click “New agreement”.</td></tr>}
-            </tbody>
-          </table>
-        </div></div>
+    <AgreementRegisterView
+      title="Tenancy Management Agreements"
+      subtitle="Residential Property Tenancy Management Service Agreements — build, price and send to tenants for legal e-signature."
+      docCode="SSPC-RPTM-01 (v0.2)"
+      accent="#059669"
+      accentSoft="rgba(5, 150, 105, 0.12)"
+      partyLabel="Tenant"
+      newButtonLabel="New tenant agreement"
+      tabs={tabs}
+      rows={list}
+      loading={loading}
+      onRefresh={load}
+      onNew={openNew}
+      onEditDraft={editDraft}
+      onSendDraft={sendDraft}
+      toast={toast}
+      showBuilderModal={mode === 'build'}
+      builderModalTitle={modalTitle}
+      onCloseBuilderModal={done}
+      renderBuilder={() => (
+        <Builder
+          editId={editState?.id}
+          prefill={editState?.prefill}
+          isModal
+          onDone={done}
+          onCancel={done}
+        />
       )}
-    </div>
+    />
   );
 }
 
@@ -188,7 +203,7 @@ async function downloadDoc(a, toast) {
   catch { toast.error('Could not download the signed document'); }
 }
 
-function Builder({ editId, prefill, onDone, onCancel }) {
+function Builder({ editId, prefill, isModal, onDone, onCancel }) {
   const toast = useToast();
   const { user } = useAuth();
   const draftStorageKey = editId ? `sspc_rptm_draft_${editId}` : 'sspc_rptm_draft_new';
@@ -502,18 +517,23 @@ function Builder({ editId, prefill, onDone, onCancel }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button className="pm-btn" onClick={refreshPreview} disabled={refreshing} title="Force reload preview">
-            <RefreshCw size={14} className={refreshing ? 'pm-spin' : ''} /> Refresh preview
+          <button className="pm-btn" onClick={refreshPreview} disabled={previewing} title="Force reload preview">
+            <RefreshCw size={14} className={previewing ? 'pm-spin' : ''} /> Refresh preview
           </button>
           <button className="pm-btn" onClick={() => setShowFullPreview(true)}>
             <Maximize2 size={14} /> Full preview
           </button>
           <button className="pm-btn" onClick={() => submit(true)} disabled={submitting}>
-            <Save size={14} /> Save as draft
+            <Save size={14} /> {submitting ? 'Saving…' : (editId ? 'Update draft' : 'Save as draft')}
           </button>
           <button className="pm-btn primary" onClick={() => submit(false)} disabled={submitting}>
-            <Send size={14} /> {submitting ? 'Preparing…' : 'Send for signature'}
+            <Send size={14} /> {submitting ? 'Preparing…' : (editId ? 'Send for signature' : 'Send to tenant for signature')}
           </button>
+          {isModal && (
+            <button type="button" className="pm-btn" onClick={onCancel || onDone} title="Close window">
+              <X size={14} /> Close
+            </button>
+          )}
         </div>
       </div>
 

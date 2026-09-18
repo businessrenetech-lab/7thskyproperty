@@ -292,7 +292,7 @@ function buildTenancyMgmtAgreement(data = {}) {
 
   // ── 1. Dedicated Minimalist Cover Page (Page 1) ───────────────────────────
   const coverPage = `
-  <div class="agreement-page agreement-cover-page" style="box-sizing:border-box;min-height:1020px;page-break-after:always;break-after:page;display:flex;flex-direction:column;justify-content:space-between;padding:52px 48px 40px;background:#ffffff;border-bottom:2px solid #e2e8f0;position:relative;">
+  <div class="agreement-page agreement-cover-page" style="box-sizing:border-box;min-height:760px;max-height:920px;page-break-after:always;break-after:page;display:flex;flex-direction:column;justify-content:space-between;padding:32px 44px 24px;background:#ffffff;border-bottom:2px solid #e2e8f0;position:relative;">
     <div>
       <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1.5px solid #012a4e;padding-bottom:18px;">
         <div style="display:flex;align-items:center;gap:12px;">
@@ -401,7 +401,7 @@ function buildTenancyMgmtAgreement(data = {}) {
     </div>`;
 
   const tocPage = `
-  <div class="agreement-page agreement-toc-page" style="box-sizing:border-box;min-height:1020px;page-break-before:always;page-break-after:always;break-after:page;padding:48px 48px 36px;background:#ffffff;border-bottom:2px solid #e2e8f0;display:flex;flex-direction:column;justify-content:space-between;">
+  <div class="agreement-page agreement-toc-page" style="box-sizing:border-box;min-height:760px;max-height:920px;page-break-after:always;break-after:page;padding:28px 44px 20px;background:#ffffff;border-bottom:2px solid #e2e8f0;display:flex;flex-direction:column;justify-content:space-between;">
     <div>
       <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #012a4e;padding-bottom:12px;margin-bottom:20px;">
         <div>
@@ -583,8 +583,8 @@ function buildTenancyMgmtAgreement(data = {}) {
       @media print {
         body { background:#fff !important; padding:0 !important; }
         .rptm-doc { max-width:100% !important; margin:0 !important; }
-        .agreement-cover-page { min-height:100vh !important; page-break-after:always !important; break-after:page !important; }
-        .agreement-toc-page { min-height:100vh !important; page-break-before:always !important; page-break-after:always !important; break-after:page !important; }
+        .agreement-cover-page { min-height:auto !important; max-height:none !important; page-break-after:always !important; break-after:page !important; }
+        .agreement-toc-page { min-height:auto !important; max-height:none !important; page-break-after:always !important; break-after:page !important; }
         .no-break { page-break-inside:avoid !important; break-inside:avoid !important; }
       }
       .rptm-doc a:hover { color:#00AEEF !important; }

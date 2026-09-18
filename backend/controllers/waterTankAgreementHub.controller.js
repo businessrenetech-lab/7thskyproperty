@@ -111,7 +111,8 @@ function shapeEnvelope(env) {
     // whose signature is actually being waited on right now
     awaiting: pending[0] ? { id: pending[0].id, name: pending[0].name, email: pending[0].email, role: pending[0].role, order: pending[0].order } : null,
     progress_pct: signers.length ? Math.round((signed.length / signers.length) * 100) : 0,
-    can_resend: !complete && !eq(env.status, 'voided') && !eq(env.status, 'declined') && pending.length > 0,
+    can_resend: !eq(env.status, 'voided') && !eq(env.status, 'declined'),
+    can_edit: !eq(env.status, 'voided') && !eq(env.status, 'declined'),
     // A fully-executed or already-voided/declined envelope cannot be voided — the
     // endpoint rejects it, so it must not be advertised as voidable either.
     can_void: !complete && !eq(env.status, 'voided') && !eq(env.status, 'declined'),
@@ -303,8 +304,46 @@ exports.signingLink = asyncHandler(async (req, res) => {
 /* ── resend ── */
 exports.resend = asyncHandler(async (req, res) => {
   const env = await loadEnvelope(req, res); if (!env) return;
-  if (eq(env.status, 'voided') || eq(env.status, 'completed')) {
-    return res.status(409).json({ error: `This agreement is ${env.status} and cannot be resent.` });
+  if (eq(env.status, 'voided')) {
+    return res.status(409).json({ error: `This agreement is voided and cannot be resent.` });
+  }
+
+  // If already completed, re-send the verified executed agreement to the signatory
+  if (eq(env.status, 'completed')) {
+    const signers = await EnvelopeSigner.findAll({
+      where: { envelope_id: env.id }, order: [['signer_order', 'ASC']],
+    });
+    const target = req.body?.signer_id
+      ? signers.find((s) => s.id === Number(req.body.signer_id))
+      : signers.find((s) => s.email && !eq(s.role, 'staff_countersign')) || signers[0];
+
+    if (!target?.email) {
+      return res.status(400).json({ error: 'No email address found to send the agreement copy to.' });
+    }
+
+    let emailed = false;
+    const downloadUrl = `${req.protocol}://${req.get('host')}/api/wt-agreement-hub/${env.id}/signed`;
+    try {
+      const { sendEmail } = require('../services/communication.service');
+      await sendEmail(target.email, `Completed Agreement: ${env.title}`,
+        `<p>Dear ${target.name || 'Sir/Madam'},</p>`
+        + `<p>Here is your copy of the fully executed agreement <strong>${env.title}</strong> (${env.envelope_code}).</p>`
+        + `<p>You can view and download the verified executed document here:</p>`
+        + `<p><a href="${downloadUrl}">${downloadUrl}</a></p>`
+        + `<p>Thank you,<br/>Seventh Sky Property Care</p>`);
+      emailed = true;
+    } catch (e) { console.error('[wt-agreement-resend-completed]', e.message); }
+
+    return res.json({
+      ok: true,
+      completed: true,
+      signer: { id: target.id, name: target.name, email: target.email, role: target.role },
+      signing_path: `/api/wt-agreement-hub/${env.id}/signed`,
+      emailed,
+      note: emailed
+        ? `The fully executed agreement copy has been emailed to ${target.name} (${target.email}).`
+        : `Executed agreement copy link ready.`,
+    });
   }
 
   const signers = await EnvelopeSigner.findAll({

@@ -52,12 +52,16 @@ async function listEnvelopes(req, relatedType) {
   return rows.map((row) => {
     const envelope = row.get({ plain: true });
     const terms = asObject(envelope.terms);
+    const clientSigner = (envelope.signers || []).find((s) => s.role === 'client') || (envelope.signers || [])[0] || null;
     return {
       id: envelope.id, envelope_code: envelope.envelope_code, title: envelope.title,
       status: envelope.status, created_at: envelope.createdAt, sent_at: envelope.sent_at,
       completed_at: envelope.completed_at, signers: envelope.signers || [],
-      signer: (envelope.signers || [])[0] || null,
-      total_contract_value: terms?.pricing_summary?.total_contract_value || null,
+      signer: clientSigner,
+      terms,
+      client_name: clientSigner?.name || terms?.client_name || terms?.client?.full_name || null,
+      client_email: clientSigner?.email || terms?.client_email || terms?.client?.email || null,
+      total_contract_value: envelope.total_contract_value ?? terms?.pricing_summary?.total_contract_value ?? null,
     };
   });
 }
@@ -98,11 +102,11 @@ const customer = {
       // Schedule A AMC tiers (per service line)
       amc_packages: amcSvc.packagesFor(resolveServiceLine(req)).map((p) => ({
         key: p.key, label: p.label, client_type: p.client_type, blurb: p.blurb,
-        visits_per_year: Object.values(p.visits).reduce((s, n) => s + n, 0),
+        sort_order: p.sort_order,
       })),
       // Clause 9 — "payment may be made monthly, quarterly, half-yearly or annually"
-      amc_frequencies: amcSvc.PAYMENT_FREQUENCIES.map((f) => f.key),
-      amc_visit_frequencies: ['Monthly', 'Quarterly', 'Half Yearly', 'Annual'],
+      amc_frequencies: amcSvc.FREQUENCIES,
+      amc_payment_frequencies: amcSvc.PAYMENT_FREQUENCIES,
       amc_contracts: amcContracts,
       // drives which party details the agreement asks for
       client_types: ['Residential', 'Commercial', 'Industrial', 'Institutional'],
@@ -110,28 +114,42 @@ const customer = {
     });
   }),
   preview: asyncHandler(async (req, res) => {
-    const branchId = branchScope(req).branch_id;
+    const branchId = resolveBranchId(req);
     const vertical = catalogueVertical(req);
-    const pricing = await customerSvc.computePricing(req.body?.pricing_input || {}, branchId, { vertical });
-    res.json({ ...customerSvc.buildAgreement({ ...(req.body || {}), vertical, pricing }), pricing });
+    const body = req.body || {};
+    const pricing = await customerSvc.computePricing(body.pricing_input || {}, branchId, { vertical });
+    const rendered = customerSvc.buildAgreement({ ...body, vertical, pricing });
+    res.json({ ...rendered, pricing });
   }),
-  listAgreements: asyncHandler(async (req, res) => res.json(await listEnvelopes(req, relatedTypeFor(req, 'customer')))),
+  listAgreements: asyncHandler(async (req, res) => {
+    res.json(await listEnvelopes(req, relatedTypeFor(req, 'customer')));
+  }),
   createAgreement: asyncHandler(async (req, res) => {
     const branchId = resolveBranchId(req);
     const vertical = catalogueVertical(req);
     const body = req.body || {};
     const party = body.client || {};
+    const asDraft = !!body.save_as_draft;
     if (!party.full_name) return res.status(400).json({ error: 'Client name is required.' });
-    if (!party.email) return res.status(400).json({ error: 'Client email is required to send for signature.' });
+    if (!asDraft && !party.email) return res.status(400).json({ error: 'Client email is required to send for signature.' });
     const pricing = await customerSvc.computePricing(body.pricing_input || {}, branchId, { vertical });
     const built = customerSvc.buildAgreement({ ...body, vertical, pricing });
     const expires = new Date(Date.now() + 30 * 864e5);
+    const org = body.org || {};
+    const countersignEmail = org.email || req.user?.email || null;
+    if (!asDraft && !countersignEmail) {
+      return res.status(400).json({ error: 'A Seventh Sky countersigner email is required — the agreement must be signed by both parties.' });
+    }
+
     const out = await sequelize.transaction(async (transaction) => {
       const envelope = await SigningEnvelope.create({
         branch_id: branchId, envelope_code: `${envPrefixFor(req, 'customer')}-${Date.now().toString().slice(-6)}`,
         title: `${built.title} — ${party.full_name}`, document_html: built.html,
         related_type: relatedTypeFor(req, 'customer'), related_id: body.related_id || null,
-        status: 'sent', sent_at: new Date(), expires_at: expires,
+        total_contract_value: pricing?.summary?.total_contract_value || null,
+        status: asDraft ? 'draft' : 'sent',
+        sent_at: asDraft ? null : new Date(),
+        expires_at: expires,
         // Ordered: client, then Seventh Sky countersigns, then the witnesses
         // attest — a witness cannot meaningfully attest a signature not yet made.
         signing_order_enforced: true, kyc_role: 'client', kyc_policy: 'none',
@@ -148,29 +166,19 @@ const customer = {
        * Order is enforced: the client signs first, Seventh Sky countersigns,
        * then the witnesses attest what they have just seen signed.
        */
-      const org = body.org || {};
-      // The document states both parties must sign, so Seventh Sky's countersigner
-      // is REQUIRED — otherwise an agreement could be "fully executed" on the
-      // client's signature alone, contradicting the executed document.
-      const countersignEmail = org.email || req.user?.email || null;
-      if (!countersignEmail) {
-        const err = new Error('A Seventh Sky countersigner email is required — the agreement must be signed by both parties.');
-        err.status = 400;
-        throw err;
-      }
       const signerDefs = [
-        { role: 'client', order: 1, name: party.full_name, email: party.email, phone: party.phone || null, label: 'Client' },
+        { role: 'client', order: 1, name: party.full_name, email: party.email || '', phone: party.phone || null, label: 'Client' },
         {
           role: 'staff_countersign', order: 2,
           name: org.represented_by || req.user?.name || 'Seventh Sky Property Care',
-          email: countersignEmail, label: 'Seventh Sky', user_id: req.user?.id || null,
+          email: countersignEmail || req.user?.email || 'admin@seventhskyproperty.com', label: 'Seventh Sky', user_id: req.user?.id || null,
         },
       ];
       (body.witnesses || []).forEach((w, i) => {
-        if (!w?.name || !w?.email) return; // a witness without an email cannot be sent to
+        if (!w?.name) return; // a witness without a name cannot be added
         signerDefs.push({
           role: 'witness', order: signerDefs.length + 1,
-          name: w.name, email: w.email, label: `Witness ${i + 1}`,
+          name: w.name, email: w.email || '', label: `Witness ${i + 1}`,
         });
       });
 
@@ -183,7 +191,7 @@ const customer = {
           contact_id: def.role === 'client' ? (body.contact_id || null) : null,
           user_id: def.user_id || null,
           access_token: token, token_expires_at: expires,
-          status: def.order === 1 ? 'sent' : 'pending',
+          status: asDraft ? 'draft' : (def.order === 1 ? 'sent' : 'pending'),
         }, { transaction });
         await SignatureField.bulkCreate([
           { envelope_id: envelope.id, signer_id: signer.id, field_type: 'signature', page: 1, required: true, label: `${def.label} signature` },
@@ -194,29 +202,116 @@ const customer = {
       return { envelope, links };
     });
 
-    const first = out.links[0];
-    // Actually email the first signer their link. The envelope is marked "sent", so
-    // NOT emailing would make the UI's "Agreement sent to customer" a silent lie.
-    try {
-      if (first?.email) {
-        const { sendEmail } = require('../services/communication.service');
-        const url = `${req.protocol}://${req.get('host')}/admin/sign/${first.token}`;
-        await sendEmail(first.email, `Please sign: ${out.envelope.title}`,
-          `<p>Dear ${first.name || 'Sir/Madam'},</p>`
-          + `<p>Please review and sign your agreement <strong>${out.envelope.title}</strong> (${out.envelope.envelope_code}):</p>`
-          + `<p><a href="${url}">${url}</a></p><p>This link expires in 30 days.</p>`
-          + `<p>Thank you,<br/>Seventh Sky Property Care</p>`);
-      }
-    } catch (e) { console.error('[wt-customer-agreement-send]', e.message); }
+    if (!asDraft) {
+      const first = out.links[0];
+      // Actually email the first signer their link. The envelope is marked "sent", so
+      // NOT emailing would make the UI's "Agreement sent to customer" a silent lie.
+      try {
+        if (first?.email) {
+          const { sendEmail } = require('../services/communication.service');
+          const url = `${req.protocol}://${req.get('host')}/admin/sign/${first.token}`;
+          await sendEmail(first.email, `Please sign: ${out.envelope.title}`,
+            `<p>Dear ${first.name || 'Sir/Madam'},</p>`
+            + `<p>Please review and sign your agreement <strong>${out.envelope.title}</strong> (${out.envelope.envelope_code}):</p>`
+            + `<p><a href="${url}">${url}</a></p><p>This link expires in 30 days.</p>`
+            + `<p>Thank you,<br/>Seventh Sky Property Care</p>`);
+        }
+      } catch (e) { console.error('[wt-customer-agreement-send]', e.message); }
+    }
 
+    const first = out.links[0];
     res.status(201).json({
       id: out.envelope.id, envelope_code: out.envelope.envelope_code, status: out.envelope.status,
-      signing_token: first.token, signing_path: `/admin/sign/${first.token}`,
+      signing_token: first?.token || null, signing_path: first?.token ? `/admin/sign/${first.token}` : null,
       signers: out.links.map((l) => ({
         name: l.name, email: l.email, role: l.role, order: l.order, label: l.label,
         signing_path: `/admin/sign/${l.token}`,
       })),
     });
+  }),
+  updateAgreement: asyncHandler(async (req, res) => {
+    const branchId = resolveBranchId(req);
+    const vertical = catalogueVertical(req);
+    const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req), related_type: relatedTypeFor(req, 'customer') } });
+    if (!env) return res.status(404).json({ error: 'Agreement not found.' });
+    if (env.status !== 'draft') return res.status(409).json({ error: 'Only a draft agreement can be updated.' });
+    const body = req.body || {};
+    const party = body.client || {};
+    if (!party.full_name) return res.status(400).json({ error: 'Client name is required.' });
+    const pricing = await customerSvc.computePricing(body.pricing_input || {}, branchId, { vertical });
+    const built = customerSvc.buildAgreement({ ...body, vertical, pricing });
+    const org = body.org || {};
+    const countersignEmail = org.email || req.user?.email || null;
+
+    await sequelize.transaction(async (t) => {
+      await SignatureField.destroy({ where: { envelope_id: env.id }, transaction: t });
+      await EnvelopeSigner.destroy({ where: { envelope_id: env.id }, transaction: t });
+      await env.update({
+        title: `${built.title} — ${party.full_name}`,
+        document_html: built.html,
+        terms: built.terms,
+        total_contract_value: pricing?.summary?.total_contract_value || null,
+        related_id: body.related_id || env.related_id,
+      }, { transaction: t });
+
+      const signerDefs = [
+        { role: 'client', order: 1, name: party.full_name, email: party.email || '', phone: party.phone || null, label: 'Client' },
+        {
+          role: 'staff_countersign', order: 2,
+          name: org.represented_by || req.user?.name || 'Seventh Sky Property Care',
+          email: countersignEmail || req.user?.email || 'admin@seventhskyproperty.com', label: 'Seventh Sky', user_id: req.user?.id || null,
+        },
+      ];
+      (body.witnesses || []).forEach((w, i) => {
+        if (!w?.name) return;
+        signerDefs.push({
+          role: 'witness', order: signerDefs.length + 1,
+          name: w.name, email: w.email || '', label: `Witness ${i + 1}`,
+        });
+      });
+
+      for (const def of signerDefs) {
+        const token = crypto.randomBytes(24).toString('hex');
+        const signer = await EnvelopeSigner.create({
+          envelope_id: env.id, signer_order: def.order, role: def.role,
+          name: def.name, email: def.email, phone: def.phone || null,
+          contact_id: def.role === 'client' ? (body.contact_id || null) : null,
+          user_id: def.user_id || null,
+          access_token: token, token_expires_at: env.expires_at,
+          status: 'draft',
+        }, { transaction: t });
+        await SignatureField.bulkCreate([
+          { envelope_id: env.id, signer_id: signer.id, field_type: 'signature', page: 1, required: true, label: `${def.label} signature` },
+          { envelope_id: env.id, signer_id: signer.id, field_type: 'date_signed', page: 1, required: true, label: `${def.label} — date signed` },
+        ], { transaction: t });
+      }
+    });
+
+    res.json({ id: env.id, status: env.status, message: 'Draft updated.' });
+  }),
+  sendAgreement: asyncHandler(async (req, res) => {
+    const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req), related_type: relatedTypeFor(req, 'customer') } });
+    if (!env) return res.status(404).json({ error: 'Agreement not found.' });
+    if (env.status !== 'draft') return res.status(409).json({ error: `Cannot send an agreement in '${env.status}' state.` });
+    const clientSigner = await EnvelopeSigner.findOne({ where: { envelope_id: env.id, role: 'client' } });
+    if (!clientSigner?.email) return res.status(400).json({ error: 'Client email is required to send for signature.' });
+
+    await sequelize.transaction(async (t) => {
+      await env.update({ status: 'sent', sent_at: new Date() }, { transaction: t });
+      await clientSigner.update({ status: 'sent' }, { transaction: t });
+    });
+
+    try {
+      const { sendEmail } = require('../services/communication.service');
+      const url = `${req.protocol}://${req.get('host')}/admin/sign/${clientSigner.access_token}`;
+      await sendEmail(clientSigner.email, `Please sign: ${env.title}`,
+        `<p>Dear ${clientSigner.name || 'Sir/Madam'},</p>`
+        + `<p>Please review and sign your agreement <strong>${env.title}</strong> (${env.envelope_code}):</p>`
+        + `<p><a href="${url}">${url}</a></p><p>This link expires in 30 days.</p>`
+        + `<p>Thank you,<br/>Seventh Sky Property Care</p>`);
+    } catch (e) { console.error('[wt-customer-agreement-send]', e.message); }
+
+    res.json({ id: env.id, status: 'sent', signing_token: clientSigner.access_token, signing_path: `/admin/sign/${clientSigner.access_token}` });
   }),
 };
 

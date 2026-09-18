@@ -151,16 +151,25 @@ exports.createAgreement = asyncHandler(async (req, res) => {
 exports.listAgreements = asyncHandler(async (req, res) => {
   const rows = await SigningEnvelope.findAll({
     where: { ...branchScope(req), related_type: 'str_management_agreement' },
-    include: [{ model: EnvelopeSigner, as: 'signers', attributes: ['id', 'name', 'email', 'role', 'status', 'signed_at'] }],
+    include: [{ model: EnvelopeSigner, as: 'signers', attributes: ['id', 'signer_order', 'name', 'email', 'role', 'status', 'signed_at'] }],
     order: [['id', 'DESC']],
   });
   res.json(rows.map((r) => {
     const e = r.get({ plain: true });
     let terms = e.terms; if (typeof terms === 'string') { try { terms = JSON.parse(terms); } catch { terms = {}; } }
+    const signers = (e.signers || []).slice().sort((a, b) => (a.signer_order || 0) - (b.signer_order || 0)).map((s) => ({
+      id: s.id, order: s.signer_order, role: s.role, name: s.name, email: s.email, status: s.status, signed_at: s.signed_at,
+    }));
+    const primary = signers.find((s) => s.role === 'client' || s.role === 'owner' || s.role === 'landlord') || signers[0] || null;
     return {
       id: e.id, envelope_code: e.envelope_code, title: e.title, status: e.status,
       property_id: e.related_id, created_at: e.createdAt, sent_at: e.sent_at, completed_at: e.completed_at,
-      signer: (e.signers || [])[0] || null,
+      expires_at: e.expires_at, content_hash: e.content_hash,
+      signers,
+      signer: primary,
+      client_name: primary?.name || terms?.client?.full_name || null,
+      client_email: primary?.email || terms?.client?.email || null,
+      terms,
       total_contract_value: terms?.pricing_summary?.total_contract_value || null,
       fee: terms?.fee || null,
     };

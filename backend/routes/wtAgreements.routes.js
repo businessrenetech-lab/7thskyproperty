@@ -12,6 +12,9 @@ router.get('/customer/meta', canRead, ctrl.customer.getMeta);
 router.post('/customer/preview', canBind, ctrl.customer.preview);
 router.get('/customer/agreements', canRead, ctrl.customer.listAgreements);
 router.post('/customer/agreements', canBind, ctrl.customer.createAgreement);
+router.put('/customer/agreements/:id', canBind, ctrl.customer.updateAgreement);
+router.patch('/customer/agreements/:id', canBind, ctrl.customer.updateAgreement);
+router.post('/customer/agreements/:id/send', canBind, ctrl.customer.sendAgreement);
 // Service Delivery Provider Master Agreement (signed with the provider)
 router.get('/provider/catalog', canRead, ctrl.provider.getCatalog);
 router.get('/provider/meta', canRead, ctrl.provider.getMeta);

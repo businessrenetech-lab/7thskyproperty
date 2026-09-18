@@ -120,9 +120,9 @@ async function buildSignedDocument(envelope) {
   const complete = signers.length > 0 && signedCount === signers.length;
 
   const banner = `
-  <div style="font-family:Georgia,'Times New Roman',serif;max-width:820px;margin:0 auto 14px;
+  <div style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:820px;margin:0 auto 14px;
        border:1px solid ${complete ? '#a7f3d0' : '#fde68a'};background:${complete ? '#ecfdf5' : '#fffbeb'};
-       border-radius:10px;padding:12px 16px;">
+       border-radius:10px;padding:12px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
     <div style="font-weight:bold;color:${complete ? '#047857' : '#92400e'};font-size:13px;">
       ${complete ? 'FULLY EXECUTED' : `PARTIALLY SIGNED — ${signedCount} of ${signers.length} parties`}
     </div>

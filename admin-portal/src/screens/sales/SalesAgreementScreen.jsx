@@ -17,6 +17,7 @@ import { Spinner } from '../../ui/kit';
 import { Combo } from '../../ui/pickers';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
+import AgreementRegisterView from '../agreements/AgreementRegisterView';
 
 const bdt = (v) => '৳' + Number(v || 0).toLocaleString('en-BD');
 const sel = { border: '1px solid var(--line)', borderRadius: 10, padding: '9px 12px', background: 'var(--surface)', font: 'inherit', color: 'var(--ink)', width: '100%' };
@@ -218,87 +219,59 @@ export default function SalesAgreementScreen({ kind, category = 'residential' })
   };
   const [builderPrefill, setBuilderPrefill] = useState(null);
 
-  if (mode === 'build') {
-    return <Builder kind={kind} category={category} prefill={builderPrefill || editEnvelope?.prefill || prefill} editId={editEnvelope?.id || null}
-      onDone={() => { setMode('list'); setEditEnvelope(null); setBuilderPrefill(null); load(); }}
-      onCancel={() => { setMode('list'); setEditEnvelope(null); setBuilderPrefill(null); }} />;
-  }
+  const docCode = category === 'commercial'
+    ? (kind === 'purchase' ? 'SSPC-CPPS-01 (v0.2)' : 'SSPC-CPSS-01 (v0.2)')
+    : (kind === 'purchase' ? 'SSPC-RPPS-01 (v0.2)' : 'SSPC-RPSS-01 (v0.2)');
 
-  const chip = (s) => ({ completed: 'good', active: 'good', sent: 'warn', viewed: 'info', partially_signed: 'warn', declined: 'bad', voided: 'grey', draft: 'grey' }[s] || 'grey');
+  const tabs = useMemo(() => [
+    { key: 'all', label: 'All' },
+    { key: 'awaiting', label: 'Awaiting Signature', filterFn: (r) => !r.fully_signed && r.pending_count > 0 && r.status !== 'voided' && r.status !== 'declined' },
+    { key: 'draft', label: 'Drafts', filterFn: (r) => r.status === 'draft' },
+    { key: 'completed', label: 'Fully Executed', filterFn: (r) => r.fully_signed || r.status === 'completed' || r.status === 'active' },
+    { key: 'declined', label: 'Declined / Voided', filterFn: (r) => r.status === 'declined' || r.status === 'voided' || r.declined_count > 0 },
+  ], []);
+
+  const modalTitle = editEnvelope
+    ? `Edit Draft #${editEnvelope.id} — ${category === 'commercial' ? 'Commercial' : 'Residential'} ${km.party === 'Buyer' ? 'Purchase' : 'Sale'} Agreement`
+    : `New ${category === 'commercial' ? 'Commercial' : 'Residential'} ${km.party === 'Buyer' ? 'Purchase' : 'Sale'} Agreement`;
 
   return (
-    <div className="pm-scope">
-      <div className="pm-head">
-        <div><div className="pm-eyebrow">Contracts</div><h1>{km.title}</h1><div className="pm-meta">Residential Property {km.party === 'Buyer' ? 'Purchase' : 'Sale'} Service Agreements — build, price and send to the {km.party.toLowerCase()} for e-signature.</div></div>
-        <div className="pm-head-actions"><button className="pm-btn primary" onClick={openNew}><Plus size={15} /> New agreement</button></div>
-      </div>
-      {loading ? <div style={{ padding: 48, textAlign: 'center' }}><Spinner /></div> : (
-        <div className="pm-card"><div className="pm-card-body" style={{ padding: 0 }}>
-          <table className="pm-tbl">
-            <thead><tr><th>Reference</th><th>{km.party}</th><th>Status</th><th style={{ textAlign: 'right' }}>Actions</th></tr></thead>
-            <tbody>
-              {list.map((a) => {
-                const s = (a.signers || []).find((x) => x.role === 'client') || (a.signers || [])[0];
-                const done = a.status === 'completed';
-                return (
-                  <tr key={a.id}>
-                    <td><strong style={{ color: 'var(--navy)' }}>{a.envelope_code}</strong></td>
-                    <td>{s?.name || '—'}<div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{s?.email || ''}</div></td>
-                    <td><span className={`pm-chip ${chip(a.status)}`}><span className="d" />{a.status}</span></td>
-                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      {a.status === 'draft' && <>
-                        <button className="pm-btn" style={aBtn} onClick={() => editDraft(a)}><Pencil size={13} /> Edit</button>
-                        <button className="pm-btn primary" style={aBtn} onClick={() => sendDraft(a)}><Send size={13} /> Send</button>
-                      </>}
-                      {['sent', 'viewed', 'partially_signed'].includes(a.status) && <>
-                        <button className="pm-btn" style={aBtn} onClick={() => copyLink(a, toast)}><Copy size={13} /> Copy link</button>
-                        <button className="pm-btn" style={aBtn} onClick={() => reissue(a)}><Pencil size={13} /> Edit &amp; reissue</button>
-                      </>}
-                      {done && <button className="pm-btn" style={aBtn} onClick={() => viewSigned(a, toast)}><FileText size={13} /> Signed copy</button>}
-                      {done && <button className="pm-btn" style={aBtn} onClick={() => downloadSigned(a, toast)}><Download size={13} /> Download</button>}
-                    </td>
-                  </tr>
-                );
-              })}
-              {!list.length && <tr><td colSpan={4} style={{ textAlign: 'center', padding: 30, color: 'var(--muted)' }}>No agreements yet. Click “New agreement”.</td></tr>}
-            </tbody>
-          </table>
-        </div></div>
+    <AgreementRegisterView
+      title={km.title}
+      subtitle={`${category === 'commercial' ? 'Commercial' : 'Residential'} Property ${km.party === 'Buyer' ? 'Purchase' : 'Sale'} Service Agreements — build, price and send to the ${km.party.toLowerCase()} for legal e-signature.`}
+      docCode={docCode}
+      accent={category === 'commercial' ? '#0284c7' : '#2563eb'}
+      accentSoft={category === 'commercial' ? 'rgba(2, 132, 199, 0.12)' : 'rgba(37, 99, 235, 0.12)'}
+      partyLabel={km.party}
+      newButtonLabel={`New ${km.party.toLowerCase()} agreement`}
+      tabs={tabs}
+      rows={list}
+      loading={loading}
+      onRefresh={load}
+      onNew={openNew}
+      onEditDraft={editDraft}
+      onSendDraft={sendDraft}
+      onReissue={reissue}
+      toast={toast}
+      showBuilderModal={mode === 'build'}
+      builderModalTitle={modalTitle}
+      onCloseBuilderModal={() => { setMode('list'); setEditEnvelope(null); setBuilderPrefill(null); }}
+      renderBuilder={() => (
+        <Builder
+          kind={kind}
+          category={category}
+          prefill={builderPrefill || editEnvelope?.prefill || prefill}
+          editId={editEnvelope?.id || null}
+          isModal
+          onDone={() => { setMode('list'); setEditEnvelope(null); setBuilderPrefill(null); load(); }}
+          onCancel={() => { setMode('list'); setEditEnvelope(null); setBuilderPrefill(null); }}
+        />
       )}
-    </div>
+    />
   );
 }
 
-const aBtn = { padding: '4px 10px', fontSize: 12, marginLeft: 6 };
-
-async function copyLink(a, toast) {
-  try {
-    const r = await api.get(`/signing/envelopes/${a.id}/links`);
-    const url = r.data?.data?.active_link;
-    if (!url) return toast.error('No active signing link');
-    try { await navigator.clipboard.writeText(url); toast.success('Signing link copied'); } catch { window.prompt('Signing link:', url); }
-  } catch { toast.error('Could not fetch link'); }
-}
-
-async function viewSigned(a, toast) {
-  try {
-    const r = await api.get(`/signing/envelopes/${a.id}/links`);
-    const doc = r.data?.data?.signed_document;
-    if (!doc) return toast.error('No signed copy available yet');
-    window.open(doc, '_blank');
-  } catch { toast.error('Could not open the signed copy'); }
-}
-
-async function downloadSigned(a, toast) {
-  try {
-    const r = await api.get(`/signing/envelopes/${a.id}/links`);
-    const doc = r.data?.data?.signed_document;
-    if (!doc) return toast.error('No signed copy available yet');
-    window.open(`${doc}${doc.includes('?') ? '&' : '?'}download=1`, '_blank');
-  } catch { toast.error('Could not download the signed copy'); }
-}
-
-function Builder({ kind, category = 'residential', prefill, editId, onDone, onCancel }) {
+function Builder({ kind, category = 'residential', prefill, editId, onDone, onCancel, isModal = false }) {
   const km = KIND_META[kind];
   const toast = useToast();
   const { user } = useAuth();
@@ -602,11 +575,11 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
 
   const SECTIONS = [
     { id: 'all', label: 'All Sections' },
-    { id: 'parties', label: `1. ${km.party} & 7th Sky Rep` },
-    { id: 'property', label: kind === 'purchase' ? '2. Criteria & Schedule B' : '2. Property & Schedule B' },
-    { id: 'services', label: '3. Scope (Schedule A)' },
-    { id: 'pricing', label: '4. Pricing & Commission' },
-    { id: 'checklist', label: '5. Checklist, 7th Sky Rep & Witnesses' },
+    { id: 'parties', label: `1. Parties — ${km.party} & Property` },
+    { id: 'property', label: kind === 'purchase' ? '2. Schedule B — Acquisition Terms' : '2. Schedule B — Commercial Terms' },
+    { id: 'services', label: '3. Schedule A — Scope' },
+    { id: 'pricing', label: '4. Schedule C — Pricing' },
+    { id: 'checklist', label: '5. Schedule D — Checklist & Signers' },
   ];
 
   const calcCommission = () => {
@@ -675,10 +648,10 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <h2 style={{ fontSize: 17, fontWeight: 800, margin: 0, color: 'var(--navy)' }}>
-                {editId ? 'Edit Draft Agreement' : km.newTitle}
+                {editId ? 'Edit Draft Agreement' : (category === 'commercial' ? (kind === 'sale' ? 'New Commercial Property Sale Agreement' : 'New Commercial Property Purchase Agreement') : km.newTitle)}
               </h2>
               <span style={{ fontSize: 11.5, background: 'var(--blue-weak)', color: 'var(--blue-strong)', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
-                {km.docCode}
+                {category === 'commercial' ? (kind === 'sale' ? 'SSPC-CPSS-01 (v0.2)' : 'SSPC-CPPS-01 (v0.2)') : `${km.docCode} (v0.2)`}
               </span>
               <span style={{ fontSize: 11.5, display: 'inline-flex', alignItems: 'center', gap: 5, color: '#16a34a', fontWeight: 600 }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} /> Live Sync Active
@@ -691,7 +664,7 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
               )}
             </div>
             <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
-              {kind === 'sale' ? 'Residential Property Sale Service Agreement' : 'Residential Property Purchase Service Agreement'} · Live 2-Column Editor
+              {category === 'commercial' ? (kind === 'sale' ? 'Commercial Property Sale Service Agreement' : 'Commercial Property Purchase Service Agreement') : (kind === 'sale' ? 'Residential Property Sale Service Agreement' : 'Residential Property Purchase Service Agreement')} · Live 2-Column Editor
               {d.client.full_name ? ` · ${km.party}: ${d.client.full_name}` : ''}
               {d.client.property_address ? ` · Property: ${d.client.property_address}` : ''}
             </div>
@@ -706,11 +679,16 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
             <Maximize2 size={14} /> Full preview
           </button>
           <button className="pm-btn" disabled={busy} onClick={() => submit(true)}>
-            <Save size={14} /> {busy ? 'Saving…' : 'Save as draft'}
+            <Save size={14} /> {busy ? 'Saving…' : (editId ? 'Update draft' : 'Save as draft')}
           </button>
           <button className="pm-btn primary" disabled={busy} onClick={() => submit(false)}>
-            <Send size={14} /> {busy ? 'Sending…' : 'Send for signature'}
+            <Send size={14} /> {busy ? 'Sending…' : (editId ? 'Send for signature' : `Send to ${km.party.toLowerCase()} for signature`)}
           </button>
+          {isModal && (
+            <button type="button" className="pm-btn" onClick={onCancel} title="Close window">
+              <X size={14} /> Close
+            </button>
+          )}
         </div>
       </div>
 
@@ -740,8 +718,8 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
                 <div className="pm-card-h">
                   <div className="ic"><FileSignature size={16} /></div>
                   <div>
-                    <h3>1. Parties — {km.party} Credentials</h3>
-                    <div className="hsub">Primary {km.party.toLowerCase()} details, contact selection, co-signers, and representation</div>
+                    <h3>1. Parties — {km.party} &amp; Property</h3>
+                    <div className="hsub">Primary client, property binding, contact selection, and co-signers</div>
                   </div>
                 </div>
                 <div className="pm-card-body" style={{ padding: '0 18px 18px' }}>
@@ -752,8 +730,18 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
                         <Combo endpoint="/contacts" labelFn={(c) => `${c.full_name}${c.primary_phone ? ' · ' + c.primary_phone : ''}`} value={d.client_contact_id ? Number(d.client_contact_id) : ''} onChange={onClient} placeholder="Search a contact…" />
                       </div>
                       <div>
+                        <label style={lbl}>{kind === 'purchase' ? 'Target / Shortlisted property (optional)' : 'Bound property — pick listing property'}</label>
+                        <Combo endpoint={`/properties?category=${category}`} labelFn={(p) => `${p.property_code || ''} · ${p.title || p.address || ''}`} value={d.property_id ? Number(d.property_id) : ''} onChange={onProperty} placeholder={kind === 'purchase' ? 'Search shortlisted property (optional)…' : 'Search listing property…'} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      <div>
                         <label style={lbl}>Effective date</label>
                         <input type="date" style={sel} value={d.effective_date} onChange={(e) => set('effective_date', e.target.value)} />
+                      </div>
+                      <div>
+                        <label style={lbl}>{kind === 'purchase' ? 'Preferred property type *' : 'Property type'}</label>
+                        <input style={sel} value={d.property_type || ''} onChange={(e) => set('property_type', e.target.value)} placeholder={category === 'commercial' ? 'e.g. Commercial Office Space / Retail Showroom / Warehouse' : 'e.g. 3-4 BHK Apartment / Luxury Penthouse / Duplex'} />
                       </div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -762,8 +750,8 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
                       <div><label style={lbl}>Phone</label><input style={sel} value={d.client.phone} onChange={(e) => set('client.phone', e.target.value)} placeholder="017xxxxxxxx" /></div>
                       <div><label style={lbl}>NID / Passport</label><input style={sel} value={d.client.nid} onChange={(e) => set('client.nid', e.target.value)} placeholder="National ID or Passport no" /></div>
                       <div><label style={lbl}>Authorised representative (if applicable)</label><input style={sel} value={d.client.rep} onChange={(e) => set('client.rep', e.target.value)} placeholder="Attorney or legal representative" /></div>
-                      <div><label style={lbl}>Representative position / relationship</label><input style={sel} value={d.client.rep_position} onChange={(e) => set('client.rep_position', e.target.value)} placeholder="e.g. Attorney-in-fact / Spouse" /></div>
-                      <div style={{ gridColumn: '1 / -1' }}><label style={lbl}>Current residential address</label><input style={sel} value={d.client.property_address} onChange={(e) => set('client.property_address', e.target.value)} placeholder="Client permanent / residential address" /></div>
+                      <div><label style={lbl}>Representative position / relationship</label><input style={sel} value={d.client.rep_position} onChange={(e) => set('client.rep_position', e.target.value)} placeholder="e.g. Attorney-in-fact / Director / Spouse" /></div>
+                      <div style={{ gridColumn: '1 / -1' }}><label style={lbl}>Current residential / correspondence address</label><input style={sel} value={d.client.property_address} onChange={(e) => set('client.property_address', e.target.value)} placeholder="Client permanent / registered address" /></div>
                     </div>
 
                     {/* Additional parties — co-owners (sale) / co-buyers (purchase). Each signs. */}
@@ -796,14 +784,14 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
             </div>
           )}
 
-          {/* 2. Schedule B — Property & Engagement / Purchase Criteria */}
+          {/* 2. Schedule B — Commercial & Property Terms / Search Criteria & Acquisition Terms */}
           {(activeSection === 'all' || activeSection === 'property') && (
             <div className="pm-card">
               <div className="pm-card-h">
                 <div className="ic"><FileSignature size={16} /></div>
                 <div>
-                  <h3>2. Schedule B — {km.summaryTitle || 'Property Summary'}</h3>
-                  <div className="hsub">{km.summarySubtitle}</div>
+                  <h3>2. Schedule B — {kind === 'purchase' ? 'Search Criteria & Acquisition Terms' : 'Commercial & Property Terms'}</h3>
+                  <div className="hsub">{kind === 'purchase' ? 'Acquisition parameters, search criteria, budget, and financing structure' : 'Official tracking codes, listing price, target valuation, and marketing covenants'}</div>
                 </div>
               </div>
               <div className="pm-card-body" style={{ padding: '0 18px 18px' }}>
@@ -832,15 +820,11 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
                 </div>
 
                 {kind === 'purchase' ? (
-                  /* ── Property Purchase Search & Acquisition Criteria (RPPS) ── */
+                  /* ── Property Purchase Search & Acquisition Criteria (RPPS / CPPS) ── */
                   <div style={{ display: 'grid', gap: 14, gridTemplateColumns: '1fr 1fr' }}>
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <label style={lbl}>Target / Shortlisted Property (optional — auto-populates criteria if already identified)</label>
-                      <Combo endpoint={`/properties?category=${category}`} labelFn={(p) => `${p.property_code || ''} · ${p.title || p.address || ''}`} value={d.property_id ? Number(d.property_id) : ''} onChange={onProperty} placeholder="Search a shortlisted property (optional)…" />
-                    </div>
                     <div>
                       <label style={lbl}>Preferred Property Type *</label>
-                      <input style={sel} value={d.property_type || ''} onChange={(e) => set('property_type', e.target.value)} placeholder="e.g. 3-4 BHK Apartment / Luxury Penthouse / Duplex" />
+                      <input style={sel} value={d.property_type || ''} onChange={(e) => set('property_type', e.target.value)} placeholder={category === 'commercial' ? 'e.g. Commercial Office Space / Retail Showroom / Warehouse' : 'e.g. 3-4 BHK Apartment / Luxury Penthouse / Duplex'} />
                     </div>
                     <div>
                       <label style={lbl}>Engagement Type</label>
@@ -851,7 +835,7 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
                     </div>
                     <div>
                       <label style={lbl}>Preferred Location(s) / Area(s) *</label>
-                      <input style={sel} value={d.schedule_b?.preferred_location || ''} onChange={(e) => set('schedule_b.preferred_location', e.target.value)} placeholder="e.g. Gulshan-2, Banani, Baridhara Diplomatic Zone, Dhanmondi" />
+                      <input style={sel} value={d.schedule_b?.preferred_location || ''} onChange={(e) => set('schedule_b.preferred_location', e.target.value)} placeholder="e.g. Gulshan-2, Banani, Baridhara Diplomatic Zone, Motijheel" />
                     </div>
                     <div>
                       <label style={lbl}>Budget Range (BDT) *</label>
@@ -881,12 +865,24 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
                     </div>
                     <div>
                       <label style={lbl}>Intended Use</label>
-                      <select style={sel} value={d.schedule_b?.intended_use || 'Owner Occupier'} onChange={(e) => set('schedule_b.intended_use', e.target.value)}>
-                        <option value="Owner Occupier">Owner Occupier</option>
-                        <option value="Rental Investment / High Yield">Rental Investment / High Yield</option>
-                        <option value="Capital Appreciation">Capital Appreciation</option>
-                        <option value="Vacation / Secondary Home">Vacation / Secondary Home</option>
-                        <option value="Commercial / Mixed Use">Commercial / Mixed Use</option>
+                      <select style={sel} value={d.schedule_b?.intended_use || (category === 'commercial' ? 'Commercial / Office Operations' : 'Owner Occupier')} onChange={(e) => set('schedule_b.intended_use', e.target.value)}>
+                        {category === 'commercial' ? (
+                          <>
+                            <option value="Commercial / Office Operations">Commercial / Office Operations</option>
+                            <option value="Retail / Commercial Showroom">Retail / Commercial Showroom</option>
+                            <option value="Rental Yield / Commercial Investment">Rental Yield / Commercial Investment</option>
+                            <option value="Warehouse / Logistics">Warehouse / Logistics</option>
+                            <option value="Mixed Use Development">Mixed Use Development</option>
+                          </>
+                        ) : (
+                          <>
+                            <option value="Owner Occupier">Owner Occupier</option>
+                            <option value="Rental Investment / High Yield">Rental Investment / High Yield</option>
+                            <option value="Capital Appreciation">Capital Appreciation</option>
+                            <option value="Vacation / Secondary Home">Vacation / Secondary Home</option>
+                            <option value="Commercial / Mixed Use">Commercial / Mixed Use</option>
+                          </>
+                        )}
                       </select>
                     </div>
                     <div>
@@ -903,36 +899,32 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
                     </div>
                   </div>
                 ) : (
-                  /* ── Property Sale & Listing Parameters (RPSS) ── */
+                  /* ── Property Sale & Listing Parameters (RPSS / CPSS) ── */
                   <div style={{ display: 'grid', gap: 14, gridTemplateColumns: '1fr 1fr' }}>
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <label style={lbl}>Linked property (optional — auto-populates defaults)</label>
-                      <Combo endpoint={`/properties?category=${category}`} labelFn={(p) => `${p.property_code || ''} · ${p.title || p.address || ''}`} value={d.property_id ? Number(d.property_id) : ''} onChange={onProperty} placeholder="Search a property…" />
+                    <div>
+                      <label style={lbl}>Property Type</label>
+                      <input style={sel} value={d.property_type || ''} onChange={(e) => set('property_type', e.target.value)} placeholder={category === 'commercial' ? 'e.g. Commercial Office / Retail Showroom' : 'e.g. 3BHK Apartment / Penthouse'} />
                     </div>
                     <div>
-                      <label style={lbl}>Property type</label>
-                      <input style={sel} value={d.property_type} onChange={(e) => set('property_type', e.target.value)} placeholder="e.g. 3BHK Apartment / Penthouse" />
-                    </div>
-                    <div>
-                      <label style={lbl}>Engagement type</label>
-                      <select style={sel} value={d.schedule_b.engagement_type} onChange={(e) => set('schedule_b.engagement_type', e.target.value)}>
+                      <label style={lbl}>Engagement Type</label>
+                      <select style={sel} value={d.schedule_b?.engagement_type || 'Non-exclusive'} onChange={(e) => set('schedule_b.engagement_type', e.target.value)}>
                         <option>Non-exclusive</option>
                         <option>Exclusive</option>
                       </select>
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
-                      <label style={lbl}>Subject property address *</label>
-                      <input style={sel} value={d.client.property_address} onChange={(e) => set('client.property_address', e.target.value)} placeholder="Full physical address of the subject property" />
+                      <label style={lbl}>Subject Property Address *</label>
+                      <input style={sel} value={d.client?.property_address || ''} onChange={(e) => set('client.property_address', e.target.value)} placeholder="Full physical address of the subject property" />
                     </div>
                     <div>
                       <label style={lbl}>Estimated Market Value (BDT)</label>
-                      <input style={sel} value={d.schedule_b.market_value || ''} onChange={(e) => set('schedule_b.market_value', e.target.value)} placeholder="e.g. 26,000,000" />
+                      <input style={sel} value={d.schedule_b?.market_value || ''} onChange={(e) => set('schedule_b.market_value', e.target.value)} placeholder="e.g. 26,000,000" />
                     </div>
                     <div>
                       <label style={lbl}>Agreed Listing Price (BDT) *</label>
                       <input
                         style={sel}
-                        value={d.schedule_b.listing_price || d.schedule_b.target_value || ''}
+                        value={d.schedule_b?.listing_price || d.schedule_b?.target_value || ''}
                         onChange={(e) => {
                           const val = e.target.value;
                           set('schedule_b.listing_price', val);
@@ -947,23 +939,23 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
                     </div>
                     <div>
                       <label style={lbl}>Minimum Acceptable Sale Price (BDT)</label>
-                      <input style={sel} value={d.schedule_b.min_price || ''} onChange={(e) => set('schedule_b.min_price', e.target.value)} placeholder="e.g. 23,500,000" />
+                      <input style={sel} value={d.schedule_b?.min_price || ''} onChange={(e) => set('schedule_b.min_price', e.target.value)} placeholder="e.g. 23,500,000" />
                     </div>
                     <div>
                       <label style={lbl}>Marketing Commencement Date</label>
-                      <input type="date" style={sel} value={d.schedule_b.marketing_date || d.schedule_b.commencement_date || ''} onChange={(e) => { set('schedule_b.marketing_date', e.target.value); set('schedule_b.commencement_date', e.target.value); }} />
+                      <input type="date" style={sel} value={d.schedule_b?.marketing_date || d.schedule_b?.commencement_date || ''} onChange={(e) => { set('schedule_b.marketing_date', e.target.value); set('schedule_b.commencement_date', e.target.value); }} />
                     </div>
                     <div>
                       <label style={lbl}>Expected Settlement Date</label>
-                      <input type="date" style={sel} value={d.schedule_b.settlement_date || ''} onChange={(e) => set('schedule_b.settlement_date', e.target.value)} />
+                      <input type="date" style={sel} value={d.schedule_b?.settlement_date || ''} onChange={(e) => set('schedule_b.settlement_date', e.target.value)} />
                     </div>
                     <div>
-                      <label style={lbl}>Expected Timeframe</label>
-                      <input style={sel} value={d.schedule_b.timeframe} onChange={(e) => set('schedule_b.timeframe', e.target.value)} placeholder="e.g. 6 Months / 90 Days" />
+                      <label style={lbl}>Listing Timeframe / Mandate Duration</label>
+                      <input style={sel} value={d.schedule_b?.timeframe || ''} onChange={(e) => set('schedule_b.timeframe', e.target.value)} placeholder="e.g. 180 Days / 6 Months" />
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
-                      <label style={lbl}>Special conditions / instructions</label>
-                      <textarea rows={2} style={{ ...sel, resize: 'vertical' }} value={d.schedule_b.special_requirements} onChange={(e) => set('schedule_b.special_requirements', e.target.value)} placeholder="Any special instructions, reserve price terms, or variation details" />
+                      <label style={lbl}>Special Instructions &amp; Marketing Conditions</label>
+                      <textarea rows={2} style={{ ...sel, resize: 'vertical' }} value={d.schedule_b?.special_requirements || ''} onChange={(e) => set('schedule_b.special_requirements', e.target.value)} placeholder="Any special instructions, reserve price terms, or variation details" />
                     </div>
                   </div>
                 )}

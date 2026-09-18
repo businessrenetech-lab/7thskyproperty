@@ -13,6 +13,8 @@ router.get('/envelopes', ctrl.listEnvelopes);
 router.post('/envelopes', ctrl.createEnvelope);
 router.get('/envelopes/:id', ctrl.getEnvelope);
 router.get('/envelopes/:id/links', ctrl.envelopeLinks);
+router.post('/envelopes/:id/signing-link/:signerId', ctrl.getSigningLink);
+router.get('/envelopes/:id/signed', ctrl.getSignedHtml);
 router.post('/envelopes/:id/send', ctrl.sendEnvelope);
 router.post('/envelopes/:id/remind', ctrl.remindEnvelope);
 router.post('/envelopes/:id/void', ctrl.voidEnvelope);

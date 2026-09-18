@@ -473,7 +473,35 @@ export default function SignPage() {
   const [done, setDone] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const signSectionRef = useRef(null);
+
+  const downloadPdf = async () => {
+    if (downloadingPdf) return;
+    setDownloadingPdf(true);
+    try {
+      const { default: html2pdf } = await import('html2pdf.js');
+      const sheet = document.querySelector('.agreement-sheet');
+      if (!sheet) {
+        alert('Document content could not be found for export.');
+        return;
+      }
+      const opt = {
+        margin: [10, 10, 12, 10],
+        filename: `${(state.envelope?.code || 'Agreement').replace(/[^a-zA-Z0-9-_]/g, '_')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'avoid-all'] },
+      };
+      await html2pdf().set(opt).from(sheet).save();
+    } catch (e) {
+      console.error('Failed to generate PDF:', e);
+      alert('Unable to generate PDF directly. Please use the Print button and select "Save as PDF".');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -567,7 +595,10 @@ export default function SignPage() {
           <p style={{ fontSize: '13.5px', color: '#475569', margin: '0 0 20px', lineHeight: '1.6' }}>
             Your electronic signature and cryptographic timestamp have been recorded. All parties will receive a final executed copy once signing completes.
           </p>
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Button variant="outline" onClick={downloadPdf} disabled={downloadingPdf}>
+              <Download size={15} /> {downloadingPdf ? 'Exporting PDF...' : 'Download PDF'}
+            </Button>
             <Button variant="ghost" onClick={() => window.print()}><Printer size={15} /> Print Summary</Button>
             <Button onClick={() => window.location.reload()}>View Agreement Status</Button>
           </div>
@@ -626,6 +657,27 @@ export default function SignPage() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={downloadPdf}
+              disabled={downloadingPdf}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '7px 12px',
+                fontSize: '12px',
+                fontWeight: '600',
+                color: '#012a4e',
+                background: '#f0f9ff',
+                border: '1px solid #bae6fd',
+                borderRadius: '8px',
+                cursor: downloadingPdf ? 'wait' : 'pointer'
+              }}
+            >
+              <Download size={14} /> {downloadingPdf ? 'Exporting PDF...' : 'Download PDF'}
+            </button>
+
             <button
               type="button"
               onClick={() => window.print()}
@@ -792,19 +844,26 @@ export default function SignPage() {
         )}
 
         {/* Document Sheet (Figma-grade presentation paper) */}
-        <div
-          className="agreement-sheet"
-          style={{
-            background: '#ffffff',
-            borderRadius: '16px',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 12px 35px -8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.02)',
-            padding: '40px 48px',
-            marginBottom: '28px',
-            position: 'relative'
-          }}
-          dangerouslySetInnerHTML={{ __html: envelope.document_html || '<p style="color:#94a3b8;text-align:center;">No document content.</p>' }}
-        />
+        {(() => {
+          const docHtml = envelope.document_html || '';
+          const hasEmbeddedDoc = docHtml.includes('provider-doc') || docHtml.includes('csa-doc') || docHtml.includes('csa-cover');
+          return (
+            <div
+              className="agreement-sheet"
+              style={{
+                background: '#ffffff',
+                borderRadius: '16px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 12px 35px -8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.02)',
+                padding: hasEmbeddedDoc ? 0 : '40px 48px',
+                marginBottom: '28px',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+              dangerouslySetInnerHTML={{ __html: docHtml || '<p style="color:#94a3b8;text-align:center;">No document content.</p>' }}
+            />
+          );
+        })()}
 
         {/* Live Signing Controls Form (Shown only when not already signed) */}
         {!doneStatus && (
@@ -993,8 +1052,12 @@ export default function SignPage() {
         )}
       </main>
 
-      {/* Global CSS for Print Optimization */}
+      {/* Global CSS for Print & PDF Optimization */}
       <style>{`
+        @page {
+          size: A4 portrait;
+          margin: 10mm;
+        }
         @media print {
           .no-print { display: none !important; }
           body { background: #ffffff !important; }
@@ -1006,6 +1069,11 @@ export default function SignPage() {
             margin: 0 !important;
             border-radius: 0 !important;
             max-width: 100% !important;
+            overflow: visible !important;
+          }
+          .clause-card, .schedule-card, .exec-card, .exec-panel {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
         }
       `}</style>

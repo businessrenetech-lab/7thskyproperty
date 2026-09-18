@@ -3,12 +3,45 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   FileSignature, Users, HardHat, ClipboardList, Search, Send, Eye, Download, Ban,
   Check, Clock, AlertTriangle, Copy, RefreshCw, Loader2, X, ShieldCheck, CalendarClock,
-  Plus, Sparkles, Mail,
+  Plus, Sparkles, Mail, ChevronRight, Pencil,
 } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { CustomerAgreementBuilder } from '../WtCustomerAgreements';
-import { useSvcNav, WtHead, WtTabs, Pill, Loading, EmptyState, dateFmt, dateTimeFmt, toast, errText, svcProfile, svcBase } from './common';
+import { ProviderAgreementBuilder } from '../WtProviderAgreements';
+import { useSvcNav, WtHead, WtTabs, Loading, EmptyState, dateFmt, dateTimeFmt, toast, errText, svcProfile, svcBase, bdt } from './common';
+
+function StatusPill({ value }) {
+  const v = String(value || 'draft').toLowerCase();
+  const map = {
+    completed: { text: 'Completed', bg: 'rgba(22, 163, 74, 0.12)', color: '#16a34a' },
+    active: { text: 'Active', bg: 'rgba(22, 163, 74, 0.12)', color: '#16a34a' },
+    sent: { text: 'Sent', bg: 'rgba(217, 119, 6, 0.12)', color: '#d97706' },
+    viewed: { text: 'Viewed', bg: 'rgba(2, 132, 199, 0.12)', color: '#0284c7' },
+    partially_signed: { text: 'Partially signed', bg: 'rgba(217, 119, 6, 0.15)', color: '#b45309' },
+    draft: { text: 'Draft', bg: '#f1f5f9', color: '#475569' },
+    declined: { text: 'Declined', bg: 'rgba(239, 68, 68, 0.12)', color: '#dc2626' },
+    voided: { text: 'Voided', bg: '#e2e8f0', color: '#64748b' },
+  };
+  const cfg = map[v] || { text: value || 'Draft', bg: '#f1f5f9', color: '#475569' };
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        padding: '3px 9px',
+        borderRadius: 999,
+        fontSize: 11,
+        fontWeight: 700,
+        background: cfg.bg,
+        color: cfg.color,
+        textTransform: 'capitalize',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {cfg.text}
+    </span>
+  );
+}
 
 function getClientSigner(r) {
   if (r.client_name || r.client_email) {
@@ -51,7 +84,11 @@ export default function AgreementsHub() {
   const [showNewAgreementWindow, setShowNewAgreementWindow] = useState(() => {
     return searchParams.get('new') === 'client' || searchParams.get('new') === 'customer';
   });
+  const [showNewProviderWindow, setShowNewProviderWindow] = useState(() => {
+    return searchParams.get('new') === 'provider';
+  });
   const projectCode = searchParams.get('project') || null;
+  const providerParam = searchParams.get('provider') || null;
 
   const [rows, setRows] = useState([]);
   const [ov, setOv] = useState(null);
@@ -61,10 +98,28 @@ export default function AgreementsHub() {
   const [awaitingOnly, setAwaitingOnly] = useState(false);
   const [open, setOpen] = useState(null);
   const [busy, setBusy] = useState('');
+  const [editRow, setEditRow] = useState(null);
+
+  const handleEdit = useCallback((row) => {
+    if (!row) return;
+    setEditRow(row);
+    if (row.family === 'provider') {
+      setShowNewProviderWindow(true);
+    } else if (row.family === 'work_order') {
+      if (row.related_id) {
+        nav(`/work-orders/${row.related_id}`);
+      } else {
+        toast.err('Work orders must be edited from the Work Orders schedule.');
+      }
+    } else {
+      setShowNewAgreementWindow(true);
+    }
+  }, [nav]);
 
   const closeNewAgreementWindow = useCallback(() => {
     setShowNewAgreementWindow(false);
-    if (searchParams.get('new')) {
+    setEditRow(null);
+    if (searchParams.get('new') === 'client' || searchParams.get('new') === 'customer') {
       const next = new URLSearchParams(searchParams);
       next.delete('new');
       setSearchParams(next, { replace: true });
@@ -72,7 +127,23 @@ export default function AgreementsHub() {
   }, [searchParams, setSearchParams]);
 
   const openNewAgreementWindow = useCallback(() => {
+    setEditRow(null);
     setShowNewAgreementWindow(true);
+  }, []);
+
+  const closeNewProviderWindow = useCallback(() => {
+    setShowNewProviderWindow(false);
+    setEditRow(null);
+    if (searchParams.get('new') === 'provider') {
+      const next = new URLSearchParams(searchParams);
+      next.delete('new');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const openNewProviderWindow = useCallback(() => {
+    setEditRow(null);
+    setShowNewProviderWindow(true);
   }, []);
 
   const load = useCallback(async () => {
@@ -117,9 +188,13 @@ export default function AgreementsHub() {
     setBusy(`resend-${row.id}`);
     try {
       const { data } = await api.post(`/wt-agreement-hub/${row.id}/resend`, signerId ? { signer_id: signerId } : {});
-      const url = `${window.location.origin}${data.signing_path}`;
-      await navigator.clipboard?.writeText(url).catch(() => {});
-      toast.ok(`Fresh link issued for ${data.signer.name} — copied to the clipboard`);
+      if (data.completed) {
+        toast.ok(data.note || `Executed agreement copy sent to ${data.signer?.name || 'signatory'}`);
+      } else {
+        const url = `${window.location.origin}${data.signing_path}`;
+        await navigator.clipboard?.writeText(url).catch(() => {});
+        toast.ok(`Fresh link issued for ${data.signer?.name || 'signatory'} — copied to the clipboard`);
+      }
       await load();
     } catch (e) {
       toast.err(errText(e, 'Could not resend'));
@@ -212,7 +287,7 @@ export default function AgreementsHub() {
           <Users size={14} /> New client agreement
         </button>
         {!isInternalOnly && (
-          <button className="wt-btn" onClick={() => nav(`${svcBase()}/agreements/provider/new`)}>
+          <button className="wt-btn" onClick={openNewProviderWindow}>
             <HardHat size={14} /> New provider agreement
           </button>
         )}
@@ -317,73 +392,94 @@ export default function AgreementsHub() {
 
       <div className="wt-card wt-tblcard">
         {loading ? <Loading /> : (
-          <table className="wt-tbl">
-            <thead>
-              <tr>
-                <th style={{ width: 170 }}>Reference &amp; Type</th>
-                <th style={{ width: 220 }}>Client &amp; Email</th>
-                <th>Document &amp; Scope</th>
-                <th style={{ width: 200 }}>Parties Signed</th>
-                <th style={{ width: 200 }}>Waiting On</th>
-                <th style={{ width: 110 }}>Status</th>
-                <th style={{ width: 200, textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((r) => (
-                <tr key={r.id}>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span
-                        className="id"
-                        style={{ fontFamily: 'ui-monospace, monospace', cursor: 'pointer', letterSpacing: '0.02em' }}
-                        onClick={(e) => copyCode(r.envelope_code, e)}
-                        title="Click to copy envelope code"
-                      >
-                        {r.envelope_code}
-                      </span>
-                      <button
-                        className="wt-btn sm"
-                        style={{ padding: 2, height: 20, width: 20, border: 'none', background: 'transparent' }}
-                        onClick={(e) => copyCode(r.envelope_code, e)}
-                        title="Copy code"
-                      >
-                        <Copy size={11} style={{ color: 'var(--wt-muted)' }} />
-                      </button>
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--wt-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          padding: '1px 6px',
-                          borderRadius: 4,
-                          fontSize: 10,
-                          fontWeight: 600,
-                          background: r.family === 'client'
-                            ? 'var(--wt-accent-tint, rgba(147, 51, 234, 0.12))'
-                            : r.family === 'work_order'
-                            ? 'rgba(217, 119, 6, 0.12)'
-                            : '#f1f5f9',
-                          color: r.family === 'client'
-                            ? 'var(--wt-accent-ink, #9333ea)'
-                            : r.family === 'work_order'
-                            ? 'var(--wt-amber)'
-                            : 'var(--wt-ink-2)',
-                        }}
-                      >
-                        {r.family_label}
-                      </span>
-                    </div>
-                  </td>
-                  <td>
-                    {(() => {
-                      const client = getClientSigner(r);
-                      if (!client?.name) {
-                        return <span className="muted" style={{ fontSize: 12, color: 'var(--wt-muted)' }}>—</span>;
-                      }
-                      return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <>
+            <table className="wt-tbl">
+              <thead>
+                <tr>
+                  <th style={{ width: 170 }}>Reference &amp; Type</th>
+                  <th style={{ width: 220 }}>
+                    {tab === 'Provider Agreements' ? 'Provider & Email' : tab === 'Work Orders' ? 'Assignee & Email' : tab === 'Client Agreements' ? 'Client & Email' : 'Signatory & Email'}
+                  </th>
+                  <th>Document &amp; Scope</th>
+                  <th style={{ width: 190 }}>Parties Signed</th>
+                  <th style={{ width: 190 }}>Waiting On</th>
+                  <th style={{ width: 120 }}>Status</th>
+                  <th style={{ width: 200, textAlign: 'right' }}>Actions</th>
+                  <th style={{ width: 28 }} />
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map((r) => {
+                  const client = getClientSigner(r);
+                  return (
+                    <tr
+                      key={r.id}
+                      className="click"
+                      onClick={() => setOpen(r)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {/* 1. Reference & Type */}
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span
+                            className="id"
+                            style={{
+                              fontFamily: 'ui-monospace, monospace',
+                              cursor: 'pointer',
+                              letterSpacing: '0.02em',
+                              fontWeight: 700,
+                              color: 'var(--wt-ink, #0f172a)',
+                            }}
+                            onClick={(e) => { e.stopPropagation(); copyCode(r.envelope_code, e); }}
+                            title="Click to copy envelope code"
+                          >
+                            {r.envelope_code}
+                          </span>
+                          <button
+                            type="button"
+                            className="wt-btn sm"
+                            style={{ padding: 2, height: 20, width: 20, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                            onClick={(e) => { e.stopPropagation(); copyCode(r.envelope_code, e); }}
+                            title="Copy code"
+                          >
+                            <Copy size={11} style={{ color: 'var(--wt-muted, #94a3b8)' }} />
+                          </button>
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--wt-muted, #64748b)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '2px 7px',
+                              borderRadius: 5,
+                              fontSize: 10.5,
+                              fontWeight: 700,
+                              background: r.family === 'client'
+                                ? (profile.accent ? `${profile.accent}18` : 'rgba(18, 182, 243, 0.14)')
+                                : r.family === 'provider'
+                                ? 'rgba(37, 99, 235, 0.12)'
+                                : r.family === 'work_order'
+                                ? 'rgba(217, 119, 6, 0.12)'
+                                : '#f1f5f9',
+                              color: r.family === 'client'
+                                ? (profile.accent_ink || profile.accent || '#0b6f97')
+                                : r.family === 'provider'
+                                ? '#2563eb'
+                                : r.family === 'work_order'
+                                ? '#d97706'
+                                : '#475569',
+                            }}
+                          >
+                            {r.family_label || (r.family === 'client' ? 'Client Agreement' : r.family === 'provider' ? 'Provider Agreement' : r.family === 'work_order' ? 'Work Order' : 'Agreement')}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* 2. Client / Provider & Email */}
+                      <td>
+                        {!client?.name ? (
+                          <span className="muted" style={{ fontSize: 12, color: 'var(--wt-muted, #64748b)' }}>—</span>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <strong
                               style={{
                                 fontSize: 13,
@@ -393,189 +489,236 @@ export default function AgreementsHub() {
                             >
                               {client.name}
                             </strong>
+                            {client.email ? (
+                              <a
+                                href={`mailto:${client.email}`}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  fontSize: 11.5,
+                                  color: profile.accent || 'var(--wt-accent, #0284c7)',
+                                  textDecoration: 'none',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4.5,
+                                  marginTop: 1,
+                                }}
+                                title={`Email: ${client.email}`}
+                              >
+                                <Mail size={12} style={{ color: 'var(--wt-muted, #94a3b8)', flexShrink: 0 }} />
+                                <span style={{ maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {client.email}
+                                </span>
+                              </a>
+                            ) : (
+                              <span style={{ fontSize: 11, color: 'var(--wt-muted, #94a3b8)' }}>No email</span>
+                            )}
                           </div>
-                          {client.email ? (
-                            <a
-                              href={`mailto:${client.email}`}
-                              onClick={(e) => e.stopPropagation()}
-                              style={{
-                                fontSize: 11.5,
-                                color: 'var(--wt-accent, #9333ea)',
-                                textDecoration: 'none',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4.5,
-                                marginTop: 1,
-                              }}
-                              title={`Email: ${client.email}`}
-                            >
-                              <Mail size={12} style={{ color: 'var(--wt-muted, #94a3b8)', flexShrink: 0 }} />
-                              <span style={{ maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {client.email}
-                              </span>
-                            </a>
-                          ) : (
-                            <span style={{ fontSize: 11, color: 'var(--wt-muted)' }}>No email</span>
+                        )}
+                      </td>
+
+                      {/* 3. Document & Scope */}
+                      <td>
+                        <strong
+                          style={{
+                            display: 'block',
+                            maxWidth: 320,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            color: 'var(--wt-ink, #0f172a)',
+                          }}
+                          title={r.title}
+                        >
+                          {r.title}
+                        </strong>
+                        <div style={{ fontSize: 11.5, color: 'var(--wt-muted, #64748b)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          {r.contract_value != null && (
+                            <span style={{ fontWeight: 700, color: 'var(--wt-ink, #0f172a)' }}>
+                              {bdt(r.contract_value)}
+                            </span>
+                          )}
+                          {r.sent_at ? <span>Sent {dateFmt(r.sent_at)}</span> : <span>Not sent</span>}
+                          {r.completed_at ? <span>· Executed {dateFmt(r.completed_at)}</span> : null}
+                          {r.expired && <span className="wt-tag red" style={{ fontSize: 10 }}>Expired</span>}
+                          {!r.expired && r.expiring_soon && (
+                            <span className="wt-tag amber" style={{ fontSize: 10 }}>Expires in {r.expires_in_days}d</span>
                           )}
                         </div>
-                      );
-                    })()}
-                  </td>
-                  <td>
-                    <strong
-                      style={{
-                        display: 'block',
-                        maxWidth: 320,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        color: 'var(--wt-ink)',
-                      }}
-                      title={r.title}
-                    >
-                      {r.title}
-                    </strong>
-                    <div style={{ fontSize: 11.5, color: 'var(--wt-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      {r.sent_at ? <span>Sent {dateFmt(r.sent_at)}</span> : <span>Not sent</span>}
-                      {r.completed_at ? <span>· Executed {dateFmt(r.completed_at)}</span> : null}
-                      {r.expired && <span className="wt-tag red" style={{ fontSize: 10 }}>Expired</span>}
-                      {!r.expired && r.expiring_soon && (
-                        <span className="wt-tag amber" style={{ fontSize: 10 }}>Expires in {r.expires_in_days}d</span>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <strong style={{ fontSize: 12.5 }}>{r.signed_count} / {r.total_signers}</strong>
-                      <span style={{ fontSize: 11, color: 'var(--wt-muted)' }}>({r.progress_pct}%)</span>
-                      <div className="wt-progress" style={{ maxWidth: 80, flex: 1 }}>
-                        <span
-                          style={{
-                            width: `${r.progress_pct}%`,
-                            background: r.fully_signed ? 'var(--wt-green)' : 'var(--wt-accent, #9333ea)',
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 4, marginTop: 5, flexWrap: 'wrap', alignItems: 'center' }}>
-                      {(r.signers || []).map((s) => {
-                        const signed = s.status === 'signed';
-                        const declined = s.status === 'declined';
-                        const isNext = !signed && !declined && r.awaiting?.name === s.name;
-                        return (
-                          <span
-                            key={s.id}
-                            title={`${s.order}. ${s.name} (${String(s.role || '').replace(/_/g, ' ')}) — ${s.status}${s.signed_at ? ` on ${dateTimeFmt(s.signed_at)}` : ''}`}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              width: 19,
-                              height: 19,
-                              borderRadius: 5,
-                              fontSize: 9.5,
-                              fontWeight: 800,
-                              background: signed
-                                ? 'var(--wt-green)'
-                                : declined
-                                ? 'var(--wt-red)'
-                                : isNext
-                                ? 'var(--wt-accent-tint, rgba(147, 51, 234, 0.12))'
-                                : '#f1f5f9',
-                              border: isNext ? '1.5px solid var(--wt-accent, #9333ea)' : '1px solid transparent',
-                              color: signed || declined ? '#fff' : isNext ? 'var(--wt-accent-ink, #9333ea)' : 'var(--wt-muted)',
-                              cursor: 'default',
-                            }}
+                      </td>
+
+                      {/* 4. Parties Signed */}
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <strong style={{ fontSize: 12.5 }}>{r.signed_count} / {r.total_signers}</strong>
+                          <span style={{ fontSize: 11, color: 'var(--wt-muted, #64748b)' }}>({r.progress_pct}%)</span>
+                          <div className="wt-progress" style={{ maxWidth: 75, flex: 1 }}>
+                            <span
+                              style={{
+                                width: `${r.progress_pct}%`,
+                                background: r.fully_signed ? 'var(--wt-green, #16a34a)' : (profile.accent || '#0284c7'),
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 4, marginTop: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+                          {(r.signers || []).map((s) => {
+                            const signed = s.status === 'signed';
+                            const declined = s.status === 'declined';
+                            const isNext = !signed && !declined && r.awaiting?.name === s.name;
+                            return (
+                              <span
+                                key={s.id}
+                                title={`${s.order}. ${s.name} (${String(s.role || '').replace(/_/g, ' ')}) — ${s.status}${s.signed_at ? ` on ${dateTimeFmt(s.signed_at)}` : ''}`}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: 19,
+                                  height: 19,
+                                  borderRadius: 5,
+                                  fontSize: 9.5,
+                                  fontWeight: 800,
+                                  background: signed
+                                    ? 'var(--wt-green, #16a34a)'
+                                    : declined
+                                    ? 'var(--wt-red, #ef4444)'
+                                    : isNext
+                                    ? (profile.accent ? `${profile.accent}20` : 'rgba(2, 132, 199, 0.12)')
+                                    : '#f1f5f9',
+                                  border: isNext ? `1.5px solid ${profile.accent || '#0284c7'}` : '1px solid transparent',
+                                  color: signed || declined ? '#fff' : isNext ? (profile.accent || '#0284c7') : 'var(--wt-muted, #64748b)',
+                                  cursor: 'default',
+                                }}
+                              >
+                                {signed ? <Check size={11} strokeWidth={3} /> : declined ? <X size={11} strokeWidth={3} /> : s.order}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </td>
+
+                      {/* 5. Waiting On */}
+                      <td>
+                        {r.fully_signed ? (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--wt-green, #16a34a)', fontWeight: 700, fontSize: 12 }}>
+                            <ShieldCheck size={14} /> All parties signed
+                          </div>
+                        ) : r.awaiting ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <strong style={{ fontSize: 12.5, color: 'var(--wt-ink, #0f172a)' }}>{r.awaiting.name}</strong>
+                              {r.awaiting.role === 'staff_countersign' && (
+                                <button
+                                  type="button"
+                                  className="wt-btn sm primary"
+                                  style={{ padding: '2px 8px', fontSize: 10.5, fontWeight: 700, height: 21, background: profile.accent || undefined, borderColor: profile.accent || undefined }}
+                                  onClick={(e) => { e.stopPropagation(); countersign(r, r.awaiting); }}
+                                  title="Countersign directly as Seventh Sky officer"
+                                >
+                                  <FileSignature size={11} /> Countersign
+                                </button>
+                              )}
+                            </div>
+                            <span style={{ fontSize: 11, color: 'var(--wt-muted, #64748b)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <span
+                                style={{
+                                  width: 6,
+                                  height: 6,
+                                  borderRadius: '50%',
+                                  background: r.awaiting.role === 'staff_countersign' ? (profile.accent || '#0284c7') : 'var(--wt-amber, #d97706)',
+                                }}
+                              />
+                              {String(r.awaiting.role || '').replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="muted" style={{ fontSize: 12, color: 'var(--wt-muted, #64748b)' }}>—</span>
+                        )}
+                      </td>
+
+                      {/* 6. Status */}
+                      <td>
+                        <StatusPill value={r.status} />
+                      </td>
+
+                      {/* 7. Actions */}
+                      <td>
+                        <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end', flexWrap: 'wrap', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            className="wt-btn sm"
+                            onClick={(e) => { e.stopPropagation(); setOpen(r); }}
+                            title="Open detailed audit record"
                           >
-                            {signed ? <Check size={11} strokeWidth={3} /> : declined ? <X size={11} strokeWidth={3} /> : s.order}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </td>
-                  <td>
-                    {r.fully_signed ? (
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--wt-green)', fontWeight: 700, fontSize: 12 }}>
-                        <ShieldCheck size={14} /> All parties signed
-                      </div>
-                    ) : r.awaiting ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <strong style={{ fontSize: 12.5, color: 'var(--wt-ink)' }}>{r.awaiting.name}</strong>
-                          {r.awaiting.role === 'staff_countersign' && (
+                            <Eye size={12} /> Open
+                          </button>
+                          {(r.can_edit ?? (r.status !== 'voided' && r.status !== 'declined')) && (
                             <button
-                              className="wt-btn sm primary"
-                              style={{ padding: '2px 8px', fontSize: 10.5, fontWeight: 700, height: 21 }}
-                              onClick={() => countersign(r, r.awaiting)}
-                              title="Countersign directly as Seventh Sky officer"
+                              type="button"
+                              className="wt-btn sm"
+                              onClick={(e) => { e.stopPropagation(); handleEdit(r); }}
+                              title="Edit this agreement in drafting workspace"
                             >
-                              <FileSignature size={11} /> Countersign
+                              <Pencil size={12} /> Edit
                             </button>
                           )}
+                          {(r.can_resend ?? (r.status !== 'voided' && r.status !== 'declined')) && (
+                            <button
+                              type="button"
+                              className="wt-btn sm"
+                              disabled={busy === `resend-${r.id}`}
+                              onClick={(e) => { e.stopPropagation(); resend(r); }}
+                              title={r.fully_signed ? 'Resend executed copy to signatory' : 'Resend signing invitation'}
+                            >
+                              {busy === `resend-${r.id}` ? <Loader2 size={12} className="wt-spin" /> : <Send size={12} />} Resend
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className={`wt-btn sm${r.can_download_signed ? ' primary' : ''}`}
+                            style={r.can_download_signed ? { background: '#16a34a', borderColor: '#16a34a', color: '#ffffff' } : {}}
+                            disabled={busy === `dl-${r.id}`}
+                            onClick={(e) => { e.stopPropagation(); downloadSigned(r); }}
+                            title={r.can_download_signed ? 'Download executed agreement with verified signatures' : 'View current agreement copy'}
+                          >
+                            {busy === `dl-${r.id}` ? <Loader2 size={12} className="wt-spin" /> : <Download size={12} />}
+                            {r.fully_signed ? 'Signed' : 'Preview'}
+                          </button>
                         </div>
-                        <span style={{ fontSize: 11, color: 'var(--wt-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          <span
-                            style={{
-                              width: 6,
-                              height: 6,
-                              borderRadius: '50%',
-                              background: r.awaiting.role === 'staff_countersign' ? 'var(--wt-accent, #9333ea)' : 'var(--wt-amber)',
-                            }}
-                          />
-                          {String(r.awaiting.role || '').replace(/_/g, ' ')}
-                        </span>
+                      </td>
+
+                      {/* 8. Row Chevron */}
+                      <td style={{ width: 28, textAlign: 'center', paddingRight: 16 }}>
+                        <ChevronRight size={15} style={{ color: 'var(--wt-muted, #94a3b8)' }} />
+                      </td>
+                    </tr>
+                  );
+                })}
+                {!shown.length && (
+                  <tr className="wt-empty-row">
+                    <td colSpan={8} style={{ textAlign: 'center', padding: 36 }}>
+                      <div style={{ fontSize: 13, color: 'var(--wt-muted, #64748b)', marginBottom: 8 }}>
+                        {q || awaitingOnly ? 'Nothing matches those filters.' : `No agreements registered under “${tab}”.`}
                       </div>
-                    ) : (
-                      <span className="muted" style={{ fontSize: 12 }}>—</span>
-                    )}
-                  </td>
-                  <td>
-                    <Pill value={r.status} sm />
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                      <button className="wt-btn sm" onClick={() => setOpen(r)} title="Open detailed audit record">
-                        <Eye size={12} /> Open
-                      </button>
-                      {r.can_resend && (
-                        <button
-                          className="wt-btn sm"
-                          disabled={busy === `resend-${r.id}`}
-                          onClick={() => resend(r)}
-                          title="Resend signing invitation"
-                        >
-                          {busy === `resend-${r.id}` ? <Loader2 size={12} className="wt-spin" /> : <Send size={12} />} Resend
+                      {(q || awaitingOnly) && (
+                        <button type="button" className="wt-btn sm" onClick={() => { setQ(''); setAwaitingOnly(false); }}>
+                          Clear filters
                         </button>
                       )}
-                      <button
-                        className={`wt-btn sm${r.can_download_signed ? ' primary' : ''}`}
-                        disabled={busy === `dl-${r.id}`}
-                        onClick={() => downloadSigned(r)}
-                        title={r.can_download_signed ? 'Download executed agreement with verified signatures' : 'View current agreement copy'}
-                      >
-                        {busy === `dl-${r.id}` ? <Loader2 size={12} className="wt-spin" /> : <Download size={12} />}
-                        {r.fully_signed ? 'Signed' : 'Preview'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!shown.length && (
-                <tr className="wt-empty-row">
-                  <td colSpan={7} style={{ textAlign: 'center', padding: 36 }}>
-                    <div style={{ fontSize: 13, color: 'var(--wt-muted)', marginBottom: 8 }}>
-                      {q || awaitingOnly ? 'Nothing matches those filters.' : `No agreements registered under “${tab}”.`}
-                    </div>
-                    {(q || awaitingOnly) && (
-                      <button className="wt-btn sm" onClick={() => { setQ(''); setAwaitingOnly(false); }}>
-                        Clear filters
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            <div className="wt-tblfoot">
+              <span>Showing <strong>{shown.length}</strong> of {rows.length} agreement{rows.length === 1 ? '' : 's'}</span>
+              <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14 }}>
+                <span><strong style={{ color: 'var(--wt-green, #16a34a)' }}>{ov?.fully_signed || 0}</strong> fully executed</span>
+                <span><strong style={{ color: 'var(--wt-amber, #d97706)' }}>{ov?.signatures_outstanding || 0}</strong> signatures outstanding</span>
+                {ov?.declined > 0 && <span><strong style={{ color: 'var(--wt-red, #dc2626)' }}>{ov.declined}</strong> declined</span>}
+              </span>
+            </div>
+          </>
         )}
       </div>
 
@@ -583,6 +726,7 @@ export default function AgreementsHub() {
         <AgreementDrawer
           row={open}
           onClose={() => setOpen(null)}
+          onEdit={(r) => { setOpen(null); handleEdit(r || open); }}
           onResend={(signerId) => resend(open, signerId)}
           onDownload={() => downloadSigned(open)}
           onVoid={() => { voidIt(open); setOpen(null); }}
@@ -659,7 +803,7 @@ export default function AgreementsHub() {
                 </span>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 14, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    New {profile.label} Client Agreement
+                    {editRow ? `Edit ${editRow.envelope_code || 'Agreement'} — ${editRow.title || 'Client Agreement'}` : `New ${profile.label} Client Agreement`}
                     <span
                       style={{
                         fontSize: 11,
@@ -671,7 +815,7 @@ export default function AgreementsHub() {
                         fontWeight: 600,
                       }}
                     >
-                      SSPC-{profile.doc_code || 'RIDS'}-CSA-01
+                      {editRow?.envelope_code || `SSPC-${profile.doc_code || 'RIDS'}-CSA-01`}
                     </span>
                     <span
                       style={{
@@ -683,11 +827,13 @@ export default function AgreementsHub() {
                         fontWeight: 600,
                       }}
                     >
-                      In-Page Drafting Window
+                      {editRow ? 'Agreement Editor' : 'In-Page Drafting Window'}
                     </span>
                   </div>
                   <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2 }}>
-                    Draft, schedule pricing, and dispatch legal contract without leaving Agreements Hub
+                    {editRow
+                      ? 'Review and revise agreement terms, pricing schedule, and re-dispatch'
+                      : 'Draft, schedule pricing, and dispatch legal contract without leaving Agreements Hub'}
                   </div>
                 </div>
               </div>
@@ -730,13 +876,170 @@ export default function AgreementsHub() {
                 isModal
                 user={user}
                 profile={profile}
-                projectCode={projectCode}
+                editEnvelopeId={editRow?.id}
+                projectCode={editRow?.related_id || projectCode}
                 onClose={closeNewAgreementWindow}
                 onCancel={closeNewAgreementWindow}
                 onDone={async () => {
                   closeNewAgreementWindow();
                   await load();
-                  toast.ok('Client agreement dispatched — list updated');
+                  toast.ok(editRow ? 'Agreement updated and dispatched — list updated' : 'Client agreement dispatched — list updated');
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showNewProviderWindow && (
+        <div
+          className="wt-modal-overlay"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.72)',
+            backdropFilter: 'blur(6px)',
+            zIndex: 1200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            overflow: 'hidden',
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') closeNewProviderWindow();
+          }}
+        >
+          <div
+            className="wt-modal"
+            role="dialog"
+            aria-modal="true"
+            style={{
+              width: '100%',
+              maxWidth: '1600px',
+              height: '96vh',
+              maxHeight: '96vh',
+              borderRadius: 14,
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.45)',
+              overflow: 'hidden',
+              background: '#f8fafc',
+              border: '1px solid rgba(226, 232, 240, 0.8)',
+            }}
+          >
+            {/* Window Top Title Bar */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 20px',
+                background: '#0f172a',
+                color: '#ffffff',
+                borderBottom: '1px solid #1e293b',
+                flexShrink: 0,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    background: profile.accent ? `${profile.accent}33` : 'rgba(255,255,255,0.15)',
+                    color: profile.accent || '#38bdf8',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                  }}
+                >
+                  <HardHat size={18} />
+                </span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    {editRow ? `Edit ${editRow.envelope_code || 'Agreement'} — ${editRow.title || 'Provider Agreement'}` : `New ${profile.label} Provider Master Agreement`}
+                    <span
+                      style={{
+                        fontSize: 11,
+                        background: 'rgba(255,255,255,0.15)',
+                        color: '#e2e8f0',
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        fontFamily: 'monospace',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {editRow?.envelope_code || `SSPC-${profile.doc_code || 'WTCM'}-SDPMA-01`}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: '#4ade80',
+                        background: 'rgba(74, 222, 128, 0.15)',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {editRow ? 'Agreement Editor' : 'In-Page Drafting Window'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2 }}>
+                    {editRow
+                      ? 'Review and revise provider rate schedule (Schedule B), terms, and re-dispatch'
+                      : 'Draft, configure rate schedule (Schedule B), and dispatch provider contract without leaving Agreements Hub'}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={closeNewProviderWindow}
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    borderRadius: 7,
+                    color: '#f8fafc',
+                    padding: '6px 14px',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)';
+                    e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)';
+                  }}
+                >
+                  <X size={15} /> Close window
+                </button>
+              </div>
+            </div>
+
+            {/* Window Body: Scrollable ProviderAgreementBuilder */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 24px' }}>
+              <ProviderAgreementBuilder
+                isModal
+                user={user}
+                profile={profile}
+                editEnvelopeId={editRow?.id}
+                providerCode={editRow?.related_id || providerParam}
+                onClose={closeNewProviderWindow}
+                onCancel={closeNewProviderWindow}
+                onDone={async () => {
+                  closeNewProviderWindow();
+                  await load();
+                  toast.ok(editRow ? 'Provider agreement updated and dispatched — list updated' : 'Provider agreement dispatched — list updated');
                 }}
               />
             </div>
@@ -761,7 +1064,7 @@ function Kpi({ icon: Icon, label, value, sub, tone = 'slate' }) {
 }
 
 /* Per-party detail: who, when, individual resend, copy-link and direct countersign */
-function AgreementDrawer({ row, onClose, onResend, onDownload, onVoid, busy, onCountersign }) {
+function AgreementDrawer({ row, onClose, onEdit, onResend, onDownload, onVoid, busy, onCountersign }) {
   const [copyingHash, setCopyingHash] = useState(false);
 
   const copyLink = async (s) => {
@@ -790,7 +1093,7 @@ function AgreementDrawer({ row, onClose, onResend, onDownload, onVoid, busy, onC
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <h3 style={{ margin: 0, fontFamily: 'ui-monospace, monospace' }}>{row.envelope_code}</h3>
-              <Pill value={row.status} sm />
+              <StatusPill value={row.status} />
             </div>
             <div className="sub" style={{ marginTop: 4 }}>
               {row.family_label} · {row.title}
@@ -895,12 +1198,22 @@ function AgreementDrawer({ row, onClose, onResend, onDownload, onVoid, busy, onC
                       </div>
                     )}
                     {signed && (
-                      <span
-                        className="wt-tag"
-                        style={{ background: 'rgba(5, 150, 105, 0.15)', color: 'var(--wt-green)', fontWeight: 700 }}
-                      >
-                        Signed
-                      </span>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span
+                          className="wt-tag"
+                          style={{ background: 'rgba(5, 150, 105, 0.15)', color: 'var(--wt-green)', fontWeight: 700 }}
+                        >
+                          Signed
+                        </span>
+                        <button
+                          className="wt-btn sm"
+                          disabled={!!busy}
+                          onClick={() => onResend(s.id)}
+                          title="Re-send executed document copy to this party"
+                        >
+                          <Send size={12} /> Resend
+                        </button>
+                      </div>
                     )}
                     {declined && <span className="wt-tag red">Declined</span>}
                   </div>
@@ -963,12 +1276,33 @@ function AgreementDrawer({ row, onClose, onResend, onDownload, onVoid, busy, onC
               <Ban size={14} /> Void agreement
             </button>
           )}
-          <button className="wt-btn" style={{ marginLeft: 'auto' }} onClick={onClose}>
-            Close
-          </button>
-          <button className={`wt-btn${row.can_download_signed ? ' primary' : ''}`} onClick={onDownload}>
-            <Download size={14} /> {row.fully_signed ? 'Download signed copy' : 'Preview current agreement'}
-          </button>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {(row.can_edit ?? (row.status !== 'voided' && row.status !== 'declined')) && (
+              <button
+                className="wt-btn"
+                onClick={() => onEdit?.(row)}
+                title="Edit this agreement in drafting workspace"
+              >
+                <Pencil size={14} /> Edit agreement
+              </button>
+            )}
+            {(row.can_resend ?? (row.status !== 'voided' && row.status !== 'declined')) && (
+              <button
+                className="wt-btn"
+                disabled={!!busy}
+                onClick={() => onResend?.()}
+                title={row.fully_signed ? 'Resend executed copy to signatory' : 'Resend signing invitation'}
+              >
+                <Send size={14} /> {row.fully_signed ? 'Resend executed copy' : 'Resend invite'}
+              </button>
+            )}
+            <button className={`wt-btn${row.can_download_signed ? ' primary' : ''}`} onClick={onDownload}>
+              <Download size={14} /> {row.fully_signed ? 'Download signed copy' : 'Preview current agreement'}
+            </button>
+            <button className="wt-btn" onClick={onClose}>
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>

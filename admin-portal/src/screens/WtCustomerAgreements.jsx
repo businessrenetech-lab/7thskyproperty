@@ -444,6 +444,7 @@ export function CustomerAgreementBuilder({
   user: propUser,
   profile: propProfile,
   isModal = false,
+  editEnvelopeId,
 }) {
   const toast = useToast();
   const auth = useAuth();
@@ -541,6 +542,43 @@ export function CustomerAgreementBuilder({
       .finally(() => { if (!cancelled) setHydrating(false); });
     return () => { cancelled = true; };
   }, [projectCode, toast]);
+
+  // Hydrate from existing envelope if editEnvelopeId is passed
+  useEffect(() => {
+    if (!editEnvelopeId) return;
+    let cancelled = false;
+    setHydrating(true);
+    api.get(`/wt-agreement-hub/${editEnvelopeId}`)
+      .then(({ data }) => {
+        if (cancelled) return;
+        const agr = data?.agreement || {};
+        let terms = agr.terms;
+        if (typeof terms === 'string') {
+          try { terms = JSON.parse(terms); } catch {}
+        } else if (terms && terms['0']) {
+          try { terms = JSON.parse(Object.values(terms).join('')); } catch {}
+        }
+        if (terms) {
+          setD((prev) => ({
+            ...prev,
+            ...terms,
+            client: {
+              ...prev.client,
+              ...(terms.client || {}),
+              full_name: agr.client_name || terms.client?.full_name || prev.client.full_name,
+              email: agr.client_email || terms.client?.email || prev.client.email,
+            },
+            schedule_b: { ...prev.schedule_b, ...(terms.schedule_b || {}) },
+            pricing_input: { ...prev.pricing_input, ...(terms.pricing_input || {}) },
+            witnesses: (terms.witnesses && terms.witnesses.length) ? terms.witnesses : prev.witnesses,
+            org: { ...prev.org, ...(terms.org || {}) },
+          }));
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setHydrating(false); });
+    return () => { cancelled = true; };
+  }, [editEnvelopeId]);
 
   const set = (path, value) => setD((prev) => {
     const n = structuredClone(prev);

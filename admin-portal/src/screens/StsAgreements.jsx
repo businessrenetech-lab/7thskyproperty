@@ -5,6 +5,7 @@ import { Spinner } from '../ui/kit';
 import { Combo } from '../ui/pickers';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import AgreementRegisterView from './agreements/AgreementRegisterView';
 
 const bdt = (v) => '৳' + Number(v || 0).toLocaleString('en-BD');
 const sel = { border: '1px solid var(--line)', borderRadius: 10, padding: '9px 12px', background: 'var(--surface)', font: 'inherit', color: 'var(--ink)', width: '100%' };
@@ -29,63 +30,58 @@ export default function StsAgreements() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const r = await api.get('/sts/agreements'); setList(Array.isArray(r.data) ? r.data : []); }
-    finally { setLoading(false); }
+    try {
+      const r = await api.get('/sts/agreements');
+      setList(Array.isArray(r.data) ? r.data : []);
+    } finally {
+      setLoading(false);
+    }
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  if (mode === 'build') return <Builder onDone={() => { setMode('list'); load(); }} onCancel={() => setMode('list')} />;
-  const chip = (s) => ({ completed: 'good', active: 'good', sent: 'warn', viewed: 'info', partially_signed: 'warn', declined: 'bad', voided: 'grey', draft: 'grey' }[s] || 'grey');
+  const done = () => { setMode('list'); load(); };
+  const openNew = () => { setMode('build'); };
+
+  const tabs = useMemo(() => [
+    { key: 'all', label: 'All' },
+    { key: 'awaiting', label: 'Awaiting Signature', filterFn: (r) => !r.fully_signed && r.pending_count > 0 && r.status !== 'voided' && r.status !== 'declined' },
+    { key: 'draft', label: 'Drafts', filterFn: (r) => r.status === 'draft' },
+    { key: 'completed', label: 'Fully Executed', filterFn: (r) => r.fully_signed || r.status === 'completed' || r.status === 'active' },
+    { key: 'declined', label: 'Declined / Voided', filterFn: (r) => r.status === 'declined' || r.status === 'voided' || r.declined_count > 0 },
+  ], []);
+
+  const modalTitle = 'New Short-Term Rental Management Agreement';
 
   return (
-    <div className="pm-scope">
-      <div className="pm-head">
-        <div>
-          <div className="pm-eyebrow">Agreements</div>
-          <h1>Short-Term Rental Agreements</h1>
-          <div className="pm-meta">Short-Term Rental Management Service Agreements — build, price and send to owners for e-signature. The agreed fee drives owner disbursements.</div>
-        </div>
-        <div className="pm-head-actions">
-          <button className="pm-btn primary" onClick={() => setMode('build')}>
-            <Plus size={15} /> New agreement
-          </button>
-        </div>
-      </div>
-      {loading ? <div style={{ padding: 48, textAlign: 'center' }}><Spinner /></div> : (
-        <div className="pm-card"><div className="pm-card-body" style={{ padding: 0 }}>
-          <table className="pm-tbl">
-            <thead><tr><th>Reference</th><th>Owner</th><th>Management fee</th><th>Setup value</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th></tr></thead>
-            <tbody>
-              {list.map((a) => (
-                <tr key={a.id}>
-                  <td><strong style={{ color: 'var(--navy)' }}>{a.envelope_code}</strong></td>
-                  <td>{a.signer?.name || '—'}<div className="ph" style={{ fontSize: 11.5, color: 'var(--muted)' }}>{a.signer?.email || ''}</div></td>
-                  <td style={{ fontSize: 12.5 }}>{a.fee?.revenue_share_percent ? `${a.fee.revenue_share_percent}% of revenue` : ''}{a.fee?.revenue_share_percent && a.fee?.fixed_monthly_fee ? ' + ' : ''}{a.fee?.fixed_monthly_fee ? `${bdt(a.fee.fixed_monthly_fee)}/mo` : ''}{!a.fee?.revenue_share_percent && !a.fee?.fixed_monthly_fee ? '—' : ''}</td>
-                  <td>{a.total_contract_value != null ? bdt(a.total_contract_value) : '—'}</td>
-                  <td><span className={`pm-chip ${chip(a.status)}`}><span className="d" />{a.status}</span></td>
-                  <td style={{ textAlign: 'right' }}>{a.signer?.status !== 'signed' && <button className="pm-btn" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => copyLink(a, toast)}><Copy size={13} /> Copy link</button>}</td>
-                </tr>
-              ))}
-              {!list.length && <tr><td colSpan={6} style={{ textAlign: 'center', padding: 30, color: 'var(--muted)' }}>No agreements yet. Click “New agreement”.</td></tr>}
-            </tbody>
-          </table>
-        </div></div>
+    <AgreementRegisterView
+      title="Short-Term Rental Agreements"
+      subtitle="Short-Term Rental Management Service Agreements — build, price and send to owners for e-signature. The agreed fee drives owner disbursements."
+      docCode="SSPC-STRMS-01 (v0.2)"
+      accent="#0284c7"
+      accentSoft="rgba(2, 132, 199, 0.12)"
+      partyLabel="Owner"
+      newButtonLabel="New owner agreement"
+      tabs={tabs}
+      rows={list}
+      loading={loading}
+      onRefresh={load}
+      onNew={openNew}
+      toast={toast}
+      showBuilderModal={mode === 'build'}
+      builderModalTitle={modalTitle}
+      onCloseBuilderModal={done}
+      renderBuilder={() => (
+        <Builder
+          isModal
+          onDone={done}
+          onCancel={done}
+        />
       )}
-    </div>
+    />
   );
 }
 
-async function copyLink(a, toast) {
-  try {
-    const r = await api.get(`/signing/envelopes/${a.id}`);
-    const s = (r.data?.data?.signers || []).find((x) => ['sent', 'viewed', 'pending'].includes(x.status)) || (r.data?.data?.signers || [])[0];
-    if (!s?.access_token) return toast.error('No active signing link');
-    const url = `${window.location.origin}/admin/sign/${s.access_token}`;
-    try { await navigator.clipboard.writeText(url); toast.success('Signing link copied'); } catch { window.prompt('Signing link:', url); }
-  } catch { toast.error('Could not fetch link'); }
-}
-
-function Builder({ onDone, onCancel }) {
+function Builder({ isModal, onDone, onCancel }) {
   const toast = useToast();
   const { user } = useAuth();
   const draftStorageKey = 'sspc_sts_draft_new';
@@ -386,6 +382,11 @@ function Builder({ onDone, onCancel }) {
           <button className="pm-btn primary" disabled={busy} onClick={send}>
             <Send size={14} /> {busy ? 'Sending…' : 'Send to owner for signature'}
           </button>
+          {isModal && (
+            <button type="button" className="pm-btn" onClick={onCancel || onDone} title="Close window">
+              <X size={14} /> Close
+            </button>
+          )}
         </div>
       </div>
 
