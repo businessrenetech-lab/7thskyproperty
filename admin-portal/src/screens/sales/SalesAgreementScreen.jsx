@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { Spinner } from '../../ui/kit';
+import AgreementPreviewPane from '../agreements/AgreementPreviewPane';
 import { Combo } from '../../ui/pickers';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -1242,60 +1243,16 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
         </div>
 
         {/* Right Column: Sticky Live Agreement Preview */}
-        <div style={{ position: 'sticky', top: 90, height: 'calc(100vh - 110px)', display: 'flex', flexDirection: 'column' }}>
-          <div className="pm-card" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--pm-sh2)' }}>
-            
-            {/* Header */}
-            <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface)' }}>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--navy)', letterSpacing: '-0.2px' }}>
-                  {preview?.title || (kind === 'sale' ? 'Residential Property Sale Service Agreement' : 'Residential Property Purchase Service Agreement')}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--good)' }} />
-                  Live Preview · Auto-updates as you edit
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {previewing && <Spinner size={14} />}
-                <button className="pm-btn" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setShowFullPreview(true)} disabled={!preview?.html}>
-                  <Maximize2 size={13} /> Full preview
-                </button>
-              </div>
-            </div>
-
-            {/* Frame Body */}
-            <div style={{ flex: 1, background: '#f1f5f9', padding: 12, overflow: 'hidden' }}>
-              {preview?.html ? (
-                <iframe
-                  ref={previewRef}
-                  title="Agreement live preview"
-                  srcDoc={preview.html}
-                  sandbox="allow-same-origin"
-                  onLoad={() => {
-                    try {
-                      previewRef.current?.contentWindow?.scrollTo(0, previewScroll.current);
-                    } catch { /* cross-origin guard */ }
-                  }}
-                  style={{ width: '100%', height: '100%', border: 0, borderRadius: 8, background: '#ffffff', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}
-                />
-              ) : previewError && !previewing ? (
-                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'var(--muted)' }}>
-                  <span style={{ fontSize: 13 }}>Could not generate the preview.</span>
-                  <button type="button" className="pm-btn" onClick={() => refreshPreview()}>
-                    <RefreshCw size={13} /> Retry
-                  </button>
-                </div>
-              ) : (
-                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'var(--muted)' }}>
-                  <Spinner />
-                  <span style={{ fontSize: 13 }}>Generating live document preview…</span>
-                </div>
-              )}
-            </div>
-
-          </div>
-        </div>
+        <AgreementPreviewPane
+          title={preview?.title || (kind === 'sale' ? 'Residential Property Sale Service Agreement' : 'Residential Property Purchase Service Agreement')}
+          html={preview?.html}
+          previewing={previewing}
+          error={previewError}
+          onFullPreview={() => setShowFullPreview(true)}
+          onRetry={refreshPreview}
+          previewRef={previewRef}
+          previewScrollRef={previewScroll}
+        />
 
       </div>
 

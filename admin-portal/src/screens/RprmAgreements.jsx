@@ -6,6 +6,7 @@ import { Combo } from '../ui/pickers';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import AgreementRegisterView from './agreements/AgreementRegisterView';
+import AgreementPreviewPane from './agreements/AgreementPreviewPane';
 
 const bdt = (v) => '৳' + Number(v || 0).toLocaleString('en-BD');
 const sel = { border: '1px solid var(--line)', borderRadius: 10, padding: '9px 12px', background: 'var(--surface)', font: 'inherit', color: 'var(--ink)', width: '100%' };
@@ -257,6 +258,7 @@ function Builder({ editId, prefill, isModal, onDone, onCancel }) {
   const [catalog, setCatalog] = useState([]);
   const [preview, setPreview] = useState(null);
   const [previewing, setPreviewing] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(null);
   const [showFullPreview, setShowFullPreview] = useState(false);
@@ -325,16 +327,25 @@ function Builder({ editId, prefill, isModal, onDone, onCancel }) {
     try {
       const body = { ...d, pricing_input: { ...d.pricing_input, monthly_rent: d.schedule_b.expected_rent } };
       const r = await api.post('/rprm/preview', body);
-      if (r?.data) setPreview(r.data);
+      if (r?.data) { setPreview(r.data); setPreviewError(false); }
+      else setPreviewError(true);
     } catch (e) {
       console.error(e);
+      setPreviewError(true);
     } finally {
       setPreviewing(false);
     }
   }, [d]);
 
+  // First preview paints immediately on open; later edits stay debounced.
+  const firstPreviewRun = useRef(true);
   useEffect(() => {
     if (!d) return undefined;
+    if (firstPreviewRun.current) {
+      firstPreviewRun.current = false;
+      refreshPreview();
+      return undefined;
+    }
     const t = setTimeout(() => refreshPreview(), 400);
     return () => clearTimeout(t);
   }, [d, refreshPreview]);
@@ -803,53 +814,16 @@ function Builder({ editId, prefill, isModal, onDone, onCancel }) {
         </div>
 
         {/* Right Column: Sticky Live Agreement Preview */}
-        <div style={{ position: 'sticky', top: 90, height: 'calc(100vh - 110px)', display: 'flex', flexDirection: 'column' }}>
-          <div className="pm-card" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--pm-sh2)' }}>
-            
-            {/* Header */}
-            <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface)' }}>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--navy)', letterSpacing: '-0.2px' }}>
-                  {preview?.title || 'Residential Property Rental Management Service Agreement'}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--good)' }} />
-                  Live Preview · Auto-updates as you edit
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {previewing && <Spinner size={14} />}
-                <button className="pm-btn" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setShowFullPreview(true)} disabled={!preview?.html}>
-                  <Maximize2 size={13} /> Full preview
-                </button>
-              </div>
-            </div>
-
-            {/* Frame Body */}
-            <div style={{ flex: 1, background: '#f1f5f9', padding: 12, overflow: 'hidden' }}>
-              {preview?.html ? (
-                <iframe
-                  ref={previewRef}
-                  title="Agreement live preview"
-                  srcDoc={preview.html}
-                  sandbox="allow-same-origin"
-                  onLoad={() => {
-                    try {
-                      previewRef.current?.contentWindow?.scrollTo(0, previewScroll.current);
-                    } catch { /* cross-origin guard */ }
-                  }}
-                  style={{ width: '100%', height: '100%', border: 0, borderRadius: 8, background: '#ffffff', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}
-                />
-              ) : (
-                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'var(--muted)' }}>
-                  <Spinner />
-                  <span style={{ fontSize: 13 }}>Generating live document preview…</span>
-                </div>
-              )}
-            </div>
-
-          </div>
-        </div>
+        <AgreementPreviewPane
+          title={preview?.title || 'Residential Property Rental Management Service Agreement'}
+          html={preview?.html}
+          previewing={previewing}
+          error={previewError}
+          onFullPreview={() => setShowFullPreview(true)}
+          onRetry={refreshPreview}
+          previewRef={previewRef}
+          previewScrollRef={previewScroll}
+        />
 
       </div>
 
