@@ -1498,18 +1498,18 @@ function scheduleC(pricing) {
 function scheduleChecks(id, title, groups, selectedSet) {
   const scheduleCode = id === 'sched-a' ? 'SCHEDULE A' : 'SCHEDULE D';
   const body = Object.entries(groups).map(([g, items]) => `
-    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:12px 16px;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,0.02);">
+    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px;margin-bottom:7px;box-shadow:0 1px 2px rgba(0,0,0,0.02);break-inside:avoid;page-break-inside:avoid;">
       <div style="margin:0 0 8px;font-weight:700;font-size:11.5px;color:#003768;text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;gap:6px;">
         <span style="width:5px;height:5px;border-radius:50%;background:#00AEEF;"></span>
         ${esc(g)}
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px 14px;">
+      <div style="display:flex;flex-wrap:wrap;gap:4px 10px;">
         ${items.map((it) => {
           const on = selectedSet.has(it);
           const box = on
             ? '<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #003768;background:#003768;color:#fff;text-align:center;line-height:12px;font-size:11px;font-weight:700;vertical-align:middle;margin-right:6px;">&#10003;</span>'
             : '<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #9aa4b2;background:#fff;vertical-align:middle;margin-right:6px;"></span>';
-          return `<span style="font-size:11.5px;display:inline-flex;align-items:center;padding:3px 7px;border-radius:6px;${on ? 'background:#f0f9ff;font-weight:700;color:#0f172a;border:1px solid #bae6fd;' : 'color:#475569;background:#f8fafc;border:1px solid #f1f5f9;'}">${box}${esc(it)}</span>`;
+          return `<span style="font-size:11px;display:inline-flex;align-items:center;padding:2px 6px;border-radius:6px;${on ? 'background:#f0f9ff;font-weight:700;color:#0f172a;border:1px solid #bae6fd;' : 'color:#475569;background:#f8fafc;border:1px solid #f1f5f9;'}">${box}${esc(it)}</span>`;
         }).join('')}
       </div>
     </div>`).join('');
