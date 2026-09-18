@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, ClipboardCheck, Wrench, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight, Camera, Trash2, FileDown } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { usePmScope } from '../config/pmScope';
 import { PageHead, DataTable, StatusBadge, Drawer, Spinner, Badge, Button, Field, Input, Select, Textarea } from '../ui/kit';
 import { Combo } from '../ui/pickers';
 import { fileSrc } from '../ui/FileUpload';
@@ -274,6 +275,7 @@ export function PropertyAssessmentPanel({ propertyId, ownerContactId }) {
 
 export default function RentalAssessments() {
   const toast = useToast();
+  const scope = usePmScope();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -284,7 +286,7 @@ export default function RentalAssessments() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { data } = await api.get('/rental-assessments?limit=200'); setRows(data.data || []); }
+    try { const { data } = await api.get(`/rental-assessments?limit=200${scope.category === 'commercial' ? '&category=commercial' : ''}`); setRows(data.data || []); }
     catch { toast.error('Failed to load assessments'); }
     finally { setLoading(false); }
   }, [toast]);

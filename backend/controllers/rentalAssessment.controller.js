@@ -28,7 +28,10 @@ exports.list = asyncHandler(async (req, res) => {
   const where = { ...branchScope(req) };
   if (req.query.property_id) where.property_id = req.query.property_id;
   if (req.query.status) where.status = req.query.status;
-  const { rows, count } = await RentalAssessment.findAndCountAll({ where, include: [propInc], limit, offset, order: [['created_at', 'DESC']] });
+  const propI = req.query.category
+    ? { ...propInc, where: { category: req.query.category }, required: true }
+    : propInc;
+  const { rows, count } = await RentalAssessment.findAndCountAll({ where, include: [propI], limit, offset, order: [['created_at', 'DESC']] });
   res.json({ data: rows, pagination: { page, limit, total: count, pages: Math.ceil(count / limit) } });
 });
 

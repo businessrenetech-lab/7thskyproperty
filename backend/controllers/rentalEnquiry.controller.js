@@ -36,15 +36,20 @@ exports.list = asyncHandler(async (req, res) => {
     }
   }
 
+  // Scope to a property category when asked (commercial rent console).
+  const propI = req.query.category
+    ? { ...propInc, where: { category: req.query.category }, required: true }
+    : propInc;
+
   if (req.query.view === 'kanban') {
-    const rows = await RentalEnquiry.findAll({ where, include: [propInc], order: [['updated_at', 'DESC']] });
+    const rows = await RentalEnquiry.findAll({ where, include: [propI], order: [['updated_at', 'DESC']] });
     const board = STAGES.reduce((a, s) => { a[s] = []; return a; }, {});
     rows.forEach((r) => { (board[r.stage] || (board[r.stage] = [])).push(r); });
     return res.json({ board, stages: STAGES, total: rows.length });
   }
 
   const { limit, offset, page } = getPagination(req);
-  const { rows, count } = await RentalEnquiry.findAndCountAll({ where, include: [propInc], limit, offset, order: [['created_at', 'DESC']] });
+  const { rows, count } = await RentalEnquiry.findAndCountAll({ where, include: [propI], limit, offset, order: [['created_at', 'DESC']] });
   res.json({ data: rows, pagination: { page, limit, total: count, pages: Math.ceil(count / limit) } });
 });
 

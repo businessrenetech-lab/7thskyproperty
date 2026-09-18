@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, FileCheck2, UserCheck, Users, ShieldCheck, ArrowRight, Check, X, KeyRound, Upload, FileSignature } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { usePmScope } from '../config/pmScope';
 import { PageHead, DataTable, StatusBadge, Drawer, SearchInput, Spinner, Badge, Button, Field, Input, Select, Textarea, KV } from '../ui/kit';
 import { Combo } from '../ui/pickers';
 import FileUpload from '../ui/FileUpload';
@@ -48,6 +49,7 @@ const asArray = (value) => {
  */
 export default function TenantApplications({ propertyId = null, embedded = false }) {
   const toast = useToast();
+  const scope = usePmScope();
   const [rows, setRows] = useState([]);
   const [counts, setCounts] = useState({});
   const [loading, setLoading] = useState(true);
@@ -69,6 +71,7 @@ export default function TenantApplications({ propertyId = null, embedded = false
       if (propertyId) params.set('property_id', propertyId);
       if (statusFilter !== 'all') params.set('status', statusFilter);
       if (search) params.set('search', search);
+      if (scope.category === 'commercial') params.set('category', 'commercial');
       const { data } = await api.get(`/tenant-applications?${params.toString()}`);
       setRows(data.data || []);
       setCounts(data.status_counts || {});
@@ -329,12 +332,13 @@ export default function TenantApplications({ propertyId = null, embedded = false
 function ApplicationDetail({ app, onPatch, onPatchVerification, onReload }) {
   const toast = useToast();
   const navigate = useNavigate();
+  const scope = usePmScope();
   const [tab, setTab] = useState('overview');
 
   // Prefill the Tenancy Management (RPTM) agreement builder from this application,
   // so the agreement aligns with the captured tenant details (no re-keying).
   const buildTenancyAgreement = () => {
-    navigate('/property-management/tenancy-agreements', {
+    navigate(`${scope.basePath}/tenancy-agreements`, {
       state: {
         prefill: {
           client_contact_id: app.contact_id || '',

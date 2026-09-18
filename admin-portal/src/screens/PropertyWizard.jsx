@@ -15,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import api from "../services/api";
+import { usePmScope } from '../config/pmScope';
 import { useToast } from "../context/ToastContext";
 import { Spinner, Button, Field, Input, Select, Textarea } from "../ui/kit";
 import PropertyMediaGallery from "../components/PropertyMediaGallery";
@@ -100,6 +101,7 @@ export default function PropertyWizard() {
   const [query] = useSearchParams();
   const nav = useNavigate();
   const toast = useToast();
+  const scope = usePmScope();
   const queryListingType = query.get("listing_type");
   const queryCategory = query.get("category");
   const [propertyId, setPropertyId] = useState(resumeId || null);
@@ -109,7 +111,7 @@ export default function PropertyWizard() {
   const [featuredUrl, setFeaturedUrl] = useState(null);
   const [f, setF] = useState({
     title: "",
-    category: queryCategory || "residential",
+    category: queryCategory || scope.category,
     property_type: "Apartment",
     property_type_other: "",
     listing_type: queryListingType || "rent",
@@ -309,7 +311,7 @@ export default function PropertyWizard() {
         nav(
           saleMode
             ? `/sales/properties/new/${created.id}?listing_type=sale&category=${encodeURIComponent(f.category)}`
-            : `/property-management/rentals/new/${created.id}`,
+            : `${scope.basePath}/rentals/new/${created.id}`,
           { replace: true },
         );
         toast.success("Draft created — progress saves as you go.");
@@ -345,7 +347,7 @@ export default function PropertyWizard() {
       nav(
         saleMode
           ? `/sales/property/${propertyId}`
-          : `/property-management/rentals?open=${propertyId}`,
+          : `${scope.basePath}/rentals?open=${propertyId}`,
       );
     } catch (e) {
       toast.error(e.response?.data?.error || "Could not finish.");
@@ -402,7 +404,7 @@ export default function PropertyWizard() {
             <button
               className="btn btn-ghost btn-icon"
               onClick={() =>
-                nav(saleMode ? salesHome : "/property-management/rentals")
+                nav(saleMode ? salesHome : `${scope.basePath}/rentals`)
               }
             >
               <X size={18} />

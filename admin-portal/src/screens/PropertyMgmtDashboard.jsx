@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { PageHead, StatCard, Button, Spinner, Drawer, Field, Input, Select, Textarea, SearchInput, Badge, StatusBadge } from '../ui/kit';
 import { useToast } from '../context/ToastContext';
+import { usePmScope } from '../config/pmScope';
 import { EnquiryBoard } from './RentalEnquiries';
 import ActionCenter from './ActionCenter';
 
@@ -106,6 +107,8 @@ function Donut({ occupied = 0, notice = 0, vacant = 0, rate = 0 }) {
 
 export default function PropertyMgmtDashboard() {
   const nav = useNavigate();
+  const scope = usePmScope();
+  const bp = scope.basePath;
   const toast = useToast();
   
   // Dashboard stats and data
@@ -208,14 +211,14 @@ export default function PropertyMgmtDashboard() {
             count: newLeadsCount,
             sev: 'info',
             icon: Users,
-            to: '/property-management/contacts?looking_for=rent',
+            to: `${bp}/contacts?looking_for=rent`,
           }] : []),
-          { label: 'Rent overdue', sub: `${cnt('overdue_rent')} tenant${cnt('overdue_rent') === 1 ? '' : 's'} behind`, count: cnt('overdue_rent'), sev: 'bad', icon: AlertTriangle, to: '/property-management/rentals?tab=arrears' },
-          { label: 'Owner approval pending', sub: 'Tenant applications waiting', count: cnt('applications_awaiting_owner'), sev: 'warn', icon: FileCheck2, to: '/property-management/applications' },
+          { label: 'Rent overdue', sub: `${cnt('overdue_rent')} tenant${cnt('overdue_rent') === 1 ? '' : 's'} behind`, count: cnt('overdue_rent'), sev: 'bad', icon: AlertTriangle, to: `${bp}/rentals?tab=arrears` },
+          { label: 'Owner approval pending', sub: 'Tenant applications waiting', count: cnt('applications_awaiting_owner'), sev: 'warn', icon: FileCheck2, to: `${bp}/applications` },
           { label: 'Work orders overdue', sub: 'Past SLA target', count: cnt('work_orders_overdue'), sev: 'warn', icon: ListChecks, to: '/work-orders' },
-          { label: 'Statements to send', sub: 'Owners awaiting statements', count: cnt('statements_not_sent'), sev: 'info', icon: FileCheck2, to: '/property-management/statements' },
-          { label: 'Move-ins blocked', sub: 'Missing signed docs / bond', count: cnt('move_ins_blocked'), sev: 'bad', icon: KeyRound, to: '/property-management/applications' },
-          { label: 'Missing bank / KYC', sub: 'Owner onboarding gaps', count: cnt('missing_bank') + cnt('kyc_incomplete'), sev: 'info', icon: Users, to: '/property-management/rentals' },
+          { label: 'Statements to send', sub: 'Owners awaiting statements', count: cnt('statements_not_sent'), sev: 'info', icon: FileCheck2, to: `${bp}/statements` },
+          { label: 'Move-ins blocked', sub: 'Missing signed docs / bond', count: cnt('move_ins_blocked'), sev: 'bad', icon: KeyRound, to: `${bp}/applications` },
+          { label: 'Missing bank / KYC', sub: 'Owner onboarding gaps', count: cnt('missing_bank') + cnt('kyc_incomplete'), sev: 'info', icon: Users, to: `${bp}/rentals` },
         ].filter((a) => a.count > 0).slice(0, 5);
         setActions(cohortActions);
       } catch { /* command centre optional */ }
@@ -445,10 +448,10 @@ export default function PropertyMgmtDashboard() {
           <div className="pm-meta">{occ.managed} managed {occ.managed === 1 ? 'property' : 'properties'} · {s.active} active {s.active === 1 ? 'tenancy' : 'tenancies'} · {occ.rate}% occupancy</div>
         </div>
         <div className="pm-head-actions">
-          <button className="pm-btn" onClick={() => nav('/property-management/contacts?looking_for=rent')} style={{ borderColor: '#0284c7', color: '#0369a1', background: '#f0f9ff' }}><Users size={15} /> Rental leads</button>
+          <button className="pm-btn" onClick={() => nav(`${bp}/contacts?looking_for=rent`)} style={{ borderColor: '#0284c7', color: '#0369a1', background: '#f0f9ff' }}><Users size={15} /> Rental leads</button>
           <button className="pm-btn" onClick={() => setShowBulkDrawer(true)}><KeyRound size={15} /> Bulk invoices</button>
-          <button className="pm-btn" onClick={() => nav('/property-management/collect-rent')}><Wallet size={15} /> Collect rent</button>
-          <button className="pm-btn" onClick={() => nav('/property-management/disburse-owners')}><CreditCard size={15} /> Pay owners</button>
+          <button className="pm-btn" onClick={() => nav(`${bp}/collect-rent`)}><Wallet size={15} /> Collect rent</button>
+          <button className="pm-btn" onClick={() => nav(`${bp}/disburse-owners`)}><CreditCard size={15} /> Pay owners</button>
           <button className="pm-btn primary" onClick={() => { setShowPaymentDrawer(true); setSelectedTenancy(null); }}><Wallet size={15} /> Receive payment</button>
         </div>
       </div>
@@ -567,7 +570,7 @@ export default function PropertyMgmtDashboard() {
                 <div className="l">Held for owners · net of fees</div>
                 <div className="v pm-num">{money(held)}</div>
                 <div className="sub2">{metrics?.owner_folios || 0} owner folios · management fees already deducted</div>
-                <div className="row"><button className="pay" onClick={() => nav('/property-management/disbursements')}>Run payouts</button><button className="ghost" onClick={() => nav('/property-management/disbursements')}>Our income · {bdt(income)}</button></div>
+                <div className="row"><button className="pay" onClick={() => nav(`${bp}/disbursements`)}>Run payouts</button><button className="ghost" onClick={() => nav(`${bp}/disbursements`)}>Our income · {bdt(income)}</button></div>
               </div>
               <div className="pm-aging" style={{ marginTop: 16 }}>
                 <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--muted-2)', fontWeight: 700 }}>Arrears aging</div>
@@ -586,7 +589,7 @@ export default function PropertyMgmtDashboard() {
           <div className="ic"><FileCheck2 size={17} /></div>
           <div><h3>Tenant applications</h3><div className="hsub">Pipeline from submission to signed tenancy</div></div>
           <div className="sp" />
-          <button className="pm-link" onClick={() => nav('/property-management/applications')}>View all →</button>
+          <button className="pm-link" onClick={() => nav(`${bp}/applications`)}>View all →</button>
         </div>
         <div className="pm-card-body">
           <div className="pm-minis">
@@ -598,7 +601,7 @@ export default function PropertyMgmtDashboard() {
               { key: 'approved', label: 'Approved', color: 'var(--good)' },
               { key: 'converted', label: 'Converted', color: 'var(--good)' },
             ].map((b) => (
-              <div key={b.key} className="pm-mini" onClick={() => nav('/property-management/applications')}>
+              <div key={b.key} className="pm-mini" onClick={() => nav(`${bp}/applications`)}>
                 <div className="n pm-num">{appCounts[b.key] || 0}</div>
                 <div className="t"><span className="dot" style={{ background: b.color }} />{b.label}</div>
               </div>
@@ -610,7 +613,7 @@ export default function PropertyMgmtDashboard() {
       {/* ── Enquiries + Renewals ── */}
       <div className="pm-grid" style={{ gridTemplateColumns: '1.62fr 1fr', marginTop: 16 }}>
         <div className="pm-card">
-          <div className="pm-card-h"><div className="ic"><Users size={17} /></div><div><h3>Tenant enquiries pipeline</h3></div><div className="sp" /><button className="pm-link" onClick={() => nav('/property-management/enquiries')}>Full board →</button></div>
+          <div className="pm-card-h"><div className="ic"><Users size={17} /></div><div><h3>Tenant enquiries pipeline</h3></div><div className="sp" /><button className="pm-link" onClick={() => nav(`${bp}/enquiries`)}>Full board →</button></div>
           <div className="pm-card-body"><EnquiryBoard compact /></div>
         </div>
         <div className="pm-card">
@@ -638,7 +641,7 @@ export default function PropertyMgmtDashboard() {
             <button
               type="button"
               className="pm-btn"
-              onClick={() => nav('/property-management/contacts?action=import&looking_for=rent')}
+              onClick={() => nav(`${bp}/contacts?action=import&looking_for=rent`)}
               style={{ borderColor: '#0284c7', color: '#0369a1', fontWeight: 650, background: '#f0f9ff' }}
             >
               <FileSpreadsheet size={13} /> Import Excel
@@ -646,7 +649,7 @@ export default function PropertyMgmtDashboard() {
             <button
               type="button"
               className="pm-btn primary"
-              onClick={() => nav('/property-management/contacts?action=new&looking_for=rent')}
+              onClick={() => nav(`${bp}/contacts?action=new&looking_for=rent`)}
               style={{ background: '#0284c7', color: '#ffffff' }}
             >
               <UserPlus size={13} /> + New Rental Lead
@@ -654,7 +657,7 @@ export default function PropertyMgmtDashboard() {
             <button
               type="button"
               className="pm-link"
-              onClick={() => nav('/property-management/contacts?looking_for=rent')}
+              onClick={() => nav(`${bp}/contacts?looking_for=rent`)}
             >
               Manage All Leads ({rentalLeadCounts.total}) &rarr;
             </button>
@@ -676,7 +679,7 @@ export default function PropertyMgmtDashboard() {
                 key={idx}
                 className="pm-mini"
                 style={{ cursor: 'pointer' }}
-                onClick={() => nav(`/property-management/contacts?looking_for=rent`)}
+                onClick={() => nav(`${bp}/contacts?looking_for=rent`)}
               >
                 <div className="n pm-num">{b.count}</div>
                 <div className="t">
@@ -699,7 +702,7 @@ export default function PropertyMgmtDashboard() {
                 <button
                   type="button"
                   className="pm-btn primary"
-                  onClick={() => nav('/property-management/contacts?action=new&looking_for=rent')}
+                  onClick={() => nav(`${bp}/contacts?action=new&looking_for=rent`)}
                   style={{ background: '#0284c7', color: '#fff' }}
                 >
                   <UserPlus size={13} /> Add Prospective Tenant
@@ -707,7 +710,7 @@ export default function PropertyMgmtDashboard() {
                 <button
                   type="button"
                   className="pm-btn"
-                  onClick={() => nav('/property-management/contacts?action=import&looking_for=rent')}
+                  onClick={() => nav(`${bp}/contacts?action=import&looking_for=rent`)}
                 >
                   <FileSpreadsheet size={13} /> Bulk Import via Excel
                 </button>
@@ -854,7 +857,7 @@ export default function PropertyMgmtDashboard() {
                             <button
                               type="button"
                               className="pm-btn btn-sm"
-                              onClick={() => nav(`/property-management/contacts?search=${encodeURIComponent(lead.full_name || '')}`)}
+                              onClick={() => nav(`${bp}/contacts?search=${encodeURIComponent(lead.full_name || '')}`)}
                               style={{ padding: '3px 8px', fontSize: 11.5 }}
                             >
                               Dossier &rarr;
@@ -876,10 +879,10 @@ export default function PropertyMgmtDashboard() {
         <div className="pm-card-h"><div className="ic"><ArrowRight size={17} /></div><div><h3>Quick links</h3></div></div>
         <div className="pm-card-body" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {[
-            ['Rentals list', '/property-management/rentals'], ['Rental Leads & Contacts', '/property-management/contacts?looking_for=rent'],
-            ['Tenant Applications', '/property-management/applications'],
-            ['Onboarding & Workflow', '/property-management/rentals?detailTab=onboarding'], ['Rental Enquiries', '/property-management/enquiries'],
-            ['Rental Assessments', '/property-management/assessments'], ['Disbursements', '/property-management/disbursements'],
+            ['Rentals list', `${bp}/rentals`], ['Rental Leads & Contacts', `${bp}/contacts?looking_for=rent`],
+            ['Tenant Applications', `${bp}/applications`],
+            ['Onboarding & Workflow', `${bp}/rentals?detailTab=onboarding`], ['Rental Enquiries', `${bp}/enquiries`],
+            ['Rental Assessments', `${bp}/assessments`], ['Disbursements', `${bp}/disbursements`],
             ['Tenant Invoices', '/invoices'], ['Rental Receipts', '/rental-receipts'], ['Landlord Bills', '/landlord-bills'],
             ['Folios', '/folios'], ['Work Orders', '/work-orders'], ['Inspections', '/inspections'],
           ].map(([label, to]) => (

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Plus, Phone, Mail, CalendarClock, ArrowRight, GripVertical } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { usePmScope } from '../config/pmScope';
 import { PageHead, Drawer, Spinner, Badge, Button, Field, Input, Select, Textarea } from '../ui/kit';
 import { Combo } from '../ui/pickers';
 
@@ -24,6 +25,7 @@ const emptyForm = { property_id: null, enquirer_name: '', phone: '', email: '', 
 /** Reusable enquiry Kanban board. Used standalone and embedded on the PM dashboard. */
 export function EnquiryBoard({ compact = false, onConverted }) {
   const toast = useToast();
+  const scope = usePmScope();
   const [board, setBoard] = useState({});
   const [loading, setLoading] = useState(true);
   const [drag, setDrag] = useState(null);
@@ -35,7 +37,7 @@ export function EnquiryBoard({ compact = false, onConverted }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/rental-enquiries?view=kanban');
+      const { data } = await api.get(`/rental-enquiries?view=kanban${scope.category === 'commercial' ? '&category=commercial' : ''}`);
       setBoard(data.board || {});
     } catch (e) { toast.error('Failed to load enquiries'); }
     finally { setLoading(false); }

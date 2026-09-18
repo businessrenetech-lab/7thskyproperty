@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { usePmScope } from '../config/pmScope';
 import { PageHead, DataTable, StatusBadge, Drawer, SearchInput, KV, Spinner, Badge, Button, Field, Input, Select, Textarea } from '../ui/kit';
 import { Combo } from '../ui/pickers';
 import FileUpload from '../ui/FileUpload';
@@ -61,6 +62,8 @@ const LEGACY_TAB_MAP = {
 
 export default function RentalProperties() {
   const toast = useToast();
+  const scope = usePmScope();
+  const isCommercial = scope.category === 'commercial';
   const [searchParams, setSearchParams] = useSearchParams();
   const nav = useNavigate();
   const [rows, setRows] = useState([]);
@@ -83,7 +86,7 @@ export default function RentalProperties() {
   // New Property Creation Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
-    title: '', category: 'residential', listing_type: 'rent', status: 'available', price: '',
+    title: '', category: isCommercial ? 'commercial' : 'residential', listing_type: 'rent', status: 'available', price: '',
     bedrooms: '', bathrooms: '', parking: '', building_size: '', floor_number: '', furnishing: 'unfurnished',
     address: '', area: '', city: '', district: '', description: '',
     owner_contact_id: null, occupancy_status: 'vacant', utilities_active: false,
@@ -116,7 +119,8 @@ export default function RentalProperties() {
     setLoading(true);
     try {
       const q = search ? `&search=${encodeURIComponent(search)}` : '';
-      const { data } = await api.get(`/properties?tab=${activeTab}&include_counts=true${q}&limit=100`);
+      const catQ = isCommercial ? '&category=commercial' : '';
+      const { data } = await api.get(`/properties?tab=${activeTab}&include_counts=true${q}${catQ}&limit=100`);
       setRows(data.data || []);
       if (data.tab_counts) setTabCounts(data.tab_counts);
     } catch (e) {
@@ -340,7 +344,7 @@ export default function RentalProperties() {
       setShowCreateModal(false);
       // Reset form
       setCreateForm({
-        title: '', category: 'residential', listing_type: 'rent', status: 'available', price: '',
+        title: '', category: isCommercial ? 'commercial' : 'residential', listing_type: 'rent', status: 'available', price: '',
         bedrooms: '', bathrooms: '', parking: '', building_size: '', floor_number: '',
         address: '', area: '', city: '', district: '', description: '',
         listing_status: 'active', is_published: true
@@ -416,7 +420,7 @@ export default function RentalProperties() {
           icon={Edit}
           onClick={(event) => {
             event.stopPropagation();
-            nav(`/property-management/rentals/new/${r.id}?listing_type=rent&category=${encodeURIComponent(r.category || 'residential')}`);
+            nav(`${scope.basePath}/rentals/new/${r.id}?listing_type=rent&category=${encodeURIComponent(r.category || scope.category)}`);
           }}
         >
           Edit &amp; Photos
@@ -493,7 +497,7 @@ export default function RentalProperties() {
             <Button
               variant="secondary"
               icon={Edit}
-              onClick={() => nav(`/property-management/rentals/new/${prop.id}?listing_type=rent&category=${encodeURIComponent(prop.category || 'residential')}`)}
+              onClick={() => nav(`${scope.basePath}/rentals/new/${prop.id}?listing_type=rent&category=${encodeURIComponent(prop.category || scope.category)}`)}
             >
               Edit property &amp; website
             </Button>
@@ -1301,7 +1305,7 @@ export default function RentalProperties() {
         title="Rental Properties" 
         desc="Bangladesh property care & rental folios. Track advanced security deposits, automate owner commissions, and manage tenancy ledgers." 
         actions={
-          <Button icon={Plus} onClick={() => nav('/property-management/rentals/new')}>New Rental Property</Button>
+          <Button icon={Plus} onClick={() => nav(`${scope.basePath}/rentals/new`)}>New Rental Property</Button>
         }
       />
 

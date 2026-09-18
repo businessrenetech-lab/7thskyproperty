@@ -84,8 +84,13 @@ exports.list = asyncHandler(async (req, res) => {
       where[Op.or] = searchOr;
     }
   }
+  // Scope to a property category (residential | commercial) when asked — used by
+  // the commercial rent console so it only sees commercial-property applications.
+  const propI = req.query.category
+    ? { ...propInc, where: { category: req.query.category }, required: true }
+    : propInc;
   const { rows, count } = await TenantApplication.findAndCountAll({
-    where, include: [propInc, tenantInc], limit, offset, order: [['created_at', 'DESC']],
+    where, include: [propI, tenantInc], limit, offset, order: [['created_at', 'DESC']],
   });
 
   // Lightweight status counts for the global view tabs
