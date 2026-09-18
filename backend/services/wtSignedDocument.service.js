@@ -19,6 +19,7 @@
  */
 const EnvelopeSigner = require('../models/EnvelopeSigner');
 const SignatureField = require('../models/SignatureField');
+const { wrapPrintable } = require('./agreementPrintCss');
 
 const esc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -137,7 +138,7 @@ async function buildSignedDocument(envelope) {
   </div>`;
 
   return {
-    html: banner + html,
+    html: wrapPrintable(banner + html, `${envelope.title || 'Agreement'} — ${envelope.envelope_code || ''}`.trim()),
     complete,
     signed_count: signedCount,
     total_signers: signers.length,

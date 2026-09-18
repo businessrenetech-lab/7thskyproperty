@@ -10,6 +10,7 @@
  * (or CHROME_PATH) in the environment.
  */
 const fs = require('fs');
+const { PRINT_STYLE } = require('./agreementPrintCss');
 
 let puppeteer = null;
 try { puppeteer = require('puppeteer-core'); } catch { /* optional dependency */ }
@@ -40,30 +41,6 @@ function pdfAvailable() {
   return !!puppeteer && !!findChrome();
 }
 
-/**
- * A print stylesheet prepended to every document before it is rendered, so all
- * agreement families (sales, PM, tenancy, STS, service lines) paginate cleanly.
- * It fixes the breaks that look unprofessional without forcing whole (possibly
- * multi-page) clause cards onto a single page:
- *  - headings never sit orphaned at the foot of a page;
- *  - table rows and list items never split across a page;
- *  - table headers repeat on each page a long schedule spans;
- *  - images and short "keep together" blocks stay intact.
- * Margins stay owned by page.pdf() below (no @page margin, to avoid conflict).
- */
-const PRINT_CSS = `<style>
-  @media print {
-    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    h1, h2, h3, h4 { break-after: avoid-page; page-break-after: avoid; }
-    tr, th, td { break-inside: avoid; page-break-inside: avoid; }
-    thead { display: table-header-group; }
-    tfoot { display: table-footer-group; }
-    li { break-inside: avoid; page-break-inside: avoid; }
-    img, svg, figure { break-inside: avoid; page-break-inside: avoid; }
-    [data-sign-field], [id="signatures-section"], .sig-block, .keep-together { break-inside: avoid; page-break-inside: avoid; }
-  }
-</style>`;
-
 /** Render HTML → PDF Buffer (A4, print backgrounds). Throws if unavailable. */
 async function htmlToPdf(html) {
   if (!puppeteer) throw new Error('puppeteer-core is not installed');
@@ -77,11 +54,14 @@ async function htmlToPdf(html) {
   });
   try {
     const page = await browser.newPage();
-    await page.setContent(PRINT_CSS + (html || ''), { waitUntil: 'networkidle0', timeout: 30000 });
+    // Same shared print stylesheet the served HTML uses, so a browser-printed
+    // copy and this server-rendered PDF paginate identically. Margins match the
+    // stylesheet's @page (16mm/14mm).
+    await page.setContent(PRINT_STYLE + (html || ''), { waitUntil: 'networkidle0', timeout: 30000 });
     return await page.pdf({
       format: 'A4',
       printBackground: true,
-      margin: { top: '18mm', bottom: '18mm', left: '14mm', right: '14mm' },
+      margin: { top: '16mm', bottom: '16mm', left: '14mm', right: '14mm' },
       preferCSSPageSize: false,
     });
   } finally {
