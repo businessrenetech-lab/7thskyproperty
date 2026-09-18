@@ -6,7 +6,7 @@ import { Combo } from '../ui/pickers';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import AgreementRegisterView from './agreements/AgreementRegisterView';
-import AgreementPreviewPane from './agreements/AgreementPreviewPane';
+import AgreementPreviewPane, { previewErrorMessage } from './agreements/AgreementPreviewPane';
 
 const bdt = (v) => '৳' + Number(v || 0).toLocaleString('en-BD');
 const sel = { border: '1px solid var(--line)', borderRadius: 10, padding: '9px 12px', background: 'var(--surface)', font: 'inherit', color: 'var(--ink)', width: '100%' };
@@ -202,10 +202,10 @@ function Builder({ isModal, onDone, onCancel }) {
     try {
       const r = await api.post('/sts/preview', d);
       if (r?.data) { setPreview(r.data); setPreviewError(false); }
-      else setPreviewError(true);
+      else setPreviewError('The preview came back empty.');
     } catch (e) {
       console.error(e);
-      setPreviewError(true);
+      setPreviewError(previewErrorMessage(e));
     } finally {
       setPreviewing(false);
     }

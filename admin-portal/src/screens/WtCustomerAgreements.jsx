@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { Spinner } from '../ui/kit';
-import AgreementPreviewPane from './agreements/AgreementPreviewPane';
+import AgreementPreviewPane, { previewErrorMessage } from './agreements/AgreementPreviewPane';
 import { Combo } from '../ui/pickers';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -635,9 +635,9 @@ export function CustomerAgreementBuilder({
     try {
       const r = await api.post('/wt-agreements/customer/preview', d);
       if (r?.data) { setPreview(r.data); setPreviewError(false); }
-      else setPreviewError(true);
-    } catch {
-      setPreviewError(true);
+      else setPreviewError('The preview came back empty.');
+    } catch (e) {
+      setPreviewError(previewErrorMessage(e));
     } finally {
       setPreviewing(false);
     }

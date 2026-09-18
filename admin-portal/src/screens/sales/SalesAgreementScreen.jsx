@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import api from '../../services/api';
 import { Spinner } from '../../ui/kit';
-import AgreementPreviewPane from '../agreements/AgreementPreviewPane';
+import AgreementPreviewPane, { previewErrorMessage } from '../agreements/AgreementPreviewPane';
 import { Combo } from '../../ui/pickers';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -461,12 +461,12 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
         { ...d.client, contact_id: d.client_contact_id || null },
         ...((d.additional_clients || []).filter((p) => (p.full_name || '').trim()))
       ];
-      const r = await api.post(`${km.base}/preview`, { ...d, clients: parties }, { params: { category } }).catch(() => null);
+      const r = await api.post(`${km.base}/preview`, { ...d, clients: parties }, { params: { category } });
       if (r?.data) { setPreview(r.data); setPreviewError(false); }
-      else setPreviewError(true);
+      else setPreviewError('The preview came back empty.');
     } catch (e) {
       console.error(e);
-      setPreviewError(true);
+      setPreviewError(previewErrorMessage(e));
     } finally {
       setPreviewing(false);
     }

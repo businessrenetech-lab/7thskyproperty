@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import { Spinner } from '../ui/kit';
-import AgreementPreviewPane from './agreements/AgreementPreviewPane';
+import AgreementPreviewPane, { previewErrorMessage } from './agreements/AgreementPreviewPane';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -459,11 +459,11 @@ export function ProviderAgreementBuilder({
     try {
       const r = await api.post('/wt-agreements/provider/preview', getPayload());
       if (r?.data) { setPreview(r.data); setPreviewError(false); }
-      else setPreviewError(true);
+      else setPreviewError('The preview came back empty.');
       setError('');
     } catch (e) {
       console.error('[ProviderPreview]', e);
-      setPreviewError(true);
+      setPreviewError(previewErrorMessage(e));
     } finally {
       setPreviewing(false);
     }

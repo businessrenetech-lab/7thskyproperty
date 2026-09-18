@@ -7,7 +7,7 @@ import { useLocation } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import AgreementRegisterView from './agreements/AgreementRegisterView';
-import AgreementPreviewPane from './agreements/AgreementPreviewPane';
+import AgreementPreviewPane, { previewErrorMessage } from './agreements/AgreementPreviewPane';
 
 const bdt = (v) => '৳' + Number(v || 0).toLocaleString('en-BD');
 const sel = { border: '1px solid var(--line)', borderRadius: 10, padding: '9px 12px', background: 'var(--surface)', font: 'inherit', color: 'var(--ink)', width: '100%' };
@@ -338,10 +338,10 @@ function Builder({ editId, prefill, isModal, onDone, onCancel }) {
       const body = { ...d, pricing_input: { ...d.pricing_input, monthly_rent: d.schedule_b.monthly_rent } };
       const r = await api.post('/rptm/preview', body);
       if (r?.data) { setPreview(r.data); setPreviewError(false); }
-      else setPreviewError(true);
+      else setPreviewError('The preview came back empty.');
     } catch (e) {
       console.error(e);
-      setPreviewError(true);
+      setPreviewError(previewErrorMessage(e));
     } finally {
       setPreviewing(false);
     }
