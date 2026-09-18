@@ -20,6 +20,10 @@ const SCHEDULES = {
   tenancy_mgmt: { label: 'Residential — Tenancy Management', scope: 'residential', group: 'rptm', prefix: 'RPTM-' },
   sale_sale_commercial: { label: 'Commercial — Sale', scope: 'commercial', group: 'cpss', prefix: 'CPSS-' },
   sale_purchase_commercial: { label: 'Commercial — Purchase (Buy)', scope: 'commercial', group: 'cpps', prefix: 'CPPS-' },
+  // Commercial Rent — kept on their own scope so they do not appear in the
+  // commercial SALE price editor.
+  commercial_pm: { label: 'Commercial — Rental Management', scope: 'commercial_rent', group: 'cprm', prefix: 'CPRM-' },
+  commercial_tenancy_mgmt: { label: 'Commercial — Tenancy Management', scope: 'commercial_rent', group: 'cptm', prefix: 'CPTM-' },
 };
 const PRICE_TYPES = ['fixed', 'from', 'percent', 'included'];
 

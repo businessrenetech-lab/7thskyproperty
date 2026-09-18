@@ -372,10 +372,13 @@ const rebasePmNav = (groups, from, to) => groups.map((g) => ({
   items: (g.items || []).map((it) => (it.to ? { ...it, to: it.to.replace(from, to) } : it)),
 }));
 
-// The Agreements group ships with the commercial agreement builders (next phase);
-// until then it is left out rather than pointing at residential documents.
+// The commercial agreement builders ship in the next phase; until then the
+// Agreements group carries only the (commercial) price schedule rather than
+// pointing at residential documents.
 export const COMMERCIAL_RENT_NAV = rebasePmNav(
-  PROPERTY_MGMT_NAV.filter((g) => g.key !== 'agreements'),
+  PROPERTY_MGMT_NAV.map((g) => (g.key === 'agreements'
+    ? { ...g, label: 'Schedules', items: g.items.filter((it) => it.to && it.to.includes('/price-schedule')) }
+    : g)),
   '/property-management',
   '/commercial/rent',
 );
