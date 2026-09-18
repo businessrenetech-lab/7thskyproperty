@@ -8502,3 +8502,33 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Next (me): finish agreement-register consistency — wire the 3 shared service-line screens onto the
   same feature set (edit / modify / resend / void) and add "void a signed/completed agreement"
   (void executed PDF) across all families, backend + frontend.
+
+### 2026-09-18 | Claude (Opus 4.8) | COMPLETED | Void a signed/executed agreement across all agreement families
+- Request (user): "give all agreement register ui same features ... void ... signed pdf void options ...
+  consistency ... access services, property management, residential and commercial buy sell" (+ note:
+  "Verification & Transfer, and interior services also").
+- Root cause: both void endpoints hard-blocked fully-executed (`completed`) envelopes, so a signed
+  agreement / signed PDF could never be voided from any register.
+- Changes:
+  - `backend/controllers/signing.controller.js` `voidEnvelope`: allow voiding a `completed`/`active`
+    envelope; require a non-empty reason for executed voids; invalidate live signing tokens; keep the
+    signed record (marked voided), keep existing party_role / provider propagation; audit `{reason, executed}`.
+  - `backend/controllers/waterTankAgreementHub.controller.js` `void`: same — allow executed void with a
+    mandatory reason, invalidate tokens, sync the provider's own record to `Voided`; `shapeEnvelope`
+    now sets `can_void` for executed rows + `void_executed` flag.
+  - `admin-portal/src/screens/agreements/AgreementRegisterView.jsx` (shared register for RPRM / TM / STS /
+    residential+commercial Sales): `shapeAgreementRow` `can_void` now true for executed + `void_executed`
+    flag; `handleVoid` adds a hard confirm + mandatory reason for executed; drawer button relabels to
+    "Void executed agreement".
+  - `admin-portal/src/screens/watertank/AgreementsHub.jsx` (shared service-line register — WT/AC/interior/
+    doc-verification/etc.): `voidIt` hard confirm + mandatory reason for executed.
+  - `admin-portal/src/screens/WtProviderAgreements.jsx`: `voidAgreement` handles executed; added a
+    "Void executed agreement" button for completed provider agreements.
+- Verification (backend restarted, health 200):
+  - Generic `/api/signing/envelopes/:id/void` on completed envelope 392 (a `space_planning_renovation`
+    INTERIOR customer agreement): no-reason → 400; with-reason → 200; DB → `voided`; restored to completed.
+  - Hub `/api/wt-agreement-hub/:id/void` on the same envelope: no-reason → 400; with-reason → 200
+    (`executed:true`); DB → `voided`; restored. Test data left intact.
+  - `node --check` on both controllers OK; `admin-portal npm run build` exit 0.
+- Note (product): voiding an executed agreement marks the envelope/PDF VOID and invalidates links; it does
+  NOT auto-reverse downstream side-effects (e.g. an auto-opened project). Flagged for follow-up if wanted.

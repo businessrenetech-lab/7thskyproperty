@@ -107,7 +107,8 @@ export function shapeAgreementRow(r) {
     expiring_soon: !complete && expiresIn != null && expiresIn >= 0 && expiresIn <= 7,
     expired: !complete && (eq(r.status, 'expired') || (expiresIn != null && expiresIn < 0)),
     can_resend: !complete && !['voided', 'declined', 'draft'].includes(r.status) && pending.length > 0,
-    can_void: !complete && !['voided', 'declined'].includes(r.status),
+    can_void: !['voided', 'declined'].includes(r.status),
+    void_executed: complete,
     can_download_signed: complete,
     contract_value: contractVal,
   };
@@ -387,9 +388,18 @@ export default function AgreementRegisterView({
   };
 
   const handleVoid = async (row) => {
+    const executed = row.void_executed || row.fully_signed;
+    if (executed && !window.confirm(
+      `${row.envelope_code} is a FULLY EXECUTED agreement.\n\nVoiding it rescinds a signed contract — the signed PDF is kept on record but marked VOID. This cannot be undone. Continue?`,
+    )) return;
     // eslint-disable-next-line no-alert
-    const reason = window.prompt(`Void ${row.envelope_code}? Give a reason — it stays on the record.`);
+    const reason = window.prompt(
+      executed
+        ? `Reason for voiding executed agreement ${row.envelope_code}? (required — stays on the record)`
+        : `Void ${row.envelope_code}? Give a reason — it stays on the record.`,
+    );
     if (reason === null) return;
+    if (executed && !reason.trim()) { toast?.error?.('A reason is required to void an executed agreement.'); return; }
     setBusy(`void-${row.id}`);
     try {
       await api.post(`/signing/envelopes/${row.id}/void`, { reason });
@@ -1385,7 +1395,7 @@ function AuditDrawer({ row, accent, onClose, onResend, onDownload, onVoid, busy,
         <div className="wt-modal-foot">
           {row.can_void && (
             <button type="button" className="wt-btn danger-ghost" onClick={onVoid}>
-              <Ban size={14} /> Void agreement
+              <Ban size={14} /> {row.void_executed ? 'Void executed agreement' : 'Void agreement'}
             </button>
           )}
           <button type="button" className="wt-btn" style={{ marginLeft: 'auto' }} onClick={onClose}>

@@ -113,9 +113,11 @@ function shapeEnvelope(env) {
     progress_pct: signers.length ? Math.round((signed.length / signers.length) * 100) : 0,
     can_resend: !eq(env.status, 'voided') && !eq(env.status, 'declined'),
     can_edit: !eq(env.status, 'voided') && !eq(env.status, 'declined'),
-    // A fully-executed or already-voided/declined envelope cannot be voided — the
-    // endpoint rejects it, so it must not be advertised as voidable either.
-    can_void: !complete && !eq(env.status, 'voided') && !eq(env.status, 'declined'),
+    // Anything not already voided/declined can be voided — including a fully
+    // executed agreement (rescinded with a mandatory reason). void_executed flags
+    // the heavier case so the UI can confirm harder.
+    can_void: !eq(env.status, 'voided') && !eq(env.status, 'declined'),
+    void_executed: complete,
     // only a fully executed document is worth calling "the signed agreement"
     can_download_signed: complete,
   };
@@ -404,15 +406,30 @@ exports.resend = asyncHandler(async (req, res) => {
 /* ── void ── */
 exports.void = asyncHandler(async (req, res) => {
   const env = await loadEnvelope(req, res); if (!env) return;
-  if (eq(env.status, 'completed')) {
-    return res.status(409).json({ error: 'This agreement is fully executed and cannot be voided.' });
+  if (eq(env.status, 'voided') || eq(env.status, 'declined')) {
+    return res.status(409).json({ error: `This agreement is already ${env.status} and cannot be voided.` });
+  }
+  const reason = (req.body?.reason || '').trim();
+  // A fully-executed agreement may be voided (rescinded), but only deliberately:
+  // require a reason. The signed document is kept on record, marked voided.
+  const executed = eq(env.status, 'completed');
+  if (executed && !reason) {
+    return res.status(400).json({ error: 'Voiding a fully-executed agreement requires a reason.' });
   }
   // The column is `voided_reason` (void_reason was silently discarded), and there
   // is no 'voided' signer status in the enum — so invalidate the outstanding links
   // instead: a voided envelope can no longer be signed through a live token.
-  await env.update({ status: 'voided', voided_reason: req.body?.reason || null });
+  await env.update({ status: 'voided', voided_reason: reason || null });
   await EnvelopeSigner.update({ access_token: null }, {
     where: { envelope_id: env.id, status: { [Op.notIn]: ['signed', 'declined'] } },
   }).catch(() => {});
-  res.json({ ok: true, envelope_code: env.envelope_code, voided_by: actorOf(req) });
+  // Keep the provider's own agreement record in step (customer agreements live only
+  // as envelopes, so voiding the envelope is already their full state change).
+  if (familyOf(env.related_type) === 'provider') {
+    try {
+      const P = require('../models/waterTankProviders');
+      await P.WtProviderAgreement.update({ status: 'Voided' }, { where: { envelope_id: env.id, branch_id: env.branch_id } });
+    } catch { /* provider record optional */ }
+  }
+  res.json({ ok: true, envelope_code: env.envelope_code, executed, voided_by: actorOf(req) });
 });

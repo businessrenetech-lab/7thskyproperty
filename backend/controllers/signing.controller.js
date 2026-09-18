@@ -243,8 +243,20 @@ exports.remindEnvelope = asyncHandler(async (req, res) => {
 exports.voidEnvelope = asyncHandler(async (req, res) => {
   const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req) } });
   if (!env) return res.status(404).json({ error: 'Envelope not found.' });
-  if (!['draft', 'pending_approval', 'sent', 'viewed', 'partially_signed'].includes(env.status)) return res.status(400).json({ error: `Cannot void an envelope in '${env.status}' state.` });
-  await env.update({ status: 'voided', voided_reason: req.body.reason || 'Voided by admin' });
+  // Open envelopes can always be voided. A fully-executed agreement can also be
+  // voided (rescinded) — but only deliberately, so a reason is mandatory and the
+  // signed PDF is kept on record, marked voided rather than deleted.
+  const executed = ['completed', 'active'].includes(env.status);
+  if (!executed && !['draft', 'pending_approval', 'sent', 'viewed', 'partially_signed'].includes(env.status)) {
+    return res.status(400).json({ error: `Cannot void an envelope in '${env.status}' state.` });
+  }
+  const reason = (req.body.reason || '').trim();
+  if (executed && !reason) {
+    return res.status(400).json({ error: 'Voiding a fully-executed agreement requires a reason.' });
+  }
+  // Invalidate any live signing tokens so a voided envelope can never be signed through.
+  await EnvelopeSigner.update({ access_token: null }, { where: { envelope_id: env.id, status: { [Op.notIn]: ['signed', 'declined'] } } }).catch(() => {});
+  await env.update({ status: 'voided', voided_reason: reason || 'Voided by admin' });
   if (env.related_type === 'party_role') {
     await PartyRoleProfile.update({ status: 'voided', next_action: 'Agreement envelope voided' }, { where: { id: env.related_id } });
     const role = await PartyRoleProfile.findByPk(env.related_id);
@@ -259,7 +271,7 @@ exports.voidEnvelope = asyncHandler(async (req, res) => {
     await P.WtProviderAgreement.update({ status: 'Voided' }, { where: { envelope_id: env.id, branch_id: env.branch_id } });
     await M.WtProvider.update({ agreement_status: 'Not Started', agreement_envelope_id: null }, { where: { id: env.related_id, branch_id: env.branch_id, agreement_envelope_id: env.id } });
   }
-  await audit(env.id, 'voided', req, null, req.user?.email, { reason: req.body.reason });
+  await audit(env.id, 'voided', req, null, req.user?.email, { reason, executed });
   res.json({ message: 'Envelope voided.' });
 });
 

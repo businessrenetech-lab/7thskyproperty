@@ -1948,8 +1948,16 @@ function AgreementDetail({ id }) {
   };
 
   const voidAgreement = async () => {
-    const reason = window.prompt('Reason for voiding this agreement:');
-    if (!reason) return;
+    const executed = String(data?.envelope?.status || '').toLowerCase() === 'completed';
+    if (executed && !window.confirm(
+      `${data.agreement.code} is a FULLY EXECUTED agreement.\n\nVoiding it rescinds a signed contract — the signed PDF is kept on record but marked VOID. This cannot be undone. Continue?`,
+    )) return;
+    const reason = window.prompt(
+      executed
+        ? `Reason for voiding executed agreement ${data.agreement.code}? (required)`
+        : 'Reason for voiding this agreement:',
+    );
+    if (!reason || !reason.trim()) return;
     try {
       await api.post(`/signing/envelopes/${data.agreement.envelope_id}/void`, { reason });
       toast.ok('Agreement voided');
@@ -1991,6 +1999,11 @@ function AgreementDetail({ id }) {
               <Ban size={14} /> Void & reissue
             </button>
           </>
+        )}
+        {String(envelope?.status || '').toLowerCase() === 'completed' && (
+          <button className="wt-btn danger-ghost" onClick={voidAgreement}>
+            <Ban size={14} /> Void executed agreement
+          </button>
         )}
         <button
           className="wt-btn"

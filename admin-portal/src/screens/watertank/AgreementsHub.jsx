@@ -249,9 +249,18 @@ export default function AgreementsHub() {
   };
 
   const voidIt = async (row) => {
+    const executed = row.void_executed || row.fully_signed;
+    if (executed && !window.confirm(
+      `${row.envelope_code} is a FULLY EXECUTED agreement.\n\nVoiding it rescinds a signed contract — the signed PDF is kept on record but marked VOID. This cannot be undone. Continue?`,
+    )) return;
     // eslint-disable-next-line no-alert
-    const reason = window.prompt(`Void ${row.envelope_code}? Give a reason — it stays on the record.`);
+    const reason = window.prompt(
+      executed
+        ? `Reason for voiding executed agreement ${row.envelope_code}? (required — stays on the record)`
+        : `Void ${row.envelope_code}? Give a reason — it stays on the record.`,
+    );
     if (reason === null) return;
+    if (executed && !reason.trim()) { toast.err('A reason is required to void an executed agreement.'); return; }
     setBusy(`void-${row.id}`);
     try {
       await api.post(`/wt-agreement-hub/${row.id}/void`, { reason });
