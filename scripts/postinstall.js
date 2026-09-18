@@ -32,7 +32,10 @@ for (const ws of WORKSPACES) {
   }
   console.log(`\npostinstall: installing dependencies in ${ws} …`);
   // shell:true resolves `npm` to npm.cmd on Windows and `npm` on Linux/host.
-  const result = spawnSync('npm install --no-audit --no-fund', {
+  // --include=dev: build tools (vite, tailwindcss, postcss, next) live in
+  // devDependencies; with NODE_ENV=production npm would skip them and the
+  // production build would fail. Force them in — they're needed to build.
+  const result = spawnSync('npm install --no-audit --no-fund --include=dev', {
     cwd: dir,
     stdio: 'inherit',
     shell: true,
