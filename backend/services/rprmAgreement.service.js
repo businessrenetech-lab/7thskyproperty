@@ -67,9 +67,31 @@ const CLAUSES = [
   ['EXECUTION', `<p>By signing this Agreement, the Parties confirm that they have read and understood it, have had the opportunity to obtain independent advice, enter into it voluntarily, and agree to be legally bound by its terms. This Agreement may be executed in counterparts and by electronic signature. Each signed copy is deemed an original and together constitute one Agreement.</p>`],
 ];
 
+// Residential vs commercial run through the same renderer, differing only by a
+// content pack. The commercial pack lives in its own file (it is large).
+const { COMMERCIAL_PACK } = require('./cprmAgreementPack');
+const RESIDENTIAL_PACK = {
+  doc_no: 'SSPC-RPRMS-01',
+  title: 'Residential Property Rental Management Service Agreement',
+  catalog_vertical: 'residential_pm',
+  related_type: 'property_management_agreement',
+  cover_kicker: 'Residential Asset & Rental Management',
+  hero_eyebrow: 'Asset Governance & Tenancy Management',
+  hero_title_html: 'Residential Property<br/>Rental Management<br/>Service Agreement',
+  cover_intro: 'A comprehensive governance framework establishing commercial terms, marketing &amp; leasing standards, rent administration, routine inspections, and full asset care covenants between Seventh Sky Property Care and the Property Owner.',
+  owner_label: 'Property Owner / Landlord (Client)',
+  schedule_b_title: 'SCHEDULE B — Property Management Summary',
+  schedule_d_title: 'SCHEDULE D — Property Management Checklist',
+  clauses: CLAUSES,
+  service_groups: SERVICE_GROUPS,
+  checklist_groups: CHECKLIST_GROUPS,
+};
+const PACK_BY_CATEGORY = { residential: RESIDENTIAL_PACK, commercial: COMMERCIAL_PACK };
+const packFor = (category) => PACK_BY_CATEGORY[String(category || 'residential').toLowerCase()] || RESIDENTIAL_PACK;
+
 /** The editable Schedule C standard price catalog (from ServiceItem, vertical residential_pm). */
-async function getRprmCatalog(branchId) {
-  const where = { vertical: 'residential_pm', is_active: true };
+async function getRprmCatalog(branchId, vertical = 'residential_pm') {
+  const where = { vertical, is_active: true };
   if (branchId) where.branch_id = branchId;
   const rows = await ServiceItem.findAll({ where, order: [['sort_order', 'ASC']] });
   return rows.map((r) => {
@@ -108,8 +130,8 @@ function agreedAmount(line, agreed, monthlyRent) {
  * auto-suggested payment schedule (editable downstream).
  * input: { selected:[{code, agreed_price}], monthly_rent, discount, vat_percent, fee_model, frequency, payment_overrides }
  */
-async function computePricing(input = {}, branchId) {
-  const catalog = await getRprmCatalog(branchId);
+async function computePricing(input = {}, branchId, vertical = 'residential_pm') {
+  const catalog = await getRprmCatalog(branchId, vertical);
   const byCode = Object.fromEntries(catalog.map((c) => [c.code, c]));
   const selected = (input.selected || []).map((s) => {
     const line = byCode[s.code]; if (!line) return null;
@@ -268,7 +290,10 @@ function scheduleChecklboxes(id, title, groups, selectedSet) {
  *  schedule_b{expected_rent,security_deposit,lease_term,commencement_date,review_date,special_requirements,work_order_no,quotation_no},
  *  payment_terms{frequency,fee_model}, checklist[] (Schedule D), witnesses[{name,nid}], effective_date
  */
-function buildResidentialPMAgreement(data = {}) {
+function buildPMAgreement(data = {}, pack = RESIDENTIAL_PACK) {
+  const CLAUSES = pack.clauses;
+  const SERVICE_GROUPS = pack.service_groups;
+  const CHECKLIST_GROUPS = pack.checklist_groups;
   const org = {
     name: 'Seventh Sky Property Care',
     represented_by: data.org?.represented_by || 'Authorized Signatory',
@@ -302,8 +327,8 @@ function buildResidentialPMAgreement(data = {}) {
   const servicesSet = normalizeCollection(data.services);
   const checklistSet = normalizeCollection(data.checklist);
   const pricing = data.pricing || { lines: [], summary: {}, payment_schedule: [] };
-  const doc_no = 'SSPC-RPRMS-01';
-  const title = 'Residential Property Rental Management Service Agreement';
+  const doc_no = pack.doc_no;
+  const title = pack.title;
 
   // ── 1. Dedicated Minimalist Cover Page (Page 1) ───────────────────────────
   const coverPage = `
@@ -315,7 +340,7 @@ function buildResidentialPMAgreement(data = {}) {
           <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#012a4e 0%,#003768 50%,#00AEEF 100%);display:flex;align-items:center;justify-content:center;color:#ffffff;font-weight:800;font-size:19px;letter-spacing:-0.5px;box-shadow:0 3px 10px rgba(1,42,78,0.18);">7S</div>
           <div>
             <div style="font-size:15px;font-weight:800;color:#012a4e;letter-spacing:0.8px;text-transform:uppercase;">Seventh Sky Property Care</div>
-            <div style="font-size:10.5px;font-weight:600;color:#00AEEF;letter-spacing:1px;text-transform:uppercase;">Residential Asset &amp; Rental Management</div>
+            <div style="font-size:10.5px;font-weight:600;color:#00AEEF;letter-spacing:1px;text-transform:uppercase;">${esc(pack.cover_kicker)}</div>
           </div>
         </div>
         <div style="text-align:right;">
@@ -328,14 +353,14 @@ function buildResidentialPMAgreement(data = {}) {
       <div style="margin-top:80px;text-align:left;">
         <div style="display:inline-flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;color:#00AEEF;text-transform:uppercase;letter-spacing:2px;margin-bottom:14px;">
           <span style="width:20px;height:2px;background:#00AEEF;display:inline-block;"></span>
-          Asset Governance &amp; Tenancy Management
+          ${esc(pack.hero_eyebrow)}
         </div>
         <h1 style="font-size:34px;font-weight:800;color:#012a4e;line-height:1.2;margin:0 0 16px;letter-spacing:-0.6px;">
-          Residential Property<br/>Rental Management<br/>Service Agreement
+          ${pack.hero_title_html}
         </h1>
         <div style="width:70px;height:4px;background:linear-gradient(90deg,#012a4e,#00AEEF);border-radius:2px;margin-bottom:20px;"></div>
         <p style="font-size:13.5px;color:#475569;line-height:1.65;max-width:580px;margin:0;font-weight:400;">
-          A comprehensive governance framework establishing commercial terms, marketing &amp; leasing standards, rent administration, routine inspections, and full asset care covenants between Seventh Sky Property Care and the Property Owner.
+          ${pack.cover_intro}
         </p>
       </div>
     </div>
@@ -347,7 +372,7 @@ function buildResidentialPMAgreement(data = {}) {
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
           <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#00AEEF;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
             <span style="width:6px;height:6px;border-radius:50%;background:#00AEEF;"></span>
-            Prepared For · Property Owner (Client)
+            Prepared For · ${esc(pack.owner_label)}
           </div>
           <div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px;">${or(c.full_name)}</div>
           <div style="font-size:11.5px;color:#475569;line-height:1.5;">
@@ -489,7 +514,7 @@ function buildResidentialPMAgreement(data = {}) {
     <p style="margin:0 0 10px;font-size:13px;color:#334155;">This Agreement is made on: <b style="color:#012a4e;">${or(data.effective_date)}</b></p>
     <div style="font-size:11px;font-weight:800;color:#00AEEF;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;">BETWEEN</div>
     ${kvTable([['Seventh Sky Private Limited', org.name || 'Seventh Sky Property Care'], ['Address', org.address], ['Phone', org.phone], ['Email', org.email], ['Represented by', org.represented_by], ['Position', org.position]])}
-    <div style="font-size:11px;font-weight:800;color:#00AEEF;text-transform:uppercase;letter-spacing:0.8px;margin:12px 0 4px;">AND — Property Owner / Landlord (Client)</div>
+    <div style="font-size:11px;font-weight:800;color:#00AEEF;text-transform:uppercase;letter-spacing:0.8px;margin:12px 0 4px;">AND — ${esc(pack.owner_label)}</div>
     ${kvTable([['Full Name', c.full_name], ['National ID / Passport No.', c.nid], ['Property Address', c.property_address], ['Phone', c.phone], ['Email', c.email], ['Authorised Representative (if applicable)', c.rep]])}
   </div>`;
 
@@ -558,7 +583,7 @@ function buildResidentialPMAgreement(data = {}) {
   <div style="margin:26px 0 16px;">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
       <span style="background:#012a4e;color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:0.8px;">SCHEDULE B</span>
-      <h2 id="sched-b" style="font-size:15px;color:#012a4e;font-weight:800;margin:0;">SCHEDULE B — Property Management Summary</h2>
+      <h2 id="sched-b" style="font-size:15px;color:#012a4e;font-weight:800;margin:0;">${esc(pack.schedule_b_title)}</h2>
     </div>
     ${kvTable([
       ['Work Order No.', b.work_order_no], ['Quotation No.', b.quotation_no], ['Property Owner', c.full_name], ['Property Address', c.property_address],
@@ -567,7 +592,7 @@ function buildResidentialPMAgreement(data = {}) {
     ])}
   </div>`;
   const schedC = scheduleC(pricing);
-  const schedD = scheduleChecklboxes('sched-d', 'SCHEDULE D — Property Management Checklist', CHECKLIST_GROUPS, checklistSet);
+  const schedD = scheduleChecklboxes('sched-d', pack.schedule_d_title, CHECKLIST_GROUPS, checklistSet);
 
   const html = `
   <div class="rprm-doc" style="font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;line-height:1.65;font-size:13.5px;max-width:840px;margin:0 auto;background:#ffffff;">
@@ -622,5 +647,16 @@ function buildResidentialPMAgreement(data = {}) {
   return { title, doc_no, html, terms };
 }
 
-module.exports = { getRprmCatalog, computePricing, buildResidentialPMAgreement, SERVICE_GROUPS, CHECKLIST_GROUPS };
+// Thin wrappers so callers pick a category without knowing the pack.
+const buildResidentialPMAgreement = (data = {}) => buildPMAgreement(data, RESIDENTIAL_PACK);
+const buildCommercialPMAgreement = (data = {}) => buildPMAgreement(data, COMMERCIAL_PACK);
+
+module.exports = {
+  getRprmCatalog, computePricing,
+  buildPMAgreement, buildResidentialPMAgreement, buildCommercialPMAgreement,
+  packFor, RESIDENTIAL_PACK, COMMERCIAL_PACK,
+  SERVICE_GROUPS, CHECKLIST_GROUPS,
+  COMMERCIAL_SERVICE_GROUPS: COMMERCIAL_PACK.service_groups,
+  COMMERCIAL_CHECKLIST_GROUPS: COMMERCIAL_PACK.checklist_groups,
+};
 

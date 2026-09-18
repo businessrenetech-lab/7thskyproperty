@@ -18,6 +18,24 @@ const { generateCode } = require('../utils/codeGenerator');
 const { buildSignerDefs, persistSigners, dispatchEnvelope, emailFirstSigner } = require('../services/agreementSigners.service');
 const sequelize = require('../config/db.config');
 
+// Residential vs commercial rental-management agreements run through the same
+// controller and render service, differing only by category (?category=).
+function ctx(req) {
+  const category = String(req.query.category || req.body?.category || 'residential').toLowerCase() === 'commercial'
+    ? 'commercial' : 'residential';
+  const pack = svc.packFor(category);
+  return {
+    category,
+    vertical: pack.catalog_vertical,
+    related_type: pack.related_type,
+    build: category === 'commercial' ? svc.buildCommercialPMAgreement : svc.buildResidentialPMAgreement,
+    codePrefix: category === 'commercial' ? 'ENV-CPRM-' : 'ENV-RPRM-',
+    mgmtCode: category === 'commercial' ? 'CPRM-018' : 'RPRM-018',
+    serviceGroups: pack.service_groups,
+    checklistGroups: pack.checklist_groups,
+  };
+}
+
 async function resolveRprmDefaults(body, user) {
   const b = { ...(body.schedule_b || {}) };
   if (!b.work_order_no) {
@@ -41,16 +59,17 @@ async function resolveRprmDefaults(body, user) {
 
 // Editable Schedule C standard price catalog
 exports.getCatalog = asyncHandler(async (req, res) => {
-  res.json(await svc.getRprmCatalog(branchScope(req).branch_id));
+  res.json(await svc.getRprmCatalog(branchScope(req).branch_id, ctx(req).vertical));
 });
 
 // Builder metadata: Schedule A service groups + Schedule D checklist groups
 exports.getMeta = asyncHandler(async (req, res) => {
   const nextWo = await generateCode(WorkOrder, 'work_order_code', 'SSPC-WO-');
   const nextQt = await generateCode(CareQuotation, 'quote_code', 'SSPC-QT-');
+  const { serviceGroups, checklistGroups } = ctx(req);
   res.json({
-    service_groups: svc.SERVICE_GROUPS,
-    checklist_groups: svc.CHECKLIST_GROUPS,
+    service_groups: serviceGroups,
+    checklist_groups: checklistGroups,
     defaults: {
       work_order_no: nextWo,
       quotation_no: nextQt,
@@ -84,9 +103,10 @@ exports.getPropertyDefaults = asyncHandler(async (req, res) => {
 exports.preview = asyncHandler(async (req, res) => {
   const branchId = branchScope(req).branch_id;
   const body = req.body || {};
+  const { vertical, build } = ctx(req);
   const { schedule_b, org } = await resolveRprmDefaults(body, req.user);
-  const pricing = await svc.computePricing(body.pricing_input || {}, branchId);
-  const built = svc.buildResidentialPMAgreement({ ...body, schedule_b, org, pricing });
+  const pricing = await svc.computePricing(body.pricing_input || {}, branchId, vertical);
+  const built = build({ ...body, schedule_b, org, pricing });
   res.json({ ...built, pricing, schedule_b, org });
 });
 
@@ -95,8 +115,8 @@ exports.preview = asyncHandler(async (req, res) => {
 // rental_receipt trigger, so the fee must be attached to the property's owner
 // profile — not just the property. Idempotent: one active management fee per
 // owner profile. Best-effort (never blocks agreement creation).
-async function syncRecurringFee(env, pricing, propertyId, contactId, t) {
-  const mgmt = pricing.lines.find((l) => l.code === 'RPRM-018');
+async function syncRecurringFee(env, pricing, propertyId, contactId, t, mgmtCode = 'RPRM-018') {
+  const mgmt = pricing.lines.find((l) => l.code === mgmtCode);
   if (!propertyId || !mgmt) return;
   try {
     const [profile] = await PropertyOwnerProfile.findOrCreate({
@@ -127,18 +147,19 @@ exports.createAgreement = asyncHandler(async (req, res) => {
   if (!client.full_name) return res.status(400).json({ error: 'Landlord full name is required.' });
   if (!asDraft && !client.email) return res.status(400).json({ error: 'Landlord email is required to send for signature.' });
 
+  const { vertical, related_type, build, codePrefix, mgmtCode } = ctx(req);
   const { schedule_b, org } = await resolveRprmDefaults(body, req.user);
-  const pricing = await svc.computePricing(body.pricing_input || {}, branchId);
-  const built = svc.buildResidentialPMAgreement({ ...body, schedule_b, org, pricing });
+  const pricing = await svc.computePricing(body.pricing_input || {}, branchId, vertical);
+  const built = build({ ...body, schedule_b, org, pricing });
   const expires = new Date(Date.now() + 30 * 864e5);
 
   const out = await sequelize.transaction(async (t) => {
     const env = await SigningEnvelope.create({
       branch_id: branchId,
-      envelope_code: `ENV-RPRM-${Date.now().toString().slice(-6)}`,
+      envelope_code: `${codePrefix}${Date.now().toString().slice(-6)}`,
       title: `${built.title} — ${client.full_name}`,
       document_html: built.html,
-      related_type: 'property_management_agreement',
+      related_type,
       related_id: body.property_id || null,
       status: 'draft', expires_at: expires,
       signing_order_enforced: true, // Client → Seventh Sky countersign → witnesses
@@ -153,7 +174,7 @@ exports.createAgreement = asyncHandler(async (req, res) => {
       client: { ...client, contact_id: body.client_contact_id || null },
       org, witnesses: body.witnesses, user: req.user || {}, clientRole: 'landlord',
     }), t);
-    await syncRecurringFee(env, pricing, body.property_id, body.client_contact_id || null, t);
+    await syncRecurringFee(env, pricing, body.property_id, body.client_contact_id || null, t, mgmtCode);
     if (asDraft) return { env, links: [] };
     const links = await dispatchEnvelope(env, t);
     return { env, links };
@@ -170,14 +191,15 @@ exports.createAgreement = asyncHandler(async (req, res) => {
 // Rebuild a DRAFT in place from an edited body (services, pricing, witnesses, …).
 exports.updateAgreement = asyncHandler(async (req, res) => {
   const branchId = resolveBranchId(req);
-  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req), related_type: 'property_management_agreement' } });
+  const { vertical, related_type, build } = ctx(req);
+  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req), related_type } });
   if (!env) return res.status(404).json({ error: 'Agreement not found.' });
   if (env.status !== 'draft') return res.status(409).json({ error: 'Only a draft agreement can be edited. Use "Edit & reissue" for a sent one.' });
   const body = req.body || {}; const client = body.client || {};
   if (!client.full_name) return res.status(400).json({ error: 'Landlord full name is required.' });
   const { schedule_b, org } = await resolveRprmDefaults(body, req.user);
-  const pricing = await svc.computePricing(body.pricing_input || {}, branchId);
-  const built = svc.buildResidentialPMAgreement({ ...body, schedule_b, org, pricing });
+  const pricing = await svc.computePricing(body.pricing_input || {}, branchId, vertical);
+  const built = build({ ...body, schedule_b, org, pricing });
   await sequelize.transaction(async (t) => {
     await SignatureField.destroy({ where: { envelope_id: env.id }, transaction: t });
     await EnvelopeSigner.destroy({ where: { envelope_id: env.id }, transaction: t });
@@ -192,7 +214,7 @@ exports.updateAgreement = asyncHandler(async (req, res) => {
 
 // Send a draft (or re-send an edited draft): mint tokens + email the first signer.
 exports.sendAgreement = asyncHandler(async (req, res) => {
-  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req), related_type: 'property_management_agreement' } });
+  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req), related_type: ctx(req).related_type } });
   if (!env) return res.status(404).json({ error: 'Agreement not found.' });
   if (env.status !== 'draft') return res.status(409).json({ error: `Cannot send an agreement in '${env.status}' state.` });
   const landlord = await EnvelopeSigner.findOne({ where: { envelope_id: env.id, role: 'landlord' } });
@@ -205,7 +227,7 @@ exports.sendAgreement = asyncHandler(async (req, res) => {
 // List RPRM agreements (envelopes) with their landlord signer + status.
 exports.listAgreements = asyncHandler(async (req, res) => {
   const rows = await SigningEnvelope.findAll({
-    where: { ...branchScope(req), related_type: 'property_management_agreement' },
+    where: { ...branchScope(req), related_type: ctx(req).related_type },
     include: [{ model: EnvelopeSigner, as: 'signers', attributes: ['id', 'signer_order', 'name', 'email', 'role', 'status', 'signed_at'] }],
     order: [['id', 'DESC']],
   });

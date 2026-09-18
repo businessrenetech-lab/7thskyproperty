@@ -1444,6 +1444,7 @@ export default function App() {
               <Route path="/commercial/rent/folios" element={<Folios />} />
               <Route path="/commercial/rent/landlord-bills" element={<LandlordBills />} />
               <Route path="/commercial/rent/agency-income" element={<AgencyIncome />} />
+              <Route path="/commercial/rent/agreements" element={<RprmAgreements category="commercial" />} />
               <Route path="/commercial/rent/price-schedule" element={<SalesPriceSchedule scope="commercial_rent" title="Commercial Rent · Price Schedules" />} />
             </Route>
 

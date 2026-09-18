@@ -24,8 +24,10 @@ const EMPTY = {
   pricing_input: { monthly_rent: '', discount: 0, vat_percent: 0, selected: [] },
 };
 
-export default function RprmAgreements() {
+export default function RprmAgreements({ category = 'residential' }) {
   const toast = useToast();
+  const isCommercial = category === 'commercial';
+  const catParams = isCommercial ? { category: 'commercial' } : undefined;
   const [mode, setMode] = useState('list');
   const [editState, setEditState] = useState(null);
   const [list, setList] = useState([]);
@@ -34,12 +36,13 @@ export default function RprmAgreements() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api.get('/rprm/agreements');
+      const r = await api.get('/rprm/agreements', { params: catParams });
       setList(Array.isArray(r.data) ? r.data : []);
     } finally {
       setLoading(false);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category]);
   useEffect(() => { load(); }, [load]);
 
   const done = () => { setMode('list'); setEditState(null); load(); };
@@ -57,7 +60,7 @@ export default function RprmAgreements() {
 
   const sendDraft = async (a) => {
     try {
-      await api.post(`/rprm/agreements/${a.id}/send`);
+      await api.post(`/rprm/agreements/${a.id}/send`, undefined, { params: catParams });
       toast.success('Agreement sent for signature');
       load();
     } catch (e) {
@@ -73,17 +76,18 @@ export default function RprmAgreements() {
     { key: 'declined', label: 'Declined / Voided', filterFn: (r) => r.status === 'declined' || r.status === 'voided' || r.declined_count > 0 },
   ], []);
 
+  const label = isCommercial ? 'Commercial Property Rental Management' : 'Residential Property Rental Management';
   const modalTitle = editState?.id
-    ? `Edit Draft #${editState.id} — Residential Property Rental Management Agreement`
-    : 'New Residential Property Rental Management Agreement';
+    ? `Edit Draft #${editState.id} — ${label} Agreement`
+    : `New ${label} Agreement`;
 
   return (
     <AgreementRegisterView
-      title="Property Management Agreements"
-      subtitle="Residential Property Rental Management Service Agreements — build, price and send to landlords for legal e-signature."
-      docCode="SSPC-RPRMS-01 (v0.2)"
-      accent="#2563eb"
-      accentSoft="rgba(37, 99, 235, 0.12)"
+      title={isCommercial ? 'Commercial Rental Management Agreements' : 'Property Management Agreements'}
+      subtitle={`${label} Service Agreements — build, price and send to landlords for legal e-signature.`}
+      docCode={isCommercial ? 'SSPC-CPRMS-01 (v0.2)' : 'SSPC-RPRMS-01 (v0.2)'}
+      accent={isCommercial ? '#0284c7' : '#2563eb'}
+      accentSoft={isCommercial ? 'rgba(2, 132, 199, 0.12)' : 'rgba(37, 99, 235, 0.12)'}
       partyLabel="Landlord"
       newButtonLabel="New landlord agreement"
       tabs={tabs}
@@ -99,6 +103,7 @@ export default function RprmAgreements() {
       onCloseBuilderModal={done}
       renderBuilder={() => (
         <Builder
+          category={category}
           editId={editState?.id}
           prefill={editState?.prefill}
           isModal
@@ -198,7 +203,8 @@ async function downloadDoc(a, toast) {
   } catch { toast.error('Could not download the signed document'); }
 }
 
-function Builder({ editId, prefill, isModal, onDone, onCancel }) {
+function Builder({ category = 'residential', editId, prefill, isModal, onDone, onCancel }) {
+  const catParams = category === 'commercial' ? { category: 'commercial' } : undefined;
   const toast = useToast();
   const { user } = useAuth();
   const draftStorageKey = editId ? `sspc_rprm_draft_${editId}` : 'sspc_rprm_draft_new';
@@ -267,7 +273,7 @@ function Builder({ editId, prefill, isModal, onDone, onCancel }) {
   const previewScroll = useRef(0);
 
   useEffect(() => {
-    api.get('/rprm/meta').then((r) => {
+    api.get('/rprm/meta', { params: catParams }).then((r) => {
       const metaData = r.data || {};
       setMeta(metaData);
       if (metaData.defaults) {
@@ -288,7 +294,7 @@ function Builder({ editId, prefill, isModal, onDone, onCancel }) {
         }));
       }
     }).catch(() => {});
-    api.get('/rprm/catalog').then((r) => setCatalog(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    api.get('/rprm/catalog', { params: catParams }).then((r) => setCatalog(Array.isArray(r.data) ? r.data : [])).catch(() => {});
   }, [user]);
 
   const set = (path, value) => setD((prev) => {
@@ -326,7 +332,7 @@ function Builder({ editId, prefill, isModal, onDone, onCancel }) {
     setPreviewing(true);
     try {
       const body = { ...d, pricing_input: { ...d.pricing_input, monthly_rent: d.schedule_b.expected_rent } };
-      const r = await api.post('/rprm/preview', body);
+      const r = await api.post('/rprm/preview', body, { params: catParams });
       if (r?.data) { setPreview(r.data); setPreviewError(false); }
       else setPreviewError('The preview came back empty.');
     } catch (e) {
@@ -396,13 +402,13 @@ function Builder({ editId, prefill, isModal, onDone, onCancel }) {
     try {
       const body = { ...d, pricing_input: { ...d.pricing_input, monthly_rent: d.schedule_b.expected_rent } };
       if (editId) {
-        await api.put(`/rprm/agreements/${editId}`, body);
-        if (!asDraft) await api.post(`/rprm/agreements/${editId}/send`);
+        await api.put(`/rprm/agreements/${editId}`, body, { params: catParams });
+        if (!asDraft) await api.post(`/rprm/agreements/${editId}/send`, undefined, { params: catParams });
         try { localStorage.removeItem(draftStorageKey); setAutoDraftTime(null); } catch {}
         toast.success(asDraft ? 'Draft updated' : 'Agreement sent for signature');
         onDone();
       } else {
-        const r = await api.post('/rprm/agreements', { ...body, save_as_draft: asDraft });
+        const r = await api.post('/rprm/agreements', { ...body, save_as_draft: asDraft }, { params: catParams });
         try { localStorage.removeItem(draftStorageKey); setAutoDraftTime(null); } catch {}
         if (asDraft) { toast.success('Draft saved'); onDone(); }
         else { setSent(r.data); toast.success('Agreement sent to landlord for signature'); }
