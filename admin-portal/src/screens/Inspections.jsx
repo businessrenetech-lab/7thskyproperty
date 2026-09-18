@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Plus, ClipboardCheck } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, Button, DataTable, StatusBadge, Badge, Drawer, Field, Input, Select, Textarea, KV, Spinner } from '../ui/kit';
 import { Combo } from '../ui/pickers';
@@ -9,6 +10,7 @@ const TYPES = ['site_assessment', 'entry', 'routine', 'exit', 'other'];
 const condTone = { good: 'green', fair: 'blue', poor: 'amber', damaged: 'red', na: 'grey' };
 
 export default function Inspections() {
+  const scope = usePmScope();
   const toast = useToast();
   const [rows, setRows] = useState([]); const [loading, setLoading] = useState(true); const [type, setType] = useState('');
   const [drawer, setDrawer] = useState(null); const [form, setForm] = useState({}); const [sel, setSel] = useState(null); const [detail, setDetail] = useState(null);
@@ -16,7 +18,7 @@ export default function Inspections() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const p = new URLSearchParams({ limit: 50 }); if (type) p.set('type', type); const { data } = await api.get(`/inspections?${p}`); setRows(data.data || []); }
+    try { const p = new URLSearchParams({ limit: 50 }); if (type) p.set('type', type); if (scope.category === 'commercial') p.set('property_category', 'commercial'); const { data } = await api.get(`/inspections?${p}`); setRows(data.data || []); }
     catch { toast.error('Failed to load inspections'); } finally { setLoading(false); }
   }, [type, toast]);
   useEffect(() => { load(); }, [load]);

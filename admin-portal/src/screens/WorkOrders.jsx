@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Plus, Wrench, ShieldCheck, Play, CheckCircle2, ClipboardCheck, AlertTriangle, Trash2 } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, Button, DataTable, StatusBadge, Badge, Drawer, Field, Input, Select, Textarea, SearchInput, KV, Spinner } from '../ui/kit';
 import { Combo } from '../ui/pickers';
@@ -23,6 +24,7 @@ const STAGE_TABS = [
 ];
 
 export default function WorkOrders() {
+  const scope = usePmScope();
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [counts, setCounts] = useState({});
@@ -39,6 +41,7 @@ export default function WorkOrders() {
     setLoading(true);
     try {
       const p = new URLSearchParams({ limit: 100, include_counts: 'true' });
+      if (scope.category === 'commercial') p.set('property_category', 'commercial');
       if (search) p.set('search', search);
       if (stage === 'pending_owner') p.set('approval_status', 'pending_owner');
       else if (stage !== 'all') p.set('tenant_visible_status', stage);

@@ -2,10 +2,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { KeyRound, ClipboardCheck, ArrowRight, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, DataTable, StatusBadge, Spinner, Button, Field, Input, Drawer } from '../ui/kit';
 
 export default function Vacancies() {
+  const scope = usePmScope();
   const toast = useToast();
   const nav = useNavigate();
   const [rows, setRows] = useState([]);
@@ -15,7 +17,7 @@ export default function Vacancies() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { data } = await api.get('/vacancy-notices'); setRows(data.data || []); }
+    try { const { data } = await api.get(`/vacancy-notices${scope.category === 'commercial' ? '?property_category=commercial' : ''}`); setRows(data.data || []); }
     catch { toast.error('Failed to load notices'); } finally { setLoading(false); }
   }, [toast]);
   useEffect(() => { load(); }, [load]);
@@ -47,7 +49,7 @@ export default function Vacancies() {
     ) },
     { key: 'exit_inspection_date', header: 'Exit inspection', render: (r) => r.exit_inspection_date || '—' },
     { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status} /> },
-    { key: 'settlement', header: 'Settlement', render: (r) => r.settlement_id ? <Button size="sm" variant="ghost" icon={ArrowRight} onClick={() => nav(`/property-management/settlements?id=${r.settlement_id}`)}>Open</Button> : <span className="cell-sub">—</span> },
+    { key: 'settlement', header: 'Settlement', render: (r) => r.settlement_id ? <Button size="sm" variant="ghost" icon={ArrowRight} onClick={() => nav(`${scope.basePath}/settlements?id=${r.settlement_id}`)}>Open</Button> : <span className="cell-sub">—</span> },
   ];
 
   return (
@@ -61,7 +63,7 @@ export default function Vacancies() {
         <Drawer title={`Vacancy Notice ${selected.notice_code}`} width={620} onClose={() => setSelected(null)}
           footer={selected.status === 'submitted' || selected.status === 'acknowledged'
             ? <><Button variant="ghost" onClick={() => setSelected(null)}>Close</Button><Button icon={ClipboardCheck} onClick={scheduleExit}>Schedule Exit Inspection</Button></>
-            : <><Button variant="ghost" onClick={() => setSelected(null)}>Close</Button>{!selected.settlement_id && <Button icon={KeyRound} onClick={() => nav(`/property-management/settlements?tenancy_id=${selected.tenancy_id}&vacancy_notice_id=${selected.id}`)}>Create Deposit Settlement</Button>}</>}
+            : <><Button variant="ghost" onClick={() => setSelected(null)}>Close</Button>{!selected.settlement_id && <Button icon={KeyRound} onClick={() => nav(`${scope.basePath}/settlements?tenancy_id=${selected.tenancy_id}&vacancy_notice_id=${selected.id}`)}>Create Deposit Settlement</Button>}</>}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="card" style={{ padding: 12, background: 'var(--surface-2)' }}>

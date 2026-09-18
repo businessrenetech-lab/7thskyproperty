@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, Button, DataTable, Drawer, Field, Input, Textarea, Spinner, StatusBadge } from '../ui/kit';
 import { Combo } from '../ui/pickers';
@@ -11,13 +12,14 @@ const landlordLabel = (f) => `${f.contact?.full_name || f.owner?.full_name || f.
 const tenancyLabel = (t) => `${t.tenant?.full_name || 'Tenant'} · ${t.Property?.title || t.property?.title || t.tenancy_code || ''}`;
 
 export default function LandlordBills() {
+  const scope = usePmScope();
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [drawer, setDrawer] = useState(null);
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
-  const load = useCallback(async () => { setLoading(true); try { const { data } = await api.get('/billing/landlord-bills?limit=100'); setRows(data.data || []); } catch { toast.error('Failed to load landlord bills'); } finally { setLoading(false); } }, [toast]);
+  const load = useCallback(async () => { setLoading(true); try { const { data } = await api.get(`/billing/landlord-bills?limit=100${scope.category === 'commercial' ? '&property_category=commercial' : ''}`); setRows(data.data || []); } catch { toast.error('Failed to load landlord bills'); } finally { setLoading(false); } }, [toast]);
   useEffect(() => { load(); }, [load]);
   const openCreate = () => setForm({ landlord_folio_id: null, bill_account_id: null, provider_id: null, description: '', full_bill_amount: '', tenant_pays_part: false, tenant_tenancy_id: null, tenant_amount: '', tenant_due_date: '', tenant_invoice_account_id: null, tenant_invoice_description: '', due_date: '', uploaded_bill_url: '' }) || setDrawer('create');
   const create = async () => {

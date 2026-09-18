@@ -27,7 +27,9 @@ exports.list = asyncHandler(async (req, res) => {
   if (req.query.tenant_visible_status) where.tenant_visible_status = req.query.tenant_visible_status;
   if (req.query.approval_status) where.approval_status = req.query.approval_status;
   if (req.query.search) where[Op.or] = [{ title: { [Op.like]: `%${req.query.search}%` } }, { work_order_code: { [Op.like]: `%${req.query.search}%` } }];
-  const { rows, count } = await WorkOrder.findAndCountAll({ where, include: [provInc, propInc], limit, offset, order: [['created_at', 'DESC']] });
+  // Property category (residential | commercial) — used by the commercial rent console.
+  const propI = req.query.property_category ? { ...propInc, where: { category: req.query.property_category }, required: true } : propInc;
+  const { rows, count } = await WorkOrder.findAndCountAll({ where, include: [provInc, propI], limit, offset, order: [['created_at', 'DESC']] });
 
   // Optional lifecycle counts for kanban-style tabs
   let stage_counts;

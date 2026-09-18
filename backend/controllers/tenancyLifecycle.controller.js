@@ -387,8 +387,9 @@ exports.listVacancyNotices = asyncHandler(async (req, res) => {
   const where = { ...branchScope(req) };
   if (req.query.status) where.status = req.query.status;
   if (req.query.property_id) where.property_id = req.query.property_id;
+  const propI = req.query.property_category ? { ...propIncNotice, where: { category: req.query.property_category }, required: true } : propIncNotice;
   const { rows, count } = await VacancyNotice.findAndCountAll({
-    where, include: [propIncNotice, tenantInc], limit, offset, order: [['created_at', 'DESC']],
+    where, include: [propI, tenantInc], limit, offset, order: [['created_at', 'DESC']],
   });
   res.json({ data: rows, pagination: { page, limit, total: count, pages: Math.ceil(count / limit) } });
 });
@@ -433,8 +434,9 @@ exports.listSettlements = asyncHandler(async (req, res) => {
   const { limit, offset, page } = getPagination(req);
   const where = { ...branchScope(req) };
   if (req.query.status) where.status = req.query.status;
+  const propI = req.query.property_category ? { ...propIncNotice, where: { category: req.query.property_category }, required: true } : propIncNotice;
   const { rows, count } = await DepositSettlement.findAndCountAll({
-    where, include: [propIncNotice, tenantInc, ownerInc], limit, offset, order: [['created_at', 'DESC']],
+    where, include: [propI, tenantInc, ownerInc], limit, offset, order: [['created_at', 'DESC']],
   });
   res.json({ data: rows, pagination: { page, limit, total: count, pages: Math.ceil(count / limit) } });
 });

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Trash2, RefreshCw, Wallet, Check, Send, ShieldCheck } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { PageHead, DataTable, StatusBadge, Spinner, Button, Field, Input, Textarea, Select, Drawer, Badge } from '../ui/kit';
@@ -10,6 +11,7 @@ import { Combo } from '../ui/pickers';
 const money = (v) => 'BDT ' + Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function DepositSettlements() {
+  const scope = usePmScope();
   const toast = useToast();
   const [params] = useSearchParams();
   const [rows, setRows] = useState([]);
@@ -19,7 +21,7 @@ export default function DepositSettlements() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { data } = await api.get('/deposit-settlements'); setRows(data.data || []); }
+    try { const { data } = await api.get(`/deposit-settlements${scope.category === 'commercial' ? '?property_category=commercial' : ''}`); setRows(data.data || []); }
     catch { toast.error('Failed to load settlements'); } finally { setLoading(false); }
   }, [toast]);
   useEffect(() => { load(); }, [load]);

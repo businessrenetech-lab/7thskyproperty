@@ -12,7 +12,8 @@ exports.list = asyncHandler(async (req, res) => {
   const where = { ...branchScope(req) };
   if (req.query.status) where.status = req.query.status;
   if (req.query.type) where.inspection_type = req.query.type;
-  const { rows, count } = await Inspection.findAndCountAll({ where, include: [propInc], limit, offset, order: [['created_at', 'DESC']] });
+  const propI = req.query.property_category ? { ...propInc, where: { category: req.query.property_category }, required: true } : propInc;
+  const { rows, count } = await Inspection.findAndCountAll({ where, include: [propI], limit, offset, order: [['created_at', 'DESC']] });
   res.json({ data: rows, pagination: { page, limit, total: count, pages: Math.ceil(count / limit) } });
 });
 

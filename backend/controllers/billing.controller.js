@@ -208,7 +208,9 @@ exports.listLandlordBills = asyncHandler(async (req, res) => {
     include: [
       { model: Contact, as: 'landlord', attributes: contactAttrs },
       { model: Contact, as: 'tenant', attributes: contactAttrs },
-      { model: Property, as: 'property', attributes: ['id', 'title', 'property_code'] },
+      req.query.property_category
+        ? { model: Property, as: 'property', attributes: ['id', 'title', 'property_code'], where: { category: req.query.property_category }, required: true }
+        : { model: Property, as: 'property', attributes: ['id', 'title', 'property_code'] },
       { model: AccountCategory, as: 'billAccount', attributes: ['id', 'name', 'code'] },
       providerInc,
     ],
