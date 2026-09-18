@@ -109,6 +109,8 @@ export default function PropertyMgmtDashboard() {
   const nav = useNavigate();
   const scope = usePmScope();
   const bp = scope.basePath;
+  const catQ = scope.category === 'commercial' ? '&category=commercial' : '';
+  const catQ1 = scope.category === 'commercial' ? '?category=commercial' : '';
   const toast = useToast();
   
   // Dashboard stats and data
@@ -164,7 +166,7 @@ export default function PropertyMgmtDashboard() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/tenancies?limit=500');
+      const { data } = await api.get(`/tenancies?limit=500${catQ}`);
       const rows = data.data || [];
       setTenancies(rows);
       setS({
@@ -174,14 +176,14 @@ export default function PropertyMgmtDashboard() {
         arrears: rows.reduce((a, r) => a + Number(r.outstanding || 0), 0),
       });
       try {
-        const { data: appData } = await api.get('/tenant-applications?include_counts=true&limit=1');
+        const { data: appData } = await api.get(`/tenant-applications?include_counts=true&limit=1${catQ}`);
         setAppCounts(appData.status_counts || {});
       } catch { /* applications module optional */ }
 
       // Fetch rental leads from Contacts CRM
       let newLeadsCount = 0;
       try {
-        const { data: contactData } = await api.get('/contacts?looking_for=rent&limit=50');
+        const { data: contactData } = await api.get(`/contacts?looking_for=rent&limit=50${catQ}`);
         const rLeads = contactData.data || [];
         setRentalLeads(rLeads);
         newLeadsCount = rLeads.filter((l) => (l.lead_status || 'new') === 'new').length;
@@ -196,7 +198,7 @@ export default function PropertyMgmtDashboard() {
       } catch { /* contacts crm optional */ }
 
       try {
-        const { data: ac } = await api.get('/property-management/action-center');
+        const { data: ac } = await api.get(`/property-management/action-center${catQ1}`);
         const c = ac.cohorts || {};
         setPendingWos((c.work_orders_overdue?.top || []).slice(0, 5));
         const exp30 = c.leases_expiring_30d?.top || [];
@@ -222,7 +224,7 @@ export default function PropertyMgmtDashboard() {
         ].filter((a) => a.count > 0).slice(0, 5);
         setActions(cohortActions);
       } catch { /* command centre optional */ }
-      try { const { data: m } = await api.get('/property-management/dashboard-metrics'); setMetrics(m); } catch { /* metrics optional */ }
+      try { const { data: m } = await api.get(`/property-management/dashboard-metrics${catQ1}`); setMetrics(m); } catch { /* metrics optional */ }
     } catch (e) {
       toast.error('Failed to load tenancies');
     } finally {

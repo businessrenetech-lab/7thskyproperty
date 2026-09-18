@@ -33,6 +33,10 @@ async function cohort(sql, params, limit = 5) {
 
 exports.actionCenter = asyncHandler(async (req, res) => {
   const bw = branchWhere(req);
+  // Commercial rent console scopes the action centre to commercial properties.
+  // Values are whitelisted (never interpolated from raw user input).
+  const catClause = req.query.category === 'commercial' ? "AND p.category = 'commercial'"
+    : req.query.category === 'residential' ? "AND p.category = 'residential'" : '';
 
   // ── 1. Overdue rent — rental_ledger rows with outstanding + past due_date ──
   const overdueRent = await cohort(
@@ -96,7 +100,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
     `SELECT p.id, p.property_code, p.title, p.area, p.district, p.pm_status,
             p.rental_readiness_status, p.approved_monthly_rent
        FROM properties p
-      WHERE p.listing_type = 'rent'
+      WHERE p.listing_type = 'rent' ${catClause}
         AND p.pm_status IN ('onboarding', 'assessment_pending')
         AND (p.rental_readiness_status IS NULL OR p.rental_readiness_status <> 'ready_for_marketing')
         ${bw.sql.replace('branch_id', 'p.branch_id')}
@@ -148,7 +152,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
        FROM properties p
        LEFT JOIN property_owner_profiles pop ON pop.property_id = p.id
        LEFT JOIN contacts oc ON oc.id = p.owner_contact_id
-      WHERE p.listing_type = 'rent'
+      WHERE p.listing_type = 'rent' ${catClause}
         AND p.owner_contact_id IS NOT NULL
         AND (pop.id IS NULL
              OR pop.nid_number IS NULL
@@ -167,7 +171,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
        FROM properties p
        LEFT JOIN property_owner_profiles pop ON pop.property_id = p.id
        LEFT JOIN contacts oc ON oc.id = p.owner_contact_id
-      WHERE p.listing_type = 'rent'
+      WHERE p.listing_type = 'rent' ${catClause}
         AND p.pm_status <> 'not_managed'
         AND (pop.agreement_status IS NULL OR pop.agreement_status <> 'signed')
         ${bw.sql.replace('branch_id', 'p.branch_id')}
@@ -182,7 +186,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
        FROM properties p
        LEFT JOIN property_owner_profiles pop ON pop.property_id = p.id
        LEFT JOIN contacts oc ON oc.id = p.owner_contact_id
-      WHERE p.listing_type = 'rent'
+      WHERE p.listing_type = 'rent' ${catClause}
         AND p.pm_status <> 'not_managed'
         AND (pop.id IS NULL OR pop.bank_account_number IS NULL OR pop.bank_account_number = '')
         ${bw.sql.replace('branch_id', 'p.branch_id')}
@@ -194,7 +198,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
   const missingAccess = await cohort(
     `SELECT p.id, p.property_code, p.title, p.pm_status
        FROM properties p
-      WHERE p.listing_type = 'rent'
+      WHERE p.listing_type = 'rent' ${catClause}
         AND p.pm_status <> 'not_managed'
         AND (p.access_contact IS NULL OR p.access_contact = '')
         ${bw.sql.replace('branch_id', 'p.branch_id')}
@@ -342,6 +346,8 @@ exports.actionCenter = asyncHandler(async (req, res) => {
 // 12-month rent-collection trend, arrears aging, owner held balance + income.
 exports.dashboardMetrics = asyncHandler(async (req, res) => {
   const bw = branchWhere(req);
+  const catCol = req.query.category === 'commercial' ? " AND category = 'commercial'"
+    : req.query.category === 'residential' ? " AND category = 'residential'" : '';
   const q = (sql, extra = {}) => sequelize.query(sql, { replacements: { ...bw.params, ...extra } }).then(([r]) => r);
 
   // Occupancy — managed rental properties split by state.
@@ -350,7 +356,7 @@ exports.dashboardMetrics = asyncHandler(async (req, res) => {
        COUNT(*) AS managed,
        COALESCE(SUM(CASE WHEN status IN ('occupied','rented') THEN 1 ELSE 0 END),0) AS occupied,
        COALESCE(SUM(CASE WHEN status='available' THEN 1 ELSE 0 END),0) AS vacant
-     FROM properties WHERE listing_type='rent'${bw.sql}`);
+     FROM properties WHERE listing_type='rent'${catCol}${bw.sql}`);
   const [[notice]] = [await q(
     `SELECT COUNT(DISTINCT vn.property_id) AS c FROM vacancy_notices vn WHERE vn.status IN ('submitted','acknowledged','scheduled')${bw.sql ? bw.sql.replace('branch_id', 'vn.branch_id') : ''}`)];
   const managed = Number(occ?.managed || 0);

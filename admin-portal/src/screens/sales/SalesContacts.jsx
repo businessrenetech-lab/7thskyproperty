@@ -20,6 +20,7 @@ import {
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { usePmScope } from '../../config/pmScope';
 import {
   Button, Spinner, Badge, StatusBadge, Drawer, Field, Input, Select, Textarea
 } from '../../ui/kit';
@@ -52,6 +53,8 @@ const getInitials = (name) => {
 
 export default function SalesContacts({ scope }) {
   const navigate = useNavigate();
+  const pmScope = usePmScope();
+  const catQ = pmScope.category === 'commercial' ? '&category=commercial' : '';
   const location = useLocation();
   const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const isRentalScope = scope === 'rental' || queryParams.get('scope') === 'rental';
@@ -288,7 +291,7 @@ export default function SalesContacts({ scope }) {
     try {
       if (isRentalScope) {
         const [cRes, reRes, taRes, tnRes, ownRes, listRes] = await Promise.all([
-          api.get('/contacts?limit=500&scope=rental').catch(() => ({ data: { data: [] } })),
+          api.get(`/contacts?limit=500&scope=rental${catQ}`).catch(() => ({ data: { data: [] } })),
           api.get('/rental-enquiries?limit=100').catch(() => ({ data: { data: [] } })),
           api.get('/tenant-applications?limit=100').catch(() => ({ data: { data: [] } })),
           api.get('/tenancies?limit=100').catch(() => ({ data: { data: [] } })),

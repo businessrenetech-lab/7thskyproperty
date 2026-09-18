@@ -170,6 +170,19 @@ exports.list = asyncHandler(async (req, res) => {
   if (req.query.looking_for && req.query.looking_for !== 'all') {
     where.looking_for = req.query.looking_for;
   }
+  // Commercial rent console: narrow rental leads to those flagged commercial —
+  // by looking_for or by a commercial property type in property_types. Contacts
+  // have no hard category field, so this is a best-effort segment filter.
+  if (req.query.category === 'commercial') {
+    const kw = ['commercial', 'office', 'retail', 'shop', 'showroom', 'warehouse', 'industrial'];
+    where[Op.and] = [
+      ...(where[Op.and] || []),
+      { [Op.or]: [
+        { looking_for: 'commercial' },
+        ...kw.map((k) => ({ property_types: { [Op.like]: `%${k}%` } })),
+      ] },
+    ];
+  }
 
   // Sorting
   let order = [['created_at', 'DESC']];

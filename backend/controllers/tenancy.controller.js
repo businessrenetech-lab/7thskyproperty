@@ -23,7 +23,10 @@ exports.list = asyncHandler(async (req, res) => {
   const { limit, offset, page } = getPagination(req);
   const where = { ...branchScope(req) };
   if (req.query.status) where.status = req.query.status;
-  const { rows, count } = await Tenancy.findAndCountAll({ where, include: [propInc, ownerInc, tenantInc], limit, offset, order: [['created_at', 'DESC']] });
+  const propI = req.query.category
+    ? { ...propInc, where: { category: req.query.category }, required: true }
+    : propInc;
+  const { rows, count } = await Tenancy.findAndCountAll({ where, include: [propI, ownerInc, tenantInc], limit, offset, order: [['created_at', 'DESC']] });
 
   // Attach outstanding (arrears) from rental_ledger per property
   const data = await Promise.all(rows.map(async (t) => {
