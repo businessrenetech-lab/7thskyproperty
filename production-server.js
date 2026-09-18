@@ -49,37 +49,20 @@ try {
   log(`STEP 2: express ${require('express/package.json').version}`);
 } catch (err) { log(`FATAL: express: ${err.message}`); process.exit(1); }
 
-// ─── Step 3: Next.js (the public website) ────────────────────────────────────
-// The website is OPTIONAL for the platform: if it isn't built, we still serve
-// the API and the admin portal (no crash loop). Build it with `npm run build:all`.
-let nextApp, nextHandle, hasWebsite = false;
-const websiteDir = path.join(__dirname, 'website');
-const nextDir = path.join(websiteDir, '.next');
-const websiteBuilt = fs.existsSync(path.join(nextDir, 'BUILD_ID'));
-log(`STEP 3: website=${fs.existsSync(websiteDir)} .next=${fs.existsSync(nextDir)} BUILD_ID=${websiteBuilt}`);
-if (websiteBuilt) {
-  try {
-    const next = require(path.join(websiteDir, 'node_modules', 'next'));
-    nextApp = next({ dev: false, dir: websiteDir });
-    nextHandle = nextApp.getRequestHandler();
-    hasWebsite = true;
-    log('  Next.js app created');
-  } catch (err) {
-    log(`  ⚠ Next.js unavailable — serving API + admin only: ${err.message}`);
-  }
-} else {
-  log('  ⚠ No website build (.next/BUILD_ID missing). Serving API + admin only. Run `npm run build:all` to enable the public site.');
-}
+// ─── Step 3: Public website (Vite SPA in website-mock/dist) ──────────────────
+// The marketing site is a static Vite/React build (website-mock — "The Property
+// Experts"). It is OPTIONAL: if dist is missing we still serve the API and admin
+// (no crash loop). Build it with `npm run build:all`.
+const webDist = process.env.WEBSITE_DIST
+  ? path.resolve(process.env.WEBSITE_DIST)
+  : path.join(__dirname, 'website-mock', 'dist');
+const webIndex = path.join(webDist, 'index.html');
+const hasWebsite = fs.existsSync(webIndex);
+log(`STEP 3: website-mock dist=${fs.existsSync(webDist)} index=${hasWebsite} (${webDist})`);
 
 async function start() {
-  // ─── Step 4: prepare Next.js (only if it's built) ──────────────────────────
-  if (hasWebsite) {
-    log('STEP 4: preparing Next.js (10-30s)…');
-    try { await nextApp.prepare(); log('  Next.js ready'); }
-    catch (err) { log(`  ⚠ Next prepare failed — serving API + admin only: ${err.message}`); hasWebsite = false; }
-  } else {
-    log('STEP 4: skipped (no website build)');
-  }
+  // ─── Step 4: (static site — no async prepare step) ─────────────────────────
+  log('STEP 4: static website (no prepare needed)');
 
   // ─── Step 5: Express app + middleware ──────────────────────────────────────
   log('STEP 5: building Express app…');
@@ -148,10 +131,17 @@ async function start() {
     });
   }
 
-  // ─── Website public assets, then the catch-all ────────────────────────────
-  app.use(express.static(path.join(websiteDir, 'public'), { index: false }));
+  // ─── Public website (Vite SPA, base '/') + client-side-routing fallback ────
   if (hasWebsite) {
-    app.all('{*splat}', (req, res) => nextHandle(req, res));
+    // Static files (index.html, /assets/*, images) straight from the dist build.
+    app.use(express.static(webDist, { index: 'index.html', maxAge: '1h', etag: true }));
+    // Any non-API, non-file path is a client route → serve the SPA shell.
+    app.all('{*splat}', (req, res) => {
+      if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
+      if (path.extname(req.path)) return res.status(404).type('text/plain').send('Not found');
+      res.set('Cache-Control', 'no-store');
+      return res.sendFile(webIndex);
+    });
   } else {
     // No public site yet — keep /api and /admin working; friendly placeholder at /.
     app.all('{*splat}', (req, res) => {

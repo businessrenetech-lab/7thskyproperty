@@ -20,7 +20,7 @@ if (process.env.SKIP_WORKSPACE_INSTALL) {
 
 // The deployable subprojects, in dependency order. Add optional portals here if
 // you ever deploy them; missing ones are simply skipped.
-const WORKSPACES = ['backend', 'admin-portal', 'website'];
+const WORKSPACES = ['backend', 'admin-portal', 'website-mock'];
 
 let installed = 0;
 
