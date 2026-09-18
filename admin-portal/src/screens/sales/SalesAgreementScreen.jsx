@@ -288,6 +288,7 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
   const [meta, setMeta] = useState({ schedule_a: [], schedule_d: [], commission_label: '', work_order_no: '', quotation_no: '', org: {} });
   const [catalog, setCatalog] = useState([]);
   const [preview, setPreview] = useState(null);
+  const [previewError, setPreviewError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(null);
 
@@ -460,16 +461,26 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
         ...((d.additional_clients || []).filter((p) => (p.full_name || '').trim()))
       ];
       const r = await api.post(`${km.base}/preview`, { ...d, clients: parties }, { params: { category } }).catch(() => null);
-      if (r?.data) setPreview(r.data);
+      if (r?.data) { setPreview(r.data); setPreviewError(false); }
+      else setPreviewError(true);
     } catch (e) {
       console.error(e);
+      setPreviewError(true);
     } finally {
       setPreviewing(false);
     }
   }, [d, km.base]);
 
+  // The first preview fires immediately so the window paints the document as soon
+  // as it opens; later edits stay debounced (400ms) to avoid a render per keystroke.
+  const firstPreviewRun = useRef(true);
   useEffect(() => {
     if (!d) return undefined;
+    if (firstPreviewRun.current) {
+      firstPreviewRun.current = false;
+      refreshPreview();
+      return undefined;
+    }
     const t = setTimeout(() => refreshPreview(), 400);
     return () => clearTimeout(t);
   }, [d, refreshPreview]);
@@ -1268,6 +1279,13 @@ function Builder({ kind, category = 'residential', prefill, editId, onDone, onCa
                   }}
                   style={{ width: '100%', height: '100%', border: 0, borderRadius: 8, background: '#ffffff', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}
                 />
+              ) : previewError && !previewing ? (
+                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'var(--muted)' }}>
+                  <span style={{ fontSize: 13 }}>Could not generate the preview.</span>
+                  <button type="button" className="pm-btn" onClick={() => refreshPreview()}>
+                    <RefreshCw size={13} /> Retry
+                  </button>
+                </div>
               ) : (
                 <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'var(--muted)' }}>
                   <Spinner />

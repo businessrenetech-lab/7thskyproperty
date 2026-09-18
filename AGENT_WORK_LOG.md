@@ -8532,3 +8532,35 @@ used "the last line starting with `import`", which landed inside a multi-line
   - `node --check` on both controllers OK; `admin-portal npm run build` exit 0.
 - Note (product): voiding an executed agreement marks the envelope/PDF VOID and invalidates links; it does
   NOT auto-reverse downstream side-effects (e.g. an auto-opened project). Flagged for follow-up if wanted.
+
+### 2026-09-18 09:25 | Antigravity (Gemini 3.8 Flash) | STARTED | Properly organize bullet lists in residential sales agreement documents
+- Request: "read residential sales agreement...pdf contents ...the are not properly organised .....please write them properly bullet lists properly set////make sure you do not change anything to content...just organise it properly//////"
+- Scope:
+  - `backend/scripts/genSalesAgreementClauses.js`: Overhaul the HTML generation logic `toHtml` so that bullet lists, checkbox groups, lead-in introductory phrases, subheadings, and concluding list items across RPSS, RPPS, CPSS, and CPPS agreements are correctly structured as proper semantic HTML (`<ul><li>`, `<p>`, subheadings) without modifying a single word of text.
+  - Regenerate `backend/services/rpssClauses.js`, `backend/services/rppsClauses.js`, `backend/services/cpssClauses.js`, and `backend/services/cppsClauses.js`.
+  - Verify all 25 clauses in RPSS and RPPS for verbatim text retention and bullet list integrity.
+- Changes: None yet.
+- Verification: Re-generate clauses, run test scripts, check against source text line by line.
+- Handoff: Beginning implementation.
+
+### 2026-09-18 09:30 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Properly organize bullet lists in residential sales agreement documents
+- Request: "read residential sales agreement...pdf contents ...the are not properly organised .....please write them properly bullet lists properly set////make sure you do not change anything to content...just organise it properly//////"
+- Root Cause & Solution:
+  - In `backend/scripts/genSalesAgreementClauses.js`, naive regexes erroneously matched introductory lead-in lines ending in `:` (e.g., `The Client agrees to:`, `Seventh Sky will:`) and converted them into bullets `<li>`. Meanwhile, any final list items ending in `.` (or `; and`/`; or`) were improperly discarded from the `<ul>` and rendered as disconnected `<p>` paragraphs. In Clause 16 (`LIABILITY`), every item ended with `.` so all substantive terms were ejected into plain paragraphs while only the colon lead-in became an isolated bullet.
+  - Overhauled `toHtml` in `backend/scripts/genSalesAgreementClauses.js`:
+    1. Identified and parsed all introductory lead-in phrases (`l.endsWith(':')`) into `<p style="margin:6px 0;">`.
+    2. Grouped all list items following a lead-in until list termination into clean, properly-indented `<ul style="margin:4px 0 8px 18px;padding:0;list-style-type:disc;">` with `<li style="margin:2px 0;">`.
+    3. Retained all 7 liability statements under Clause 16 inside a coherent bullet list.
+    4. Bulleted milestone stages in Clause 9 under `Property Sale Services` and `Property Purchase Services`.
+    5. Cleanly styled subheadings (`21.1 Suspension`, `21.2 Termination`, `Property Preparation`, etc.) with distinct styling (`<p style="margin:10px 0 4px;font-weight:700;color:#012a4e;">`).
+    6. Checkbox lists in Clause 3 styled with `list-style:none;` so duplicate bullet discs are eliminated.
+  - Regenerated all 4 clause service files: `rpssClauses.js`, `rppsClauses.js`, `cpssClauses.js`, `cppsClauses.js`.
+- Strict Text Fidelity Verification:
+  - Validated by comparing the HTML text content (HTML stripped and decoded) against the source `.txt` documents line by line across all 25 clauses of RPSS, RPPS, CPSS, and CPPS. Result: 25/25 clauses verified with 0 discrepancies (100% exact verbatim match, zero content altered).
+- Runtime Verification:
+  - `node scripts/test_sales_agreement_flow.js`: Passed all assertions on live MySQL database (meta fetching, live preview generation, HTML rendering, envelope draft creation).
+  - Restarted backend daemon on port 50001, verified `/api/health` 200 OK.
+  - `npm run build` in `admin-portal`: Built in 15.76s with 2067 modules transformed, 0 bundling errors.
+- Handoff: Residential and Commercial sales agreement document/PDF contents now render with proper, semantic bullet lists, clean section subheadings, and 100% text fidelity.
+
+

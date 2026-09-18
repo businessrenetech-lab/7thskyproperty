@@ -18,26 +18,119 @@ const JOBS = [
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const isHeading = (l) => /^\d{1,2}[A-Z]?\.\s+[A-Z]/.test(l); // "1. PURPOSE", "4A. SELLER..."
 
-// Turn a run of body lines into HTML: ☐/☑ lines and short ";"-terminated lines
-// become list items; everything else a paragraph. Consecutive list items group.
-function toHtml(lines) {
-  const out = [];
-  let list = null; // {type:'check'|'bullet', items:[]}
-  const flush = () => { if (list) { out.push(`<ul style="margin:4px 0 8px 18px;padding:0;">${list.items.map((i) => `<li style="margin:2px 0;">${i}</li>`).join('')}</ul>`); list = null; } };
-  for (const raw of lines) {
-    const l = raw.trim();
+const SUBHEADS = new Set([
+  'Property Assessment & Sales Strategy',
+  'Property Preparation',
+  'Marketing & Promotion',
+  'Buyer Management',
+  'Negotiation & Transaction Support',
+  'Documentation & Professional Coordination',
+  'Additional Services',
+  'Buyer Consultation & Planning',
+  'Property Search',
+  'Inspection & Property Coordination',
+  'Additional Support Services',
+  'Property Sale Services',
+  'Property Purchase Services',
+  'Commission-Based Engagement',
+  'Success Fee Engagement',
+  'Professional Service Fees',
+  'Buyer Consultation',
+  'Commercial Property Search',
+  'Due Diligence & Purchase Coordination',
+  'Documentation & Settlement'
+]);
+
+// Turn a run of body lines into HTML: properly grouped bullet lists, checkbox
+// items, styled subheadings, and paragraphs. Never mutates or alters text.
+function toHtml(lines, clauseNum) {
+  const elements = [];
+  let inBulletList = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i].trim();
     if (!l) continue;
-    const check = /^[☐☑]\s?/.test(l);
-    const bullet = !check && /[;:]$/.test(l) && l.length < 140 && !/[.]$/.test(l);
-    if (check) {
-      if (!list || list.type !== 'check') { flush(); list = { type: 'check', items: [] }; }
-      list.items.push('☐ ' + esc(l.replace(/^[☐☑]\s?/, '')));
-    } else if (bullet) {
-      if (!list || list.type !== 'bullet') { flush(); list = { type: 'bullet', items: [] }; }
-      list.items.push(esc(l));
+
+    if (/^[☐☑]\s?/.test(l)) {
+      elements.push({ type: 'checkbox', raw: l });
+      inBulletList = false;
+      continue;
+    }
+
+    if (/^\d{1,2}\.\d+\s+[A-Z]/.test(l) || SUBHEADS.has(l)) {
+      elements.push({ type: 'subhead', raw: l });
+      inBulletList = false;
+      continue;
+    }
+
+    if (l.endsWith(':')) {
+      elements.push({ type: 'leadin', raw: l });
+      if (l === 'Unless otherwise agreed in writing:' && (clauseNum === '9' || lines[i+1]?.trim() === 'Property Sale Services' || lines[i+1]?.trim() === 'Property Purchase Services' || lines[i+1]?.trim() === 'Professional Service Fees')) {
+        inBulletList = false;
+      } else {
+        inBulletList = true;
+      }
+      continue;
+    }
+
+    if (inBulletList) {
+      if (/[;]\s*(?:and|or)?$/i.test(l)) {
+        elements.push({ type: 'bullet', raw: l });
+        continue;
+      }
+
+      if (clauseNum === '16' && (l.startsWith('Seventh Sky will') || l.startsWith('Seventh Sky is') || l.startsWith('The Client') || l.startsWith('Buyers') || l.startsWith('Independent') || l.startsWith('Neither') || l.startsWith('Property sellers'))) {
+        elements.push({ type: 'bullet', raw: l });
+        continue;
+      }
+
+      elements.push({ type: 'bullet', raw: l });
+      inBulletList = false;
+      continue;
+    }
+
+    if ((clauseNum === '9') && (l.startsWith('Deposit upon acceptance') || l.startsWith('Progress payments') || l.startsWith('Final payment'))) {
+      elements.push({ type: 'bullet', raw: l });
+      continue;
+    }
+
+    elements.push({ type: 'paragraph', raw: l });
+  }
+
+  const out = [];
+  let activeList = null; // { type: 'bullet'|'checkbox', items: [] }
+  const flush = () => {
+    if (!activeList) return;
+    if (activeList.type === 'bullet') {
+      out.push(`<ul style="margin:4px 0 8px 18px;padding:0;list-style-type:disc;">${activeList.items.map(it => `<li style="margin:2px 0;">${esc(it)}</li>`).join('')}</ul>`);
+    } else if (activeList.type === 'checkbox') {
+      out.push(`<ul style="margin:4px 0 8px 6px;padding:0;list-style:none;">${activeList.items.map(it => `<li style="margin:2px 0;">${esc(it)}</li>`).join('')}</ul>`);
+    }
+    activeList = null;
+  };
+
+  for (const el of elements) {
+    if (el.type === 'bullet') {
+      if (!activeList || activeList.type !== 'bullet') {
+        flush();
+        activeList = { type: 'bullet', items: [] };
+      }
+      activeList.items.push(el.raw);
+    } else if (el.type === 'checkbox') {
+      if (!activeList || activeList.type !== 'checkbox') {
+        flush();
+        activeList = { type: 'checkbox', items: [] };
+      }
+      activeList.items.push(el.raw);
+    } else if (el.type === 'subhead') {
+      flush();
+      out.push(`<p style="margin:10px 0 4px;font-weight:700;color:#012a4e;">${esc(el.raw)}</p>`);
+    } else if (el.type === 'leadin') {
+      flush();
+      out.push(`<p style="margin:6px 0;">${esc(el.raw)}</p>`);
     } else {
       flush();
-      out.push(`<p style="margin:6px 0;">${esc(l)}</p>`);
+      out.push(`<p style="margin:6px 0;">${esc(el.raw)}</p>`);
     }
   }
   flush();
@@ -73,7 +166,7 @@ for (const job of JOBS) {
   }
   if (cur) clauses.push(cur);
 
-  const arr = clauses.map((c) => `  [${JSON.stringify(c.num + '. ' + c.title)}, ${JSON.stringify(toHtml(c.body))}]`);
+  const arr = clauses.map((c) => `  [${JSON.stringify(c.num + '. ' + c.title)}, ${JSON.stringify(toHtml(c.body, c.num))}]`);
   const out = `// AUTO-GENERATED from "${job.txt}" (V0.2) by scripts/genSalesAgreementClauses.js.\n// Verbatim clause text; do not hand-edit — re-run the generator to refresh.\nmodule.exports = [\n${arr.join(',\n')},\n];\n`;
   fs.writeFileSync(path.join(__dirname, '..', 'services', job.out), out);
   console.log(`${job.out}: ${clauses.length} clauses (${clauses.map((c) => c.num).join(', ')})`);
