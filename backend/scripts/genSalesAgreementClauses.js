@@ -166,7 +166,7 @@ for (const job of JOBS) {
   }
   if (cur) clauses.push(cur);
 
-  const arr = clauses.map((c) => `  [${JSON.stringify(c.num + '. ' + c.title)}, ${JSON.stringify(toHtml(c.body, c.num))}]`);
+  const arr = clauses.map((c) => `  [${JSON.stringify(c.title)}, ${JSON.stringify(toHtml(c.body, c.num))}]`);
   const out = `// AUTO-GENERATED from "${job.txt}" (V0.2) by scripts/genSalesAgreementClauses.js.\n// Verbatim clause text; do not hand-edit — re-run the generator to refresh.\nmodule.exports = [\n${arr.join(',\n')},\n];\n`;
   fs.writeFileSync(path.join(__dirname, '..', 'services', job.out), out);
   console.log(`${job.out}: ${clauses.length} clauses (${clauses.map((c) => c.num).join(', ')})`);

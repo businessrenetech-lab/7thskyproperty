@@ -15,6 +15,7 @@ const ServiceItem = require('../models/ServiceItem');
 const money = (v) => '৳' + Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
 const or = (v, f = '__________') => (v == null || v === '' ? f : v);
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const cleanTitle = (t) => String(t || '').replace(/^\d{1,2}[A-Z]?\.\s*/, '').trim();
 
 // ── Catalogue (Schedule C standard prices) for a sales vertical ──────────
 async function getCatalog(vertical, branchId) {
@@ -310,7 +311,7 @@ function buildAgreement(cfg, data = {}) {
   const tocClause = ([t], i) => `
     <div style="display:flex;justify-content:space-between;align-items:baseline;padding:2px 0;">
       <a href="#cl-${i + 1}" style="color:#1e293b;text-decoration:none;font-size:11px;font-weight:500;display:inline-flex;align-items:center;gap:5px;">
-        <span style="color:#00AEEF;font-weight:700;">${String(i + 1).padStart(2, '0')}.</span><span>${esc(t)}</span>
+        <span style="color:#00AEEF;font-weight:700;">${String(i + 1).padStart(2, '0')}.</span><span>${esc(cleanTitle(t))}</span>
       </a>
       <span style="flex:1;border-bottom:1px dotted #cbd5e1;margin:0 6px;"></span>
       <span style="font-size:10px;color:#94a3b8;font-weight:600;">§${i + 1}</span>
@@ -372,7 +373,7 @@ function buildAgreement(cfg, data = {}) {
   const clausesHtml = CLAUSES.map(([t, body], i) => `
     <div style="margin:14px 0;padding:12px 16px;border:1px solid #f1f5f9;border-radius:10px;background:#ffffff;box-shadow:0 1px 2px rgba(0,0,0,0.01);">
       <h2 id="cl-${i + 1}" style="font-size:13.5px;color:#012a4e;font-weight:800;margin:0 0 6px;display:flex;align-items:center;gap:8px;">
-        <span style="display:inline-block;background:#e0f2fe;color:#0369a1;font-size:10.5px;font-weight:800;padding:2px 6px;border-radius:4px;border:1px solid #bae6fd;">${String(i + 1).padStart(2, '0')}</span>${esc(t)}
+        <span style="display:inline-block;background:#e0f2fe;color:#0369a1;font-size:10.5px;font-weight:800;padding:2px 6px;border-radius:4px;border:1px solid #bae6fd;">${String(i + 1).padStart(2, '0')}</span>${esc(cleanTitle(t))}
       </h2>
       <div style="font-size:12.5px;color:#334155;line-height:1.65;">${body}</div>
     </div>`).join('');

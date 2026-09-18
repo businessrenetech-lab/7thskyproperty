@@ -8563,4 +8563,38 @@ used "the last line starting with `import`", which landed inside a multi-line
   - `npm run build` in `admin-portal`: Built in 15.76s with 2067 modules transformed, 0 bundling errors.
 - Handoff: Residential and Commercial sales agreement document/PDF contents now render with proper, semantic bullet lists, clean section subheadings, and 100% text fidelity.
 
+### 2026-09-18 09:35 | Antigravity (Gemini 3.8 Flash) | STARTED | Fix duplicate clause numbering in sales agreements
+- Request: "see numbering comes twice on sales agreements please fix it..."
+- Scope:
+  - `backend/services/salesAgreementRender.js`: Clean leading clause numbers from clause titles (`t`) when displaying alongside the numbered badge in clause headers and the numbered list in the Table of Contents.
+  - `backend/scripts/genSalesAgreementClauses.js`: Check clause generation so clause titles are stored cleanly as `title` (e.g., `"PURPOSE"`, `"TERM"`) rather than prepending `num + '. '` into the title tuple.
+  - Regenerate clause definitions: `rpssClauses.js`, `rppsClauses.js`, `cpssClauses.js`, `cppsClauses.js`.
+- Changes: None yet.
+- Verification: Run preview generation script, check rendered HTML for clause headings and TOC entries, ensure no double numbering exists (`[01] PURPOSE` instead of `[01] 1. PURPOSE`, and `01. PURPOSE` in TOC).
+- Handoff: Beginning implementation.
+
+### 2026-09-18 09:37 | Antigravity (Gemini 3.8 Flash) | COMPLETED | Fix duplicate clause numbering in sales agreements
+- Request: "see numbering comes twice on sales agreements please fix it..."
+- Root Cause:
+  - In `backend/services/salesAgreementRender.js`, clause headings (`clausesHtml`) prepended a badge `<span ...>${String(i + 1).padStart(2, '0')}</span>` (e.g. `[01]`) and the Table of Contents (`tocClause`) prepended `<span ...>${String(i + 1).padStart(2, '0')}.</span>` (e.g. `01.`).
+  - Because `t` in `rpssClauses.js`, `rppsClauses.js`, `cpssClauses.js`, and `cppsClauses.js` contained `1. PURPOSE`, `2. TERM`, etc., the rendered headings showed `[01] 1. PURPOSE` and the Table of Contents showed `01. 1. PURPOSE`.
+- Solution:
+  1. `backend/scripts/genSalesAgreementClauses.js`:
+     - Updated clause generation tuple mapping from `c.num + '. ' + c.title` to `c.title` directly.
+     - Regenerated all four sales clause files (`rpssClauses.js`, `rppsClauses.js`, `cpssClauses.js`, `cppsClauses.js`) so clause titles are exported cleanly as `["PURPOSE", ...]`, `["TERM", ...]`, matching the structure in `rprmAgreement.service.js` and `rptmAgreement.service.js`.
+  2. `backend/services/salesAgreementRender.js`:
+     - Added defensive `cleanTitle = (t) => String(t || '').replace(/^\d{1,2}[A-Z]?\.\s*/, '').trim();` helper.
+     - Updated `tocClause` to render `${esc(cleanTitle(t))}`.
+     - Updated `clausesHtml` to render `${esc(cleanTitle(t))}`.
+     - Guarantees backward compatibility so any existing draft envelopes or external callers with pre-numbered titles also render without duplicate numbering.
+- Verification:
+  - Direct service verification (`buildRpssAgreement`): Verified all 25 clauses in both TOC and Body render cleanly as `01. PURPOSE` and `[01] PURPOSE` with 0 duplicate numbering occurrences.
+  - Backward compatibility test: Verified dirty inputs (`["1. PURPOSE", ...]`, `["02. TERM", ...]`, `["3A. SPECIAL PROVISION", ...]`) are stripped cleanly to `PURPOSE`, `TERM`, `SPECIAL PROVISION`.
+  - Live API Preview test (`POST /api/sales-agreements/sale/preview`): Verified live HTTP endpoint returns clean `01. PURPOSE` in TOC and `[01] PURPOSE` in heading.
+  - Backend running healthy on port 50001 (task-2252).
+  - Frontend build: `npm run build` in `admin-portal` succeeded with exit code 0 (`✓ built in 12.74s`, 2067 modules).
+- Handoff: Sales agreements now render clean headings (`[01] PURPOSE`) and clean TOC items (`01. PURPOSE`) without duplicate numbers.
+
+
+
 
