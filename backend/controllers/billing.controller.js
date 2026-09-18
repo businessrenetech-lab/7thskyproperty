@@ -121,9 +121,12 @@ exports.createTenantInvoice = asyncHandler(async (req, res) => {
 exports.listTenantInvoices = asyncHandler(async (req, res) => {
   const { limit, offset, page } = getPagination(req);
   const where = { ...branchScope(req), invoice_type: { [Op.in]: ['tenant_invoice', 'rental_receipt'] } };
+  const propFilter = req.query.property_category
+    ? [{ model: Property, as: 'property', attributes: ['id', 'category'], where: { category: req.query.property_category }, required: true }]
+    : [];
   const { rows, count } = await PropertyInvoice.findAndCountAll({
     where,
-    include: [{ model: Contact, as: 'contact', attributes: contactAttrs }, providerInc, categoryInc],
+    include: [{ model: Contact, as: 'contact', attributes: contactAttrs }, providerInc, categoryInc, ...propFilter],
     limit,
     offset,
     order: [['created_at', 'DESC']],

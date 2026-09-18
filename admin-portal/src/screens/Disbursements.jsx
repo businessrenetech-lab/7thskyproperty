@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wallet, TrendingUp, Send, RefreshCw, Building2, ArrowDownToLine, Banknote, Layers } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, DataTable, StatusBadge, Spinner, Badge, Button, Field, Input, Select, Textarea, Drawer, KV } from '../ui/kit';
 
@@ -15,6 +16,7 @@ const TABS = [
 ];
 
 export default function Disbursements() {
+  const scope = usePmScope();
   const [tab, setTab] = useState('owner');
   const nav = useNavigate();
   return (
@@ -43,7 +45,7 @@ function OwnerPayoutsTab() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { data } = await api.get('/disbursements/owner-balances'); setRows(data.data || []); setTotal(data.total_held || 0); }
+    try { const { data } = await api.get(`/disbursements/owner-balances${scope.category === 'commercial' ? '?property_category=commercial' : ''}`); setRows(data.data || []); setTotal(data.total_held || 0); }
     catch { toast.error('Failed to load owner balances'); } finally { setLoading(false); }
   }, [toast]);
   useEffect(() => { load(); }, [load]);

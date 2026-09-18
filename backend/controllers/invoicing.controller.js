@@ -434,6 +434,14 @@ const SCOPE_RELATED = {
 exports.agencyIncome = asyncHandler(async (req, res) => {
   const where = { ...branchScope(req), invoice_type: 'agreement_fee' };
   if (req.query.property_id) where.property_id = req.query.property_id;
+  // Commercial rent console: scope all three income sources (invoices, recurring
+  // fee schedules, realized income) to commercial properties by their ids.
+  let commercialIds = null;
+  if (req.query.property_category) {
+    const props = await Property.findAll({ where: { ...branchScope(req), category: req.query.property_category }, attributes: ['id'] });
+    commercialIds = props.map((p) => p.id);
+    if (!where.property_id) where.property_id = { [Op.in]: commercialIds };
+  }
   const scopeRelated = SCOPE_RELATED[String(req.query.scope || '').toLowerCase()];
   // Join the source agreement envelope so we can scope by its related_type (and
   // expose the kind on each row). Inner-join when a scope is requested.
@@ -472,6 +480,7 @@ exports.agencyIncome = asyncHandler(async (req, res) => {
     try {
       const feeWhere = { is_active: true };
       if (req.query.property_id) feeWhere.property_id = req.query.property_id;
+      else if (commercialIds) feeWhere.property_id = { [Op.in]: commercialIds };
       recurring = (await OwnerFeeSchedule.findAll({ where: feeWhere, order: [['id', 'DESC']], limit: 500 }))
         .map((f) => ({ id: f.id, property_id: f.property_id, fee_name: f.fee_name, fee_category: f.fee_category, fee_trigger: f.fee_trigger, amount_type: f.amount_type, amount_value: n(f.amount_value) }));
     } catch { /* non-fatal */ }
@@ -487,6 +496,7 @@ exports.agencyIncome = asyncHandler(async (req, res) => {
       const PmIncomeEntry = require('../models/PmIncomeEntry');
       const feeWhere = { ...branchScope(req) };
       if (req.query.property_id) feeWhere.property_id = req.query.property_id;
+      else if (commercialIds) feeWhere.property_id = { [Op.in]: commercialIds };
       const entries = await PmIncomeEntry.findAll({
         where: feeWhere,
         include: [

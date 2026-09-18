@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Settings } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, Button, DataTable, Drawer, KV, StatusBadge, Badge, Select, Spinner } from '../ui/kit';
 
 const money = (v) => 'BDT ' + Number(v || 0).toLocaleString();
 
 export default function Folios() {
+  const scope = usePmScope();
   const toast = useToast();
   const [tab, setTab] = useState('tenant');
   const [rows, setRows] = useState([]);
@@ -16,7 +18,7 @@ export default function Folios() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { data } = await api.get(`/folios?type=${tab}&limit=100`); setRows(data.data || []); }
+    try { const { data } = await api.get(`/folios?type=${tab}&limit=100${scope.category === 'commercial' ? '&property_category=commercial' : ''}`); setRows(data.data || []); }
     catch { toast.error('Failed to load folios'); }
     finally { setLoading(false); }
   }, [tab, toast]);

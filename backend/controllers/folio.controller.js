@@ -33,7 +33,9 @@ exports.list = asyncHandler(async (req, res) => {
       { model: Contact, as: 'contact', attributes: contactAttrs },
       { model: Contact, as: 'owner', attributes: contactAttrs },
       { model: Contact, as: 'tenant', attributes: contactAttrs },
-      { model: Property, as: 'property', attributes: ['id', 'property_code', 'title', 'category', 'property_type'] },
+      req.query.property_category
+        ? { model: Property, as: 'property', attributes: ['id', 'property_code', 'title', 'category', 'property_type'], where: { category: req.query.property_category }, required: true }
+        : { model: Property, as: 'property', attributes: ['id', 'property_code', 'title', 'category', 'property_type'] },
     ],
     limit,
     offset,

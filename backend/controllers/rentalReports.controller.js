@@ -28,24 +28,27 @@ function branchClause(req, alias) {
 const num = (v) => Number(v || 0);
 
 // ═══ OCCUPANCY ═════════════════════════════════════════════════════════════
+const catClauseP = (req) => req.query.property_category === 'commercial' ? " AND p.category = 'commercial'"
+  : req.query.property_category === 'residential' ? " AND p.category = 'residential'" : '';
+
 exports.occupancy = asyncHandler(async (req, res) => {
   const bw = branchClause(req, 'p');
 
   const [[total]] = await sequelize.query(
-    `SELECT COUNT(*) AS c FROM properties p WHERE p.listing_type = 'rent' AND p.pm_status <> 'not_managed' ${bw.sql}`,
+    `SELECT COUNT(*) AS c FROM properties p WHERE p.listing_type = 'rent' AND p.pm_status <> 'not_managed' ${bw.sql}${catClauseP(req)}`,
     { replacements: bw.params }
   );
   const [[occupied]] = await sequelize.query(
     `SELECT COUNT(DISTINCT t.property_id) AS c FROM tenancies t
       JOIN properties p ON p.id = t.property_id
-     WHERE t.status = 'active' ${bw.sql}`,
+     WHERE t.status = 'active' ${bw.sql}${catClauseP(req)}`,
     { replacements: bw.params }
   );
   const [[vacant]] = await sequelize.query(
     `SELECT COUNT(*) AS c FROM properties p
       WHERE p.listing_type = 'rent' AND p.pm_status <> 'not_managed'
         AND p.id NOT IN (SELECT property_id FROM tenancies WHERE status='active' AND property_id IS NOT NULL)
-        ${bw.sql}`,
+        ${bw.sql}${catClauseP(req)}`,
     { replacements: bw.params }
   );
 
@@ -57,7 +60,7 @@ exports.occupancy = asyncHandler(async (req, res) => {
            FROM properties p
           WHERE p.listing_type = 'rent' AND p.pm_status <> 'not_managed'
             AND p.id NOT IN (SELECT property_id FROM tenancies WHERE status='active' AND property_id IS NOT NULL)
-            ${bw.sql}
+            ${bw.sql}${catClauseP(req)}
        ) p`,
     { replacements: bw.params }
   );
@@ -86,7 +89,7 @@ exports.rentRoll = asyncHandler(async (req, res) => {
        FROM tenancies t
        LEFT JOIN properties p ON p.id = t.property_id
        LEFT JOIN contacts tc ON tc.id = t.tenant_contact_id
-      WHERE t.status = 'active' ${bw.sql}
+      WHERE t.status = 'active' ${bw.sql}${catClauseP(req)}
       ORDER BY t.monthly_rent DESC`,
     { replacements: bw.params }
   );
@@ -159,7 +162,7 @@ exports.maintenanceCost = asyncHandler(async (req, res) => {
             COALESCE(AVG(wo.actual_cost), 0) AS avg_cost
        FROM work_orders wo
        LEFT JOIN properties p ON p.id = wo.property_id
-      WHERE wo.property_id IS NOT NULL ${bw.sql}
+      WHERE wo.property_id IS NOT NULL ${bw.sql}${catClauseP(req)}
       GROUP BY wo.property_id, p.title, p.property_code
       ORDER BY total_cost DESC LIMIT 20`,
     { replacements: bw.params }
@@ -180,7 +183,7 @@ exports.expiringLeases = asyncHandler(async (req, res) => {
        LEFT JOIN properties p ON p.id = t.property_id
        LEFT JOIN contacts tc ON tc.id = t.tenant_contact_id
       WHERE t.status = 'active' AND t.lease_end BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 90 DAY)
-        ${bw.sql}
+        ${bw.sql}${catClauseP(req)}
       ORDER BY t.lease_end ASC`,
     { replacements: bw.params }
   );
@@ -226,7 +229,7 @@ exports.avgDaysToRent = asyncHandler(async (req, res) => {
        FROM tenancies t
        JOIN properties p ON p.id = t.property_id
       WHERE t.status IN ('active','ended','terminated') AND t.lease_start IS NOT NULL AND t.lease_start >= p.created_at
-        ${bw.sql}`,
+        ${bw.sql}${catClauseP(req)}`,
     { replacements: bw.params }
   );
   res.json({ data: { avg_days: Math.round(num(row[0]?.avg_days)), sample_size: num(row[0]?.sample_size) } });

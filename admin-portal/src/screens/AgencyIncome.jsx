@@ -7,6 +7,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Wallet, RefreshCw, FileText, Eye, Download, Link2 } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { Spinner } from '../ui/kit';
 import { useToast } from '../context/ToastContext';
 
@@ -15,6 +16,7 @@ const dateFmt = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: 'nume
 const chip = (s) => ({ paid: 'good', collected: 'good', sent: 'warn', partial: 'warn', pending: 'warn', accrued: 'warn', draft: 'grey', void: 'grey', overdue: 'bad' }[s] || 'grey');
 
 export default function AgencyIncome() {
+  const scope = usePmScope();
   const toast = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,7 +28,7 @@ export default function AgencyIncome() {
     setLoading(true);
     // scope=pm → only property-management + tenancy agreement fees (this is the PM
     // console's income view; sales fees live under the residential/sales section).
-    try { const r = await api.get('/invoices/agency-income?scope=pm'); setData(r.data); }
+    try { const r = await api.get(`/invoices/agency-income?scope=pm${scope.category === 'commercial' ? '&property_category=commercial' : ''}`); setData(r.data); }
     catch { toast.error('Failed to load agency income'); }
     finally { setLoading(false); }
   }, [toast]);

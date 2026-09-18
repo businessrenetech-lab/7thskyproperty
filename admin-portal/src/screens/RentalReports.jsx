@@ -1,19 +1,21 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Home, KeyRound, Wallet, TrendingUp, AlertTriangle, Wrench, CalendarClock, Users, RefreshCw } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, DataTable, Spinner, Badge, Button } from '../ui/kit';
 
 const money = (v) => 'BDT ' + Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
 
 export default function RentalReports() {
+  const scope = usePmScope();
   const toast = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { data } = await api.get('/rental-reports/overview'); setData(data.data); }
+    try { const { data } = await api.get(`/rental-reports/overview${scope.category === 'commercial' ? '?property_category=commercial' : ''}`); setData(data.data); }
     catch { toast.error('Failed to load reports'); } finally { setLoading(false); }
   }, [toast]);
   useEffect(() => { load(); }, [load]);

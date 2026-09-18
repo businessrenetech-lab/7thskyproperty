@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Plus, Wallet } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, Button, DataTable, StatusBadge, Drawer, Field, Input, Select, Textarea, SearchInput, KV, Spinner, Badge } from '../ui/kit';
 import { Combo } from '../ui/pickers';
@@ -10,6 +11,7 @@ const num = (v) => Number(v || 0);
 const tenancyLabel = (t) => `${t.tenant?.full_name || 'Tenant'} · ${t.Property?.title || t.property?.title || t.tenancy_code || ''}`;
 
 export default function Invoices() {
+  const scope = usePmScope();
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,7 +26,7 @@ export default function Invoices() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/billing/tenant-invoices?limit=100');
+      const { data } = await api.get(`/billing/tenant-invoices?limit=100${scope.category === 'commercial' ? '&property_category=commercial' : ''}`);
       const all = data.data || [];
       const q = search.toLowerCase();
       setRows(q ? all.filter((r) => `${r.invoice_code} ${r.payable_name} ${r.notes}`.toLowerCase().includes(q)) : all);

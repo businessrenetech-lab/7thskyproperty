@@ -294,6 +294,9 @@ exports.listOwnerDisbursements = asyncHandler(async (req, res) => {
 exports.ownerBalances = asyncHandler(async (req, res) => {
   const scope = branchScope(req);
   const bw = scope.branch_id ? ' AND f.branch_id = :bid' : '';
+  // Commercial rent console scopes owner balances to commercial properties.
+  const catClause = req.query.property_category === 'commercial' ? " AND p.category = 'commercial'"
+    : req.query.property_category === 'residential' ? " AND p.category = 'residential'" : '';
   const [rows] = await sequelize.query(
     `SELECT f.id AS folio_id, f.folio_code, f.property_id, f.owner_contact_id,
             f.current_balance,
@@ -302,7 +305,7 @@ exports.ownerBalances = asyncHandler(async (req, res) => {
        FROM folios f
        LEFT JOIN contacts c ON c.id = f.owner_contact_id
        LEFT JOIN properties p ON p.id = f.property_id
-      WHERE f.folio_type = 'landlord'${bw}
+      WHERE f.folio_type = 'landlord'${bw}${catClause}
       ORDER BY f.current_balance DESC`,
     { replacements: { bid: scope.branch_id } }
   );
