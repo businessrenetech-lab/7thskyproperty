@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node production-server.js",
     "build:admin": "cd admin-portal && npm install && npx vite build",
-    "build:website": "cd website && npm install && npx next build",
+    "build:website": "cd website && npm install && npx next build --webpack",
     "build:all": "npm run build:admin && npm run build:website",
     "postinstall": "node scripts/postinstall.js"
   },
