@@ -45,15 +45,33 @@ async function resolveRptmDefaults(body, user) {
   return { schedule_b: b, org };
 }
 
+// Residential vs commercial tenancy management run through this controller,
+// differing only by category (?category=commercial).
+function ctx(req) {
+  const category = String(req.query.category || req.body?.category || 'residential').toLowerCase() === 'commercial'
+    ? 'commercial' : 'residential';
+  const pack = svc.packFor(category);
+  return {
+    category,
+    vertical: pack.catalog_vertical,
+    related_type: pack.related_type,
+    build: category === 'commercial' ? svc.buildCommercialTMAgreement : svc.buildResidentialTMAgreement,
+    codePrefix: category === 'commercial' ? 'ENV-CPTM-' : 'ENV-RPTM-',
+    serviceGroups: pack.service_groups,
+    checklistGroups: pack.checklist_groups,
+  };
+}
+
 exports.getCatalog = asyncHandler(async (req, res) => {
-  res.json(await svc.getRptmCatalog(branchScope(req).branch_id));
+  res.json(await svc.getRptmCatalog(branchScope(req).branch_id, ctx(req).vertical));
 });
 exports.getMeta = asyncHandler(async (req, res) => {
   const nextWo = await generateCode(WorkOrder, 'work_order_code', 'SSPC-WO-');
   const nextTn = await generateCode(Tenancy, 'tenancy_code', 'SSPC-TN-');
+  const { serviceGroups, checklistGroups } = ctx(req);
   res.json({
-    service_groups: svc.SERVICE_GROUPS,
-    checklist_groups: svc.CHECKLIST_GROUPS,
+    service_groups: serviceGroups,
+    checklist_groups: checklistGroups,
     defaults: {
       work_order_no: nextWo,
       tenancy_ref_no: nextTn,
@@ -90,9 +108,10 @@ exports.getPropertyDefaults = asyncHandler(async (req, res) => {
 exports.preview = asyncHandler(async (req, res) => {
   const branchId = branchScope(req).branch_id;
   const body = req.body || {};
+  const { vertical, build } = ctx(req);
   const { schedule_b, org } = await resolveRptmDefaults(body, req.user);
-  const pricing = await svc.computePricing(body.pricing_input || {}, branchId);
-  const built = svc.buildTenancyMgmtAgreement({ ...body, schedule_b, org, pricing });
+  const pricing = await svc.computePricing(body.pricing_input || {}, branchId, vertical);
+  const built = build({ ...body, schedule_b, org, pricing });
   res.json({ ...built, pricing, schedule_b, org });
 });
 
@@ -104,18 +123,19 @@ exports.createAgreement = asyncHandler(async (req, res) => {
   if (!client.full_name) return res.status(400).json({ error: 'Tenant full name is required.' });
   if (!asDraft && !client.email) return res.status(400).json({ error: 'Tenant email is required to send for signature.' });
 
+  const { vertical, related_type, build, codePrefix } = ctx(req);
   const { schedule_b, org } = await resolveRptmDefaults(body, req.user);
-  const pricing = await svc.computePricing(body.pricing_input || {}, branchId);
-  const built = svc.buildTenancyMgmtAgreement({ ...body, schedule_b, org, pricing });
+  const pricing = await svc.computePricing(body.pricing_input || {}, branchId, vertical);
+  const built = build({ ...body, schedule_b, org, pricing });
   const expires = new Date(Date.now() + 30 * 864e5);
 
   const out = await sequelize.transaction(async (t) => {
     const env = await SigningEnvelope.create({
       branch_id: branchId,
-      envelope_code: `ENV-RPTM-${Date.now().toString().slice(-6)}`,
+      envelope_code: `${codePrefix}${Date.now().toString().slice(-6)}`,
       title: `${built.title} — ${client.full_name}`,
       document_html: built.html,
-      related_type: 'tenancy_management_agreement',
+      related_type,
       related_id: body.property_id || null,
       status: 'draft', expires_at: expires,
       signing_order_enforced: true, kyc_role: 'tenant', terms: built.terms,
@@ -144,14 +164,15 @@ exports.createAgreement = asyncHandler(async (req, res) => {
 // Rebuild a DRAFT in place from an edited body.
 exports.updateAgreement = asyncHandler(async (req, res) => {
   const branchId = resolveBranchId(req);
-  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req), related_type: 'tenancy_management_agreement' } });
+  const { vertical, related_type, build } = ctx(req);
+  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req), related_type } });
   if (!env) return res.status(404).json({ error: 'Agreement not found.' });
   if (env.status !== 'draft') return res.status(409).json({ error: 'Only a draft agreement can be edited. Use "Edit & reissue" for a sent one.' });
   const body = req.body || {}; const client = body.client || {};
   if (!client.full_name) return res.status(400).json({ error: 'Tenant full name is required.' });
   const { schedule_b, org } = await resolveRptmDefaults(body, req.user);
-  const pricing = await svc.computePricing(body.pricing_input || {}, branchId);
-  const built = svc.buildTenancyMgmtAgreement({ ...body, schedule_b, org, pricing });
+  const pricing = await svc.computePricing(body.pricing_input || {}, branchId, vertical);
+  const built = build({ ...body, schedule_b, org, pricing });
   await sequelize.transaction(async (t) => {
     await SignatureField.destroy({ where: { envelope_id: env.id }, transaction: t });
     await EnvelopeSigner.destroy({ where: { envelope_id: env.id }, transaction: t });
@@ -166,7 +187,7 @@ exports.updateAgreement = asyncHandler(async (req, res) => {
 
 // Send / re-send a draft.
 exports.sendAgreement = asyncHandler(async (req, res) => {
-  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req), related_type: 'tenancy_management_agreement' } });
+  const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req), related_type: ctx(req).related_type } });
   if (!env) return res.status(404).json({ error: 'Agreement not found.' });
   if (env.status !== 'draft') return res.status(409).json({ error: `Cannot send an agreement in '${env.status}' state.` });
   const tenant = await EnvelopeSigner.findOne({ where: { envelope_id: env.id, role: 'tenant' } });
@@ -178,7 +199,7 @@ exports.sendAgreement = asyncHandler(async (req, res) => {
 
 exports.listAgreements = asyncHandler(async (req, res) => {
   const rows = await SigningEnvelope.findAll({
-    where: { ...branchScope(req), related_type: 'tenancy_management_agreement' },
+    where: { ...branchScope(req), related_type: ctx(req).related_type },
     include: [{ model: EnvelopeSigner, as: 'signers', attributes: ['id', 'signer_order', 'name', 'email', 'role', 'status', 'signed_at'] }],
     order: [['id', 'DESC']],
   });

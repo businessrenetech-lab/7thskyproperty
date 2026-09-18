@@ -25,9 +25,11 @@ const EMPTY = {
   pricing_input: { monthly_rent: '', discount: 0, vat_percent: 0, selected: [] },
 };
 
-export default function TmAgreements() {
+export default function TmAgreements({ category = 'residential' }) {
   const toast = useToast();
   const location = useLocation();
+  const isCommercial = category === 'commercial';
+  const catParams = isCommercial ? { category: 'commercial' } : undefined;
   const [mode, setMode] = useState('list');
   const [editState, setEditState] = useState(null);
   const [list, setList] = useState([]);
@@ -36,12 +38,13 @@ export default function TmAgreements() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api.get('/rptm/agreements');
+      const r = await api.get('/rptm/agreements', { params: catParams });
       setList(Array.isArray(r.data) ? r.data : []);
     } finally {
       setLoading(false);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category]);
   useEffect(() => { load(); }, [load]);
 
   // Arriving from a Tenant Application with a prefill → open the builder pre-filled.
@@ -67,7 +70,7 @@ export default function TmAgreements() {
 
   const sendDraft = async (a) => {
     try {
-      await api.post(`/rptm/agreements/${a.id}/send`);
+      await api.post(`/rptm/agreements/${a.id}/send`, undefined, { params: catParams });
       toast.success('Agreement sent for signature');
       load();
     } catch (e) {
@@ -83,17 +86,18 @@ export default function TmAgreements() {
     { key: 'declined', label: 'Declined / Voided', filterFn: (r) => r.status === 'declined' || r.status === 'voided' || r.declined_count > 0 },
   ], []);
 
+  const label = isCommercial ? 'Commercial Property Tenancy Management' : 'Residential Property Tenancy Management';
   const modalTitle = editState?.id
-    ? `Edit Draft #${editState.id} — Tenancy Management Agreement`
-    : 'New Tenancy Management Agreement';
+    ? `Edit Draft #${editState.id} — ${isCommercial ? 'Commercial ' : ''}Tenancy Management Agreement`
+    : `New ${isCommercial ? 'Commercial ' : ''}Tenancy Management Agreement`;
 
   return (
     <AgreementRegisterView
-      title="Tenancy Management Agreements"
-      subtitle="Residential Property Tenancy Management Service Agreements — build, price and send to tenants for legal e-signature."
-      docCode="SSPC-RPTM-01 (v0.2)"
-      accent="#059669"
-      accentSoft="rgba(5, 150, 105, 0.12)"
+      title={isCommercial ? 'Commercial Tenancy Management Agreements' : 'Tenancy Management Agreements'}
+      subtitle={`${label} Service Agreements — build, price and send to tenants for legal e-signature.`}
+      docCode={isCommercial ? 'SSPC-CPTMS-01 (v0.2)' : 'SSPC-RPTM-01 (v0.2)'}
+      accent={isCommercial ? '#0284c7' : '#059669'}
+      accentSoft={isCommercial ? 'rgba(2, 132, 199, 0.12)' : 'rgba(5, 150, 105, 0.12)'}
       partyLabel="Tenant"
       newButtonLabel="New tenant agreement"
       tabs={tabs}
@@ -109,6 +113,7 @@ export default function TmAgreements() {
       onCloseBuilderModal={done}
       renderBuilder={() => (
         <Builder
+          category={category}
           editId={editState?.id}
           prefill={editState?.prefill}
           isModal
@@ -204,7 +209,8 @@ async function downloadDoc(a, toast) {
   catch { toast.error('Could not download the signed document'); }
 }
 
-function Builder({ editId, prefill, isModal, onDone, onCancel }) {
+function Builder({ category = 'residential', editId, prefill, isModal, onDone, onCancel }) {
+  const catParams = category === 'commercial' ? { category: 'commercial' } : undefined;
   const toast = useToast();
   const { user } = useAuth();
   const draftStorageKey = editId ? `sspc_rptm_draft_${editId}` : 'sspc_rptm_draft_new';
@@ -277,7 +283,7 @@ function Builder({ editId, prefill, isModal, onDone, onCancel }) {
   const previewScroll = useRef(0);
 
   useEffect(() => {
-    api.get('/rptm/meta').then((r) => {
+    api.get('/rptm/meta', { params: catParams }).then((r) => {
       const metaData = r.data || {};
       setMeta(metaData);
       if (metaData.defaults) {
@@ -298,7 +304,7 @@ function Builder({ editId, prefill, isModal, onDone, onCancel }) {
         }));
       }
     }).catch(() => {});
-    api.get('/rptm/catalog').then((r) => setCatalog(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    api.get('/rptm/catalog', { params: catParams }).then((r) => setCatalog(Array.isArray(r.data) ? r.data : [])).catch(() => {});
   }, [user]);
 
   const set = (path, value) => setD((prev) => {
@@ -336,7 +342,7 @@ function Builder({ editId, prefill, isModal, onDone, onCancel }) {
     setPreviewing(true);
     try {
       const body = { ...d, pricing_input: { ...d.pricing_input, monthly_rent: d.schedule_b.monthly_rent } };
-      const r = await api.post('/rptm/preview', body);
+      const r = await api.post('/rptm/preview', body, { params: catParams });
       if (r?.data) { setPreview(r.data); setPreviewError(false); }
       else setPreviewError('The preview came back empty.');
     } catch (e) {
@@ -406,13 +412,13 @@ function Builder({ editId, prefill, isModal, onDone, onCancel }) {
     try {
       const body = { ...d, pricing_input: { ...d.pricing_input, monthly_rent: d.schedule_b.monthly_rent } };
       if (editId) {
-        await api.put(`/rptm/agreements/${editId}`, body);
-        if (!asDraft) await api.post(`/rptm/agreements/${editId}/send`);
+        await api.put(`/rptm/agreements/${editId}`, body, { params: catParams });
+        if (!asDraft) await api.post(`/rptm/agreements/${editId}/send`, undefined, { params: catParams });
         try { localStorage.removeItem(draftStorageKey); setAutoDraftTime(null); } catch {}
         toast.success(asDraft ? 'Draft updated' : 'Agreement sent for signature');
         onDone();
       } else {
-        const r = await api.post('/rptm/agreements', { ...body, save_as_draft: asDraft });
+        const r = await api.post('/rptm/agreements', { ...body, save_as_draft: asDraft }, { params: catParams });
         try { localStorage.removeItem(draftStorageKey); setAutoDraftTime(null); } catch {}
         if (asDraft) { toast.success('Draft saved'); onDone(); }
         else { setSent(r.data); toast.success('Agreement sent to tenant for signature'); }
