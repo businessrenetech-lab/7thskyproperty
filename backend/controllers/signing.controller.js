@@ -107,9 +107,28 @@ exports.getSigningLink = asyncHandler(async (req, res) => {
   });
 });
 
+// Build the full, print-ready signed document and render it to a PDF Buffer.
+// Reused by the admin and the token-holder download paths so both get the same
+// professionally paginated PDF (schedules on their own pages, fixed A4 margins).
+async function renderSignedPdf(env) {
+  const built = await require('../services/wtSignedDocument.service').buildSignedDocument(env.get ? env.get({ plain: true }) : env);
+  const { htmlToPdf } = require('../services/htmlToPdf.service');
+  return htmlToPdf(built.html);
+}
+
 exports.getSignedHtml = asyncHandler(async (req, res) => {
   const env = await SigningEnvelope.findOne({ where: { id: req.params.id, ...branchScope(req) } });
   if (!env) return res.status(404).json({ error: 'Envelope not found.' });
+  // ?format=pdf → a real, server-rendered PDF download (guaranteed layout).
+  if (String(req.query.format).toLowerCase() === 'pdf') {
+    const { pdfAvailable } = require('../services/htmlToPdf.service');
+    if (!pdfAvailable()) return res.status(501).json({ error: 'PDF rendering is not available on this server.' });
+    const safe = String(env.envelope_code || 'signed-agreement').replace(/[^A-Za-z0-9_-]+/g, '-');
+    const pdf = await renderSignedPdf(env);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${safe}-signed.pdf"`);
+    return res.send(pdf);
+  }
   const allSigners = await EnvelopeSigner.findAll({ where: { envelope_id: env.id }, raw: true });
   const allFields = await SignatureField.findAll({ where: { envelope_id: env.id }, raw: true });
   const applied = require('../services/wtSignedDocument.service').applySignatures(env.document_html, allSigners, allFields);
@@ -320,11 +339,23 @@ exports.signedByToken = asyncHandler(async (req, res) => {
   const env = await SigningEnvelope.findByPk(signer.envelope_id);
   if (!env) return res.status(404).send('Not found.');
   if (env.status !== 'completed') return res.status(409).send('This agreement is not fully signed yet.');
+  const safe = String(env.envelope_code || 'signed-agreement').replace(/[^A-Za-z0-9_-]+/g, '-');
+  // ?format=pdf → a real, server-rendered PDF (professionally paginated) instead
+  // of the HTML the browser would otherwise print itself.
+  if (String(req.query.format).toLowerCase() === 'pdf') {
+    const { pdfAvailable } = require('../services/htmlToPdf.service');
+    if (pdfAvailable()) {
+      const pdf = await renderSignedPdf(env);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${safe}-signed.pdf"`);
+      return res.send(pdf);
+    }
+    // fall through to HTML if no Chrome on this server
+  }
   const built = await require('../services/wtSignedDocument.service').buildSignedDocument(env.get({ plain: true }));
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   // ?download=1 → save the signed copy as a file instead of opening inline.
   if (req.query.download) {
-    const safe = String(env.envelope_code || 'signed-agreement').replace(/[^A-Za-z0-9_-]+/g, '-');
     res.setHeader('Content-Disposition', `attachment; filename="${safe}-signed.html"`);
   }
   return res.send(built.html);

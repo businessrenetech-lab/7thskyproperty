@@ -479,6 +479,28 @@ export default function SignPage() {
   const downloadPdf = async () => {
     if (downloadingPdf) return;
     setDownloadingPdf(true);
+    const fileBase = (state.envelope?.code || 'Agreement').replace(/[^a-zA-Z0-9-_]/g, '_');
+    // Prefer the server-rendered PDF: it uses the same print engine as the signed
+    // copy, so schedules land on their own pages with correct A4 margins. Falls
+    // back to the client-side export only if the server PDF is unavailable.
+    try {
+      const res = await fetch(`/api/sign/${token}/signed-document?format=pdf`, { credentials: 'include' });
+      if (res.ok && (res.headers.get('content-type') || '').includes('application/pdf')) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${fileBase}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        setDownloadingPdf(false);
+        return;
+      }
+    } catch (e) {
+      console.error('Server PDF failed, falling back to client export:', e);
+    }
     try {
       const { default: html2pdf } = await import('html2pdf.js');
       const sheet = document.querySelector('.agreement-sheet');
@@ -488,7 +510,7 @@ export default function SignPage() {
       }
       const opt = {
         margin: [10, 10, 12, 10],
-        filename: `${(state.envelope?.code || 'Agreement').replace(/[^a-zA-Z0-9-_]/g, '_')}.pdf`,
+        filename: `${fileBase}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },

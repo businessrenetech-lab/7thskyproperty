@@ -288,6 +288,24 @@ export default function AgreementRegisterView({
   const downloadSignedDoc = async (row) => {
     setBusy(`dl-${row.id}`);
     try {
+      // 0. Preferred: a real server-rendered PDF — same print engine as the signed
+      //    copy, so schedules sit on their own pages with correct A4 margins.
+      try {
+        const res = await api.get(`/signing/envelopes/${row.id}/signed`, { params: { format: 'pdf' }, responseType: 'blob' });
+        const ct = res?.headers?.['content-type'] || '';
+        if (res?.data && ct.includes('application/pdf')) {
+          const url = URL.createObjectURL(res.data);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${(row.envelope_code || 'agreement').replace(/[^a-zA-Z0-9-_]/g, '_')}-signed.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          return;
+        }
+      } catch { /* fall back to the HTML view below */ }
+
       // 1. Try dedicated signed document endpoint with injected signatures
       try {
         const { data } = await api.get(`/signing/envelopes/${row.id}/signed`);
