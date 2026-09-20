@@ -11,6 +11,8 @@ const rpps = require('../services/rppsAgreement.service');
 const rpss = require('../services/rpssAgreement.service');
 const cpps = require('../services/cppsAgreement.service');
 const cpss = require('../services/cpssAgreement.service');
+const bss = require('../services/bssAgreement.service');
+const bps = require('../services/bpsAgreement.service');
 const SigningEnvelope = require('../models/SigningEnvelope');
 const EnvelopeSigner = require('../models/EnvelopeSigner');
 const SignatureField = require('../models/SignatureField');
@@ -34,8 +36,15 @@ const REGISTRY = {
     purchase: { svc: cpps, build: 'buildCppsAgreement', related_type: 'commercial_purchase_agreement', signer: 'buyer', party: 'Buyer', code: 'CPPS', sched: 'purchase_commercial', header: 'Seventh Sky Commercial Property Services' },
     sale: { svc: cpss, build: 'buildCpssAgreement', related_type: 'commercial_sale_agreement', signer: 'seller', party: 'Seller', code: 'CPSS', sched: 'sale_commercial', header: 'Seventh Sky Commercial Property Services' },
   },
+  business: {
+    purchase: { svc: bps, build: 'buildBpsAgreement', related_type: 'business_purchase_agreement', signer: 'buyer', party: 'Buyer', code: 'BPS', sched: 'purchase_business', header: 'Seventh Sky Business Services' },
+    sale: { svc: bss, build: 'buildBssAgreement', related_type: 'business_sale_agreement', signer: 'seller', party: 'Seller', code: 'BSS', sched: 'sale_business', header: 'Seventh Sky Business Services' },
+  },
 };
-const catOf = (req) => (String(req.query.category || (req.body && req.body.category) || req.params.category || 'residential').toLowerCase() === 'commercial' ? 'commercial' : 'residential');
+const catOf = (req) => {
+  const c = String(req.query.category || (req.body && req.body.category) || req.params.category || 'residential').toLowerCase();
+  return (c === 'commercial' || c === 'business') ? c : 'residential';
+};
 const K = (req) => (REGISTRY[catOf(req)] || {})[req.params.kind] || null;
 
 // ── Contracts hub (sub-project B): buckets over the sales agreement envelopes ──

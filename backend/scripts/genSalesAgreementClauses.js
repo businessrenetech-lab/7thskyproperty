@@ -13,6 +13,8 @@ const JOBS = [
   { txt: 'Residential Property Sale Service Agreement - V0.2.txt', out: 'rpssClauses.js' },
   { txt: 'Commercial Property Purchase Service Agreement - V0.2.txt', out: 'cppsClauses.js' },
   { txt: 'Commercial Property Sale Service Agreement - V0.2.txt', out: 'cpssClauses.js' },
+  { txt: 'Business Sale Service Agreement - V0.2.txt', out: 'bssClauses.js' },
+  { txt: 'Business Purchase Service Agreement - V0.2.txt', out: 'bpsClauses.js' },
 ];
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -38,7 +40,20 @@ const SUBHEADS = new Set([
   'Buyer Consultation',
   'Commercial Property Search',
   'Due Diligence & Purchase Coordination',
-  'Documentation & Settlement'
+  'Documentation & Settlement',
+  // Business Sale (SSPC-BSS-01) service groups
+  'Business Sale Consultation',
+  'Business Preparation',
+  'Marketing & Buyer Sourcing',
+  'Buyer Screening & Negotiation',
+  'Transaction Coordination',
+  // Business Purchase (SSPC-BPS-01) service groups
+  'Business Purchase Consultation',
+  'Business Search & Shortlisting',
+  'Business Inspection',
+  'Negotiation & Transaction Coordination',
+  'Due Diligence & Documentation',
+  'Post-Purchase Coordination'
 ]);
 
 // Turn a run of body lines into HTML: properly grouped bullet lists, checkbox
