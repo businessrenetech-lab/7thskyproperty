@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileSignature, Tags, Briefcase, ArrowRight, Building2 } from 'lucide-react';
+import { FileSignature, Tags, Briefcase, ArrowRight, Building2, MessageSquareQuote } from 'lucide-react';
+import api from '../../services/api';
 
 /*
  * BusinessSaleDashboard — Phase 0 landing for the Business Sale console.
@@ -30,7 +31,12 @@ function Card({ to, icon: Icon, title, desc }) {
   );
 }
 
+const money = (n) => (n == null ? '—' : `৳${Number(n).toLocaleString()}`);
+
 export default function BusinessSaleDashboard() {
+  const [stats, setStats] = useState(null);
+  useEffect(() => { api.get('/business-listings/stats').then((r) => setStats(r.data.data)).catch(() => {}); }, []);
+
   return (
     <div className="pm-scope" style={{ padding: '4px 2px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
@@ -45,7 +51,22 @@ export default function BusinessSaleDashboard() {
         </div>
       </div>
 
+      {stats && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginTop: 16 }}>
+          {[['Business listings', stats.total], ['Pipeline value', money(stats.pipeline_value)], ['Active', stats.by_status?.active || 0], ['Under offer', stats.by_status?.under_offer || 0]].map(([label, value]) => (
+            <div key={label} style={{ background: '#fff', border: '1px solid #e7e3f3', borderRadius: 12, padding: '14px 16px' }}>
+              <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>{label}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#1b1440', marginTop: 2 }}>{value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14, marginTop: 18 }}>
+        <Card to="/business/listings" icon={Building2} title="Business Listings"
+          desc="Businesses engaged for sale — profile, financials, ownership and the SOP pipeline stage." />
+        <Card to="/business/enquiries" icon={MessageSquareQuote} title="Buyer Enquiries"
+          desc="Buyers & investors — screening, financial capability and lead pipeline (SOP Steps 11–12)." />
         <Card to="/business/sale/agreements" icon={FileSignature} title="Sale Agreements"
           desc="Business Sale Customer Service Agreement (SSPC-BSS-01) — build, price, and send to the seller for e-signature." />
         <Card to="/business/purchase/agreements" icon={Briefcase} title="Purchase Agreements"

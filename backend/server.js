@@ -162,6 +162,8 @@ mount('/api/short-stay', './routes/shortTermStay.routes');
 mount('/api/rprm', './routes/rprm.routes');
 mount('/api/sales-agreements', './routes/salesAgreement.routes');
 mount('/api/sales-catalog', './routes/salesCatalog.routes');
+mount('/api/business-listings', './routes/businessListing.routes');
+mount('/api/business-enquiries', './routes/businessEnquiry.routes');
 mount('/api/rptm', './routes/rptm.routes');
 mount('/api/sts', './routes/sts.routes');
 mount('/api/short-stay-verification', './routes/shortStayVerification.routes');

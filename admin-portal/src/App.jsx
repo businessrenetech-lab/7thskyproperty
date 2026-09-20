@@ -147,6 +147,8 @@ import ResidentialConsole from './screens/ResidentialConsole';
 import CommercialConsole, { CommercialBuyerConsole } from './screens/CommercialConsole';
 import BusinessSaleConsole from './screens/BusinessSaleConsole';
 import BusinessSaleDashboard from './screens/business/BusinessSaleDashboard';
+import BusinessListings from './screens/business/BusinessListings';
+import BusinessEnquiries from './screens/business/BusinessEnquiries';
 import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
 import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
 import Signing from './screens/Signing';
@@ -1458,6 +1460,8 @@ export default function App() {
             <Route element={<RequireAuth><AdminGate><BusinessSaleConsole /></AdminGate></RequireAuth>}>
               <Route path="/business" element={<Navigate to="/business/sale" replace />} />
               <Route path="/business/sale" element={<BusinessSaleDashboard />} />
+              <Route path="/business/listings" element={<BusinessListings />} />
+              <Route path="/business/enquiries" element={<BusinessEnquiries />} />
               <Route path="/business/sale/agreements" element={<SaleAgreements category="business" />} />
               <Route path="/business/purchase/agreements" element={<PurchaseAgreements category="business" />} />
               <Route path="/business/price-schedule" element={<SalesPriceSchedule scope="business" title="Business · Price Schedules" />} />

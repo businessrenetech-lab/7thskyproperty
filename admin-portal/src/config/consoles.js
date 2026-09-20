@@ -1154,6 +1154,10 @@ export const BUSINESS_NAV = [
   { key: 'biz-home', label: 'Home', items: [
     { to: '/business/sale', label: 'Business Sale Dashboard', icon: LayoutGrid, end: true },
   ] },
+  { key: 'biz-pipeline', label: 'Pipeline', items: [
+    { to: '/business/listings', label: 'Business Listings', icon: Building2 },
+    { to: '/business/enquiries', label: 'Buyer Enquiries', icon: MessageSquareQuote },
+  ] },
   { key: 'biz-selling', label: 'Selling a Business', items: [
     { to: '/business/sale/agreements', label: 'Sale Agreements', icon: FileSignature },
     { to: '/business/price-schedule', label: 'Price Schedules', icon: Tags },
