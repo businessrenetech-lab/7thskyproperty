@@ -145,6 +145,8 @@ import PropertyMgmtConsole from './screens/PropertyMgmtConsole';
 import CommercialRentConsole from './screens/CommercialRentConsole';
 import ResidentialConsole from './screens/ResidentialConsole';
 import CommercialConsole, { CommercialBuyerConsole } from './screens/CommercialConsole';
+import BusinessSaleConsole from './screens/BusinessSaleConsole';
+import BusinessSaleDashboard from './screens/business/BusinessSaleDashboard';
 import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
 import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
 import Signing from './screens/Signing';
@@ -1447,6 +1449,18 @@ export default function App() {
               <Route path="/commercial/rent/agreements" element={<RprmAgreements category="commercial" />} />
               <Route path="/commercial/rent/tenancy-agreements" element={<TmAgreements category="commercial" />} />
               <Route path="/commercial/rent/price-schedule" element={<SalesPriceSchedule scope="commercial_rent" title="Commercial Rent · Price Schedules" />} />
+            </Route>
+
+            {/* ── Business Sales — its own console (a business is not a property).
+                Phase 0: the two Customer Service Agreements (SSPC-BSS-01 sale /
+                SSPC-BPS-01 purchase) on the isolated category="business", plus
+                their price schedules. Later phases add the SOP pipeline. ── */}
+            <Route element={<RequireAuth><AdminGate><BusinessSaleConsole /></AdminGate></RequireAuth>}>
+              <Route path="/business" element={<Navigate to="/business/sale" replace />} />
+              <Route path="/business/sale" element={<BusinessSaleDashboard />} />
+              <Route path="/business/sale/agreements" element={<SaleAgreements category="business" />} />
+              <Route path="/business/purchase/agreements" element={<PurchaseAgreements category="business" />} />
+              <Route path="/business/price-schedule" element={<SalesPriceSchedule scope="business" title="Business · Price Schedules" />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />

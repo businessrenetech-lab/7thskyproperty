@@ -38,6 +38,10 @@ const NAV = [
     { to: '/commercial/sell', label: 'Sale' },
     { to: '/commercial/rent', label: 'Rent' },
   ] },
+  { key: 'business', label: 'Business Sales', icon: Briefcase, children: [
+    { to: '/business/sale', label: 'Sell a Business' },
+    { to: '/business/purchase/agreements', label: 'Buy a Business' },
+  ] },
   { key: 'rural', label: 'Rural Properties', icon: Trees, children: [
     { to: '/rural/sell', label: 'Sales / Sell Dashboard' },
     { to: '/rural/buy', label: 'Buy' },

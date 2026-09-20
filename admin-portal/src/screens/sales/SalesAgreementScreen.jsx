@@ -220,9 +220,14 @@ export default function SalesAgreementScreen({ kind, category = 'residential' })
   };
   const [builderPrefill, setBuilderPrefill] = useState(null);
 
-  const docCode = category === 'commercial'
-    ? (kind === 'purchase' ? 'SSPC-CPPS-01 (v0.2)' : 'SSPC-CPSS-01 (v0.2)')
-    : (kind === 'purchase' ? 'SSPC-RPPS-01 (v0.2)' : 'SSPC-RPSS-01 (v0.2)');
+  const docCode = category === 'business'
+    ? (kind === 'purchase' ? 'SSPC-BPS-01 (v0.2)' : 'SSPC-BSS-01 (v0.2)')
+    : category === 'commercial'
+      ? (kind === 'purchase' ? 'SSPC-CPPS-01 (v0.2)' : 'SSPC-CPSS-01 (v0.2)')
+      : (kind === 'purchase' ? 'SSPC-RPPS-01 (v0.2)' : 'SSPC-RPSS-01 (v0.2)');
+  // "Business" agreements are over a business, not a property — the copy reflects that.
+  const catLabel = category === 'business' ? 'Business' : category === 'commercial' ? 'Commercial' : 'Residential';
+  const subjectWord = category === 'business' ? '' : 'Property ';
 
   const tabs = useMemo(() => [
     { key: 'all', label: 'All' },
@@ -233,16 +238,16 @@ export default function SalesAgreementScreen({ kind, category = 'residential' })
   ], []);
 
   const modalTitle = editEnvelope
-    ? `Edit Draft #${editEnvelope.id} — ${category === 'commercial' ? 'Commercial' : 'Residential'} ${km.party === 'Buyer' ? 'Purchase' : 'Sale'} Agreement`
-    : `New ${category === 'commercial' ? 'Commercial' : 'Residential'} ${km.party === 'Buyer' ? 'Purchase' : 'Sale'} Agreement`;
+    ? `Edit Draft #${editEnvelope.id} — ${catLabel} ${km.party === 'Buyer' ? 'Purchase' : 'Sale'} Agreement`
+    : `New ${catLabel} ${km.party === 'Buyer' ? 'Purchase' : 'Sale'} Agreement`;
 
   return (
     <AgreementRegisterView
       title={km.title}
-      subtitle={`${category === 'commercial' ? 'Commercial' : 'Residential'} Property ${km.party === 'Buyer' ? 'Purchase' : 'Sale'} Service Agreements — build, price and send to the ${km.party.toLowerCase()} for legal e-signature.`}
+      subtitle={`${catLabel} ${subjectWord}${km.party === 'Buyer' ? 'Purchase' : 'Sale'} Service Agreements — build, price and send to the ${km.party.toLowerCase()} for legal e-signature.`}
       docCode={docCode}
-      accent={category === 'commercial' ? '#0284c7' : '#2563eb'}
-      accentSoft={category === 'commercial' ? 'rgba(2, 132, 199, 0.12)' : 'rgba(37, 99, 235, 0.12)'}
+      accent={category === 'business' ? '#7c3aed' : category === 'commercial' ? '#0284c7' : '#2563eb'}
+      accentSoft={category === 'business' ? 'rgba(124, 58, 237, 0.12)' : category === 'commercial' ? 'rgba(2, 132, 199, 0.12)' : 'rgba(37, 99, 235, 0.12)'}
       partyLabel={km.party}
       newButtonLabel={`New ${km.party.toLowerCase()} agreement`}
       tabs={tabs}

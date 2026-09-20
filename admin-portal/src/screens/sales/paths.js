@@ -13,7 +13,7 @@
  * it wrong. When Commercial and Rural get consoles of their own, this is the one
  * line that changes.
  */
-const CONSOLE_CATEGORIES = { residential: '/residential', commercial: '/commercial' };
+const CONSOLE_CATEGORIES = { residential: '/residential', commercial: '/commercial', business: '/business' };
 
 /** The base path a sales screen should navigate under, for this category. */
 export const salesBase = (category) => CONSOLE_CATEGORIES[category] || '/sales';
