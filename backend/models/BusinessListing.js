@@ -29,6 +29,13 @@ const BusinessListing = sequelize.define('BusinessListing', {
   reason_for_sale: DataTypes.TEXT,
   indicative_price: DataTypes.DECIMAL(16, 2),
   currency: { type: DataTypes.STRING(8), defaultValue: 'BDT' },
+  // Rent/lease fields (listing_type='rent') — migration 0134
+  monthly_rent: DataTypes.DECIMAL(16, 2),
+  security_deposit: DataTypes.DECIMAL(16, 2),
+  lease_term_months: DataTypes.INTEGER,
+  rent_review_structure: DataTypes.STRING(120),
+  available_from: DataTypes.DATEONLY,
+  operational_status: DataTypes.STRING(60),
   annual_turnover: DataTypes.DECIMAL(16, 2),
   annual_profit: DataTypes.DECIMAL(16, 2),
   monthly_revenue: DataTypes.DECIMAL(16, 2),

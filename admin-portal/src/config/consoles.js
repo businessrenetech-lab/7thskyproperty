@@ -1167,6 +1167,8 @@ export const BUSINESS_NAV = [
     { to: '/business/purchase/agreements', label: 'Purchase Agreements', icon: FileSignature },
   ] },
   { key: 'biz-rent', label: 'Renting a Business', items: [
+    { to: '/business/rent/listings', label: 'Rental Listings', icon: Building2 },
+    { to: '/business/rent/tenant-enquiries', label: 'Tenant Enquiries', icon: MessageSquareQuote },
     { to: '/business/rent/rental-agreements', label: 'Rental Management', icon: FileSignature },
     { to: '/business/rent/tenancy-agreements', label: 'Tenancy Management', icon: FileSignature },
     { to: '/business/rent/price-schedule', label: 'Rent Price Schedules', icon: Tags },

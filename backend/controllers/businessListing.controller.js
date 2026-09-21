@@ -9,6 +9,7 @@ const FIELDS = [
   'ownership_structure', 'company_registration_no', 'trade_licence_no', 'tin_bin',
   'year_established', 'staff_count', 'lease_status', 'lease_details',
   'reason_for_sale', 'indicative_price', 'currency', 'annual_turnover', 'annual_profit', 'monthly_revenue',
+  'monthly_rent', 'security_deposit', 'lease_term_months', 'rent_review_structure', 'available_from', 'operational_status',
   'included_assets', 'stock_info', 'employee_info', 'ip_details',
   'description', 'highlights', 'confidential', 'seller_contact_id', 'assigned_to',
   'stage', 'status', 'special_requirements', 'commencement_date', 'completion_date', 'workflow_state',
@@ -20,6 +21,7 @@ const sellerInc = { model: Contact, as: 'seller', attributes: ['id', 'full_name'
 exports.list = asyncHandler(async (req, res) => {
   const { limit, offset, page } = getPagination(req);
   const where = { ...branchScope(req) };
+  if (req.query.listing_type) where.listing_type = req.query.listing_type;
   if (req.query.stage) where.stage = req.query.stage;
   if (req.query.status) where.status = req.query.status;
   if (req.query.business_type) where.business_type = req.query.business_type;
@@ -39,11 +41,14 @@ exports.list = asyncHandler(async (req, res) => {
 // GET /api/business-listings/stats — dashboard metrics (business-sale scoped)
 exports.stats = asyncHandler(async (req, res) => {
   const where = { ...branchScope(req) };
+  if (req.query.listing_type) where.listing_type = req.query.listing_type;
+  // Rent listings measure pipeline by total monthly rent; sale listings by price.
+  const valueCol = req.query.listing_type === 'rent' ? 'monthly_rent' : 'indicative_price';
   const [total, byStage, byStatus, pipelineValue] = await Promise.all([
     BusinessListing.count({ where }),
     BusinessListing.findAll({ where, attributes: ['stage', [fn('COUNT', col('id')), 'n']], group: ['stage'], raw: true }),
     BusinessListing.findAll({ where, attributes: ['status', [fn('COUNT', col('id')), 'n']], group: ['status'], raw: true }),
-    BusinessListing.sum('indicative_price', { where: { ...where, status: { [Op.in]: ['active', 'under_offer'] } } }),
+    BusinessListing.sum(valueCol, { where: { ...where, status: { [Op.in]: ['active', 'under_offer'] } } }),
   ]);
   res.json({
     data: {

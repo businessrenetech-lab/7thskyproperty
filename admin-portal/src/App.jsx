@@ -1474,6 +1474,8 @@ export default function App() {
               <Route path="/business/reports" element={<BusinessReports />} />
               <Route path="/business/mandates" element={<BusinessMandates />} />
               <Route path="/business/mandates/:id" element={<BusinessMandateDetail />} />
+              <Route path="/business/rent/listings" element={<BusinessListings listingType="rent" />} />
+              <Route path="/business/rent/tenant-enquiries" element={<BusinessEnquiries mode="tenant" />} />
               <Route path="/business/rent/rental-agreements" element={<BrmAgreements category="business_rent" />} />
               <Route path="/business/rent/tenancy-agreements" element={<BtmAgreements category="business_rent" />} />
               <Route path="/business/rent/price-schedule" element={<SalesPriceSchedule scope="business_rent" title="Business Rent · Price Schedules" />} />

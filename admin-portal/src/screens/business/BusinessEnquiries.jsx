@@ -9,7 +9,8 @@ const STAGE_LABEL = Object.fromEntries(STAGES);
 const money = (n) => (n == null || n === '' ? '—' : `৳${Number(n).toLocaleString()}`);
 const EMPTY = { enquirer_name: '', company_name: '', phone: '', email: '', enquiry_type: 'buyer', interest: '', preferred_industry: '', preferred_location: '', budget: '', source: '', buyer_seriousness: 'medium', financial_capability: 'unknown', business_listing_id: '', stage: 'new', message: '', next_action: '', follow_up_date: '' };
 
-export default function BusinessEnquiries() {
+export default function BusinessEnquiries({ mode = 'buyer' }) {
+  const isTenant = mode === 'tenant';
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [listings, setListings] = useState([]);
@@ -22,13 +23,13 @@ export default function BusinessEnquiries() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api.get('/business-enquiries', { params: { limit: 200, ...(stageFilter !== 'all' ? { stage: stageFilter } : {}), ...(search ? { search } : {}) } });
+      const r = await api.get('/business-enquiries', { params: { limit: 200, ...(isTenant ? { enquiry_type: 'tenant' } : {}), ...(stageFilter !== 'all' ? { stage: stageFilter } : {}), ...(search ? { search } : {}) } });
       setRows(r.data.data || []);
     } catch { toast.error('Failed to load business enquiries'); }
     finally { setLoading(false); }
-  }, [stageFilter, search, toast]);
+  }, [stageFilter, search, isTenant, toast]);
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { api.get('/business-listings', { params: { limit: 200 } }).then((r) => setListings(r.data.data || [])).catch(() => {}); }, []);
+  useEffect(() => { api.get('/business-listings', { params: { limit: 200, ...(isTenant ? { listing_type: 'rent' } : {}) } }).then((r) => setListings(r.data.data || [])).catch(() => {}); }, [isTenant]);
 
   const set = (k, v) => setDrawer((d) => ({ ...d, form: { ...d.form, [k]: v } }));
   const save = async () => {
@@ -55,8 +56,8 @@ export default function BusinessEnquiries() {
 
   return (
     <div className="pm-scope">
-      <PageHead title="Business Buyer Enquiries" desc="Buyers & investors interested in acquiring a business — screening and lead pipeline (SOP Steps 11–12)."
-        actions={<Button icon={Plus} onClick={() => setDrawer({ id: null, form: { ...EMPTY } })}>New Enquiry</Button>} />
+      <PageHead title={isTenant ? 'Tenant Enquiries' : 'Business Buyer Enquiries'} desc={isTenant ? 'Tenants / operators looking to lease a business — screening and lead pipeline.' : 'Buyers & investors interested in acquiring a business — screening and lead pipeline (SOP Steps 11–12).'}
+        actions={<Button icon={Plus} onClick={() => setDrawer({ id: null, form: { ...EMPTY, enquiry_type: isTenant ? 'tenant' : 'buyer' } })}>New Enquiry</Button>} />
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', margin: '4px 0 12px', flexWrap: 'wrap' }}>
         <SearchInput value={search} onChange={setSearch} placeholder="Search enquirer, code, interest…" />
@@ -79,7 +80,7 @@ export default function BusinessEnquiries() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="Enquirer name" required full><Input value={drawer.form.enquirer_name} onChange={(e) => set('enquirer_name', e.target.value)} /></Field>
             <Field label="Company"><Input value={drawer.form.company_name} onChange={(e) => set('company_name', e.target.value)} /></Field>
-            <Field label="Type"><Select value={drawer.form.enquiry_type} onChange={(e) => set('enquiry_type', e.target.value)}><option value="buyer">Buyer</option><option value="investor">Investor</option><option value="seller">Seller</option></Select></Field>
+            <Field label="Type"><Select value={drawer.form.enquiry_type} onChange={(e) => set('enquiry_type', e.target.value)}><option value="buyer">Buyer</option><option value="investor">Investor</option><option value="seller">Seller</option><option value="tenant">Tenant</option></Select></Field>
             <Field label="Phone"><Input value={drawer.form.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
             <Field label="Email"><Input value={drawer.form.email} onChange={(e) => set('email', e.target.value)} /></Field>
             <Field label="Interest (business type)"><Input value={drawer.form.interest} onChange={(e) => set('interest', e.target.value)} placeholder="e.g. Restaurant / F&B" /></Field>

@@ -8,7 +8,8 @@ import BusinessListingForm, { BUSINESS_STAGES, STAGE_LABEL, EMPTY_LISTING } from
 
 const money = (n) => (n == null || n === '' ? '—' : `৳${Number(n).toLocaleString()}`);
 
-export default function BusinessListings() {
+export default function BusinessListings({ listingType = 'sale' }) {
+  const isRent = listingType === 'rent';
   const toast = useToast();
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
@@ -23,14 +24,14 @@ export default function BusinessListings() {
     setLoading(true);
     try {
       const [l, s] = await Promise.all([
-        api.get('/business-listings', { params: { limit: 200, ...(stageFilter !== 'all' ? { stage: stageFilter } : {}), ...(search ? { search } : {}) } }),
-        api.get('/business-listings/stats'),
+        api.get('/business-listings', { params: { limit: 200, listing_type: listingType, ...(stageFilter !== 'all' ? { stage: stageFilter } : {}), ...(search ? { search } : {}) } }),
+        api.get('/business-listings/stats', { params: { listing_type: listingType } }),
       ]);
       setRows(l.data.data || []);
       setStats(s.data.data || null);
     } catch { toast.error('Failed to load business listings'); }
     finally { setLoading(false); }
-  }, [stageFilter, search, toast]);
+  }, [stageFilter, search, listingType, toast]);
   useEffect(() => { load(); }, [load]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -49,7 +50,7 @@ export default function BusinessListings() {
   const columns = useMemo(() => [
     { key: 'business_code', label: 'Code', render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.business_code}</span> },
     { key: 'business_name', label: 'Business', render: (r) => (<div><div style={{ fontWeight: 700 }}>{r.business_name}</div><div style={{ fontSize: 12, color: 'var(--muted)' }}>{[r.business_type, r.city].filter(Boolean).join(' · ')}</div></div>) },
-    { key: 'indicative_price', label: 'Indicative Price', render: (r) => money(r.indicative_price) },
+    { key: 'price', label: isRent ? 'Monthly Rent' : 'Indicative Price', render: (r) => isRent ? (r.monthly_rent ? money(r.monthly_rent) + '/mo' : '—') : money(r.indicative_price) },
     { key: 'stage', label: 'Stage', render: (r) => <Badge tone="violet">{STAGE_LABEL[r.stage] || r.stage}</Badge> },
     { key: 'status', label: 'Status', render: (r) => <Badge tone={r.status === 'sold' ? 'green' : r.status === 'active' ? 'blue' : 'grey'}>{r.status}</Badge> },
     { key: 'seller', label: 'Seller', render: (r) => r.seller?.full_name || '—' },
@@ -57,12 +58,12 @@ export default function BusinessListings() {
 
   return (
     <div className="pm-scope">
-      <PageHead title="Business Listings" desc="Businesses engaged for sale — profile, financials and SOP pipeline stage."
-        actions={<Button icon={Plus} onClick={() => setForm({ ...EMPTY_LISTING })}>New Business Listing</Button>} />
+      <PageHead title={isRent ? 'Rental Listings' : 'Business Listings'} desc={isRent ? 'Businesses / premises engaged for lease — rent, deposit, lease term and SOP pipeline stage.' : 'Businesses engaged for sale — profile, financials and SOP pipeline stage.'}
+        actions={<Button icon={Plus} onClick={() => setForm({ ...EMPTY_LISTING, listing_type: listingType })}>{isRent ? 'New Rental Listing' : 'New Business Listing'}</Button>} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, margin: '10px 0 18px' }}>
         <StatCard icon={Building2} label="Total listings" value={stats?.total ?? '—'} tone="violet" />
-        <StatCard icon={Coins} label="Pipeline value" value={stats ? money(stats.pipeline_value) : '—'} tone="green" />
+        <StatCard icon={Coins} label={isRent ? 'Monthly rent pipeline' : 'Pipeline value'} value={stats ? money(stats.pipeline_value) : '—'} tone="green" />
         <StatCard icon={Layers} label="Active" value={stats?.by_status?.active ?? 0} tone="blue" />
         <StatCard icon={Tags} label="Under offer" value={stats?.by_status?.under_offer ?? 0} tone="amber" />
       </div>
@@ -76,10 +77,10 @@ export default function BusinessListings() {
       </div>
 
       <DataTable columns={columns} rows={rows} loading={loading} onRowClick={(r) => navigate(`/business/listings/${r.id}`)}
-        empty="No business listings yet — click “New Business Listing” to add the first seller engagement." />
+        empty={isRent ? 'No rental listings yet — add a business/premises engaged for lease.' : 'No business listings yet — click “New Business Listing” to add the first seller engagement.'} />
 
       {form && (
-        <Drawer open title="New Business Listing" width={620} onClose={() => setForm(null)}
+        <Drawer open title={isRent ? 'New Rental Listing' : 'New Business Listing'} width={620} onClose={() => setForm(null)}
           footer={<div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <Button variant="ghost" onClick={() => setForm(null)}>Cancel</Button>
             <Button onClick={create} disabled={saving}>{saving ? 'Saving…' : 'Create listing'}</Button>
