@@ -8,6 +8,8 @@
 // last weak read/flip paths (GET /:id/settlement, /settlement/bulk{,-data}) on
 // 2026-09-11 — see deal.routes.js for the history.
 const PropertyDeal = require('../models/PropertyDeal');
+const { Op } = require('sequelize');
+const { salesCategory, propertyIdsInCategory } = require('../utils/salesCategory');
 const { SaleSettlement } = require('../models/SalesModels');
 const dealSalesLink = require('../services/dealSalesLink.service');
 const { complianceBlockers } = require('../services/salesSettlement.service');
@@ -28,6 +30,11 @@ exports.salesPicture = asyncHandler(async (req, res) => {
 exports.salesBulkData = asyncHandler(async (req, res) => {
   const where = { ...branchScope(req) };
   if (req.query.deal_type) where.deal_type = req.query.deal_type;
+  const category = salesCategory(req.query.category);
+  if (category) {
+    const ids = await propertyIdsInCategory(category, branchScope(req));
+    where.property_id = { [Op.in]: ids.length ? ids : [0] };
+  }
   const deals = await PropertyDeal.findAll({ where, order: [['id', 'ASC']], limit: 500 });
   const rows = [];
   for (const deal of deals) {

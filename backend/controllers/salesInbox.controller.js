@@ -11,6 +11,7 @@ const SalesEnquiry = require('../models/SalesEnquiry');
 const Property = require('../models/Property');
 const Contact = require('../models/Contact');
 const { asyncHandler, branchScope, resolveBranchId } = require('../utils/controllerHelpers');
+const { salesCategory, propertyIdsInCategory } = require('../utils/salesCategory');
 
 const snippet = (s) => (s ? String(s).replace(/\s+/g, ' ').slice(0, 120) : '');
 
@@ -85,6 +86,9 @@ async function writeOutbound(req, r, { channel, subject, body, is_draft = false,
 exports.inbox = asyncHandler(async (req, res) => {
   const scope = branchScope(req); const { status, channel, property_id, q, assigned_to, mine } = req.query;
   const enqWhere = { ...scope }; if (property_id) enqWhere.property_id = Number(property_id);
+  const category = salesCategory(req.query.category);
+  const catIds = category ? new Set(await propertyIdsInCategory(category, scope)) : null;
+  if (catIds && !property_id) enqWhere.property_id = { [Op.in]: catIds.size ? [...catIds] : [0] };
   const enquiries = await SalesEnquiry.findAll({ where: enqWhere, include: [{ model: Property, as: 'property', attributes: ['id', 'title', 'property_code'] }], order: [['updated_at', 'DESC']], limit: 500 });
   const comms = await Communication.findAll({ where: { ...scope, entity_type: { [Op.in]: ['sales_enquiry', 'sale_deal', 'property'] } }, order: [['occurred_at', 'DESC']], limit: 2000, raw: true });
   const byKey = new Map(); for (const c of comms) { const k = saleKey(c); if (!byKey.has(k)) byKey.set(k, []); byKey.get(k).push(c); }
@@ -109,6 +113,7 @@ exports.inbox = asyncHandler(async (req, res) => {
   }
 
   let out = items;
+  if (catIds) out = out.filter((i) => i.property_id && catIds.has(Number(i.property_id)));
   if (status) out = out.filter((i) => i.status === status);
   if (channel) out = out.filter((i) => i.channel === channel);
   if (q) out = out.filter((i) => JSON.stringify(i).toLowerCase().includes(String(q).toLowerCase()));

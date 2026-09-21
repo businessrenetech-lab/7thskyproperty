@@ -1,4 +1,5 @@
 const { Op } = require('sequelize');
+const { salesCategory, propertyIdsInCategory } = require('../utils/salesCategory');
 const { SALE_SIDE, PURCHASE_SIDE, ALL_SALES_AGREEMENTS } = require('../utils/saleAgreementTypes');
 const sequelize = require('../config/db.config');
 const PropertyInvoice = require('../models/PropertyInvoice');
@@ -65,6 +66,11 @@ exports.list = asyncHandler(async (req, res) => {
   if (req.query.tenancy_id) where.tenancy_id = req.query.tenancy_id;
   if (req.query.contact_id) where.contact_id = req.query.contact_id;
   if (req.query.property_id) where.property_id = req.query.property_id;
+  const category = salesCategory(req.query.category);
+  if (category && !where.property_id) {
+    const ids = await propertyIdsInCategory(category, branchScope(req));
+    where.property_id = { [Op.in]: ids.length ? ids : [0] };
+  }
   if (req.query.search) where[Op.or] = [{ invoice_code: { [Op.like]: `%${req.query.search}%` } }, { title: { [Op.like]: `%${req.query.search}%` } }];
   // scope=pm|sales|purchase|sale → restrict agreement-fee invoices to the ones
   // whose source agreement belongs to that section (join the signing envelope),

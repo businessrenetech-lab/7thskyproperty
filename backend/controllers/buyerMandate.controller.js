@@ -1,6 +1,7 @@
 const BuyerMandate = require('../models/BuyerMandate');
 const { PURCHASE_SIDE } = require('../utils/saleAgreementTypes');
 const MandateCandidate = require('../models/MandateCandidate');
+const { salesCategory } = require('../utils/salesCategory');
 const PropertyDeal = require('../models/PropertyDeal');
 const Property = require('../models/Property');
 const Client = require('../models/Client');
@@ -10,7 +11,7 @@ const sequelize = require('../config/db.config');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, pick } = require('../utils/controllerHelpers');
 
-const MANDATE_FIELDS = ['buyer_client_id', 'buyer_contact_id', 'status', 'budget_min', 'budget_max', 'areas', 'property_type', 'beds_min', 'baths_min', 'timeframe', 'notes', 'assigned_to', 'cancel_reason',
+const MANDATE_FIELDS = ['buyer_client_id', 'buyer_contact_id', 'status', 'budget_min', 'budget_max', 'areas', 'property_type', 'beds_min', 'baths_min', 'timeframe', 'notes', 'assigned_to', 'cancel_reason', 'category', 'suitability',
   'finance_status', 'investment_use', 'risk_notes', 'search_strategy'];
 const PROP_ATTRS = ['id', 'property_code', 'title', 'area', 'price', 'owner_contact_id'];
 // Client belongsTo Contact with no alias, so the accessor is `.Contact`.
@@ -29,6 +30,8 @@ exports.list = asyncHandler(async (req, res) => {
   const where = { ...branchScope(req) };
   if (req.query.status) where.status = req.query.status;
   if (req.query.assigned_to) where.assigned_to = req.query.assigned_to;
+  const category = salesCategory(req.query.category);
+  if (category) where.category = category;
   const rows = await BuyerMandate.findAll({ where, order: [['created_at', 'DESC']], include: mandateIncludes(false) });
   res.json({ data: rows.map((m) => ({ ...m.toJSON(), buyer_name: buyerName(m), candidate_count: (m.candidates || []).length })) });
 });
@@ -41,6 +44,7 @@ exports.getOne = asyncHandler(async (req, res) => {
 
 exports.create = asyncHandler(async (req, res) => {
   const data = pick(req.body, MANDATE_FIELDS);
+  data.category = salesCategory(data.category) || salesCategory(req.query.category) || null;
   if (!data.buyer_client_id && !data.buyer_contact_id) return res.status(400).json({ error: 'A buyer client or contact is required.' });
   data.branch_id = resolveBranchId(req, req.body.branch_id);
   data.created_by = req.user?.id || null;
