@@ -40,7 +40,7 @@ const NAV = [
   ] },
   { key: 'business', label: 'Business Sales', icon: Briefcase, children: [
     { to: '/business/sale', label: 'Sell a Business' },
-    { to: '/business/purchase/agreements', label: 'Buy a Business' },
+    { to: '/business/mandates', label: 'Buy a Business' },
   ] },
   { key: 'rural', label: 'Rural Properties', icon: Trees, children: [
     { to: '/rural/sell', label: 'Sales / Sell Dashboard' },

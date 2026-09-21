@@ -171,6 +171,8 @@ mount('/api/business-offers', './routes/businessOffer.routes');
 mount('/api/business-settlements', './routes/businessSettlement.routes');
 mount('/api/business-invoices', './routes/businessInvoice.routes');
 mount('/api/business-reports', './routes/businessReports.routes');
+mount('/api/business-mandates', './routes/businessMandate.routes');
+mount('/api/business-targets', './routes/businessTarget.routes');
 mount('/api/rptm', './routes/rptm.routes');
 mount('/api/sts', './routes/sts.routes');
 mount('/api/short-stay-verification', './routes/shortStayVerification.routes');

@@ -1163,6 +1163,7 @@ export const BUSINESS_NAV = [
     { to: '/business/price-schedule', label: 'Price Schedules', icon: Tags },
   ] },
   { key: 'biz-buying', label: 'Buying a Business', items: [
+    { to: '/business/mandates', label: 'Acquisition Mandates', icon: Briefcase },
     { to: '/business/purchase/agreements', label: 'Purchase Agreements', icon: FileSignature },
   ] },
   { key: 'biz-finance', label: 'Finance', items: [

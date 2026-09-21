@@ -152,6 +152,8 @@ import BusinessListingDetail from './screens/business/BusinessListingDetail';
 import BusinessEnquiries from './screens/business/BusinessEnquiries';
 import BusinessInvoices from './screens/business/BusinessInvoices';
 import BusinessReports from './screens/business/BusinessReports';
+import BusinessMandates from './screens/business/BusinessMandates';
+import BusinessMandateDetail from './screens/business/BusinessMandateDetail';
 import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
 import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
 import Signing from './screens/Signing';
@@ -1468,6 +1470,8 @@ export default function App() {
               <Route path="/business/enquiries" element={<BusinessEnquiries />} />
               <Route path="/business/invoices" element={<BusinessInvoices />} />
               <Route path="/business/reports" element={<BusinessReports />} />
+              <Route path="/business/mandates" element={<BusinessMandates />} />
+              <Route path="/business/mandates/:id" element={<BusinessMandateDetail />} />
               <Route path="/business/sale/agreements" element={<SaleAgreements category="business" />} />
               <Route path="/business/purchase/agreements" element={<PurchaseAgreements category="business" />} />
               <Route path="/business/price-schedule" element={<SalesPriceSchedule scope="business" title="Business · Price Schedules" />} />
