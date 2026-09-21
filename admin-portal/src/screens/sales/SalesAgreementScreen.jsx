@@ -51,6 +51,45 @@ const KIND_META = {
     summarySubtitle: 'Official reference tracking codes, property selection, target pricing, and timeframe',
     feeLabel: 'Professional Sales Commission (Schedule C)',
   },
+  rental_mgmt: {
+    party: 'Owner',
+    partyPlural: 'Owners',
+    title: 'Rental Management Agreements',
+    newTitle: 'New Business Rental Management Service Agreement',
+    base: '/sales-agreements/rental_mgmt',
+    docCode: 'SSPC-BRMS-01 (v0.2)',
+    agencyRole: 'Business Leasing & Management Agency',
+    subtitle: 'Business Rental Management Service Agreement',
+    summaryTitle: 'Business Rental Summary',
+    summarySubtitle: 'Reference codes, business details, rent/deposit and lease term',
+    feeLabel: 'Business Leasing Success Fee (Schedule C)',
+  },
+  tenancy_mgmt: {
+    party: 'Tenant',
+    partyPlural: 'Tenants',
+    title: 'Tenancy Management Agreements',
+    newTitle: 'New Business Tenancy Management Service Agreement',
+    base: '/sales-agreements/tenancy_mgmt',
+    docCode: 'SSPC-BTMS-01 (v0.2)',
+    agencyRole: "Tenant's Leasing Agency",
+    subtitle: 'Business Tenancy Management Service Agreement',
+    summaryTitle: 'Project Summary',
+    summarySubtitle: 'Reference codes, business requirements, budget and lease preferences',
+    feeLabel: 'Business Tenancy Success Fee (Schedule C)',
+  },
+  registration: {
+    party: 'Client',
+    partyPlural: 'Clients',
+    title: 'Registration Agreements',
+    newTitle: 'New Business Registration Service Agreement',
+    base: '/sales-agreements/registration',
+    docCode: 'SSPC-BR-CSA-01 (v0.2)',
+    agencyRole: 'Business Registration Coordination Agency',
+    subtitle: 'Business Registration Customer Service Agreement',
+    summaryTitle: 'Project Summary',
+    summarySubtitle: 'Reference codes, business structure, selected services and registration timeline',
+    feeLabel: 'Priority / Urgent Processing (Schedule C)',
+  },
 };
 
 function safeJson(val) {
@@ -220,14 +259,22 @@ export default function SalesAgreementScreen({ kind, category = 'residential' })
   };
   const [builderPrefill, setBuilderPrefill] = useState(null);
 
-  const docCode = category === 'business'
-    ? (kind === 'purchase' ? 'SSPC-BPS-01 (v0.2)' : 'SSPC-BSS-01 (v0.2)')
-    : category === 'commercial'
-      ? (kind === 'purchase' ? 'SSPC-CPPS-01 (v0.2)' : 'SSPC-CPSS-01 (v0.2)')
-      : (kind === 'purchase' ? 'SSPC-RPPS-01 (v0.2)' : 'SSPC-RPSS-01 (v0.2)');
+  const docCode = (category === 'business_rent' || category === 'business_registration')
+    ? km.docCode
+    : category === 'business'
+      ? (kind === 'purchase' ? 'SSPC-BPS-01 (v0.2)' : 'SSPC-BSS-01 (v0.2)')
+      : category === 'commercial'
+        ? (kind === 'purchase' ? 'SSPC-CPPS-01 (v0.2)' : 'SSPC-CPSS-01 (v0.2)')
+        : (kind === 'purchase' ? 'SSPC-RPPS-01 (v0.2)' : 'SSPC-RPSS-01 (v0.2)');
   // "Business" agreements are over a business, not a property — the copy reflects that.
-  const catLabel = category === 'business' ? 'Business' : category === 'commercial' ? 'Commercial' : 'Residential';
-  const subjectWord = category === 'business' ? '' : 'Property ';
+  const isBiz = category === 'business' || category === 'business_rent' || category === 'business_registration';
+  const catLabel = isBiz ? 'Business' : category === 'commercial' ? 'Commercial' : 'Residential';
+  // rent uses the kind's own title (Rental/Tenancy Management); registration uses Registration;
+  // sale/purchase uses Sale/Purchase.
+  const kindWord = category === 'business_registration' ? 'Registration'
+    : category === 'business_rent' ? (kind === 'tenancy_mgmt' ? 'Tenancy Management' : 'Rental Management')
+      : (km.party === 'Buyer' ? 'Purchase' : 'Sale');
+  const subjectWord = isBiz ? '' : 'Property ';
 
   const tabs = useMemo(() => [
     { key: 'all', label: 'All' },
@@ -238,16 +285,16 @@ export default function SalesAgreementScreen({ kind, category = 'residential' })
   ], []);
 
   const modalTitle = editEnvelope
-    ? `Edit Draft #${editEnvelope.id} — ${catLabel} ${km.party === 'Buyer' ? 'Purchase' : 'Sale'} Agreement`
-    : `New ${catLabel} ${km.party === 'Buyer' ? 'Purchase' : 'Sale'} Agreement`;
+    ? `Edit Draft #${editEnvelope.id} — ${catLabel} ${kindWord} Agreement`
+    : `New ${catLabel} ${kindWord} Agreement`;
 
   return (
     <AgreementRegisterView
       title={km.title}
-      subtitle={`${catLabel} ${subjectWord}${km.party === 'Buyer' ? 'Purchase' : 'Sale'} Service Agreements — build, price and send to the ${km.party.toLowerCase()} for legal e-signature.`}
+      subtitle={`${catLabel} ${subjectWord}${kindWord} Service Agreements — build, price and send to the ${km.party.toLowerCase()} for legal e-signature.`}
       docCode={docCode}
-      accent={category === 'business' ? '#7c3aed' : category === 'commercial' ? '#0284c7' : '#2563eb'}
-      accentSoft={category === 'business' ? 'rgba(124, 58, 237, 0.12)' : category === 'commercial' ? 'rgba(2, 132, 199, 0.12)' : 'rgba(37, 99, 235, 0.12)'}
+      accent={isBiz ? '#7c3aed' : category === 'commercial' ? '#0284c7' : '#2563eb'}
+      accentSoft={isBiz ? 'rgba(124, 58, 237, 0.12)' : category === 'commercial' ? 'rgba(2, 132, 199, 0.12)' : 'rgba(37, 99, 235, 0.12)'}
       partyLabel={km.party}
       newButtonLabel={`New ${km.party.toLowerCase()} agreement`}
       tabs={tabs}

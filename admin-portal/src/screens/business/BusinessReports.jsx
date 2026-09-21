@@ -24,19 +24,32 @@ function Breakdown({ title, data, labelMap }) {
   );
 }
 
-export default function BusinessReports() {
+export default function BusinessReports({ listingType }) {
+  const isRent = listingType === 'rent';
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const load = () => { setLoading(true); api.get('/business-reports/overview').then((r) => setData(r.data.data)).catch(() => {}).finally(() => setLoading(false)); };
-  useEffect(() => { load(); }, []);
+  const load = () => { setLoading(true); api.get('/business-reports/overview', { params: listingType ? { listing_type: listingType } : {} }).then((r) => setData(r.data.data)).catch(() => {}).finally(() => setLoading(false)); };
+  useEffect(() => { load(); }, [listingType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading || !data) return <div className="pm-scope" style={{ padding: 40, textAlign: 'center' }}><Spinner /></div>;
-  const { listings, enquiries, offers, settlements, invoices } = data;
+  const { listings, enquiries, offers, settlements, invoices, leases } = data;
 
   return (
     <div className="pm-scope">
-      <PageHead title="Business Sale Reports" desc="Pipeline & financials — every figure is scoped to the Business Sale module only."
+      <PageHead title={isRent ? 'Business Rent Reports' : 'Business Sale Reports'} desc={isRent ? 'Rent pipeline, leases & rent collection — scoped to Business Rent only.' : 'Pipeline & financials — every figure is scoped to the Business Sale module only.'}
         actions={<Button variant="ghost" icon={RefreshCw} onClick={load}>Refresh</Button>} />
+
+      {isRent && leases && (
+        <>
+          <div style={{ fontWeight: 700, fontSize: 13, color: '#6b7280', margin: '10px 0 8px' }}>LEASE MANAGEMENT</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
+            <StatCard icon={Building2} label="Active leases" value={leases.active} tone="violet" />
+            <StatCard icon={Coins} label="Rent collected" value={money(leases.rent_collected)} tone="green" />
+            <StatCard icon={HandCoins} label="Rent scheduled" value={money(leases.rent_due)} tone="blue" />
+            <StatCard icon={Layers} label="Rent arrears" value={money(leases.rent_arrears)} tone={leases.rent_arrears > 0 ? 'red' : 'green'} />
+          </div>
+        </>
+      )}
 
       <div style={{ fontWeight: 700, fontSize: 13, color: '#6b7280', margin: '10px 0 8px' }}>PIPELINE</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>

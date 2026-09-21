@@ -1166,6 +1166,14 @@ export const BUSINESS_NAV = [
     { to: '/business/mandates', label: 'Acquisition Mandates', icon: Briefcase },
     { to: '/business/purchase/agreements', label: 'Purchase Agreements', icon: FileSignature },
   ] },
+  { key: 'biz-rent', label: 'Renting a Business', items: [
+    { to: '/business/rent/listings', label: 'Rental Listings', icon: Building2 },
+    { to: '/business/rent/tenant-enquiries', label: 'Tenant Enquiries', icon: MessageSquareQuote },
+    { to: '/business/rent/rental-agreements', label: 'Rental Management', icon: FileSignature },
+    { to: '/business/rent/tenancy-agreements', label: 'Tenancy Management', icon: FileSignature },
+    { to: '/business/rent/price-schedule', label: 'Rent Price Schedules', icon: Tags },
+    { to: '/business/rent/reports', label: 'Rent Reports', icon: BarChart3 },
+  ] },
   { key: 'biz-finance', label: 'Finance', items: [
     { to: '/business/invoices', label: 'Invoices', icon: Receipt },
     { to: '/business/reports', label: 'Reports', icon: BarChart3 },
@@ -1186,6 +1194,47 @@ export const businessSaleConsole = {
     accentTint2: '#ede9fe',
   },
   navGroups: BUSINESS_NAV,
+  api: {},
+  contentClass: 'pm-scope',
+  exitTo: '/dashboard',
+};
+
+// ── Business Registration — its own console (a service-delivery project line,
+// not a marketplace). Coordinates trade licence, company registration, tax and
+// corporate documentation on the client's behalf. Nav grows phase by phase;
+// Phase 0 ships the Customer Service Agreement (SSPC-BR-CSA-01) + price schedule.
+export const BUSINESS_REG_NAV = [
+  { key: 'br-home', label: 'Home', items: [
+    { to: '/business-registration', label: 'Registration Dashboard', icon: LayoutGrid, end: true },
+  ] },
+  { key: 'br-pipeline', label: 'Pipeline', items: [
+    { to: '/business-registration/enquiries', label: 'Enquiries', icon: MessageSquareQuote },
+    { to: '/business-registration/projects', label: 'Registration Projects', icon: ClipboardList },
+  ] },
+  { key: 'br-registration', label: 'Commercial', items: [
+    { to: '/business-registration/agreements', label: 'Registration Agreements', icon: FileSignature },
+    { to: '/business-registration/price-schedule', label: 'Price Schedules', icon: Tags },
+  ] },
+  { key: 'br-finance', label: 'Finance', items: [
+    { to: '/business-registration/invoices', label: 'Invoices', icon: Receipt },
+    { to: '/business-registration/reports', label: 'Reports', icon: BarChart3 },
+  ] },
+];
+
+export const businessRegistrationConsole = {
+  slug: 'business-registration',
+  storageKey: 'breg.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Business Registration',
+    icon: Landmark,
+    accent: '#0d9488',          // teal-600 — tells Registration apart from the sales/rent consoles
+    accentStrong: '#0f766e',
+    accentInk: '#115e59',
+    accentTint: 'rgba(13,148,136,.12)',
+    accentTint2: '#ccfbf1',
+  },
+  navGroups: BUSINESS_REG_NAV,
   api: {},
   contentClass: 'pm-scope',
   exitTo: '/dashboard',
@@ -1212,4 +1261,5 @@ export const CONSOLES = {
   residential: residentialConsole,
   commercial: commercialConsole,
   business: businessSaleConsole,
+  'business-registration': businessRegistrationConsole,
 };

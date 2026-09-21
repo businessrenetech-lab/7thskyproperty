@@ -77,6 +77,8 @@ export default function BusinessSaleDashboard() {
           desc="Service-fee & commission invoices for business sales, with payments — isolated to this module." />
         <Card to="/business/reports" icon={BarChart3} title="Reports"
           desc="Pipeline & financial rollups — commission earned/collected, invoiced/outstanding, funnels." />
+        <Card to="/business/rent/rental-agreements" icon={Briefcase} title="Rent / Lease a Business"
+          desc="Business Rental & Tenancy Management agreements (SSPC-BRMS-01 / BTMS-01) and rent price schedules." />
       </div>
 
       <div style={{ marginTop: 22, padding: '14px 18px', background: '#faf8ff', border: '1px dashed #d9cffb', borderRadius: 12, color: '#5b21b6', fontSize: 13 }}>

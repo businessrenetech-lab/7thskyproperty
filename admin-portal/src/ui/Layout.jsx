@@ -42,6 +42,7 @@ const NAV = [
     { to: '/business/sale', label: 'Sell a Business' },
     { to: '/business/mandates', label: 'Buy a Business' },
   ] },
+  { to: '/business-registration', label: 'Business Registration', icon: ScrollText },
   { key: 'rural', label: 'Rural Properties', icon: Trees, children: [
     { to: '/rural/sell', label: 'Sales / Sell Dashboard' },
     { to: '/rural/buy', label: 'Buy' },

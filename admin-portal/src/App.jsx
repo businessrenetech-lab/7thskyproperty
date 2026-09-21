@@ -154,6 +154,16 @@ import BusinessInvoices from './screens/business/BusinessInvoices';
 import BusinessReports from './screens/business/BusinessReports';
 import BusinessMandates from './screens/business/BusinessMandates';
 import BusinessMandateDetail from './screens/business/BusinessMandateDetail';
+import BrmAgreements from './screens/sales/BrmAgreements';
+import BtmAgreements from './screens/sales/BtmAgreements';
+import BusinessRegistrationConsole from './screens/BusinessRegistrationConsole';
+import BusinessRegistrationDashboard from './screens/business-registration/BusinessRegistrationDashboard';
+import BusinessRegistrationProjects from './screens/business-registration/BusinessRegistrationProjects';
+import BusinessRegistrationProjectDetail from './screens/business-registration/BusinessRegistrationProjectDetail';
+import BusinessRegistrationEnquiries from './screens/business-registration/BusinessRegistrationEnquiries';
+import BusinessRegistrationInvoices from './screens/business-registration/BusinessRegistrationInvoices';
+import BusinessRegistrationReports from './screens/business-registration/BusinessRegistrationReports';
+import BrgAgreements from './screens/sales/BrgAgreements';
 import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
 import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
 import Signing from './screens/Signing';
@@ -1469,12 +1479,34 @@ export default function App() {
               <Route path="/business/listings/:id" element={<BusinessListingDetail />} />
               <Route path="/business/enquiries" element={<BusinessEnquiries />} />
               <Route path="/business/invoices" element={<BusinessInvoices />} />
-              <Route path="/business/reports" element={<BusinessReports />} />
+              <Route path="/business/reports" element={<BusinessReports listingType="sale" />} />
+              <Route path="/business/rent/reports" element={<BusinessReports listingType="rent" />} />
               <Route path="/business/mandates" element={<BusinessMandates />} />
               <Route path="/business/mandates/:id" element={<BusinessMandateDetail />} />
+              <Route path="/business/rent/listings" element={<BusinessListings listingType="rent" />} />
+              <Route path="/business/rent/tenant-enquiries" element={<BusinessEnquiries mode="tenant" />} />
+              <Route path="/business/rent/rental-agreements" element={<BrmAgreements category="business_rent" />} />
+              <Route path="/business/rent/tenancy-agreements" element={<BtmAgreements category="business_rent" />} />
+              <Route path="/business/rent/price-schedule" element={<SalesPriceSchedule scope="business_rent" title="Business Rent · Price Schedules" />} />
               <Route path="/business/sale/agreements" element={<SaleAgreements category="business" />} />
               <Route path="/business/purchase/agreements" element={<PurchaseAgreements category="business" />} />
               <Route path="/business/price-schedule" element={<SalesPriceSchedule scope="business" title="Business · Price Schedules" />} />
+            </Route>
+
+            {/* ── Business Registration — its own console (a service-delivery
+                project line, not a marketplace). Phase 0: the Customer Service
+                Agreement (SSPC-BR-CSA-01) on the isolated
+                category="business_registration" + its Schedule C price schedule.
+                Later phases add the 9-phase SOP project pipeline. ── */}
+            <Route element={<RequireAuth><AdminGate><BusinessRegistrationConsole /></AdminGate></RequireAuth>}>
+              <Route path="/business-registration" element={<BusinessRegistrationDashboard />} />
+              <Route path="/business-registration/enquiries" element={<BusinessRegistrationEnquiries />} />
+              <Route path="/business-registration/projects" element={<BusinessRegistrationProjects />} />
+              <Route path="/business-registration/projects/:id" element={<BusinessRegistrationProjectDetail />} />
+              <Route path="/business-registration/agreements" element={<BrgAgreements category="business_registration" />} />
+              <Route path="/business-registration/invoices" element={<BusinessRegistrationInvoices />} />
+              <Route path="/business-registration/reports" element={<BusinessRegistrationReports />} />
+              <Route path="/business-registration/price-schedule" element={<SalesPriceSchedule scope="business_registration" title="Business Registration · Price Schedules" />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />

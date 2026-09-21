@@ -11,7 +11,7 @@ export const BUSINESS_STAGES = [
 export const STAGE_LABEL = Object.fromEntries(BUSINESS_STAGES);
 export const BUSINESS_TYPES = ['retail', 'restaurant', 'hospitality', 'manufacturing', 'service', 'trading', 'industrial', 'franchise', 'online', 'other'];
 export const STATUSES = ['active', 'under_offer', 'sold', 'withdrawn', 'on_hold'];
-export const EMPTY_LISTING = { business_name: '', business_type: 'retail', industry: '', area: '', city: 'Dhaka', ownership_structure: '', company_registration_no: '', trade_licence_no: '', tin_bin: '', year_established: '', staff_count: '', lease_status: 'leased', lease_details: '', reason_for_sale: '', indicative_price: '', annual_turnover: '', annual_profit: '', included_assets: '', description: '', stage: 'lead_intake', status: 'active', special_requirements: '' };
+export const EMPTY_LISTING = { listing_type: 'sale', business_name: '', business_type: 'retail', industry: '', area: '', city: 'Dhaka', ownership_structure: '', company_registration_no: '', trade_licence_no: '', tin_bin: '', year_established: '', staff_count: '', lease_status: 'leased', lease_details: '', reason_for_sale: '', indicative_price: '', annual_turnover: '', annual_profit: '', included_assets: '', description: '', stage: 'lead_intake', status: 'active', special_requirements: '', monthly_rent: '', security_deposit: '', lease_term_months: '', available_from: '', operational_status: '', rent_review_structure: '' };
 
 /** The Business Listing profile fields grid — shared by the list drawer and the detail edit. */
 export default function BusinessListingForm({ form, set }) {
@@ -29,7 +29,18 @@ export default function BusinessListingForm({ form, set }) {
       <Field label="Year established"><Input type="number" value={form.year_established} onChange={(e) => set('year_established', e.target.value)} /></Field>
       <Field label="Staff count"><Input type="number" value={form.staff_count} onChange={(e) => set('staff_count', e.target.value)} /></Field>
       <Field label="Lease status"><Select value={form.lease_status} onChange={(e) => set('lease_status', e.target.value)}><option value="leased">Leased</option><option value="owned">Owned</option><option value="na">N/A</option></Select></Field>
-      <Field label="Indicative sale price (৳)"><Input type="number" value={form.indicative_price} onChange={(e) => set('indicative_price', e.target.value)} /></Field>
+      {form.listing_type === 'rent' ? (
+        <>
+          <Field label="Monthly rent (৳)"><Input type="number" value={form.monthly_rent} onChange={(e) => set('monthly_rent', e.target.value)} /></Field>
+          <Field label="Security deposit (৳)"><Input type="number" value={form.security_deposit} onChange={(e) => set('security_deposit', e.target.value)} /></Field>
+          <Field label="Lease term (months)"><Input type="number" value={form.lease_term_months} onChange={(e) => set('lease_term_months', e.target.value)} /></Field>
+          <Field label="Available from"><Input type="date" value={form.available_from || ''} onChange={(e) => set('available_from', e.target.value)} /></Field>
+          <Field label="Operational status"><Select value={form.operational_status} onChange={(e) => set('operational_status', e.target.value)}><option value="">—</option><option value="operating">Operating</option><option value="vacant">Vacant</option><option value="partially_operating">Partially operating</option></Select></Field>
+          <Field label="Rent review structure"><Input value={form.rent_review_structure} onChange={(e) => set('rent_review_structure', e.target.value)} placeholder="e.g. 5% annual" /></Field>
+        </>
+      ) : (
+        <Field label="Indicative sale price (৳)"><Input type="number" value={form.indicative_price} onChange={(e) => set('indicative_price', e.target.value)} /></Field>
+      )}
       <Field label="Annual turnover (৳)"><Input type="number" value={form.annual_turnover} onChange={(e) => set('annual_turnover', e.target.value)} /></Field>
       <Field label="Annual profit (৳)"><Input type="number" value={form.annual_profit} onChange={(e) => set('annual_profit', e.target.value)} /></Field>
       <Field label="SOP stage"><Select value={form.stage} onChange={(e) => set('stage', e.target.value)}>{BUSINESS_STAGES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>

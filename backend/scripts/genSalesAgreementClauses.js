@@ -15,6 +15,9 @@ const JOBS = [
   { txt: 'Commercial Property Sale Service Agreement - V0.2.txt', out: 'cpssClauses.js' },
   { txt: 'Business Sale Service Agreement - V0.2.txt', out: 'bssClauses.js' },
   { txt: 'Business Purchase Service Agreement - V0.2.txt', out: 'bpsClauses.js' },
+  { txt: 'Business Rental Management Service Agreement - V0.2.txt', out: 'brmClauses.js' },
+  { txt: 'Business Tenancy Management Service Agreement - V0.2.txt', out: 'btmClauses.js' },
+  { txt: 'Business Registration Customer Service Agreement - V0.2.txt', out: 'brgClauses.js' },
 ];
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -53,7 +56,29 @@ const SUBHEADS = new Set([
   'Business Inspection',
   'Negotiation & Transaction Coordination',
   'Due Diligence & Documentation',
-  'Post-Purchase Coordination'
+  'Post-Purchase Coordination',
+  // Business Rental Management (SSPC-BRMS-01) service groups
+  'Business Rental Consultation',
+  'Marketing & Promotion',
+  'Tenant Sourcing & Screening',
+  'Lease Coordination',
+  'Ongoing Rental Management',
+  // Business Tenancy Management (SSPC-BTMS-01) service groups
+  'Business Leasing Consultation',
+  'Property Search & Shortlisting',
+  'Property Inspection',
+  'Lease Negotiation',
+  'Documentation & Move-In Coordination',
+  'Ongoing Tenancy Management',
+  // Business Registration (SSPC-BR-CSA-01) service groups + payment sub-headings
+  'Trade Licence Services',
+  'Business Registration Services',
+  'Corporate Documentation',
+  'Tax & Regulatory Registration',
+  'Corporate Compliance Services',
+  'Business Advisory Services',
+  'Registration & Documentation Services',
+  'Ongoing Compliance Services'
 ]);
 
 // Turn a run of body lines into HTML: properly grouped bullet lists, checkbox

@@ -13,6 +13,9 @@ const cpps = require('../services/cppsAgreement.service');
 const cpss = require('../services/cpssAgreement.service');
 const bss = require('../services/bssAgreement.service');
 const bps = require('../services/bpsAgreement.service');
+const brm = require('../services/brmAgreement.service');
+const btm = require('../services/btmAgreement.service');
+const brg = require('../services/brgAgreement.service');
 const SigningEnvelope = require('../models/SigningEnvelope');
 const EnvelopeSigner = require('../models/EnvelopeSigner');
 const SignatureField = require('../models/SignatureField');
@@ -40,23 +43,41 @@ const REGISTRY = {
     purchase: { svc: bps, build: 'buildBpsAgreement', related_type: 'business_purchase_agreement', signer: 'buyer', party: 'Buyer', code: 'BPS', sched: 'purchase_business', header: 'Seventh Sky Business Services' },
     sale: { svc: bss, build: 'buildBssAgreement', related_type: 'business_sale_agreement', signer: 'seller', party: 'Seller', code: 'BSS', sched: 'sale_business', header: 'Seventh Sky Business Services' },
   },
+  // Business Rent — the two lease-side agreements (owner / tenant), same 25-clause
+  // render engine, isolated under category 'business_rent'.
+  business_rent: {
+    rental_mgmt: { svc: brm, build: 'buildBrmAgreement', related_type: 'business_rental_agreement', signer: 'owner', party: 'Owner', code: 'BRM', sched: 'rent_business', header: 'Seventh Sky Business Services' },
+    tenancy_mgmt: { svc: btm, build: 'buildBtmAgreement', related_type: 'business_tenancy_agreement', signer: 'tenant', party: 'Tenant', code: 'BTM', sched: 'tenancy_business', header: 'Seventh Sky Business Services' },
+  },
+  // Business Registration — the client-side service agreement (SSPC-BR-CSA-01),
+  // signed with the Client, same 25-clause render engine, isolated under
+  // category 'business_registration'.
+  business_registration: {
+    registration: { svc: brg, build: 'buildBrgAgreement', related_type: 'business_registration_agreement', signer: 'client', party: 'Client', code: 'BRG', sched: 'registration_business', header: 'Seventh Sky Business Registration Services' },
+  },
 };
 const catOf = (req) => {
   const c = String(req.query.category || (req.body && req.body.category) || req.params.category || 'residential').toLowerCase();
-  return (c === 'commercial' || c === 'business') ? c : 'residential';
+  return (c === 'commercial' || c === 'business' || c === 'business_rent' || c === 'business_registration') ? c : 'residential';
 };
 const K = (req) => (REGISTRY[catOf(req)] || {})[req.params.kind] || null;
 
 // ── Contracts hub (sub-project B): buckets over the sales agreement envelopes ──
 const relatedFor = (cat) => Object.values(REGISTRY[cat] || REGISTRY.residential).map((k) => k.related_type);
-const kindOf = (rt) => (String(rt).includes('purchase') ? 'purchase' : 'sale');
+const kindOf = (rt) => {
+  const s = String(rt);
+  if (s.includes('registration')) return 'registration';
+  if (s.includes('tenancy')) return 'tenancy_mgmt';
+  if (s.includes('rental')) return 'rental_mgmt';
+  if (s.includes('purchase')) return 'purchase';
+  return 'sale';
+};
 const DAY = 86400000;
 
 exports.contracts = asyncHandler(async (req, res) => {
   const cat = catOf(req);
   const where = { ...branchScope(req), related_type: { [Op.in]: relatedFor(cat) } };
-  if (req.query.kind === 'purchase') where.related_type = REGISTRY[cat].purchase.related_type;
-  if (req.query.kind === 'sale') where.related_type = REGISTRY[cat].sale.related_type;
+  if (req.query.kind && REGISTRY[cat] && REGISTRY[cat][req.query.kind]) where.related_type = REGISTRY[cat][req.query.kind].related_type;
   if (req.query.search) where[Op.or] = [{ title: { [Op.like]: `%${req.query.search}%` } }, { envelope_code: { [Op.like]: `%${req.query.search}%` } }];
   const rows = await SigningEnvelope.findAll({ where, include: [{ model: EnvelopeSigner, as: 'signers', attributes: ['id', 'contact_id', 'name', 'email', 'role', 'status'] }], order: [['created_at', 'DESC']] });
   const now = Date.now();
