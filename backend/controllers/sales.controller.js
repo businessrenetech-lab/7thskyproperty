@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { ALL_SALES_AGREEMENTS } = require('../utils/saleAgreementTypes');
 const { Op } = require('sequelize');
 const sequelize = require('../config/db.config');
 const Property = require('../models/Property');
@@ -532,7 +533,7 @@ exports.getPropertyFile = asyncHandler(async (req, res) => {
   // multi-signer agreement method. Surfaced so onboarding reflects and links to
   // them rather than the legacy party_role flow.
   const saleAgreementEnvelopes = await SigningEnvelope.findAll({
-    where: { branch_id: property.branch_id, related_id: property.id, related_type: { [Op.in]: ['sale_purchase_agreement', 'sale_sale_agreement', 'commercial_purchase_agreement', 'commercial_sale_agreement'] } },
+    where: { branch_id: property.branch_id, related_id: property.id, related_type: { [Op.in]: ALL_SALES_AGREEMENTS } },
     include: [{ model: EnvelopeSigner, as: 'signers', attributes: ['id', 'name', 'email', 'role', 'status'] }],
     order: [['created_at', 'DESC']],
   });

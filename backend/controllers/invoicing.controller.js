@@ -1,4 +1,5 @@
 const { Op } = require('sequelize');
+const { SALE_SIDE, PURCHASE_SIDE, ALL_SALES_AGREEMENTS } = require('../utils/saleAgreementTypes');
 const sequelize = require('../config/db.config');
 const PropertyInvoice = require('../models/PropertyInvoice');
 const InvoiceItem = require('../models/InvoiceItem');
@@ -427,9 +428,9 @@ const SigningEnvelope = require('../models/SigningEnvelope');
 // scope=sales → purchase + sale agreements; omitted → all agreement fees.
 const SCOPE_RELATED = {
   pm: ['property_management_agreement', 'tenancy_management_agreement'],
-  sales: ['sale_purchase_agreement', 'sale_sale_agreement', 'commercial_purchase_agreement', 'commercial_sale_agreement'],
-  purchase: ['sale_purchase_agreement', 'commercial_purchase_agreement'],
-  sale: ['sale_sale_agreement', 'commercial_sale_agreement'],
+  sales: ALL_SALES_AGREEMENTS,
+  purchase: PURCHASE_SIDE,
+  sale: SALE_SIDE,
 };
 exports.agencyIncome = asyncHandler(async (req, res) => {
   const where = { ...branchScope(req), invoice_type: 'agreement_fee' };
