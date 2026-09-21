@@ -177,6 +177,20 @@ Each phase is one commit and is verified before the next starts.
 
 Local development uses the same database as production, so migrations take effect in production as soon as they run. All migrations are additive and compatible with the currently deployed code. Deploy at the end using the existing process: stash the other contributor's uncommitted files, merge into `production`, push, confirm the Hostinger build completes, restore.
 
-## 11. Out of scope
+## 11. Changes found during planning
+
+The implementation plan (`docs/superpowers/plans/2026-09-21-business-buy-sale-commercial-parity.md`) refines this spec as follows; where they differ, these notes win.
+
+- **Phase 1 also** mounts `/api/marketing` (also missing from the production manifest) and makes `GET /public-website/properties/:idOrSlug` published-only with a field allowlist. That endpoint returned every property column (owner, key holders' phones, internal remarks, coordinates) for any id, so fixing the 404 without this would have exposed that data on the live site.
+- **Agreement types:** eight hard-coded lists named only residential/commercial agreement types, so signed business agreements would draft no fee invoices. They are consolidated into one shared list that includes `business_sale_agreement` and `business_purchase_agreement`.
+- **Buyer mandates** had no category, so migration 0141 adds `category` (with `suitability`) to scope the Business buyer console.
+- **Migration numbers:** 0141 buyer mandate category + suitability · 0142 business profiles · 0143 assessment/document `property_id` · 0144 NDAs · 0145 workflow templates. The workflow templates ship as a migration (the pattern existing DBs already use), not a seed script. The NDA document is rendered in code, so it needs no DB template.
+- **Due-diligence statuses** keep the register's existing vocabulary: required → received → verified, or rejected (shown as "flagged").
+- **Property-file Workflow tab:** business property files use the same `properties_sale` SOP as Commercial (parity). The `business_sale` / `business_purchase` templates drive the console's Checklists/Workflows item.
+- **Public search** never matches a business listing's title or address, so its real name can't be found by searching.
+- **Wizard:** after creating a sale draft it stays in the console (it used to jump to `/sales/properties/new/:id`, which also affected Commercial).
+- **Buyer's contact record** does not get a separate NDA list: the property file's NDA tab plus the Introductions register (written automatically when an NDA is signed) cover it.
+
+## 12. Out of scope
 
 Business Rent and Business Registration changes; a generic per-category custom-fields engine; auto-scoping Commercial or Residential screens; removing the old `business_*` tables.
