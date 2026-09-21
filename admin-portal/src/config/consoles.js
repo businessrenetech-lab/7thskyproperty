@@ -1207,7 +1207,11 @@ export const BUSINESS_REG_NAV = [
   { key: 'br-home', label: 'Home', items: [
     { to: '/business-registration', label: 'Registration Dashboard', icon: LayoutGrid, end: true },
   ] },
-  { key: 'br-registration', label: 'Registration', items: [
+  { key: 'br-pipeline', label: 'Pipeline', items: [
+    { to: '/business-registration/enquiries', label: 'Enquiries', icon: MessageSquareQuote },
+    { to: '/business-registration/projects', label: 'Registration Projects', icon: ClipboardList },
+  ] },
+  { key: 'br-registration', label: 'Commercial', items: [
     { to: '/business-registration/agreements', label: 'Registration Agreements', icon: FileSignature },
     { to: '/business-registration/price-schedule', label: 'Price Schedules', icon: Tags },
   ] },

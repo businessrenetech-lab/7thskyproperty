@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileSignature, Tags, Landmark, Building2, ScrollText, Receipt, ArrowRight } from 'lucide-react';
-import { PageHead } from '../../ui/kit';
+import { FileSignature, Tags, Landmark, Building2, ScrollText, MessageSquareQuote, Layers, HandCoins, ArrowRight } from 'lucide-react';
+import api from '../../services/api';
+import { PageHead, StatCard } from '../../ui/kit';
+import { STAGE_LABEL, money } from './constants';
 
 /*
  * Business Registration — console home (Phase 0).
@@ -43,12 +45,31 @@ const PHASES = [
 ];
 
 export default function BusinessRegistrationDashboard() {
+  const [stats, setStats] = useState(null);
+  const [enq, setEnq] = useState(null);
+  useEffect(() => {
+    api.get('/business-registration-projects/stats').then((r) => setStats(r.data.data)).catch(() => {});
+    api.get('/business-registration-enquiries/stats').then((r) => setEnq(r.data.data)).catch(() => {});
+  }, []);
+
+  const byStage = (stats && stats.by_stage) || {};
+  const topStages = Object.entries(byStage).sort((a, b) => b[1] - a[1]).slice(0, 4);
+
   return (
     <div className="pm-scope">
       <PageHead
         title="Business Registration"
         desc="Trade licence, company registration, tax & corporate documentation — coordinated end-to-end. Scoped entirely to the Business Registration service."
       />
+
+      {stats && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 18 }}>
+          <StatCard icon={ScrollText} label="Projects" value={stats.total} tone="violet" />
+          <StatCard icon={MessageSquareQuote} label="Enquiries" value={enq ? enq.total : '—'} tone="amber" />
+          <StatCard icon={HandCoins} label="Contract value" value={money(stats.contract_value)} tone="blue" />
+          <StatCard icon={Layers} label="Deposits collected" value={money(stats.deposits_collected)} tone="green" />
+        </div>
+      )}
 
       <div style={{ background: 'linear-gradient(135deg,#0d9488,#115e59)', borderRadius: 16, padding: '22px 24px', color: '#fff', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
         <Landmark size={30} />
@@ -60,9 +81,24 @@ export default function BusinessRegistrationDashboard() {
 
       <div style={{ fontWeight: 700, fontSize: 13, color: '#6b7280', margin: '4px 0 10px', letterSpacing: 0.4 }}>QUICK LINKS</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12 }}>
+        <QuickLink to="/business-registration/projects" icon={ScrollText} title="Registration Projects" desc="Client files & the SOP pipeline (SSPC-BRP-xxxxxx)" />
+        <QuickLink to="/business-registration/enquiries" icon={MessageSquareQuote} title="Enquiries" desc="Phase 1 leads — qualify & convert to projects" />
         <QuickLink to="/business-registration/agreements" icon={FileSignature} title="Registration Agreements" desc="Build, price & e-sign the Customer Service Agreement" />
         <QuickLink to="/business-registration/price-schedule" icon={Tags} title="Price Schedules" desc="Edit Schedule C standard pricing (BRC-001 … BRC-020)" />
       </div>
+
+      {topStages.length > 0 && (
+        <>
+          <div style={{ fontWeight: 700, fontSize: 13, color: '#6b7280', margin: '22px 0 10px', letterSpacing: 0.4 }}>PROJECTS BY STAGE</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {topStages.map(([k, n]) => (
+              <div key={k} style={{ background: '#fff', border: '1px solid #d5f0eb', borderRadius: 10, padding: '8px 14px', fontSize: 13 }}>
+                <b style={{ color: '#115e59' }}>{n}</b> <span style={{ color: '#6b7280' }}>{STAGE_LABEL[k] || k}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <div style={{ fontWeight: 700, fontSize: 13, color: '#6b7280', margin: '22px 0 10px', letterSpacing: 0.4 }}>BUILD ROADMAP</div>
       <div style={{ display: 'grid', gap: 8 }}>

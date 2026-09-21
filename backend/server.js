@@ -176,6 +176,8 @@ mount('/api/business-targets', './routes/businessTarget.routes');
 mount('/api/business-leases', './routes/businessLease.routes');
 mount('/api/business-rent-collections', './routes/businessRentCollection.routes');
 mount('/api/business-maintenance', './routes/businessMaintenance.routes');
+mount('/api/business-registration-projects', './routes/businessRegistrationProject.routes');
+mount('/api/business-registration-enquiries', './routes/businessRegistrationEnquiry.routes');
 mount('/api/rptm', './routes/rptm.routes');
 mount('/api/sts', './routes/sts.routes');
 mount('/api/short-stay-verification', './routes/shortStayVerification.routes');

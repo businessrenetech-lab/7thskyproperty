@@ -158,6 +158,9 @@ import BrmAgreements from './screens/sales/BrmAgreements';
 import BtmAgreements from './screens/sales/BtmAgreements';
 import BusinessRegistrationConsole from './screens/BusinessRegistrationConsole';
 import BusinessRegistrationDashboard from './screens/business-registration/BusinessRegistrationDashboard';
+import BusinessRegistrationProjects from './screens/business-registration/BusinessRegistrationProjects';
+import BusinessRegistrationProjectDetail from './screens/business-registration/BusinessRegistrationProjectDetail';
+import BusinessRegistrationEnquiries from './screens/business-registration/BusinessRegistrationEnquiries';
 import BrgAgreements from './screens/sales/BrgAgreements';
 import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
 import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
@@ -1495,6 +1498,9 @@ export default function App() {
                 Later phases add the 9-phase SOP project pipeline. ── */}
             <Route element={<RequireAuth><AdminGate><BusinessRegistrationConsole /></AdminGate></RequireAuth>}>
               <Route path="/business-registration" element={<BusinessRegistrationDashboard />} />
+              <Route path="/business-registration/enquiries" element={<BusinessRegistrationEnquiries />} />
+              <Route path="/business-registration/projects" element={<BusinessRegistrationProjects />} />
+              <Route path="/business-registration/projects/:id" element={<BusinessRegistrationProjectDetail />} />
               <Route path="/business-registration/agreements" element={<BrgAgreements category="business_registration" />} />
               <Route path="/business-registration/price-schedule" element={<SalesPriceSchedule scope="business_registration" title="Business Registration · Price Schedules" />} />
             </Route>
