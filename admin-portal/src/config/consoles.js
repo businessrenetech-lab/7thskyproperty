@@ -1144,6 +1144,53 @@ export const spacePlanningConsole = {
   exitTo: '/dashboard',
 };
 
+/* ── Business Sales ──────────────────────────────────────────────────────────
+ * The Business Sale / Purchase console. A business is NOT a property, so this
+ * console has its own subject model and modules (Phase 1+). Phase 0 ships the
+ * two Customer Service Agreements (SSPC-BSS-01 sale / SSPC-BPS-01 purchase) and
+ * their price schedules, on the isolated 'business' category. Rebased on
+ * /business/*. */
+export const BUSINESS_NAV = [
+  { key: 'biz-home', label: 'Home', items: [
+    { to: '/business/sale', label: 'Business Sale Dashboard', icon: LayoutGrid, end: true },
+  ] },
+  { key: 'biz-pipeline', label: 'Pipeline', items: [
+    { to: '/business/listings', label: 'Business Listings', icon: Building2 },
+    { to: '/business/enquiries', label: 'Buyer Enquiries', icon: MessageSquareQuote },
+  ] },
+  { key: 'biz-selling', label: 'Selling a Business', items: [
+    { to: '/business/sale/agreements', label: 'Sale Agreements', icon: FileSignature },
+    { to: '/business/price-schedule', label: 'Price Schedules', icon: Tags },
+  ] },
+  { key: 'biz-buying', label: 'Buying a Business', items: [
+    { to: '/business/mandates', label: 'Acquisition Mandates', icon: Briefcase },
+    { to: '/business/purchase/agreements', label: 'Purchase Agreements', icon: FileSignature },
+  ] },
+  { key: 'biz-finance', label: 'Finance', items: [
+    { to: '/business/invoices', label: 'Invoices', icon: Receipt },
+    { to: '/business/reports', label: 'Reports', icon: BarChart3 },
+  ] },
+];
+
+export const businessSaleConsole = {
+  slug: 'business',
+  storageKey: 'biz.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Business Sales',
+    icon: Briefcase,
+    accent: '#7c3aed',          // violet-600 — tells Business apart from property sales
+    accentStrong: '#6d28d9',
+    accentInk: '#5b21b6',
+    accentTint: 'rgba(124,58,237,.12)',
+    accentTint2: '#ede9fe',
+  },
+  navGroups: BUSINESS_NAV,
+  api: {},
+  contentClass: 'pm-scope',
+  exitTo: '/dashboard',
+};
+
 export const CONSOLES = {
   'water-tank': waterTankConsole,
   'air-conditioning': airConditioningConsole,
@@ -1164,4 +1211,5 @@ export const CONSOLES = {
   'property-management': propertyMgmtConsole,
   residential: residentialConsole,
   commercial: commercialConsole,
+  business: businessSaleConsole,
 };

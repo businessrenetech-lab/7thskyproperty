@@ -134,9 +134,78 @@ const COMMERCIAL_PURCHASE = {
   ],
 };
 
+// ── Business Sale (SSPC-BSS-01) — signed with the Business Owner / Seller ─────
+// Transcribed VERBATIM from "Business Sale - Customer Service Agreement V0.2".
+const BUSINESS_SALE = {
+  party: 'Seller',
+  client_heading: 'BUSINESS OWNER / SELLER (CLIENT)',
+  client_footer: 'Hereinafter referred to as the "Client", "Seller", or "Business Owner"',
+  commission_label: 'Business Sale Success Fee — % of Final Sale Price (or as agreed)',
+  schedule_a_title: 'SCHEDULE A — Selected Services',
+  schedule_a: [
+    ['Business Sale Consultation', ['Initial Consultation', 'Sale Strategy Development', 'Market Positioning Advice', 'Business Readiness Assessment', 'Sale Planning']],
+    ['Business Preparation', ['Business Profile Preparation', 'Operational Review Coordination', 'Documentation Preparation', 'Photography & Videography', 'Marketing Material Preparation']],
+    ['Marketing & Buyer Sourcing', ['Online Business Listing', 'Social Media Marketing', 'Buyer Lead Generation', 'Investor Outreach', 'Buyer Enquiry Management']],
+    ['Buyer Screening & Negotiation', ['Preliminary Buyer Screening', 'Financial Capability Review', 'Offer Coordination', 'Sale Negotiation Coordination']],
+    ['Transaction Coordination', ['Due Diligence Coordination', 'Legal Documentation Coordination', 'Settlement Coordination', 'Business Handover Coordination', 'Post-Settlement Support']],
+    ['Additional Services', ['Business Valuation Coordination', 'Accounting Adviser Coordination', 'Finance Coordination', 'Tax Adviser Coordination', 'Other']],
+  ],
+  schedule_b_title: 'SCHEDULE B — Business Sale Summary',
+  schedule_b_fields: [
+    ['Work Order No.', 'work_order_no'], ['Quotation No.', 'quotation_no'], ['Business Name', 'business_name'],
+    ['Business Type', 'business_type'], ['Business Address', 'business_address'], ['Ownership Structure', 'ownership_structure'],
+    ['Reason for Sale', 'reason_for_sale'], ['Indicative Sale Price', 'indicative_price'],
+    ['Selected Services', 'selected_services_text'], ['Estimated Commencement Date', 'commencement_date'],
+    ['Estimated Completion Date', 'completion_date'], ['Special Requirements', 'special_requirements'],
+  ],
+  schedule_d_title: 'SCHEDULE D — Business Sale Checklist',
+  schedule_d: [
+    ['Business Information', ['Business Name', 'Trade Licence / Company Registration', 'Nature of Business', 'Ownership Details', 'Business Address']],
+    ['Business Documents', ['Trade Licence', 'Company Registration Certificate', 'TIN / BIN (if applicable)', 'Financial Statements (where applicable)', 'Business Asset Register', 'Existing Lease Agreement (if applicable)']],
+    ['Sale Information', ['Indicative Sale Price', 'Included Business Assets', 'Stock Information (if applicable)', 'Employee Information (if applicable)', 'Intellectual Property Details (if applicable)']],
+    ['Marketing & Sale Requirements', ['Photography Approved', 'Marketing Content Approved', 'Inspection Availability Confirmed', 'Buyer Qualification Criteria Confirmed', 'Confidentiality Requirements Confirmed', 'Other Special Instructions']],
+  ],
+};
+
+// ── Business Purchase (SSPC-BPS-01) — signed with the Buyer / Acquirer ────────
+// Transcribed VERBATIM from "Business Purchase Customer Service Agreement V0.2".
+const BUSINESS_PURCHASE = {
+  party: 'Buyer',
+  client_heading: 'BUSINESS BUYER / ACQUIRER (CLIENT)',
+  client_footer: 'Hereinafter referred to as the "Buyer", "Acquirer", or "Client"',
+  commission_label: 'Business Acquisition Success Fee — % of Purchase Price (or as agreed)',
+  schedule_a_title: 'SCHEDULE A — Selected Services',
+  schedule_a: [
+    ['Business Purchase Consultation', ['Initial Consultation', 'Buyer Requirement Assessment', 'Acquisition Strategy', 'Investment Planning', 'Market Opportunity Assessment']],
+    ['Business Search & Shortlisting', ['Business Search', 'Business Shortlisting', 'Opportunity Assessment', 'Seller Matching', 'Market Comparison']],
+    ['Business Inspection', ['Inspection Coordination', 'Business Presentation Coordination', 'Operational Walkthrough Coordination', 'Seller Meeting Coordination']],
+    ['Negotiation & Transaction Coordination', ['Offer Coordination', 'Purchase Negotiation Coordination', 'Seller Communication', 'Transaction Coordination']],
+    ['Due Diligence & Documentation', ['Due Diligence Coordination', 'Financial Information Coordination', 'Legal Documentation Coordination', 'Purchase Agreement Coordination', 'Settlement Coordination']],
+    ['Post-Purchase Coordination', ['Business Handover Coordination', 'Utility Transfer Coordination', 'Licence Transfer Coordination', 'Post-Settlement Support']],
+    ['Additional Services', ['Business Valuation Coordination', 'Legal Adviser Coordination', 'Accounting Adviser Coordination', 'Finance Coordination', 'Other']],
+  ],
+  schedule_b_title: 'SCHEDULE B — Business Purchase Summary',
+  schedule_b_fields: [
+    ['Work Order No.', 'work_order_no'], ['Quotation No.', 'quotation_no'], ['Client Name', 'client_name'],
+    ['Preferred Business Type', 'business_type'], ['Preferred Location', 'preferred_location'], ['Investment Budget', 'budget_range'],
+    ['Preferred Industry', 'preferred_industry'], ['Purchase Purpose', 'purchase_purpose'],
+    ['Selected Services', 'selected_services_text'], ['Estimated Commencement Date', 'commencement_date'],
+    ['Estimated Completion Date', 'completion_date'], ['Special Requirements', 'special_requirements'],
+  ],
+  schedule_d_title: 'SCHEDULE D — Business Purchase Checklist',
+  schedule_d: [
+    ['Buyer Information', ['National ID / Passport', 'Company Registration Documents (if applicable)', 'Contact Details', 'Proof of Funds / Finance Approval (if applicable)']],
+    ['Purchase Requirements', ['Preferred Business Type', 'Preferred Industry', 'Preferred Location', 'Investment Budget', 'Intended Business Purpose']],
+    ['Due Diligence Requirements', ['Financial Records Review', 'Legal Documentation Review', 'Business Licence Verification', 'Tax & Regulatory Review', 'Asset & Equipment Verification', 'Lease Review (if applicable)']],
+    ['Transaction Requirements', ['Purchase Price Agreed', 'Settlement Date', 'Business Handover Requirements', 'Licence Transfer Requirements', 'Other Special Instructions']],
+  ],
+};
+
 module.exports = {
   purchase: PURCHASE,
   sale: SALE,
   purchase_commercial: COMMERCIAL_PURCHASE,
   sale_commercial: COMMERCIAL_SALE,
+  sale_business: BUSINESS_SALE,
+  purchase_business: BUSINESS_PURCHASE,
 };

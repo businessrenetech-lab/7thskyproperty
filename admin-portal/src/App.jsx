@@ -145,6 +145,15 @@ import PropertyMgmtConsole from './screens/PropertyMgmtConsole';
 import CommercialRentConsole from './screens/CommercialRentConsole';
 import ResidentialConsole from './screens/ResidentialConsole';
 import CommercialConsole, { CommercialBuyerConsole } from './screens/CommercialConsole';
+import BusinessSaleConsole from './screens/BusinessSaleConsole';
+import BusinessSaleDashboard from './screens/business/BusinessSaleDashboard';
+import BusinessListings from './screens/business/BusinessListings';
+import BusinessListingDetail from './screens/business/BusinessListingDetail';
+import BusinessEnquiries from './screens/business/BusinessEnquiries';
+import BusinessInvoices from './screens/business/BusinessInvoices';
+import BusinessReports from './screens/business/BusinessReports';
+import BusinessMandates from './screens/business/BusinessMandates';
+import BusinessMandateDetail from './screens/business/BusinessMandateDetail';
 import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
 import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
 import Signing from './screens/Signing';
@@ -1447,6 +1456,25 @@ export default function App() {
               <Route path="/commercial/rent/agreements" element={<RprmAgreements category="commercial" />} />
               <Route path="/commercial/rent/tenancy-agreements" element={<TmAgreements category="commercial" />} />
               <Route path="/commercial/rent/price-schedule" element={<SalesPriceSchedule scope="commercial_rent" title="Commercial Rent · Price Schedules" />} />
+            </Route>
+
+            {/* ── Business Sales — its own console (a business is not a property).
+                Phase 0: the two Customer Service Agreements (SSPC-BSS-01 sale /
+                SSPC-BPS-01 purchase) on the isolated category="business", plus
+                their price schedules. Later phases add the SOP pipeline. ── */}
+            <Route element={<RequireAuth><AdminGate><BusinessSaleConsole /></AdminGate></RequireAuth>}>
+              <Route path="/business" element={<Navigate to="/business/sale" replace />} />
+              <Route path="/business/sale" element={<BusinessSaleDashboard />} />
+              <Route path="/business/listings" element={<BusinessListings />} />
+              <Route path="/business/listings/:id" element={<BusinessListingDetail />} />
+              <Route path="/business/enquiries" element={<BusinessEnquiries />} />
+              <Route path="/business/invoices" element={<BusinessInvoices />} />
+              <Route path="/business/reports" element={<BusinessReports />} />
+              <Route path="/business/mandates" element={<BusinessMandates />} />
+              <Route path="/business/mandates/:id" element={<BusinessMandateDetail />} />
+              <Route path="/business/sale/agreements" element={<SaleAgreements category="business" />} />
+              <Route path="/business/purchase/agreements" element={<PurchaseAgreements category="business" />} />
+              <Route path="/business/price-schedule" element={<SalesPriceSchedule scope="business" title="Business · Price Schedules" />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />

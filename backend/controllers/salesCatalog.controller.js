@@ -24,6 +24,10 @@ const SCHEDULES = {
   // commercial SALE price editor.
   commercial_pm: { label: 'Commercial — Rental Management', scope: 'commercial_rent', group: 'cprm', prefix: 'CPRM-' },
   commercial_tenancy_mgmt: { label: 'Commercial — Tenancy Management', scope: 'commercial_rent', group: 'cptm', prefix: 'CPTM-' },
+  // Business Sale / Purchase — own 'business' scope so they stay isolated to the
+  // Business Sale console and never appear in the property sales catalogues.
+  sale_sale_business: { label: 'Business — Sale', scope: 'business', group: 'bss', prefix: 'BSS-' },
+  sale_purchase_business: { label: 'Business — Purchase', scope: 'business', group: 'bps', prefix: 'BPS-' },
 };
 const PRICE_TYPES = ['fixed', 'from', 'percent', 'included'];
 
