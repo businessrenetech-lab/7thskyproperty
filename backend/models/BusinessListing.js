@@ -43,6 +43,7 @@ const BusinessListing = sequelize.define('BusinessListing', {
   assigned_to: DataTypes.INTEGER,
   stage: { type: DataTypes.STRING(40), defaultValue: 'lead_intake' },
   status: { type: DataTypes.STRING(30), defaultValue: 'active' },
+  workflow_state: { type: DataTypes.JSON, defaultValue: null }, // per-stage SOP tracker (0130)
   special_requirements: DataTypes.TEXT,
   commencement_date: DataTypes.DATEONLY,
   completion_date: DataTypes.DATEONLY,

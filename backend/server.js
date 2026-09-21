@@ -164,6 +164,8 @@ mount('/api/sales-agreements', './routes/salesAgreement.routes');
 mount('/api/sales-catalog', './routes/salesCatalog.routes');
 mount('/api/business-listings', './routes/businessListing.routes');
 mount('/api/business-enquiries', './routes/businessEnquiry.routes');
+mount('/api/business-assessments', './routes/businessAssessment.routes');
+mount('/api/business-documents', './routes/businessDocument.routes');
 mount('/api/rptm', './routes/rptm.routes');
 mount('/api/sts', './routes/sts.routes');
 mount('/api/short-stay-verification', './routes/shortStayVerification.routes');

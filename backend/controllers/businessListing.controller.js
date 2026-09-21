@@ -11,7 +11,7 @@ const FIELDS = [
   'reason_for_sale', 'indicative_price', 'currency', 'annual_turnover', 'annual_profit', 'monthly_revenue',
   'included_assets', 'stock_info', 'employee_info', 'ip_details',
   'description', 'highlights', 'confidential', 'seller_contact_id', 'assigned_to',
-  'stage', 'status', 'special_requirements', 'commencement_date', 'completion_date',
+  'stage', 'status', 'special_requirements', 'commencement_date', 'completion_date', 'workflow_state',
 ];
 
 const sellerInc = { model: Contact, as: 'seller', attributes: ['id', 'full_name', 'primary_phone', 'email', 'company_name'] };
