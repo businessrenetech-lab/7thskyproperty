@@ -1471,7 +1471,8 @@ export default function App() {
               <Route path="/business/listings/:id" element={<BusinessListingDetail />} />
               <Route path="/business/enquiries" element={<BusinessEnquiries />} />
               <Route path="/business/invoices" element={<BusinessInvoices />} />
-              <Route path="/business/reports" element={<BusinessReports />} />
+              <Route path="/business/reports" element={<BusinessReports listingType="sale" />} />
+              <Route path="/business/rent/reports" element={<BusinessReports listingType="rent" />} />
               <Route path="/business/mandates" element={<BusinessMandates />} />
               <Route path="/business/mandates/:id" element={<BusinessMandateDetail />} />
               <Route path="/business/rent/listings" element={<BusinessListings listingType="rent" />} />

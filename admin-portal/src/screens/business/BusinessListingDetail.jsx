@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pencil, Plus, Check, ClipboardCheck, FileText, ShieldCheck, Coins, Trash2, CheckCircle2, XCircle, CalendarDays, Handshake, Landmark } from 'lucide-react';
+import { ArrowLeft, Pencil, Plus, Check, ClipboardCheck, FileText, ShieldCheck, Coins, Trash2, CheckCircle2, XCircle, CalendarDays, Handshake, Landmark, KeyRound, Wrench } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { Button, Badge, Drawer, Field, Input, Textarea, Select, KV, Spinner, EmptyState } from '../../ui/kit';
@@ -67,7 +67,7 @@ export default function BusinessListingDetail() {
       </div>
 
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #eee', margin: '16px 0 18px' }}>
-        {[['workflow', 'SOP Workflow', ClipboardCheck], ['inspections', 'Inspections', CalendarDays], ['offers', 'Offers', Handshake], ['settlement', 'Settlement', Landmark], ['assessment', 'Assessment', ShieldCheck], ['documents', 'Documents', FileText], ['overview', 'Overview', Coins]].map(([k, label, Icon]) => (
+        {[['workflow', 'SOP Workflow', ClipboardCheck], ['inspections', 'Inspections', CalendarDays], ['offers', 'Offers', Handshake], ['settlement', 'Settlement', Landmark], ...(listing.listing_type === 'rent' ? [['lease', 'Lease Management', KeyRound]] : []), ['assessment', 'Assessment', ShieldCheck], ['documents', 'Documents', FileText], ['overview', 'Overview', Coins]].map(([k, label, Icon]) => (
           <button key={k} onClick={() => setTab(k)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'none', border: 'none', borderBottom: tab === k ? `2px solid ${ACCENT}` : '2px solid transparent', color: tab === k ? ACCENT : '#6b7280', fontWeight: tab === k ? 700 : 500, cursor: 'pointer', fontSize: 13.5 }}>
             <Icon size={15} /> {label}
           </button>
@@ -78,6 +78,7 @@ export default function BusinessListingDetail() {
       {tab === 'inspections' && <InspectionsTab listingId={id} />}
       {tab === 'offers' && <OffersTab listingId={id} />}
       {tab === 'settlement' && <SettlementTab listing={listing} />}
+      {tab === 'lease' && <LeaseTab listing={listing} />}
       {tab === 'assessment' && <AssessmentTab listingId={id} />}
       {tab === 'documents' && <DocumentsTab listingId={id} />}
       {tab === 'overview' && <OverviewTab listing={listing} />}
@@ -404,6 +405,145 @@ function SettlementTab({ listing }) {
             <Field label="Handover"><Select value={form.handover_status} onChange={(e) => set('handover_status', e.target.value)}><option value="pending">Pending</option><option value="completed">Completed</option></Select></Field>
             <Field label="Settlement status"><Select value={form.status} onChange={(e) => set('status', e.target.value)}><option value="open">Open</option><option value="completed">Completed</option></Select></Field>
             <Field label="Notes" full><Textarea rows={2} value={form.notes || ''} onChange={(e) => set('notes', e.target.value)} /></Field>
+          </div>
+        </Drawer>
+      )}
+    </div>
+  );
+}
+
+// ── Lease Management (rent only, SOP Step 16) ────────────────────────────────
+const COLL_TONE = { paid: 'green', partial: 'amber', due: 'grey', overdue: 'red', waived: 'grey' };
+function LeaseTab({ listing }) {
+  const toast = useToast();
+  const listingId = listing.id;
+  const [lease, setLease] = useState(undefined); // undefined=loading, null=none
+  const [colls, setColls] = useState([]);
+  const [maint, setMaint] = useState([]);
+  const [form, setForm] = useState(null);
+  const [mForm, setMForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const l = (await api.get('/business-leases', { params: { business_listing_id: listingId } })).data.data || [];
+      const lz = l[0] || null; setLease(lz);
+      if (lz) setColls((await api.get('/business-rent-collections', { params: { lease_id: lz.id } })).data.data || []);
+      setMaint((await api.get('/business-maintenance', { params: { business_listing_id: listingId } })).data.data || []);
+    } catch { setLease(null); }
+  }, [listingId]);
+  useEffect(() => { load(); }, [load]);
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const saveLease = async () => {
+    setSaving(true);
+    try {
+      if (lease) await api.put(`/business-leases/${lease.id}`, form);
+      else await api.post('/business-leases', { ...form, business_listing_id: listingId });
+      toast.success('Lease saved'); setForm(null); load();
+    } catch (e) { toast.error(e.response?.data?.error || 'Save failed'); } finally { setSaving(false); }
+  };
+  const recordRent = async (c) => {
+    const amt = prompt(`Record rent received for ${c.period_label} (due ${money(c.rent_due)}):`, c.rent_due);
+    if (amt == null) return;
+    try { await api.put(`/business-rent-collections/${c.id}`, { rent_received: Number(amt) }); load(); } catch { toast.error('Failed'); }
+  };
+  const saveMaint = async () => {
+    if (!mForm.title.trim()) { toast.error('Title required'); return; }
+    try { if (mForm.id) await api.put(`/business-maintenance/${mForm.id}`, mForm); else await api.post('/business-maintenance', { ...mForm, business_listing_id: listingId, lease_id: lease?.id || null }); toast.success('Saved'); setMForm(null); load(); }
+    catch (e) { toast.error(e.response?.data?.error || 'Save failed'); }
+  };
+  const openLeaseForm = () => setForm(lease ? { ...lease } : { tenant_name: '', monthly_rent: listing.monthly_rent || '', security_deposit: listing.security_deposit || '', lease_start: '', lease_term_months: listing.lease_term_months || 12, rent_due_day: 5, commission_amount: '', status: 'active', notes: '' });
+
+  if (lease === undefined) return <div style={{ padding: 20, textAlign: 'center' }}><Spinner /></div>;
+  const collected = colls.reduce((s, c) => s + Number(c.rent_received || 0), 0);
+  const dueTotal = colls.reduce((s, c) => s + Number(c.rent_due || 0), 0);
+
+  return (
+    <div>
+      {!lease ? <EmptyState icon={KeyRound} title="No lease yet" sub="Execute the lease once terms are agreed — the monthly rent schedule is generated automatically." action={<Button icon={Plus} onClick={openLeaseForm}>Create lease</Button>} /> : (
+        <>
+          <div style={{ background: '#fff', border: '1px solid #e7e3f3', borderRadius: 12, padding: '16px 18px', marginBottom: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ fontWeight: 700 }}><span style={{ fontFamily: 'monospace', fontSize: 12, color: '#9ca3af' }}>{lease.lease_code}</span> · Lease <Badge tone={lease.status === 'active' ? 'green' : 'grey'}>{lease.status}</Badge></div>
+              <Button variant="ghost" icon={Pencil} onClick={openLeaseForm}>Edit</Button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 10 }}>
+              <KV k="Tenant" v={lease.tenant_name} />
+              <KV k="Monthly rent" v={money(lease.monthly_rent)} />
+              <KV k="Security deposit" v={money(lease.security_deposit)} />
+              <KV k="Term" v={lease.lease_term_months ? `${lease.lease_term_months} months` : '—'} />
+              <KV k="Start" v={lease.lease_start} />
+              <KV k="Rent collected" v={`${money(collected)} / ${money(dueTotal)}`} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 0 8px' }}>
+            <div style={{ fontWeight: 700 }}>Rent schedule <span style={{ color: '#9ca3af', fontWeight: 400, fontSize: 13 }}>({colls.length} periods)</span></div>
+          </div>
+          <div style={{ display: 'grid', gap: 6, marginBottom: 20 }}>
+            {colls.map((c) => (
+              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fff', border: '1px solid #e7e3f3', borderRadius: 8, padding: '8px 12px', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 600, minWidth: 70 }}>{c.period_label}</span>
+                <span style={{ fontSize: 12.5, color: '#6b7280', flex: 1 }}>due {c.due_date}</span>
+                <span style={{ fontSize: 13 }}>{money(c.rent_received)} / {money(c.rent_due)}</span>
+                <Badge tone={COLL_TONE[c.status] || 'grey'}>{c.status}</Badge>
+                {c.status !== 'paid' && <Button size="sm" variant="ghost" icon={Coins} onClick={() => recordRent(c)}>Record</Button>}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Maintenance log */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 0 8px' }}>
+        <div style={{ fontWeight: 700 }}>Maintenance <span style={{ color: '#9ca3af', fontWeight: 400, fontSize: 13 }}>({maint.length})</span></div>
+        <Button size="sm" icon={Plus} onClick={() => setMForm({ title: '', description: '', priority: 'medium', status: 'open', cost: '', vendor: '' })}>Log request</Button>
+      </div>
+      {maint.length === 0 ? <div style={{ fontSize: 13, color: '#9ca3af', padding: '6px 0' }}>No maintenance requests.</div> : (
+        <div style={{ display: 'grid', gap: 6 }}>
+          {maint.map((m) => (
+            <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1px solid #e7e3f3', borderRadius: 8, padding: '8px 12px', flexWrap: 'wrap' }}>
+              <Wrench size={14} style={{ color: ACCENT }} />
+              <button onClick={() => setMForm({ ...m })} style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, flex: 1, textAlign: 'left' }}>{m.title}</button>
+              <Badge tone={m.priority === 'high' ? 'red' : m.priority === 'low' ? 'grey' : 'amber'}>{m.priority}</Badge>
+              <Badge tone={m.status === 'resolved' ? 'green' : m.status === 'in_progress' ? 'blue' : 'grey'}>{m.status.replace(/_/g, ' ')}</Badge>
+              {m.status !== 'resolved' && <Button size="sm" variant="ghost" onClick={async () => { await api.put(`/business-maintenance/${m.id}`, { status: 'resolved' }); load(); }}>Resolve</Button>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {form && (
+        <Drawer open title={lease ? 'Edit Lease' : 'Create Lease'} width={520} onClose={() => setForm(null)}
+          footer={<div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}><Button variant="ghost" onClick={() => setForm(null)}>Cancel</Button><Button onClick={saveLease} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button></div>}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="Tenant name" full><Input value={form.tenant_name} onChange={(e) => set('tenant_name', e.target.value)} /></Field>
+            <Field label="Monthly rent (৳)"><Input type="number" value={form.monthly_rent} onChange={(e) => set('monthly_rent', e.target.value)} /></Field>
+            <Field label="Security deposit (৳)"><Input type="number" value={form.security_deposit} onChange={(e) => set('security_deposit', e.target.value)} /></Field>
+            <Field label="Lease start"><Input type="date" value={form.lease_start || ''} onChange={(e) => set('lease_start', e.target.value)} /></Field>
+            <Field label="Term (months)"><Input type="number" value={form.lease_term_months} onChange={(e) => set('lease_term_months', e.target.value)} /></Field>
+            <Field label="Rent due day"><Input type="number" value={form.rent_due_day} onChange={(e) => set('rent_due_day', e.target.value)} /></Field>
+            <Field label="Leasing commission (৳)"><Input type="number" value={form.commission_amount} onChange={(e) => set('commission_amount', e.target.value)} /></Field>
+            <Field label="Status"><Select value={form.status} onChange={(e) => set('status', e.target.value)}><option value="active">Active</option><option value="renewed">Renewed</option><option value="expired">Expired</option><option value="terminated">Terminated</option></Select></Field>
+            <Field label="Notes" full><Textarea rows={2} value={form.notes || ''} onChange={(e) => set('notes', e.target.value)} /></Field>
+          </div>
+          {!lease && <div style={{ marginTop: 10, fontSize: 12.5, color: '#6b7280' }}>A monthly rent schedule will be generated automatically for the lease term.</div>}
+        </Drawer>
+      )}
+
+      {mForm && (
+        <Drawer open title={mForm.id ? 'Edit Maintenance' : 'Log Maintenance'} width={480} onClose={() => setMForm(null)}
+          footer={<div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}><Button variant="ghost" onClick={() => setMForm(null)}>Cancel</Button><Button onClick={saveMaint}>Save</Button></div>}>
+          <div style={{ display: 'grid', gap: 12 }}>
+            <Field label="Title"><Input value={mForm.title} onChange={(e) => setMForm({ ...mForm, title: e.target.value })} /></Field>
+            <Field label="Description"><Textarea rows={3} value={mForm.description} onChange={(e) => setMForm({ ...mForm, description: e.target.value })} /></Field>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Priority"><Select value={mForm.priority} onChange={(e) => setMForm({ ...mForm, priority: e.target.value })}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></Select></Field>
+              <Field label="Status"><Select value={mForm.status} onChange={(e) => setMForm({ ...mForm, status: e.target.value })}><option value="open">Open</option><option value="in_progress">In progress</option><option value="resolved">Resolved</option></Select></Field>
+              <Field label="Vendor"><Input value={mForm.vendor} onChange={(e) => setMForm({ ...mForm, vendor: e.target.value })} /></Field>
+              <Field label="Cost (৳)"><Input type="number" value={mForm.cost} onChange={(e) => setMForm({ ...mForm, cost: e.target.value })} /></Field>
+            </div>
           </div>
         </Drawer>
       )}
