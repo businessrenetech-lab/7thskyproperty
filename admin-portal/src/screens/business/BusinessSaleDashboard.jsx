@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileSignature, Tags, Briefcase, ArrowRight, Building2, MessageSquareQuote } from 'lucide-react';
+import { FileSignature, Tags, Briefcase, ArrowRight, Building2, MessageSquareQuote, Receipt, BarChart3 } from 'lucide-react';
 import api from '../../services/api';
 
 /*
@@ -34,8 +34,8 @@ function Card({ to, icon: Icon, title, desc }) {
 const money = (n) => (n == null ? '—' : `৳${Number(n).toLocaleString()}`);
 
 export default function BusinessSaleDashboard() {
-  const [stats, setStats] = useState(null);
-  useEffect(() => { api.get('/business-listings/stats').then((r) => setStats(r.data.data)).catch(() => {}); }, []);
+  const [rep, setRep] = useState(null);
+  useEffect(() => { api.get('/business-reports/overview').then((r) => setRep(r.data.data)).catch(() => {}); }, []);
 
   return (
     <div className="pm-scope" style={{ padding: '4px 2px' }}>
@@ -51,9 +51,9 @@ export default function BusinessSaleDashboard() {
         </div>
       </div>
 
-      {stats && (
+      {rep && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginTop: 16 }}>
-          {[['Business listings', stats.total], ['Pipeline value', money(stats.pipeline_value)], ['Active', stats.by_status?.active || 0], ['Under offer', stats.by_status?.under_offer || 0]].map(([label, value]) => (
+          {[['Business listings', rep.listings.total], ['Pipeline value', money(rep.listings.pipeline_value)], ['Commission earned', money(rep.settlements.commission_earned)], ['Outstanding invoices', money(rep.invoices.outstanding)]].map(([label, value]) => (
             <div key={label} style={{ background: '#fff', border: '1px solid #e7e3f3', borderRadius: 12, padding: '14px 16px' }}>
               <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>{label}</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: '#1b1440', marginTop: 2 }}>{value}</div>
@@ -73,6 +73,10 @@ export default function BusinessSaleDashboard() {
           desc="Business Purchase Customer Service Agreement (SSPC-BPS-01) — for buyer / acquisition engagements." />
         <Card to="/business/price-schedule" icon={Tags} title="Price Schedules"
           desc="Standard Schedule C price schedules for business sale (BSS) and purchase (BPS) services." />
+        <Card to="/business/invoices" icon={Receipt} title="Invoices"
+          desc="Service-fee & commission invoices for business sales, with payments — isolated to this module." />
+        <Card to="/business/reports" icon={BarChart3} title="Reports"
+          desc="Pipeline & financial rollups — commission earned/collected, invoiced/outstanding, funnels." />
       </div>
 
       <div style={{ marginTop: 22, padding: '14px 18px', background: '#faf8ff', border: '1px dashed #d9cffb', borderRadius: 12, color: '#5b21b6', fontSize: 13 }}>

@@ -1165,6 +1165,10 @@ export const BUSINESS_NAV = [
   { key: 'biz-buying', label: 'Buying a Business', items: [
     { to: '/business/purchase/agreements', label: 'Purchase Agreements', icon: FileSignature },
   ] },
+  { key: 'biz-finance', label: 'Finance', items: [
+    { to: '/business/invoices', label: 'Invoices', icon: Receipt },
+    { to: '/business/reports', label: 'Reports', icon: BarChart3 },
+  ] },
 ];
 
 export const businessSaleConsole = {
