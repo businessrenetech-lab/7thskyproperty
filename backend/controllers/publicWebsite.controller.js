@@ -23,6 +23,7 @@ const { SaleOffer, SaleOfferParty, SaleOfferVersion } = require('../models/Sales
 const { generateCode } = require('../utils/codeGenerator');
 const { routeAndEnrol } = require('./salesEnquiry.controller');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
+const { isPubliclyVisible, pickPublic } = require('../services/publicPropertyShape');
 
 /** Resolve default or main branch id safely */
 async function getDefaultBranchId() {
@@ -377,6 +378,12 @@ exports.getPropertyDetails = asyncHandler(async (req, res) => {
   }
 
   // Increment view counter silently in background
+  // Unpublished listings are not public, whatever id is asked for (and a probe
+  // of a hidden id must not count as a view).
+  if (!isPubliclyVisible(property.get({ plain: true }))) {
+    return res.status(404).json({ error: 'Property not found or is currently not listed.' });
+  }
+
   Property.increment('views_count', { by: 1, where: { id: property.id } }).catch(() => {});
 
   const plain = property.get({ plain: true });
@@ -404,7 +411,7 @@ exports.getPropertyDetails = asyncHandler(async (req, res) => {
 
   res.json({
     data: {
-      ...plain,
+      ...pickPublic(plain),
       title: (isShortStay && shortStayProfile?.public_headline) ? shortStayProfile.public_headline : plain.title,
       description: (isShortStay && shortStayProfile?.public_description) ? shortStayProfile.public_description : plain.description,
       bedrooms: (isShortStay && shortStayProfile?.bedrooms) ? shortStayProfile.bedrooms : plain.bedrooms,

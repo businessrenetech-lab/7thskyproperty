@@ -41,8 +41,12 @@ module.exports = [
   ['/api/rental-assessments', './rentalAssessment.routes'],
   ['/api/rental-enquiries', './rentalEnquiry.routes'],
   ['/api/communications', './communications.routes'],
+  ['/api/marketing', './marketingCampaign.routes'],
   ['/api/sales-enquiries', './salesEnquiry.routes'],
   ['/api/public', './publicSales.routes'],
+  // Public website API (properties, enquiries, offers, site content). Was only in
+  // server.js, so production 404'd and the live site fell back to mock data.
+  ['/api/public-website', './publicWebsite.routes'],
   ['/api/property-management', './propertyManagement.routes'],
   ['/api/owner-statements', './ownerStatement.routes'],
   ['/api/short-stay', './shortTermStay.routes'],
