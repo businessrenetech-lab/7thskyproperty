@@ -7,5 +7,6 @@ const ROLES = ['super_admin', 'branch_admin', 'property_manager', 'sales_executi
 router.use(authMiddleware, roleMiddleware(ROLES));
 
 router.get('/overview', ctrl.overview);
+router.get('/buy-overview', ctrl.buyOverview);
 
 module.exports = router;

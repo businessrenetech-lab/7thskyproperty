@@ -4,7 +4,7 @@ const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = requ
 const { generateCode } = require('../utils/codeGenerator');
 
 const FIELDS = [
-  'business_listing_id', 'settlement_id', 'client_contact_id', 'client_name', 'invoice_type',
+  'business_listing_id', 'deal_side', 'mandate_id', 'settlement_id', 'client_contact_id', 'client_name', 'invoice_type',
   'line_items', 'discount', 'vat_percent', 'status', 'issue_date', 'due_date', 'notes', 'payments',
 ];
 const listingInc = { model: BusinessListing, as: 'listing', attributes: ['id', 'business_code', 'business_name'] };
@@ -40,6 +40,8 @@ exports.list = asyncHandler(async (req, res) => {
   const { limit, offset, page } = getPagination(req);
   const where = { ...branchScope(req) };
   if (req.query.business_listing_id) where.business_listing_id = req.query.business_listing_id;
+  if (req.query.deal_side) where.deal_side = req.query.deal_side; // sale | buy | rent — scopes each business console
+  if (req.query.mandate_id) where.mandate_id = req.query.mandate_id;
   if (req.query.status) where.status = req.query.status;
   const { rows, count } = await BusinessInvoice.findAndCountAll({ where, include: [listingInc], limit, offset, order: [['created_at', 'DESC']] });
   res.json({ data: rows, pagination: { page, limit, total: count, pages: Math.ceil(count / limit) } });
@@ -53,7 +55,13 @@ exports.getOne = asyncHandler(async (req, res) => {
 
 exports.create = asyncHandler(async (req, res) => {
   const data = derive(pick(req.body, FIELDS));
-  if (!data.business_listing_id) return res.status(400).json({ error: 'business_listing_id is required.' });
+  const side = data.deal_side || 'sale';
+  // Sale/rent invoices are raised against a listing; buy invoices against a mandate.
+  if (side === 'buy') {
+    if (!data.mandate_id) return res.status(400).json({ error: 'mandate_id is required for a buy invoice.' });
+  } else if (!data.business_listing_id) {
+    return res.status(400).json({ error: 'business_listing_id is required.' });
+  }
   data.branch_id = resolveBranchId(req, req.body.branch_id);
   data.created_by = req.user?.id || null;
   data.invoice_code = await generateCode(BusinessInvoice, 'invoice_code', 'SSPC-BI-');
