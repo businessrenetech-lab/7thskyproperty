@@ -8,10 +8,21 @@ const money = (n) => (n == null || n === '' ? '—' : `৳${Number(n).toLocaleSt
 const STATUS_TONE = { draft: 'grey', sent: 'blue', partial: 'amber', paid: 'green', overdue: 'red', void: 'grey' };
 const EMPTY_LINE = { description: '', qty: 1, unit_price: '', amount: 0 };
 
-export default function BusinessInvoices() {
+// dealSide scopes the invoice list + creation: sale/rent invoices are raised
+// against a business listing; buy invoices against an acquisition mandate.
+const SIDE_META = {
+  sale: { title: 'Sale Invoices', desc: 'Service-fee & commission invoices for business sales — isolated to the Sale console.', listingType: 'sale' },
+  buy: { title: 'Buy Invoices', desc: 'Acquisition service-fee & success-fee invoices, raised against a mandate — isolated to the Buy console.', listingType: null },
+  rent: { title: 'Rent Invoices', desc: 'Leasing service-fee & commission invoices — isolated to the Rent console.', listingType: 'rent' },
+};
+
+export default function BusinessInvoices({ dealSide = 'sale' }) {
+  const meta = SIDE_META[dealSide] || SIDE_META.sale;
+  const isBuy = dealSide === 'buy';
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [listings, setListings] = useState([]);
+  const [mandates, setMandates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [drawer, setDrawer] = useState(null); // {id, form}
   const [pay, setPay] = useState(null); // {invoice, amount, method}
@@ -19,13 +30,16 @@ export default function BusinessInvoices() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const r = await api.get('/business-invoices', { params: { limit: 200 } }); setRows(r.data.data || []); }
+    try { const r = await api.get('/business-invoices', { params: { limit: 200, deal_side: dealSide } }); setRows(r.data.data || []); }
     catch { toast.error('Failed to load invoices'); } finally { setLoading(false); }
-  }, [toast]);
+  }, [toast, dealSide]);
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { api.get('/business-listings', { params: { limit: 200 } }).then((r) => setListings(r.data.data || [])).catch(() => {}); }, []);
+  useEffect(() => {
+    if (isBuy) { api.get('/business-mandates', { params: { limit: 200 } }).then((r) => setMandates(r.data.data || [])).catch(() => {}); }
+    else { api.get('/business-listings', { params: { limit: 200, listing_type: meta.listingType } }).then((r) => setListings(r.data.data || [])).catch(() => {}); }
+  }, [isBuy, meta.listingType]);
 
-  const openNew = () => setDrawer({ id: null, form: { business_listing_id: '', client_name: '', invoice_type: 'service_fee', line_items: [{ ...EMPTY_LINE }], discount: 0, vat_percent: 0, status: 'draft', due_date: '', issue_date: new Date().toISOString().slice(0, 10), notes: '' } });
+  const openNew = () => setDrawer({ id: null, form: { deal_side: dealSide, business_listing_id: '', mandate_id: '', client_name: '', invoice_type: 'service_fee', line_items: [{ ...EMPTY_LINE }], discount: 0, vat_percent: 0, status: 'draft', due_date: '', issue_date: new Date().toISOString().slice(0, 10), notes: '' } });
   const setF = (k, v) => setDrawer((d) => ({ ...d, form: { ...d.form, [k]: v } }));
   const setLine = (i, k, v) => setDrawer((d) => { const items = d.form.line_items.map((l, idx) => idx === i ? { ...l, [k]: v, amount: k === 'qty' || k === 'unit_price' ? Number(k === 'qty' ? v : l.qty) * Number(k === 'unit_price' ? v : l.unit_price) : l.amount } : l); return { ...d, form: { ...d.form, line_items: items } }; });
   const addLine = () => setDrawer((d) => ({ ...d, form: { ...d.form, line_items: [...d.form.line_items, { ...EMPTY_LINE }] } }));
@@ -36,7 +50,8 @@ export default function BusinessInvoices() {
   const total = subtotal - (drawer ? Number(drawer.form.discount || 0) : 0) + vat;
 
   const save = async () => {
-    if (!drawer.form.business_listing_id) { toast.error('Select a business'); return; }
+    if (isBuy) { if (!drawer.form.mandate_id) { toast.error('Select a mandate'); return; } }
+    else if (!drawer.form.business_listing_id) { toast.error('Select a business'); return; }
     setSaving(true);
     try {
       if (drawer.id) await api.put(`/business-invoices/${drawer.id}`, drawer.form);
@@ -52,7 +67,7 @@ export default function BusinessInvoices() {
 
   const columns = useMemo(() => [
     { key: 'invoice_code', label: 'Invoice', render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.invoice_code}</span> },
-    { key: 'listing', label: 'Business', render: (r) => r.listing?.business_name || r.client_name || '—' },
+    { key: 'listing', label: isBuy ? 'Client / Mandate' : 'Business', render: (r) => r.listing?.business_name || r.client_name || (r.mandate_id ? `Mandate #${r.mandate_id}` : '—') },
     { key: 'total_amount', label: 'Total', render: (r) => money(r.total_amount) },
     { key: 'paid_amount', label: 'Paid', render: (r) => money(r.paid_amount) },
     { key: 'due', label: 'Due', render: (r) => money(Number(r.total_amount || 0) - Number(r.paid_amount || 0)) },
@@ -62,7 +77,7 @@ export default function BusinessInvoices() {
 
   return (
     <div className="pm-scope">
-      <PageHead title="Business Invoices" desc="Service-fee & commission invoices for business sales — isolated to the Business module."
+      <PageHead title={meta.title} desc={meta.desc}
         actions={<Button icon={Plus} onClick={openNew}>New Invoice</Button>} />
       <DataTable columns={columns} rows={rows} loading={loading} onRowClick={(r) => setDrawer({ id: r.id, form: { ...r, line_items: Array.isArray(r.line_items) ? r.line_items : (r.line_items ? JSON.parse(r.line_items) : [{ ...EMPTY_LINE }]) } })}
         empty="No invoices yet." />
@@ -74,7 +89,9 @@ export default function BusinessInvoices() {
             <div style={{ display: 'flex', gap: 8 }}><Button variant="ghost" onClick={() => setDrawer(null)}>Cancel</Button><Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button></div>
           </div>}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Field label="Business" required><Select value={drawer.form.business_listing_id} onChange={(e) => setF('business_listing_id', e.target.value)}><option value="">— Select —</option>{listings.map((l) => <option key={l.id} value={l.id}>{l.business_code} · {l.business_name}</option>)}</Select></Field>
+            {isBuy
+              ? <Field label="Mandate" required><Select value={drawer.form.mandate_id} onChange={(e) => setF('mandate_id', e.target.value)}><option value="">— Select —</option>{mandates.map((m) => <option key={m.id} value={m.id}>{m.mandate_code || `Mandate #${m.id}`} · {m.client_name || m.buyer_name || ''}</option>)}</Select></Field>
+              : <Field label="Business" required><Select value={drawer.form.business_listing_id} onChange={(e) => setF('business_listing_id', e.target.value)}><option value="">— Select —</option>{listings.map((l) => <option key={l.id} value={l.id}>{l.business_code} · {l.business_name}</option>)}</Select></Field>}
             <Field label="Type"><Select value={drawer.form.invoice_type} onChange={(e) => setF('invoice_type', e.target.value)}><option value="service_fee">Service fee</option><option value="commission">Commission</option><option value="mixed">Mixed</option></Select></Field>
             <Field label="Client name"><Input value={drawer.form.client_name || ''} onChange={(e) => setF('client_name', e.target.value)} /></Field>
             <Field label="Status"><Select value={drawer.form.status} onChange={(e) => setF('status', e.target.value)}><option value="draft">Draft</option><option value="sent">Sent</option><option value="void">Void</option></Select></Field>

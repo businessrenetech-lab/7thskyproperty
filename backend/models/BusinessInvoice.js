@@ -6,7 +6,9 @@ const BusinessInvoice = sequelize.define('BusinessInvoice', {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
   branch_id: { type: DataTypes.INTEGER, allowNull: false },
   invoice_code: { type: DataTypes.STRING(40), unique: true },
-  business_listing_id: { type: DataTypes.INTEGER, allowNull: false },
+  business_listing_id: { type: DataTypes.INTEGER, allowNull: true },
+  deal_side: { type: DataTypes.STRING(10), defaultValue: 'sale' }, // sale | buy | rent
+  mandate_id: DataTypes.INTEGER, // buy invoices are raised against an acquisition mandate
   settlement_id: DataTypes.INTEGER,
   client_contact_id: DataTypes.INTEGER,
   client_name: DataTypes.STRING,

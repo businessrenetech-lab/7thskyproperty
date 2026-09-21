@@ -35,7 +35,7 @@ const money = (n) => (n == null ? '—' : `৳${Number(n).toLocaleString()}`);
 
 export default function BusinessSaleDashboard() {
   const [rep, setRep] = useState(null);
-  useEffect(() => { api.get('/business-reports/overview').then((r) => setRep(r.data.data)).catch(() => {}); }, []);
+  useEffect(() => { api.get('/business-reports/overview', { params: { listing_type: 'sale' } }).then((r) => setRep(r.data.data)).catch(() => {}); }, []);
 
   return (
     <div className="pm-scope" style={{ padding: '4px 2px' }}>
@@ -44,9 +44,9 @@ export default function BusinessSaleDashboard() {
           <Building2 size={22} />
         </span>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#1b1440' }}>Business Sales</h1>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#1b1440' }}>Business Sale</h1>
           <p style={{ margin: '2px 0 0', color: '#6b7280', fontSize: 13.5 }}>
-            Sell or acquire a business — coordinated end-to-end per the Business Sale SOP (SSPC-BSS-SOP-01).
+            Sell a business on the owner's behalf — listings, buyer screening, sale coordination & settlement (SSPC-BSS-01).
           </p>
         </div>
       </div>
@@ -69,23 +69,16 @@ export default function BusinessSaleDashboard() {
           desc="Buyers & investors — screening, financial capability and lead pipeline (SOP Steps 11–12)." />
         <Card to="/business/sale/agreements" icon={FileSignature} title="Sale Agreements"
           desc="Business Sale Customer Service Agreement (SSPC-BSS-01) — build, price, and send to the seller for e-signature." />
-        <Card to="/business/purchase/agreements" icon={Briefcase} title="Purchase Agreements"
-          desc="Business Purchase Customer Service Agreement (SSPC-BPS-01) — for buyer / acquisition engagements." />
         <Card to="/business/price-schedule" icon={Tags} title="Price Schedules"
-          desc="Standard Schedule C price schedules for business sale (BSS) and purchase (BPS) services." />
-        <Card to="/business/invoices" icon={Receipt} title="Invoices"
-          desc="Service-fee & commission invoices for business sales, with payments — isolated to this module." />
-        <Card to="/business/reports" icon={BarChart3} title="Reports"
-          desc="Pipeline & financial rollups — commission earned/collected, invoiced/outstanding, funnels." />
-        <Card to="/business/rent/rental-agreements" icon={Briefcase} title="Rent / Lease a Business"
-          desc="Business Rental & Tenancy Management agreements (SSPC-BRMS-01 / BTMS-01) and rent price schedules." />
+          desc="Standard Schedule C price schedule for business sale (BSS) services." />
+        <Card to="/business/invoices" icon={Receipt} title="Sale Invoices"
+          desc="Service-fee & commission invoices for business sales, with payments — isolated to the Sale console." />
+        <Card to="/business/reports" icon={BarChart3} title="Sale Reports"
+          desc="Sale pipeline & financial rollups — commission earned/collected, invoiced/outstanding, funnels." />
       </div>
 
       <div style={{ marginTop: 22, padding: '14px 18px', background: '#faf8ff', border: '1px dashed #d9cffb', borderRadius: 12, color: '#5b21b6', fontSize: 13 }}>
-        <strong>Coming next</strong> — business listings &amp; seller/buyer CRM, the SOP workflow stages
-        (consultation → assessment → documentation → marketing → buyer screening → due diligence →
-        settlement), business assessment &amp; due-diligence registers, and business-sale-only financials,
-        invoicing &amp; reports.
+        Looking to <Link to="/business-buy" style={{ color: '#4338ca', fontWeight: 700 }}>buy a business</Link> or <Link to="/business-rent" style={{ color: '#be185d', fontWeight: 700 }}>rent / lease one</Link>? Each has its own dedicated console.
       </div>
     </div>
   );
