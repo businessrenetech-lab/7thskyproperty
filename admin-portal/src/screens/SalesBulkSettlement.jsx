@@ -14,9 +14,10 @@ import { Play, RefreshCw } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { PageHead, Button, Spinner, Badge } from '../ui/kit';
-import { settlementDeskPath } from './sales/paths';
+import { settlementDeskPath, useSalesCategory } from './sales/paths';
 
 export default function SalesBulkSettlement() {
+  const locked = useSalesCategory();
   const toast = useToast();
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
@@ -32,7 +33,7 @@ export default function SalesBulkSettlement() {
     // new run starts (see run() below).
     setLoading(true);
     try {
-      const { data } = await api.get('/deals/settlement/sales-bulk-data');
+      const { data } = await api.get('/deals/settlement/sales-bulk-data', { params: locked ? { category: locked } : {} });
       setRows(data.data || []);
       setSummary(data.summary);
       const s = {};

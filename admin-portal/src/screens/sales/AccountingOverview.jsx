@@ -8,12 +8,13 @@ import { useNavigate } from 'react-router-dom';
 import { RefreshCw, Wallet, HandCoins, Receipt, CheckCircle2 } from 'lucide-react';
 import api from '../../services/api';
 import { PageHead, StatCard, Button, Spinner } from '../../ui/kit';
-import { settlementDeskPath } from './paths';
+import { settlementDeskPath, useSalesCategory } from './paths';
 import SalesInvoices from './SalesInvoices';
 
 const money = (v) => 'BDT ' + Number(v || 0).toLocaleString();
 
 export default function AccountingOverview() {
+  const locked = useSalesCategory();
   const navigate = useNavigate();
   const [tab, setTab] = useState('overview');
   const [data, setData] = useState(null);
@@ -22,7 +23,7 @@ export default function AccountingOverview() {
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
-    try { const { data } = await api.get('/sales/accounting-overview'); setData(data.data); }
+    try { const { data } = await api.get('/sales/accounting-overview', { params: locked ? { category: locked } : {} }); setData(data.data); }
     catch (e) { setError(e.response?.data?.error || 'Could not load accounting overview.'); }
     finally { setLoading(false); }
   }, []);

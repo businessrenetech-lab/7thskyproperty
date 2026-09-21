@@ -1,3 +1,6 @@
+import { useLocation } from 'react-router-dom';
+import { lockedCategoryForPath } from './categoryLock.mjs';
+
 /*
  * Where a sales screen navigates, given the category it is serving.
  *
@@ -45,3 +48,9 @@ export const clientProfilePath = (category, { clientId, contactId } = {}) => {
   return base;
 };
 
+
+/** The category the current console locks shared sales screens to ('business' or null). */
+export function useSalesCategory() {
+  const { pathname } = useLocation();
+  return lockedCategoryForPath(pathname);
+}
