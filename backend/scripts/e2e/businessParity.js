@@ -89,6 +89,26 @@ async function phase3() {
   const com = await req('POST', '/api/properties', { body: { title: `Com ${STAMP}`, category: 'commercial', property_type: 'Office', listing_type: 'sale' } });
   const bad = await req('PUT', `/api/properties/${com.body?.data?.id}/business-profile`, { body: { industry: 'x' } });
   ok(bad.status === 400, 'profile refused on a non-business property', `HTTP ${bad.status}`);
+
+  await req('PUT', `/api/properties/${id}`, { body: { is_published: true, price: 25000000, area: 'Banani', city: 'Dhaka', address: 'House 1, Road 2' } });
+  const list = await req('GET', '/api/public-website/properties?category=business&listing_type=sale&limit=100', { noAuth: true });
+  const row = (list.body?.data || []).find((r) => Number(r.id) === Number(id));
+  ok(!!row, 'published business appears in the website Business Buy search');
+  if (row) {
+    ok(row.title === `Importer ${STAMP}`, 'teaser headline is the public title', row.title);
+    ok(!JSON.stringify(row).includes('Secret Traders'), 'list never shows the business name');
+    ok(!('address' in row), 'list hides the street address');
+    ok(row.business?.turnover_band === '৳1–2 Cr', 'turnover band shown', row.business?.turnover_band);
+  }
+  const det = await req('GET', `/api/public-website/properties/${id}`, { noAuth: true });
+  const d = det.body?.data || {};
+  ok(det.status === 200 && !JSON.stringify(d).includes('Secret Traders'), 'detail is a teaser (no name)');
+  ok(!('address' in d) && !('latitude' in d), 'detail hides address + coordinates');
+  ok(!JSON.stringify(d).includes('15000000') && !JSON.stringify(d).includes('3000000'), 'detail hides exact financials');
+  const search = await req('GET', `/api/public-website/properties?search=${encodeURIComponent('Secret Traders')}`, { noAuth: true });
+  ok(!(search.body?.data || []).some((r) => Number(r.id) === Number(id)), 'searching the real name does not find the listing');
+  const nonBiz = await req('GET', '/api/public-website/properties?listing_type=sale&limit=5', { noAuth: true });
+  ok((nonBiz.body?.data || []).filter((r) => r.category !== 'business').every((r) => !r.business), 'non-business listings are unchanged (no business object)');
   return id;
 }
 
@@ -98,5 +118,10 @@ async function phase3() {
   if (want(1)) await phase1();
   if (want(2)) await phase2();
   const bizId = want(3) ? await phase3() : null; // eslint-disable-line no-unused-vars
+  // The DB is shared with production: never leave a test fixture on the live site.
+  if (bizId) {
+    const off = await req('PUT', `/api/properties/${bizId}`, { body: { is_published: false } });
+    ok(off.status === 200, 'cleanup: test fixture unpublished', `id ${bizId}`);
+  }
   finish();
 })().catch((e) => { ok(false, 'harness crashed', e.message); finish(); });

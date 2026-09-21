@@ -24,6 +24,17 @@ const { generateCode } = require('../utils/codeGenerator');
 const { routeAndEnrol } = require('./salesEnquiry.controller');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
 const { isPubliclyVisible, pickPublic } = require('../services/publicPropertyShape');
+const PropertyBusinessProfile = require('../models/PropertyBusinessProfile');
+const { applyBusinessTeaser } = require('../services/businessTeaser.service');
+
+// Teaser every business row of a public list (one query for all their profiles).
+async function teaseBusinessRows(rows) {
+  const ids = rows.filter((r) => r.category === 'business').map((r) => Number(r.id));
+  if (!ids.length) return rows;
+  const profiles = await PropertyBusinessProfile.findAll({ where: { property_id: ids }, raw: true });
+  const byId = new Map(profiles.map((p) => [Number(p.property_id), p]));
+  return rows.map((r) => (r.category === 'business' ? applyBusinessTeaser(r, byId.get(Number(r.id))) : r));
+}
 
 /** Resolve default or main branch id safely */
 async function getDefaultBranchId() {
@@ -221,12 +232,12 @@ exports.getPublishedProperties = asyncHandler(async (req, res) => {
     const q = `%${req.query.search}%`;
     andConditions.push({
       [Op.or]: [
-        { title: { [Op.like]: q } },
+        // A confidential business is never findable by its real name or address.
+        { [Op.and]: [{ category: { [Op.ne]: 'business' } }, { [Op.or]: [{ title: { [Op.like]: q } }, { address: { [Op.like]: q } }] }] },
         { property_code: { [Op.like]: q } },
         { area: { [Op.like]: q } },
         { city: { [Op.like]: q } },
         { district: { [Op.like]: q } },
-        { address: { [Op.like]: q } },
       ],
     });
   }
@@ -314,7 +325,7 @@ exports.getPublishedProperties = asyncHandler(async (req, res) => {
   });
 
   res.json({
-    data: sanitized,
+    data: await teaseBusinessRows(sanitized),
     pagination: {
       total: count,
       page: pageNum,
@@ -409,8 +420,7 @@ exports.getPropertyDetails = asyncHandler(async (req, res) => {
   const nearbyPlacesList = parseArray(plain.nearby_places, []);
   const mediaList = Array.isArray(plain.media) ? plain.media : [];
 
-  res.json({
-    data: {
+  let payload = {
       ...pickPublic(plain),
       title: (isShortStay && shortStayProfile?.public_headline) ? shortStayProfile.public_headline : plain.title,
       description: (isShortStay && shortStayProfile?.public_description) ? shortStayProfile.public_description : plain.description,
@@ -423,8 +433,13 @@ exports.getPropertyDetails = asyncHandler(async (req, res) => {
       price_display: effectivePrice > 0 ? (isShortStay ? `৳${effectivePrice.toLocaleString()} / night` : `৳${effectivePrice.toLocaleString()}`) : 'Price on Enquiry',
       price_unit: isShortStay ? 'per night' : (plain.price_unit || (plain.listing_type === 'sale' ? 'Total' : 'per month')),
       short_stay_profile: shortStayProfile ? (shortStayProfile.get ? shortStayProfile.get({ plain: true }) : shortStayProfile) : null,
-    },
-  });
+  };
+  // Confidential business listings are teasers until an NDA is released.
+  if (plain.category === 'business') {
+    const profile = await PropertyBusinessProfile.findOne({ where: { property_id: plain.id }, raw: true });
+    payload = applyBusinessTeaser(payload, profile);
+  }
+  res.json({ data: payload });
 });
 
 // ─── 3. SUBMIT RENTAL ENQUIRY (Website Prospective Tenant) ───────────────────
