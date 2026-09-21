@@ -17,6 +17,7 @@ import {
 import api from "../services/api";
 import { usePmScope } from '../config/pmScope';
 import { useToast } from "../context/ToastContext";
+import { propertyWizardPath } from "./sales/paths";
 import { Spinner, Button, Field, Input, Select, Textarea } from "../ui/kit";
 import PropertyMediaGallery from "../components/PropertyMediaGallery";
 import FileUpload from "../ui/FileUpload";
@@ -310,7 +311,7 @@ export default function PropertyWizard() {
         setPropertyId(created.id);
         nav(
           saleMode
-            ? `/sales/properties/new/${created.id}?listing_type=sale&category=${encodeURIComponent(f.category)}`
+            ? propertyWizardPath(f.category, created.id, `listing_type=sale&category=${encodeURIComponent(f.category)}`)
             : `${scope.basePath}/rentals/new/${created.id}`,
           { replace: true },
         );
@@ -455,7 +456,7 @@ export default function PropertyWizard() {
                     <Field label="Listing for">
                       <div className="pm-seg">
                         {(saleMode
-                          ? ["residential", "commercial", "rural"]
+                          ? ["residential", "commercial", "rural", "business"]
                           : ["residential", "commercial"]
                         ).map((c) => (
                           <button

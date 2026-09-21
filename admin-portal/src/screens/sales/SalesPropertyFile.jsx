@@ -48,7 +48,7 @@ import {
 import { Combo } from "../../ui/pickers";
 import FileUpload, { fileSrc } from "../../ui/FileUpload";
 import SalesAssessmentWorkspace from "./SalesAssessmentWorkspace";
-import { settlementDeskPath, clientProfilePath } from "./paths";
+import { settlementDeskPath, clientProfilePath, propertyWizardPath } from "./paths";
 import UploadButton from "../../ui/UploadButton";
 import RoleKycManager from "../../components/RoleKycManager";
 
@@ -2345,7 +2345,7 @@ export default function SalesPropertyFile({
             icon={Edit}
             onClick={() =>
               navigate(
-                `/sales/properties/new/${property.id}?listing_type=sale&category=${encodeURIComponent(property.category)}`,
+                propertyWizardPath(property.category, property.id, `listing_type=sale&category=${encodeURIComponent(property.category)}`),
               )
             }
           >

@@ -1150,47 +1150,58 @@ export const spacePlanningConsole = {
  * two Customer Service Agreements (SSPC-BSS-01 sale / SSPC-BPS-01 purchase) and
  * their price schedules, on the isolated 'business' category. Rebased on
  * /business/*. */
-// Business is split into three dedicated consoles — Sale / Buy / Rent — each with
-// its own dashboard, enquiries, agreements, price schedule, invoices and reports,
-// plus a Switch group cross-linking the others (mirrors the Commercial split).
-
+/* ── Business Sale / Buyer — Commercial's two consoles, item for item, rendered
+ * with category="business" and rebased onto /business/* (salesBase('business')).
+ * Shared screens lock to business records via useSalesCategory(). Business Rent
+ * keeps its own console below. ── */
 export const BUSINESS_SALE_NAV = [
-  { key: 'bsale-home', label: 'Home', items: [
-    { to: '/business/sale', label: 'Sale Dashboard', icon: LayoutGrid, end: true },
+  { key: 'biz-home', label: 'Home', items: [
+    { to: '/business/sell', label: 'Sale Dashboard', icon: LayoutGrid, end: true },
+    { to: '/business/work-queue', label: 'My Work Queue', icon: Inbox },
+    { to: '/business/inbox', label: 'Sales Inbox', icon: Inbox },
+    { to: '/business/calendar', label: 'Calendar', icon: CalendarDays },
+    { to: '/business/reports', label: 'Reports', icon: BarChart3 },
+    { to: '/business/contacts', label: 'Contacts', icon: Users },
+    { to: '/business/marketing', label: 'Marketing', icon: Megaphone },
   ] },
-  { key: 'bsale-pipeline', label: 'Pipeline', items: [
-    { to: '/business/listings', label: 'Business Listings', icon: Building2 },
-    { to: '/business/enquiries', label: 'Buyer Enquiries', icon: MessageSquareQuote },
-    { to: '/business/sale/agreements', label: 'Sale Agreements', icon: FileSignature },
-    { to: '/business/price-schedule', label: 'Price Schedules', icon: Tags },
+  { key: 'biz-selling', label: 'Selling', items: [
+    { to: '/business/properties', label: 'Properties', icon: Building2 },
+    { to: '/business/agreements/sale', label: 'Sale Agreements', icon: FileSignature },
+    { to: '/business/price-schedule', label: 'Price Schedule', icon: Tags },
   ] },
-  { key: 'bsale-finance', label: 'Finance', items: [
-    { to: '/business/invoices', label: 'Sale Invoices', icon: Receipt },
-    { to: '/business/reports', label: 'Sale Reports', icon: BarChart3 },
+  { key: 'biz-assurance', label: 'Assurance', items: [
+    { to: '/business/compliance?category=business', label: 'Compliance', icon: ShieldCheck },
+    { to: '/business/contracts', label: 'Contracts', icon: FileText },
+    { to: '/business/introductions', label: 'Introductions', icon: ShieldCheck },
+    { to: '/business/workflows?vertical_key=business_sale', label: 'Checklists / Workflows', icon: Folder },
   ] },
-  { key: 'bsale-switch', label: 'Switch', items: [
-    { to: '/business-buy', label: '→ Buy a Business', icon: Briefcase },
-    { to: '/business-rent', label: '→ Rent a Business', icon: Building2 },
+  { key: 'biz-money', label: 'Money', items: [
+    { to: '/business/accounting', label: 'Accounting', icon: Landmark },
+    { to: '/business/settlements', label: 'Settlements (Bulk)', icon: HandCoins },
+  ] },
+  { key: 'biz-switch', label: 'Switch', items: [
+    { to: '/business/buyer-service', label: '→ Buyer Service', icon: Briefcase },
   ] },
 ];
 
-export const BUSINESS_BUY_NAV = [
-  { key: 'bbuy-home', label: 'Home', items: [
-    { to: '/business-buy', label: 'Buy Dashboard', icon: LayoutGrid, end: true },
+export const BUSINESS_BUYER_NAV = [
+  { key: 'biz-buyer-home', label: 'Home', items: [
+    { to: '/business/buyer-service', label: 'Buyer Dashboard', icon: LayoutGrid, end: true },
+    { to: '/business/buyer/work-queue', label: 'My Work Queue', icon: Inbox },
+    { to: '/business/buyer/calendar', label: 'Calendar', icon: CalendarDays },
+    { to: '/business/enquiry', label: 'Buyer Enquiries', icon: MessageSquareQuote },
   ] },
-  { key: 'bbuy-pipeline', label: 'Acquisition', items: [
-    { to: '/business-buy/mandates', label: 'Acquisition Mandates', icon: ClipboardList },
-    { to: '/business-buy/enquiries', label: 'Acquirer Enquiries', icon: MessageSquareQuote },
-    { to: '/business-buy/agreements', label: 'Purchase Agreements', icon: FileSignature },
-    { to: '/business-buy/price-schedule', label: 'Price Schedules', icon: Tags },
+  { key: 'biz-buying', label: 'Buying', items: [
+    { to: '/business/buy', label: 'Buy Deals', icon: Briefcase },
+    { to: '/business/mandates', label: 'Buyer Mandates', icon: ClipboardList },
+    { to: '/business/agreements/purchase', label: 'Purchase Agreements', icon: FileSignature },
   ] },
-  { key: 'bbuy-finance', label: 'Finance', items: [
-    { to: '/business-buy/invoices', label: 'Buy Invoices', icon: Receipt },
-    { to: '/business-buy/reports', label: 'Buy Reports', icon: BarChart3 },
+  { key: 'biz-directory', label: 'Directory & Money', items: [
+    { to: '/business/buyer/contacts', label: 'Contacts', icon: Users },
+    { to: '/business/buyer-invoices', label: 'Buyer Invoices', icon: Landmark },
   ] },
-  { key: 'bbuy-switch', label: 'Switch', items: [
-    { to: '/business/sale', label: '→ Sell a Business', icon: Building2 },
-    { to: '/business-rent', label: '→ Rent a Business', icon: Building2 },
+  { key: 'biz-buyer-switch', label: 'Switch', items: [
+    { to: '/business/sell', label: '→ Sale Dashboard', icon: LayoutGrid },
   ] },
 ];
 
@@ -1209,8 +1220,8 @@ export const BUSINESS_RENT_NAV = [
     { to: '/business-rent/reports', label: 'Rent Reports', icon: BarChart3 },
   ] },
   { key: 'brent-switch', label: 'Switch', items: [
-    { to: '/business/sale', label: '→ Sell a Business', icon: Building2 },
-    { to: '/business-buy', label: '→ Buy a Business', icon: Briefcase },
+    { to: '/business/sell', label: '→ Sell a Business', icon: Building2 },
+    { to: '/business/buyer-service', label: '→ Buy a Business', icon: Briefcase },
   ] },
 ];
 
@@ -1228,14 +1239,11 @@ export const businessSaleConsole = {
   exitTo: '/dashboard',
 };
 
-export const businessBuyConsole = {
-  slug: 'business-buy',
-  storageKey: 'biz.buy.nav.collapsed',
-  brand: businessBrand('Business Buy', '#4f46e5', '#4338ca', '#3730a3', 'rgba(79,70,229,.12)', '#e0e7ff'), // indigo
-  navGroups: BUSINESS_BUY_NAV,
-  api: {},
-  contentClass: 'pm-scope',
-  exitTo: '/dashboard',
+export const businessBuyerConsole = {
+  ...businessSaleConsole,
+  storageKey: 'biz.buyer.nav.collapsed',
+  brand: businessBrand('Business Buyer Service', '#4f46e5', '#4338ca', '#3730a3', 'rgba(79,70,229,.12)', '#e0e7ff'), // indigo
+  navGroups: BUSINESS_BUYER_NAV,
 };
 
 export const businessRentConsole = {
@@ -1310,7 +1318,6 @@ export const CONSOLES = {
   residential: residentialConsole,
   commercial: commercialConsole,
   business: businessSaleConsole,
-  'business-buy': businessBuyConsole,
   'business-rent': businessRentConsole,
   'business-registration': businessRegistrationConsole,
 };

@@ -25,7 +25,7 @@ export default function BusinessListingDetail() {
 
   const loadListing = useCallback(async () => {
     try { const { data } = await api.get(`/business-listings/${id}`); setListing(data.data); }
-    catch { toast.error('Failed to load business'); navigate('/business/listings'); }
+    catch { toast.error('Failed to load business'); navigate('/business-rent/listings'); }
   }, [id, navigate, toast]);
   useEffect(() => { loadListing(); }, [loadListing]);
 
@@ -48,7 +48,7 @@ export default function BusinessListingDetail() {
 
   return (
     <div className="pm-scope">
-      <button onClick={() => navigate('/business/listings')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: ACCENT, cursor: 'pointer', padding: '4px 0', fontSize: 13 }}>
+      <button onClick={() => navigate('/business-rent/listings')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: ACCENT, cursor: 'pointer', padding: '4px 0', fontSize: 13 }}>
         <ArrowLeft size={15} /> Back to listings
       </button>
 

@@ -42,7 +42,7 @@ export default function BusinessListings({ listingType = 'sale' }) {
       const { data } = await api.post('/business-listings', form);
       toast.success('Business listing created');
       setForm(null);
-      navigate(`/business/listings/${data.data.id}`);
+      navigate(`/business-rent/listings/${data.data.id}`);
     } catch (e) { toast.error(e.response?.data?.error || 'Save failed'); }
     finally { setSaving(false); }
   };
@@ -76,7 +76,7 @@ export default function BusinessListings({ listingType = 'sale' }) {
         </Select>
       </div>
 
-      <DataTable columns={columns} rows={rows} loading={loading} onRowClick={(r) => navigate(`/business/listings/${r.id}`)}
+      <DataTable columns={columns} rows={rows} loading={loading} onRowClick={(r) => navigate(`/business-rent/listings/${r.id}`)}
         empty={isRent ? 'No rental listings yet — add a business/premises engaged for lease.' : 'No business listings yet — click “New Business Listing” to add the first seller engagement.'} />
 
       {form && (
