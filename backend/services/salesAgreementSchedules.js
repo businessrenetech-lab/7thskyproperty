@@ -269,6 +269,43 @@ const BUSINESS_TENANCY = {
   ],
 };
 
+// ── Business Registration (SSPC-BR-CSA-01) — signed with the Client ───────────
+// Transcribed VERBATIM from "Business Registration Customer Service Agreement V0.2".
+// A service-delivery engagement (not a listing) — Seventh Sky coordinates trade
+// licence, company registration, tax and corporate documentation on the Client's
+// behalf. No success fee — all charges are professional service / coordination fees.
+const BUSINESS_REGISTRATION = {
+  party: 'Client',
+  client_heading: 'CLIENT',
+  client_footer: 'Hereinafter referred to as "the Client"',
+  commission_label: 'Priority / Urgent Processing Coordination (if engaged)',
+  schedule_a_title: 'SCHEDULE A — Selected Services',
+  schedule_a: [
+    ['Trade Licence Services', ['New Trade Licence Application', 'Trade Licence Renewal', 'Trade Licence Amendment', 'Municipality Documentation', 'City Corporation Documentation', 'Local Authority Coordination']],
+    ['Business Registration Services', ['Sole Proprietorship Registration', 'Partnership Registration', 'Private Limited Company Registration', 'Public Limited Company Registration', 'Business Name Registration', 'RJSC Registration Coordination']],
+    ['Corporate Documentation', ['Memorandum of Association Coordination', 'Articles of Association Coordination', 'Shareholder Documentation', 'Director Documentation', 'Company Resolution Preparation', 'Statutory Documentation']],
+    ['Tax & Regulatory Registration', ['TIN Registration Coordination', 'BIN Registration Coordination', 'VAT Registration Coordination', 'Tax Registration Support', 'Regulatory Compliance Documentation']],
+    ['Corporate Compliance Services', ['Annual Return Coordination', 'Company Information Update', 'Regulatory Filing Support', 'Corporate Record Maintenance', 'Company Secretarial Coordination']],
+    ['Business Advisory Services', ['Business Structure Consultation', 'Registration Process Guidance', 'Documentation Review', 'Regulatory Compliance Advice']],
+    ['Additional Services', ['Government Authority Liaison', 'Certified Document Coordination', 'Translation Coordination', 'Business Information Update', 'Other']],
+  ],
+  schedule_b_title: 'SCHEDULE B — Project Summary',
+  schedule_b_fields: [
+    ['Work Order No.', 'work_order_no'], ['Quotation No.', 'quotation_no'], ['Client Name', 'client_name'],
+    ['Business Name', 'business_name'], ['Business Structure', 'business_structure'], ['Selected Services', 'selected_services_text'],
+    ['Scope of Work', 'scope_of_work'], ['Government Authorities Involved', 'authorities'],
+    ['Estimated Commencement Date', 'commencement_date'], ['Estimated Completion Date', 'completion_date'],
+    ['Special Requirements', 'special_requirements'],
+  ],
+  schedule_d_title: 'SCHEDULE D — Required Client Documents & Registration Checklist',
+  schedule_d: [
+    ['Client Identification', ['National ID / Passport', 'Passport-size Photograph (if required)', 'Proof of Address (if applicable)']],
+    ['Business Information', ['Proposed Business Name', 'Nature of Business', 'Business Address', 'Contact Details', 'Ownership Details']],
+    ['Company Registration (where applicable)', ['Shareholder Information', 'Director Information', 'Memorandum of Association', 'Articles of Association', 'Share Capital Information', 'Board Resolution (if applicable)']],
+    ['Tax & Regulatory Documents', ['TIN Information', 'BIN / VAT Information (if applicable)', 'Existing Registration Documents (if applicable)', 'Other Supporting Documents Required by the Relevant Authority']],
+  ],
+};
+
 module.exports = {
   purchase: PURCHASE,
   sale: SALE,
@@ -278,4 +315,5 @@ module.exports = {
   purchase_business: BUSINESS_PURCHASE,
   rent_business: BUSINESS_RENTAL,
   tenancy_business: BUSINESS_TENANCY,
+  registration_business: BUSINESS_REGISTRATION,
 };

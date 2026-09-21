@@ -1199,6 +1199,39 @@ export const businessSaleConsole = {
   exitTo: '/dashboard',
 };
 
+// ── Business Registration — its own console (a service-delivery project line,
+// not a marketplace). Coordinates trade licence, company registration, tax and
+// corporate documentation on the client's behalf. Nav grows phase by phase;
+// Phase 0 ships the Customer Service Agreement (SSPC-BR-CSA-01) + price schedule.
+export const BUSINESS_REG_NAV = [
+  { key: 'br-home', label: 'Home', items: [
+    { to: '/business-registration', label: 'Registration Dashboard', icon: LayoutGrid, end: true },
+  ] },
+  { key: 'br-registration', label: 'Registration', items: [
+    { to: '/business-registration/agreements', label: 'Registration Agreements', icon: FileSignature },
+    { to: '/business-registration/price-schedule', label: 'Price Schedules', icon: Tags },
+  ] },
+];
+
+export const businessRegistrationConsole = {
+  slug: 'business-registration',
+  storageKey: 'breg.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Business Registration',
+    icon: Landmark,
+    accent: '#0d9488',          // teal-600 — tells Registration apart from the sales/rent consoles
+    accentStrong: '#0f766e',
+    accentInk: '#115e59',
+    accentTint: 'rgba(13,148,136,.12)',
+    accentTint2: '#ccfbf1',
+  },
+  navGroups: BUSINESS_REG_NAV,
+  api: {},
+  contentClass: 'pm-scope',
+  exitTo: '/dashboard',
+};
+
 export const CONSOLES = {
   'water-tank': waterTankConsole,
   'air-conditioning': airConditioningConsole,
@@ -1220,4 +1253,5 @@ export const CONSOLES = {
   residential: residentialConsole,
   commercial: commercialConsole,
   business: businessSaleConsole,
+  'business-registration': businessRegistrationConsole,
 };

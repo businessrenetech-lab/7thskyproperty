@@ -15,6 +15,7 @@ const bss = require('../services/bssAgreement.service');
 const bps = require('../services/bpsAgreement.service');
 const brm = require('../services/brmAgreement.service');
 const btm = require('../services/btmAgreement.service');
+const brg = require('../services/brgAgreement.service');
 const SigningEnvelope = require('../models/SigningEnvelope');
 const EnvelopeSigner = require('../models/EnvelopeSigner');
 const SignatureField = require('../models/SignatureField');
@@ -48,10 +49,16 @@ const REGISTRY = {
     rental_mgmt: { svc: brm, build: 'buildBrmAgreement', related_type: 'business_rental_agreement', signer: 'owner', party: 'Owner', code: 'BRM', sched: 'rent_business', header: 'Seventh Sky Business Services' },
     tenancy_mgmt: { svc: btm, build: 'buildBtmAgreement', related_type: 'business_tenancy_agreement', signer: 'tenant', party: 'Tenant', code: 'BTM', sched: 'tenancy_business', header: 'Seventh Sky Business Services' },
   },
+  // Business Registration — the client-side service agreement (SSPC-BR-CSA-01),
+  // signed with the Client, same 25-clause render engine, isolated under
+  // category 'business_registration'.
+  business_registration: {
+    registration: { svc: brg, build: 'buildBrgAgreement', related_type: 'business_registration_agreement', signer: 'client', party: 'Client', code: 'BRG', sched: 'registration_business', header: 'Seventh Sky Business Registration Services' },
+  },
 };
 const catOf = (req) => {
   const c = String(req.query.category || (req.body && req.body.category) || req.params.category || 'residential').toLowerCase();
-  return (c === 'commercial' || c === 'business' || c === 'business_rent') ? c : 'residential';
+  return (c === 'commercial' || c === 'business' || c === 'business_rent' || c === 'business_registration') ? c : 'residential';
 };
 const K = (req) => (REGISTRY[catOf(req)] || {})[req.params.kind] || null;
 
@@ -59,6 +66,7 @@ const K = (req) => (REGISTRY[catOf(req)] || {})[req.params.kind] || null;
 const relatedFor = (cat) => Object.values(REGISTRY[cat] || REGISTRY.residential).map((k) => k.related_type);
 const kindOf = (rt) => {
   const s = String(rt);
+  if (s.includes('registration')) return 'registration';
   if (s.includes('tenancy')) return 'tenancy_mgmt';
   if (s.includes('rental')) return 'rental_mgmt';
   if (s.includes('purchase')) return 'purchase';

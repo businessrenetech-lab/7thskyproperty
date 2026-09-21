@@ -32,6 +32,9 @@ const SCHEDULES = {
   // Business Rent area and never mix with the business sale/purchase catalogues.
   rent_rental_business: { label: 'Business — Rental Management', scope: 'business_rent', group: 'brm', prefix: 'BRM-' },
   rent_tenancy_business: { label: 'Business — Tenancy Management', scope: 'business_rent', group: 'btm', prefix: 'BTM-' },
+  // Business Registration — own 'business_registration' scope so the Schedule C
+  // price schedule stays isolated to the Business Registration console.
+  registration_registration_business: { label: 'Business — Registration', scope: 'business_registration', group: 'brg', prefix: 'BRC-' },
 };
 const PRICE_TYPES = ['fixed', 'from', 'percent', 'included'];
 

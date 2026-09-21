@@ -156,6 +156,9 @@ import BusinessMandates from './screens/business/BusinessMandates';
 import BusinessMandateDetail from './screens/business/BusinessMandateDetail';
 import BrmAgreements from './screens/sales/BrmAgreements';
 import BtmAgreements from './screens/sales/BtmAgreements';
+import BusinessRegistrationConsole from './screens/BusinessRegistrationConsole';
+import BusinessRegistrationDashboard from './screens/business-registration/BusinessRegistrationDashboard';
+import BrgAgreements from './screens/sales/BrgAgreements';
 import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
 import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
 import Signing from './screens/Signing';
@@ -1483,6 +1486,17 @@ export default function App() {
               <Route path="/business/sale/agreements" element={<SaleAgreements category="business" />} />
               <Route path="/business/purchase/agreements" element={<PurchaseAgreements category="business" />} />
               <Route path="/business/price-schedule" element={<SalesPriceSchedule scope="business" title="Business · Price Schedules" />} />
+            </Route>
+
+            {/* ── Business Registration — its own console (a service-delivery
+                project line, not a marketplace). Phase 0: the Customer Service
+                Agreement (SSPC-BR-CSA-01) on the isolated
+                category="business_registration" + its Schedule C price schedule.
+                Later phases add the 9-phase SOP project pipeline. ── */}
+            <Route element={<RequireAuth><AdminGate><BusinessRegistrationConsole /></AdminGate></RequireAuth>}>
+              <Route path="/business-registration" element={<BusinessRegistrationDashboard />} />
+              <Route path="/business-registration/agreements" element={<BrgAgreements category="business_registration" />} />
+              <Route path="/business-registration/price-schedule" element={<SalesPriceSchedule scope="business_registration" title="Business Registration · Price Schedules" />} />
             </Route>
 
             <Route path="/" element={<RequireAuth><Landing /></RequireAuth>} />

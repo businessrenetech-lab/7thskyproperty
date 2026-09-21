@@ -77,6 +77,19 @@ const KIND_META = {
     summarySubtitle: 'Reference codes, business requirements, budget and lease preferences',
     feeLabel: 'Business Tenancy Success Fee (Schedule C)',
   },
+  registration: {
+    party: 'Client',
+    partyPlural: 'Clients',
+    title: 'Registration Agreements',
+    newTitle: 'New Business Registration Service Agreement',
+    base: '/sales-agreements/registration',
+    docCode: 'SSPC-BR-CSA-01 (v0.2)',
+    agencyRole: 'Business Registration Coordination Agency',
+    subtitle: 'Business Registration Customer Service Agreement',
+    summaryTitle: 'Project Summary',
+    summarySubtitle: 'Reference codes, business structure, selected services and registration timeline',
+    feeLabel: 'Priority / Urgent Processing (Schedule C)',
+  },
 };
 
 function safeJson(val) {
@@ -246,7 +259,7 @@ export default function SalesAgreementScreen({ kind, category = 'residential' })
   };
   const [builderPrefill, setBuilderPrefill] = useState(null);
 
-  const docCode = category === 'business_rent'
+  const docCode = (category === 'business_rent' || category === 'business_registration')
     ? km.docCode
     : category === 'business'
       ? (kind === 'purchase' ? 'SSPC-BPS-01 (v0.2)' : 'SSPC-BSS-01 (v0.2)')
@@ -254,10 +267,13 @@ export default function SalesAgreementScreen({ kind, category = 'residential' })
         ? (kind === 'purchase' ? 'SSPC-CPPS-01 (v0.2)' : 'SSPC-CPSS-01 (v0.2)')
         : (kind === 'purchase' ? 'SSPC-RPPS-01 (v0.2)' : 'SSPC-RPSS-01 (v0.2)');
   // "Business" agreements are over a business, not a property — the copy reflects that.
-  const isBiz = category === 'business' || category === 'business_rent';
+  const isBiz = category === 'business' || category === 'business_rent' || category === 'business_registration';
   const catLabel = isBiz ? 'Business' : category === 'commercial' ? 'Commercial' : 'Residential';
-  // rent uses the kind's own title (Rental/Tenancy Management); sale/purchase uses Sale/Purchase.
-  const kindWord = category === 'business_rent' ? (kind === 'tenancy_mgmt' ? 'Tenancy Management' : 'Rental Management') : (km.party === 'Buyer' ? 'Purchase' : 'Sale');
+  // rent uses the kind's own title (Rental/Tenancy Management); registration uses Registration;
+  // sale/purchase uses Sale/Purchase.
+  const kindWord = category === 'business_registration' ? 'Registration'
+    : category === 'business_rent' ? (kind === 'tenancy_mgmt' ? 'Tenancy Management' : 'Rental Management')
+      : (km.party === 'Buyer' ? 'Purchase' : 'Sale');
   const subjectWord = isBiz ? '' : 'Property ';
 
   const tabs = useMemo(() => [
