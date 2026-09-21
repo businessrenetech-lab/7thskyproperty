@@ -154,6 +154,8 @@ import BusinessInvoices from './screens/business/BusinessInvoices';
 import BusinessReports from './screens/business/BusinessReports';
 import BusinessMandates from './screens/business/BusinessMandates';
 import BusinessMandateDetail from './screens/business/BusinessMandateDetail';
+import BrmAgreements from './screens/sales/BrmAgreements';
+import BtmAgreements from './screens/sales/BtmAgreements';
 import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
 import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
 import Signing from './screens/Signing';
@@ -1472,6 +1474,9 @@ export default function App() {
               <Route path="/business/reports" element={<BusinessReports />} />
               <Route path="/business/mandates" element={<BusinessMandates />} />
               <Route path="/business/mandates/:id" element={<BusinessMandateDetail />} />
+              <Route path="/business/rent/rental-agreements" element={<BrmAgreements category="business_rent" />} />
+              <Route path="/business/rent/tenancy-agreements" element={<BtmAgreements category="business_rent" />} />
+              <Route path="/business/rent/price-schedule" element={<SalesPriceSchedule scope="business_rent" title="Business Rent · Price Schedules" />} />
               <Route path="/business/sale/agreements" element={<SaleAgreements category="business" />} />
               <Route path="/business/purchase/agreements" element={<PurchaseAgreements category="business" />} />
               <Route path="/business/price-schedule" element={<SalesPriceSchedule scope="business" title="Business · Price Schedules" />} />

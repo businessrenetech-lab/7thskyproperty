@@ -201,6 +201,74 @@ const BUSINESS_PURCHASE = {
   ],
 };
 
+// ── Business Rental Management (SSPC-BRMS-01) — signed with the Owner/Landlord ─
+// Transcribed VERBATIM from "Business Rental Management Service Agreement V0.2".
+const BUSINESS_RENTAL = {
+  party: 'Owner',
+  client_heading: 'BUSINESS OWNER / LANDLORD (CLIENT)',
+  client_footer: 'Hereinafter referred to as the "Client", "Owner", or "Landlord"',
+  commission_label: "Business Leasing Success Fee — one month's rent (or as agreed)",
+  schedule_a_title: 'SCHEDULE A — Selected Services',
+  schedule_a: [
+    ['Business Rental Consultation', ['Initial Consultation', 'Rental Strategy', 'Market Rental Assessment', 'Business Rental Planning', 'Commercial Advice']],
+    ['Business Preparation', ['Presentation Assessment', 'Cleaning Coordination', 'Repairs & Maintenance Coordination', 'Signage Coordination', 'Photography & Videography', 'Business Presentation Improvement']],
+    ['Marketing & Promotion', ['Business Listing Preparation', 'Online Marketing', 'Social Media Promotion', 'Commercial Advertising', 'Enquiry Management', 'Investor / Tenant Promotion']],
+    ['Tenant Sourcing & Screening', ['Tenant Sourcing', 'Business Operator Sourcing', 'Preliminary Screening', 'Financial Capability Review', 'Business Suitability Assessment']],
+    ['Lease Coordination', ['Property Inspection Coordination', 'Lease Negotiation Coordination', 'Letter of Offer Coordination', 'Lease Documentation Coordination', 'Lease Execution Coordination', 'Business Handover Coordination']],
+    ['Ongoing Rental Management', ['Rent Collection Coordination', 'Tenant Communication', 'Routine Inspection Coordination', 'Maintenance Coordination', 'Lease Renewal Coordination', 'Exit Coordination']],
+    ['Additional Services', ['Business Valuation Coordination', 'Legal Documentation Coordination', 'Utility Coordination', 'Other']],
+  ],
+  schedule_b_title: 'SCHEDULE B — Business Rental Summary',
+  schedule_b_fields: [
+    ['Work Order No.', 'work_order_no'], ['Quotation No.', 'quotation_no'], ['Business Name', 'business_name'],
+    ['Business Type', 'business_type'], ['Business Address', 'business_address'], ['Ownership Structure', 'ownership_structure'],
+    ['Current Operational Status', 'operational_status'], ['Expected Monthly Rent', 'monthly_rent'], ['Expected Security Deposit', 'security_deposit'],
+    ['Preferred Lease Term', 'lease_term'], ['Selected Services', 'selected_services_text'],
+    ['Estimated Commencement Date', 'commencement_date'], ['Estimated Completion Date', 'completion_date'], ['Special Requirements', 'special_requirements'],
+  ],
+  schedule_d_title: 'SCHEDULE D — Business Rental Checklist',
+  schedule_d: [
+    ['Business Information', ['Business Name', 'Trade Licence / Company Registration', 'Nature of Business', 'Ownership Details', 'Business Address']],
+    ['Business Documents', ['Trade Licence', 'Company Registration Certificate', 'TIN / BIN (if applicable)', 'Existing Lease Agreement (if applicable)', 'Financial Information (if required)']],
+    ['Rental Information', ['Expected Monthly Rent', 'Expected Security Deposit', 'Preferred Lease Term', 'Rent Review Structure', 'Included Assets & Equipment']],
+    ['Marketing Requirements', ['Photography Approved', 'Marketing Description Approved', 'Inspection Availability Confirmed', 'Tenant Criteria Confirmed', 'Other Special Instructions']],
+  ],
+};
+
+// ── Business Tenancy Management (SSPC-BTMS-01) — signed with the Tenant/Lessee ─
+// Transcribed VERBATIM from "Business Tenancy Management Service Agreement V0.2".
+const BUSINESS_TENANCY = {
+  party: 'Tenant',
+  client_heading: 'BUSINESS TENANT / LESSEE (CLIENT)',
+  client_footer: 'Hereinafter referred to as the "Client", "Tenant", or "Lessee"',
+  commission_label: "Business Tenancy Success Fee — one month's rent (or as agreed)",
+  schedule_a_title: 'SCHEDULE A — Selected Services',
+  schedule_a: [
+    ['Business Leasing Consultation', ['Initial Consultation', 'Business Requirement Assessment', 'Location Assessment', 'Rental Budget Assessment', 'Leasing Strategy Advice']],
+    ['Property Search & Shortlisting', ['Commercial Property Search', 'Property Shortlisting', 'Market Rental Comparison', 'Property Suitability Assessment']],
+    ['Property Inspection', ['Inspection Coordination', 'Property Viewing', 'Landlord Meeting Coordination', 'Site Assessment']],
+    ['Lease Negotiation', ['Rental Negotiation', 'Commercial Terms Negotiation', 'Lease Condition Review Coordination', 'Letter of Offer Coordination']],
+    ['Documentation & Move-In Coordination', ['Lease Documentation Coordination', 'Utility Connection Coordination', 'Key Handover Coordination', 'Fit-Out Coordination', 'Business Commencement Support']],
+    ['Ongoing Tenancy Management', ['Lease Renewal Coordination', 'Rent Review Assistance', 'Landlord Communication', 'Maintenance Coordination', 'Exit Coordination']],
+    ['Additional Services', ['Business Relocation Assistance', 'Expansion Property Search', 'Multiple Site Coordination', 'Other']],
+  ],
+  schedule_b_title: 'SCHEDULE B — Project Summary',
+  schedule_b_fields: [
+    ['Work Order No.', 'work_order_no'], ['Quotation No.', 'quotation_no'], ['Client Name', 'client_name'],
+    ['Business Type', 'business_type'], ['Preferred Location', 'preferred_location'], ['Property Type', 'property_type'],
+    ['Space Requirement', 'space_requirement'], ['Monthly Rental Budget', 'rental_budget'], ['Lease Term Preference', 'lease_term'],
+    ['Selected Services', 'selected_services_text'], ['Estimated Commencement Date', 'commencement_date'],
+    ['Estimated Completion Date', 'completion_date'], ['Special Requirements', 'special_requirements'],
+  ],
+  schedule_d_title: 'SCHEDULE D — Business Tenancy Requirements Checklist',
+  schedule_d: [
+    ['Business Information', ['Business Name', 'Nature of Business', 'Business Registration Details (if applicable)', 'Contact Details']],
+    ['Property Requirements', ['Preferred Location', 'Property Type', 'Minimum Floor Area', 'Parking Requirements', 'Utility Requirements', 'Accessibility Requirements']],
+    ['Financial Information', ['Monthly Rental Budget', 'Preferred Lease Term', 'Security Deposit Budget', 'Fit-Out Budget (if applicable)']],
+    ['Supporting Documents', ['National ID / Passport', 'Business Registration Documents (if applicable)', 'Financial Information (if required)', 'Other Supporting Documents']],
+  ],
+};
+
 module.exports = {
   purchase: PURCHASE,
   sale: SALE,
@@ -208,4 +276,6 @@ module.exports = {
   sale_commercial: COMMERCIAL_SALE,
   sale_business: BUSINESS_SALE,
   purchase_business: BUSINESS_PURCHASE,
+  rent_business: BUSINESS_RENTAL,
+  tenancy_business: BUSINESS_TENANCY,
 };

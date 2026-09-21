@@ -1166,6 +1166,11 @@ export const BUSINESS_NAV = [
     { to: '/business/mandates', label: 'Acquisition Mandates', icon: Briefcase },
     { to: '/business/purchase/agreements', label: 'Purchase Agreements', icon: FileSignature },
   ] },
+  { key: 'biz-rent', label: 'Renting a Business', items: [
+    { to: '/business/rent/rental-agreements', label: 'Rental Management', icon: FileSignature },
+    { to: '/business/rent/tenancy-agreements', label: 'Tenancy Management', icon: FileSignature },
+    { to: '/business/rent/price-schedule', label: 'Rent Price Schedules', icon: Tags },
+  ] },
   { key: 'biz-finance', label: 'Finance', items: [
     { to: '/business/invoices', label: 'Invoices', icon: Receipt },
     { to: '/business/reports', label: 'Reports', icon: BarChart3 },

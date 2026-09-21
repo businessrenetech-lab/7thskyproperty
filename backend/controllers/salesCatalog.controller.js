@@ -28,6 +28,10 @@ const SCHEDULES = {
   // Business Sale console and never appear in the property sales catalogues.
   sale_sale_business: { label: 'Business — Sale', scope: 'business', group: 'bss', prefix: 'BSS-' },
   sale_purchase_business: { label: 'Business — Purchase', scope: 'business', group: 'bps', prefix: 'BPS-' },
+  // Business Rent — own 'business_rent' scope so they stay isolated to the
+  // Business Rent area and never mix with the business sale/purchase catalogues.
+  rent_rental_business: { label: 'Business — Rental Management', scope: 'business_rent', group: 'brm', prefix: 'BRM-' },
+  rent_tenancy_business: { label: 'Business — Tenancy Management', scope: 'business_rent', group: 'btm', prefix: 'BTM-' },
 };
 const PRICE_TYPES = ['fixed', 'from', 'percent', 'included'];
 
