@@ -57,6 +57,9 @@ module.exports = [
   ['/api/business-enquiries', './businessEnquiry.routes'],
   ['/api/business-assessments', './businessAssessment.routes'],
   ['/api/business-documents', './businessDocument.routes'],
+  ['/api/business-inspections', './businessInspection.routes'],
+  ['/api/business-offers', './businessOffer.routes'],
+  ['/api/business-settlements', './businessSettlement.routes'],
   ['/api/rptm', './rptm.routes'],
   // Water Tank module — these were only mounted in server.js, so the Hostinger
   // monolith 404'd every /api/wt-* call ("Could not load the dashboard").

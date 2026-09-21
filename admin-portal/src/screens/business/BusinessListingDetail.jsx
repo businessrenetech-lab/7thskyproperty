@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pencil, Plus, Check, ClipboardCheck, FileText, ShieldCheck, Coins, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowLeft, Pencil, Plus, Check, ClipboardCheck, FileText, ShieldCheck, Coins, Trash2, CheckCircle2, XCircle, CalendarDays, Handshake, Landmark } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { Button, Badge, Drawer, Field, Input, Textarea, Select, KV, Spinner, EmptyState } from '../../ui/kit';
@@ -67,7 +67,7 @@ export default function BusinessListingDetail() {
       </div>
 
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #eee', margin: '16px 0 18px' }}>
-        {[['workflow', 'SOP Workflow', ClipboardCheck], ['assessment', 'Assessment', ShieldCheck], ['documents', 'Documents & Due Diligence', FileText], ['overview', 'Overview', Coins]].map(([k, label, Icon]) => (
+        {[['workflow', 'SOP Workflow', ClipboardCheck], ['inspections', 'Inspections', CalendarDays], ['offers', 'Offers', Handshake], ['settlement', 'Settlement', Landmark], ['assessment', 'Assessment', ShieldCheck], ['documents', 'Documents', FileText], ['overview', 'Overview', Coins]].map(([k, label, Icon]) => (
           <button key={k} onClick={() => setTab(k)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'none', border: 'none', borderBottom: tab === k ? `2px solid ${ACCENT}` : '2px solid transparent', color: tab === k ? ACCENT : '#6b7280', fontWeight: tab === k ? 700 : 500, cursor: 'pointer', fontSize: 13.5 }}>
             <Icon size={15} /> {label}
           </button>
@@ -75,6 +75,9 @@ export default function BusinessListingDetail() {
       </div>
 
       {tab === 'workflow' && <WorkflowTab listing={listing} curIdx={curIdx} onSetStage={saveStage} />}
+      {tab === 'inspections' && <InspectionsTab listingId={id} />}
+      {tab === 'offers' && <OffersTab listingId={id} />}
+      {tab === 'settlement' && <SettlementTab listing={listing} />}
       {tab === 'assessment' && <AssessmentTab listingId={id} />}
       {tab === 'documents' && <DocumentsTab listingId={id} />}
       {tab === 'overview' && <OverviewTab listing={listing} />}
@@ -229,6 +232,181 @@ function DocumentsTab({ listingId }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ── Inspections (SOP Step 14–15) ─────────────────────────────────────────────
+const EMPTY_INSP = { inspection_type: 'walkthrough', scheduled_date: '', attendees: '', outcome: 'follow_up', feedback: '', status: 'scheduled', notes: '' };
+function InspectionsTab({ listingId }) {
+  const toast = useToast();
+  const [rows, setRows] = useState([]);
+  const [form, setForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const load = useCallback(() => api.get('/business-inspections', { params: { business_listing_id: listingId } }).then((r) => setRows(r.data.data || [])).catch(() => {}), [listingId]);
+  useEffect(() => { load(); }, [load]);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const save = async () => { setSaving(true); try { await api.post('/business-inspections', { ...form, business_listing_id: listingId }); toast.success('Inspection saved'); setForm(null); load(); } catch (e) { toast.error(e.response?.data?.error || 'Save failed'); } finally { setSaving(false); } };
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <p style={{ color: '#6b7280', fontSize: 13, margin: 0 }}>Buyer meetings & operational walkthroughs (SOP Steps 14–15).</p>
+        <Button icon={Plus} onClick={() => setForm({ ...EMPTY_INSP })}>Schedule Inspection</Button>
+      </div>
+      {rows.length === 0 ? <EmptyState icon={CalendarDays} title="No inspections yet" sub="Coordinate a buyer meeting or operational walkthrough." /> : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {rows.map((r) => (
+            <div key={r.id} style={{ background: '#fff', border: '1px solid #e7e3f3', borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ fontWeight: 700, textTransform: 'capitalize' }}>{r.inspection_type} <span style={{ color: '#9ca3af', fontWeight: 400, fontSize: 12 }}>{r.scheduled_date ? new Date(r.scheduled_date).toLocaleDateString() : ''}</span></div>
+                <div style={{ display: 'flex', gap: 8 }}><Badge tone={r.status === 'completed' ? 'green' : r.status === 'cancelled' ? 'red' : 'blue'}>{r.status}</Badge>{r.outcome && <Badge tone="grey">{r.outcome}</Badge>}</div>
+              </div>
+              {r.attendees && <div style={{ fontSize: 12.5, color: '#6b7280', marginTop: 4 }}>Attendees: {r.attendees}</div>}
+              {r.feedback && <div style={{ fontSize: 13, color: '#374151', marginTop: 6 }}>{r.feedback}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+      {form && (
+        <Drawer open title="Schedule Inspection" width={520} onClose={() => setForm(null)}
+          footer={<div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}><Button variant="ghost" onClick={() => setForm(null)}>Cancel</Button><Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button></div>}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="Type"><Select value={form.inspection_type} onChange={(e) => set('inspection_type', e.target.value)}><option value="walkthrough">Operational walkthrough</option><option value="meeting">Buyer meeting</option><option value="operational">Operational clarification</option></Select></Field>
+            <Field label="Date & time"><Input type="datetime-local" value={form.scheduled_date} onChange={(e) => set('scheduled_date', e.target.value)} /></Field>
+            <Field label="Attendees" full><Input value={form.attendees} onChange={(e) => set('attendees', e.target.value)} placeholder="Buyer, owner, coordinator…" /></Field>
+            <Field label="Status"><Select value={form.status} onChange={(e) => set('status', e.target.value)}><option value="scheduled">Scheduled</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></Select></Field>
+            <Field label="Outcome"><Select value={form.outcome} onChange={(e) => set('outcome', e.target.value)}><option value="follow_up">Follow up</option><option value="interested">Interested</option><option value="offer_expected">Offer expected</option><option value="not_interested">Not interested</option></Select></Field>
+            <Field label="Feedback / notes" full><Textarea rows={3} value={form.feedback} onChange={(e) => set('feedback', e.target.value)} /></Field>
+          </div>
+        </Drawer>
+      )}
+    </div>
+  );
+}
+
+// ── Offers & negotiation (SOP Step 16–18) ────────────────────────────────────
+const OFFER_TONE = { submitted: 'blue', under_review: 'amber', countered: 'amber', accepted: 'green', rejected: 'red', withdrawn: 'grey' };
+const EMPTY_OFFER = { buyer_name: '', offer_amount: '', offer_date: new Date().toISOString().slice(0, 10), conditions: '', operational_transition: '', settlement_terms: '', status: 'submitted', non_circumvention_flag: false, notes: '' };
+function OffersTab({ listingId }) {
+  const toast = useToast();
+  const [rows, setRows] = useState([]);
+  const [form, setForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const load = useCallback(() => api.get('/business-offers', { params: { business_listing_id: listingId } }).then((r) => setRows(r.data.data || [])).catch(() => {}), [listingId]);
+  useEffect(() => { load(); }, [load]);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const save = async () => { if (!form.offer_amount) { toast.error('Offer amount required'); return; } setSaving(true); try { await api.post('/business-offers', { ...form, business_listing_id: listingId }); toast.success('Offer recorded'); setForm(null); load(); } catch (e) { toast.error(e.response?.data?.error || 'Save failed'); } finally { setSaving(false); } };
+  const setStatus = async (o, status) => { try { await api.patch(`/business-offers/${o.id}/status`, { status }); load(); } catch { toast.error('Action failed'); } };
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <p style={{ color: '#6b7280', fontSize: 13, margin: 0 }}>Offers, counteroffers & non-circumvention monitoring (SOP Steps 16–18).</p>
+        <Button icon={Plus} onClick={() => setForm({ ...EMPTY_OFFER })}>Record Offer</Button>
+      </div>
+      {rows.length === 0 ? <EmptyState icon={Handshake} title="No offers yet" sub="Record a buyer's offer to start negotiation." /> : (
+        <div style={{ display: 'grid', gap: 8 }}>
+          {rows.map((o) => (
+            <div key={o.id} style={{ background: '#fff', border: '1px solid #e7e3f3', borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <div><span style={{ fontFamily: 'monospace', fontSize: 12, color: '#9ca3af' }}>{o.offer_code}</span> <b>{o.buyer_name || 'Buyer'}</b> — {money(o.offer_amount)}{o.counter_amount ? <span style={{ color: '#6b7280' }}> · counter {money(o.counter_amount)}</span> : ''}</div>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  {o.non_circumvention_flag && <Badge tone="red">bypass risk</Badge>}
+                  <Badge tone={OFFER_TONE[o.status] || 'grey'}>{o.status}</Badge>
+                </div>
+              </div>
+              {o.conditions && <div style={{ fontSize: 12.5, color: '#374151', marginTop: 6 }}>{o.conditions}</div>}
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                {o.status !== 'accepted' && <Button size="sm" variant="ghost" onClick={() => setStatus(o, 'accepted')}>Accept</Button>}
+                {o.status !== 'countered' && <Button size="sm" variant="ghost" onClick={() => setStatus(o, 'countered')}>Counter</Button>}
+                {o.status !== 'rejected' && <Button size="sm" variant="ghost" onClick={() => setStatus(o, 'rejected')}>Reject</Button>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {form && (
+        <Drawer open title="Record Offer" width={540} onClose={() => setForm(null)}
+          footer={<div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}><Button variant="ghost" onClick={() => setForm(null)}>Cancel</Button><Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button></div>}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="Buyer name" full><Input value={form.buyer_name} onChange={(e) => set('buyer_name', e.target.value)} /></Field>
+            <Field label="Offer amount (৳)"><Input type="number" value={form.offer_amount} onChange={(e) => set('offer_amount', e.target.value)} /></Field>
+            <Field label="Offer date"><Input type="date" value={form.offer_date} onChange={(e) => set('offer_date', e.target.value)} /></Field>
+            <Field label="Conditions" full><Textarea rows={2} value={form.conditions} onChange={(e) => set('conditions', e.target.value)} /></Field>
+            <Field label="Operational transition" full><Textarea rows={2} value={form.operational_transition} onChange={(e) => set('operational_transition', e.target.value)} /></Field>
+            <Field label="Settlement terms" full><Textarea rows={2} value={form.settlement_terms} onChange={(e) => set('settlement_terms', e.target.value)} /></Field>
+            <Field label="Non-circumvention / bypass risk" full>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}><input type="checkbox" checked={!!form.non_circumvention_flag} onChange={(e) => set('non_circumvention_flag', e.target.checked)} /> Flag possible direct buyer–seller bypass (Step 18)</label>
+            </Field>
+          </div>
+        </Drawer>
+      )}
+    </div>
+  );
+}
+
+// ── Settlement & commission (SOP Step 22–24) ─────────────────────────────────
+function SettlementTab({ listing }) {
+  const toast = useToast();
+  const listingId = listing.id;
+  const [row, setRow] = useState(undefined); // undefined=loading, null=none
+  const [form, setForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const load = useCallback(async () => { try { const r = await api.get('/business-settlements', { params: { business_listing_id: listingId } }); setRow((r.data.data || [])[0] || null); } catch { setRow(null); } }, [listingId]);
+  useEffect(() => { load(); }, [load]);
+  const openForm = () => setForm(row ? { ...row } : { agreed_sale_price: listing.indicative_price || '', commission_mode: 'percent', commission_percent: 2, deposit_amount: '', ownership_transfer_status: 'pending', handover_status: 'pending', commission_status: 'pending', status: 'open', settlement_date: '', handover_date: '' });
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const save = async () => {
+    setSaving(true);
+    try {
+      if (row) await api.put(`/business-settlements/${row.id}`, form);
+      else await api.post('/business-settlements', { ...form, business_listing_id: listingId });
+      toast.success('Settlement saved'); setForm(null); load();
+    } catch (e) { toast.error(e.response?.data?.error || 'Save failed'); } finally { setSaving(false); }
+  };
+  const collect = async () => { try { await api.patch(`/business-settlements/${row.id}/collect-commission`, {}); toast.success('Commission collected'); load(); } catch { toast.error('Failed'); } };
+  const estCommission = form ? (form.commission_mode === 'percent' ? Math.round((Number(form.agreed_sale_price || 0) * Number(form.commission_percent || 0)) / 100) : Number(form.commission_amount || 0)) : 0;
+
+  if (row === undefined) return <div style={{ padding: 20, textAlign: 'center' }}><Spinner /></div>;
+  return (
+    <div>
+      {!row ? <EmptyState icon={Landmark} title="No settlement yet" sub="Create the settlement once an offer is accepted — commission is computed from the sale price." action={<Button icon={Plus} onClick={openForm}>Create settlement</Button>} /> : (
+        <div style={{ background: '#fff', border: '1px solid #e7e3f3', borderRadius: 12, padding: '16px 18px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ fontWeight: 700 }}><span style={{ fontFamily: 'monospace', fontSize: 12, color: '#9ca3af' }}>{row.settlement_code}</span> · Settlement</div>
+            <Button variant="ghost" icon={Pencil} onClick={openForm}>Edit</Button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
+            <KV k="Agreed sale price" v={money(row.agreed_sale_price)} />
+            <KV k="Commission" v={`${money(row.commission_amount)} ${row.commission_mode === 'percent' ? `(${row.commission_percent}%)` : ''}`} />
+            <KV k="Deposit" v={money(row.deposit_amount)} />
+            <KV k="Balance" v={money(row.balance_amount)} />
+            <KV k="Ownership transfer" v={row.ownership_transfer_status} />
+            <KV k="Handover" v={row.handover_status} />
+            <KV k="Settlement date" v={row.settlement_date} />
+            <KV k="Commission status" v={row.commission_status} />
+          </div>
+          {row.commission_status !== 'collected' && <div style={{ marginTop: 14 }}><Button icon={Coins} onClick={collect}>Mark commission collected (Step 24)</Button></div>}
+        </div>
+      )}
+      {form && (
+        <Drawer open title={row ? 'Edit Settlement' : 'Create Settlement'} width={520} onClose={() => setForm(null)}
+          footer={<div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}><Button variant="ghost" onClick={() => setForm(null)}>Cancel</Button><Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button></div>}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="Agreed sale price (৳)"><Input type="number" value={form.agreed_sale_price} onChange={(e) => set('agreed_sale_price', e.target.value)} /></Field>
+            <Field label="Commission mode"><Select value={form.commission_mode} onChange={(e) => set('commission_mode', e.target.value)}><option value="percent">% of sale price</option><option value="fixed">Fixed</option></Select></Field>
+            {form.commission_mode === 'percent'
+              ? <Field label="Commission %"><Input type="number" step="0.1" value={form.commission_percent} onChange={(e) => set('commission_percent', e.target.value)} /></Field>
+              : <Field label="Commission amount (৳)"><Input type="number" value={form.commission_amount || ''} onChange={(e) => set('commission_amount', e.target.value)} /></Field>}
+            <Field label="Est. commission"><div style={{ padding: '8px 0', fontWeight: 700, color: ACCENT }}>{money(estCommission)}</div></Field>
+            <Field label="Deposit (৳)"><Input type="number" value={form.deposit_amount} onChange={(e) => set('deposit_amount', e.target.value)} /></Field>
+            <Field label="Settlement date"><Input type="date" value={form.settlement_date || ''} onChange={(e) => set('settlement_date', e.target.value)} /></Field>
+            <Field label="Ownership transfer"><Select value={form.ownership_transfer_status} onChange={(e) => set('ownership_transfer_status', e.target.value)}><option value="pending">Pending</option><option value="in_progress">In progress</option><option value="completed">Completed</option></Select></Field>
+            <Field label="Handover"><Select value={form.handover_status} onChange={(e) => set('handover_status', e.target.value)}><option value="pending">Pending</option><option value="completed">Completed</option></Select></Field>
+            <Field label="Settlement status"><Select value={form.status} onChange={(e) => set('status', e.target.value)}><option value="open">Open</option><option value="completed">Completed</option></Select></Field>
+            <Field label="Notes" full><Textarea rows={2} value={form.notes || ''} onChange={(e) => set('notes', e.target.value)} /></Field>
+          </div>
+        </Drawer>
+      )}
     </div>
   );
 }
