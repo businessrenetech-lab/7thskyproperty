@@ -1215,6 +1215,10 @@ export const BUSINESS_REG_NAV = [
     { to: '/business-registration/agreements', label: 'Registration Agreements', icon: FileSignature },
     { to: '/business-registration/price-schedule', label: 'Price Schedules', icon: Tags },
   ] },
+  { key: 'br-finance', label: 'Finance', items: [
+    { to: '/business-registration/invoices', label: 'Invoices', icon: Receipt },
+    { to: '/business-registration/reports', label: 'Reports', icon: BarChart3 },
+  ] },
 ];
 
 export const businessRegistrationConsole = {

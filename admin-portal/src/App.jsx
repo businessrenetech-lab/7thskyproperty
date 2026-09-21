@@ -161,6 +161,8 @@ import BusinessRegistrationDashboard from './screens/business-registration/Busin
 import BusinessRegistrationProjects from './screens/business-registration/BusinessRegistrationProjects';
 import BusinessRegistrationProjectDetail from './screens/business-registration/BusinessRegistrationProjectDetail';
 import BusinessRegistrationEnquiries from './screens/business-registration/BusinessRegistrationEnquiries';
+import BusinessRegistrationInvoices from './screens/business-registration/BusinessRegistrationInvoices';
+import BusinessRegistrationReports from './screens/business-registration/BusinessRegistrationReports';
 import BrgAgreements from './screens/sales/BrgAgreements';
 import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
 import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
@@ -1502,6 +1504,8 @@ export default function App() {
               <Route path="/business-registration/projects" element={<BusinessRegistrationProjects />} />
               <Route path="/business-registration/projects/:id" element={<BusinessRegistrationProjectDetail />} />
               <Route path="/business-registration/agreements" element={<BrgAgreements category="business_registration" />} />
+              <Route path="/business-registration/invoices" element={<BusinessRegistrationInvoices />} />
+              <Route path="/business-registration/reports" element={<BusinessRegistrationReports />} />
               <Route path="/business-registration/price-schedule" element={<SalesPriceSchedule scope="business_registration" title="Business Registration · Price Schedules" />} />
             </Route>
 

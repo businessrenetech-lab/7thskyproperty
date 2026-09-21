@@ -153,15 +153,7 @@ export default function BusinessRegistrationProjectDetail() {
       {tab === 'parties' && <PartiesTab projectId={id} />}
       {tab === 'documents' && <DocumentsTab projectId={id} />}
       {tab === 'providers' && <WorkOrdersTab projectId={id} />}
-
-      {tab === 'finance' && (
-        <Section title="Finance">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#6b7280', fontSize: 13, padding: '8px 0' }}>
-            <FileSignature size={16} color={teal} />
-            Quotation, deposit / progress / final invoicing &amp; payments arrive in Phase 4.
-          </div>
-        </Section>
-      )}
+      {tab === 'finance' && <FinanceTab projectId={id} clientName={p.client_name} />}
     </div>
   );
 }
@@ -419,5 +411,91 @@ function WorkOrdersTab({ projectId }) {
         </Drawer>
       )}
     </>
+  );
+}
+
+// ── Invoices & payments (SOP Phase 3 quotation + Phase 9 final invoice) ───────
+const INV_TYPES = [['deposit', 'Deposit'], ['progress', 'Progress'], ['final', 'Final'], ['provider', 'Provider']];
+const INV_STATUS_TONE = { draft: 'grey', sent: 'blue', partial: 'amber', paid: 'green', void: 'red' };
+
+function FinanceTab({ projectId, clientName }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [drawer, setDrawer] = useState(false);
+  const [payFor, setPayFor] = useState(null);
+  const [inv, setInv] = useState({ invoice_type: 'deposit', vat_percent: '', discount: '', due_date: '', notes: '', line_items: [{ description: '', qty: 1, unit_price: '' }] });
+  const [pay, setPay] = useState({ amount: '', method: 'bank', ref: '' });
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(() => { setLoading(true); api.get('/business-registration-invoices', { params: { project_id: projectId } }).then((r) => setRows(r.data.data || [])).catch(() => {}).finally(() => setLoading(false)); }, [projectId]);
+  useEffect(() => { load(); }, [load]);
+
+  const openNew = () => { setInv({ invoice_type: 'deposit', vat_percent: '', discount: '', due_date: '', notes: '', line_items: [{ description: '', qty: 1, unit_price: '' }] }); setDrawer(true); };
+  const setLine = (i, k, v) => setInv((f) => ({ ...f, line_items: f.line_items.map((l, j) => (j === i ? { ...l, [k]: v } : l)) }));
+  const addLine = () => setInv((f) => ({ ...f, line_items: [...f.line_items, { description: '', qty: 1, unit_price: '' }] }));
+  const rmLine = (i) => setInv((f) => ({ ...f, line_items: f.line_items.filter((_, j) => j !== i) }));
+
+  const save = () => {
+    const items = inv.line_items.filter((l) => l.description.trim()).map((l) => ({ description: l.description, qty: Number(l.qty) || 1, unit_price: Number(l.unit_price) || 0, amount: (Number(l.qty) || 1) * (Number(l.unit_price) || 0) }));
+    if (!items.length) return;
+    setSaving(true);
+    api.post('/business-registration-invoices', { project_id: projectId, client_name: clientName, invoice_type: inv.invoice_type, vat_percent: Number(inv.vat_percent) || 0, discount: Number(inv.discount) || 0, due_date: inv.due_date || null, notes: inv.notes, line_items: items, status: 'sent' })
+      .then(() => { setDrawer(false); load(); }).catch(() => {}).finally(() => setSaving(false));
+  };
+  const recordPay = () => {
+    if (!Number(pay.amount)) return;
+    setSaving(true);
+    api.post(`/business-registration-invoices/${payFor.id}/payment`, { amount: Number(pay.amount), method: pay.method, ref: pay.ref })
+      .then(() => { setPayFor(null); setPay({ amount: '', method: 'bank', ref: '' }); load(); }).catch(() => {}).finally(() => setSaving(false));
+  };
+
+  const columns = [
+    { key: 'invoice_code', header: 'Invoice', render: (r) => <div><div style={{ fontWeight: 700 }}>{r.invoice_code}</div><div style={{ fontSize: 12, color: '#6b7280', textTransform: 'capitalize' }}>{r.invoice_type}</div></div> },
+    { key: 'total_amount', header: 'Total', tdStyle: { textAlign: 'right' }, render: (r) => money(r.total_amount) },
+    { key: 'paid_amount', header: 'Paid', tdStyle: { textAlign: 'right' }, render: (r) => money(r.paid_amount) },
+    { key: 'balance', header: 'Balance', tdStyle: { textAlign: 'right' }, render: (r) => money(Number(r.total_amount) - Number(r.paid_amount)) },
+    { key: 'status', header: 'Status', render: (r) => <Badge tone={INV_STATUS_TONE[r.status] || 'grey'}>{r.status}</Badge> },
+    { key: 'actions', header: '', tdStyle: { textAlign: 'right' }, render: (r) => (r.status !== 'paid' && r.status !== 'void' ? <Button size="sm" onClick={() => setPayFor(r)}>Record payment</Button> : null) },
+  ];
+
+  return (
+    <Section title={<><FileSignature size={14} style={{ verticalAlign: -2 }} /> Invoices &amp; Payments <Button size="sm" icon={Plus} onClick={openNew} style={{ float: 'right' }}>New invoice</Button></>}>
+      <DataTable columns={columns} rows={rows} loading={loading} empty={<EmptyState icon={FileSignature} title="No invoices yet" sub="Raise a deposit / progress / final invoice." />} />
+
+      {drawer && (
+        <Drawer open title="New Invoice" width={560} onClose={() => setDrawer(false)}
+          footer={<><Button variant="ghost" onClick={() => setDrawer(false)}>Cancel</Button><Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Create invoice'}</Button></>}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <Field label="Type"><Select value={inv.invoice_type} onChange={(e) => setInv((f) => ({ ...f, invoice_type: e.target.value }))}>{INV_TYPES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
+            <Field label="VAT %"><Input type="number" value={inv.vat_percent} onChange={(e) => setInv((f) => ({ ...f, vat_percent: e.target.value }))} /></Field>
+            <Field label="Discount"><Input type="number" value={inv.discount} onChange={(e) => setInv((f) => ({ ...f, discount: e.target.value }))} /></Field>
+          </div>
+          <div style={{ fontWeight: 700, fontSize: 12, color: '#6b7280', margin: '12px 0 6px' }}>LINE ITEMS</div>
+          {inv.line_items.map((l, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 60px 90px 28px', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+              <Input placeholder="Description" value={l.description} onChange={(e) => setLine(i, 'description', e.target.value)} />
+              <Input type="number" placeholder="Qty" value={l.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} />
+              <Input type="number" placeholder="Unit ৳" value={l.unit_price} onChange={(e) => setLine(i, 'unit_price', e.target.value)} />
+              <Button size="sm" variant="ghost" icon={Trash2} onClick={() => rmLine(i)} />
+            </div>
+          ))}
+          <Button size="sm" variant="ghost" icon={Plus} onClick={addLine}>Add line</Button>
+          <Field label="Due date"><Input type="date" value={inv.due_date} onChange={(e) => setInv((f) => ({ ...f, due_date: e.target.value }))} /></Field>
+          <Field label="Notes"><Textarea rows={2} value={inv.notes} onChange={(e) => setInv((f) => ({ ...f, notes: e.target.value }))} /></Field>
+        </Drawer>
+      )}
+
+      {payFor && (
+        <Drawer open title={`Record Payment — ${payFor.invoice_code}`} width={420} onClose={() => setPayFor(null)}
+          footer={<><Button variant="ghost" onClick={() => setPayFor(null)}>Cancel</Button><Button onClick={recordPay} disabled={saving}>{saving ? 'Saving…' : 'Record'}</Button></>}>
+          <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 10 }}>Balance: <b style={{ color: '#111' }}>{money(Number(payFor.total_amount) - Number(payFor.paid_amount))}</b></div>
+          <div style={{ display: 'grid', gap: 12 }}>
+            <Field label="Amount (BDT)" required><Input type="number" value={pay.amount} onChange={(e) => setPay((f) => ({ ...f, amount: e.target.value }))} /></Field>
+            <Field label="Method"><Select value={pay.method} onChange={(e) => setPay((f) => ({ ...f, method: e.target.value }))}>{['bank', 'cash', 'mobile', 'cheque', 'card'].map((m) => <option key={m} value={m}>{m}</option>)}</Select></Field>
+            <Field label="Reference"><Input value={pay.ref} onChange={(e) => setPay((f) => ({ ...f, ref: e.target.value }))} /></Field>
+          </div>
+        </Drawer>
+      )}
+    </Section>
   );
 }
