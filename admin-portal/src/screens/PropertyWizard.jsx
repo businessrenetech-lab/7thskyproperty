@@ -13,11 +13,13 @@ import {
   Flag,
   Plus,
   Trash2,
+  Briefcase,
 } from "lucide-react";
 import api from "../services/api";
 import { usePmScope } from '../config/pmScope';
 import { useToast } from "../context/ToastContext";
 import { propertyWizardPath } from "./sales/paths";
+import BusinessProfileStep, { EMPTY_BUSINESS_PROFILE } from "./sales/business/BusinessProfileStep";
 import { Spinner, Button, Field, Input, Select, Textarea } from "../ui/kit";
 import PropertyMediaGallery from "../components/PropertyMediaGallery";
 import FileUpload from "../ui/FileUpload";
@@ -68,6 +70,11 @@ const STEPS = [
   { key: "access", label: "Access & ownership", icon: KeyRound },
   { key: "review", label: "Review & finish", icon: Flag },
 ];
+
+// Business properties get a Business profile step right after Basics.
+const stepsFor = (category) => (category === "business"
+  ? [STEPS[0], { key: "business", label: "Business profile", icon: Briefcase }, ...STEPS.slice(1)]
+  : STEPS);
 
 const parseArr = (v) => {
   if (Array.isArray(v)) return v;
@@ -161,6 +168,9 @@ export default function PropertyWizard() {
     seo_description: "",
   });
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
+  const [bp, setBp] = useState(EMPTY_BUSINESS_PROFILE);
+  const isBusiness = f.category === "business";
+  const steps = stepsFor(f.category);
   const saleMode = f.listing_type === "sale";
   const salesHome = `/${f.category || queryCategory || "residential"}/sell`;
 
@@ -196,6 +206,10 @@ export default function PropertyWizard() {
             : p.property_type || "",
           asking_price: p.asking_price ?? p.price ?? s.asking_price,
         }));
+        try {
+          const { data: bpRes } = await api.get(`/properties/${resumeId}/business-profile`);
+          if (bpRes.data) setBp({ ...EMPTY_BUSINESS_PROFILE, ...Object.fromEntries(Object.entries(bpRes.data).filter(([k]) => k in EMPTY_BUSINESS_PROFILE).map(([k, val]) => [k, val ?? ""])) });
+        } catch { /* not a business property */ }
       } catch {
         toast.error("Could not load the draft property.");
       }
@@ -288,7 +302,7 @@ export default function PropertyWizard() {
   };
 
   const saveStep = async () => {
-    const key = STEPS[step].key;
+    const key = steps[step].key;
     if (
       key === "media" &&
       saleMode &&
@@ -317,7 +331,12 @@ export default function PropertyWizard() {
         );
         toast.success("Draft created — progress saves as you go.");
       } else {
-        await api.put(`/properties/${propertyId}`, payloadFor(key));
+        if (key === "business") {
+          if (!bp.business_type) { toast.error("Choose the business type."); setBusy(false); return false; }
+          await api.put(`/properties/${propertyId}/business-profile`, bp);
+        } else {
+          await api.put(`/properties/${propertyId}`, payloadFor(key));
+        }
       }
       return true;
     } catch (e) {
@@ -329,7 +348,7 @@ export default function PropertyWizard() {
   };
 
   const next = async () => {
-    if (await saveStep()) setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    if (await saveStep()) setStep((s) => Math.min(s + 1, steps.length - 1));
   };
   const back = () => setStep((s) => Math.max(0, s - 1));
 
@@ -358,7 +377,7 @@ export default function PropertyWizard() {
   };
 
   const stepState = (i) => (i < step ? "done" : i === step ? "active" : "todo");
-  const current = STEPS[step].key;
+  const current = steps[step].key;
 
   const toggleFeature = (name) =>
     set(
@@ -397,7 +416,7 @@ export default function PropertyWizard() {
                 : `New ${saleMode ? "sales listing" : "rental property"}`}
             </h2>
             <div style={{ fontSize: 12.5, color: "var(--muted)" }}>
-              Step {step + 1} of {STEPS.length} — {STEPS[step].label}
+              Step {step + 1} of {steps.length} — {steps[step].label}
               {propertyId ? " · draft saved" : ""}
             </div>
           </div>
@@ -415,7 +434,7 @@ export default function PropertyWizard() {
 
         <div className="pm-wizard-body">
           <div className="pm-wizard-rail">
-            {STEPS.map((s, i) => {
+            {steps.map((s, i) => {
               const st = stepState(i);
               return (
                 <div
@@ -462,7 +481,7 @@ export default function PropertyWizard() {
                           <button
                             key={c}
                             className={f.category === c ? "on" : ""}
-                            onClick={() => set("category", c)}
+                            onClick={() => { set("category", c); if (c === "business") set("property_type", "Business"); }}
                           >
                             {c.charAt(0).toUpperCase() + c.slice(1)}
                           </button>
@@ -484,6 +503,7 @@ export default function PropertyWizard() {
                       )}
                     </Field>
                   </div>
+                  {!isBusiness && (<>
                   <Field label="Property type">
                     <div className="pm-chip-row">
                       {PROPERTY_TYPES.map((t) => (
@@ -507,13 +527,17 @@ export default function PropertyWizard() {
                       />
                     </Field>
                   )}
+                  </>)}
                 </div>
               )}
+
+              {current === "business" && <BusinessProfileStep value={bp} onChange={setBp} />}
 
               {current === "details" && (
                 <div className="pm-card" style={{ padding: 22 }}>
                   <h3 style={{ marginTop: 0 }}>Details &amp; address</h3>
                   <div className="form-grid">
+                    {!isBusiness && (<>
                     <Field label="Bedrooms">
                       <Input
                         type="number"
@@ -550,6 +574,7 @@ export default function PropertyWizard() {
                         onChange={(e) => set("dining_rooms", e.target.value)}
                       />
                     </Field>
+                    </>)}
                     <Field label="Parking spaces">
                       <Input
                         type="number"
