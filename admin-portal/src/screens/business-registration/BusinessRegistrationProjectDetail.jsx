@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Building2, User, FileSignature, Landmark } from 'lucide-react';
+import { ArrowLeft, Check, Building2, User, FileSignature, Landmark, Plus, Trash2, Users, FileCheck } from 'lucide-react';
 import api from '../../services/api';
-import { Button, Badge, Spinner, KV, Field, Select, Textarea } from '../../ui/kit';
+import { Button, Badge, Spinner, KV, Field, Input, Select, Textarea, Drawer, DataTable, EmptyState } from '../../ui/kit';
+import UploadButton from '../../ui/UploadButton';
+import { fileSrc } from '../../ui/FileUpload';
 import { STAGES, STAGE_LABEL, STATUSES, STATUS_TONE, BIZ_TYPE_LABEL, URGENCY_TONE, money } from './constants';
 
 const teal = '#0d9488';
@@ -44,6 +46,8 @@ export default function BusinessRegistrationProjectDetail() {
   const TABS = [
     ['overview', 'Overview'],
     ['workflow', 'Workflow'],
+    ['consultation', 'Consultation'],
+    ['parties', 'Parties'],
     ['documents', 'Documents'],
     ['providers', 'Work Orders'],
     ['finance', 'Finance'],
@@ -145,16 +149,163 @@ export default function BusinessRegistrationProjectDetail() {
         </Section>
       )}
 
-      {(tab === 'documents' || tab === 'providers' || tab === 'finance') && (
-        <Section title={tab === 'documents' ? 'Document Collection' : tab === 'providers' ? 'Provider Work Orders' : 'Finance'}>
+      {tab === 'consultation' && <ConsultationTab projectId={id} />}
+      {tab === 'parties' && <PartiesTab projectId={id} />}
+      {tab === 'documents' && <DocumentsTab projectId={id} />}
+
+      {(tab === 'providers' || tab === 'finance') && (
+        <Section title={tab === 'providers' ? 'Provider Work Orders' : 'Finance'}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#6b7280', fontSize: 13, padding: '8px 0' }}>
             <FileSignature size={16} color={teal} />
-            {tab === 'documents' && 'Document register (KYC, shareholder/director docs) arrives in Phase 2.'}
             {tab === 'providers' && 'Provider assignment, work orders & registration activities (name clearance, RJSC, TIN/BIN/VAT) arrive in Phase 3.'}
             {tab === 'finance' && 'Quotation, deposit / progress / final invoicing & payments arrive in Phase 4.'}
           </div>
         </Section>
       )}
     </div>
+  );
+}
+
+// ── Consultation / business-structure assessment (SOP Phase 2) ────────────────
+function ConsultationTab({ projectId }) {
+  const [a, setA] = useState(null);
+  const [form, setForm] = useState({ business_objectives: '', ownership_structure: '', proposed_activities: '', regulatory_requirements: '', recommended_structure: '', estimated_timeline: '', risks_notes: '' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    api.get(`/business-registration-projects/${projectId}/assessment`).then((r) => {
+      const d = r.data.data; setA(d);
+      if (d) setForm((f) => ({ ...f, ...Object.fromEntries(Object.keys(f).map((k) => [k, d[k] || ''])) }));
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [projectId]);
+  const set = (k, v) => { setForm((f) => ({ ...f, [k]: v })); setSaved(false); };
+  const save = () => {
+    setSaving(true);
+    api.put(`/business-registration-projects/${projectId}/assessment`, form).then((r) => { setA(r.data.data); setSaved(true); }).catch(() => {}).finally(() => setSaving(false));
+  };
+  if (loading) return <Section title="Consultation"><Spinner /></Section>;
+  return (
+    <Section title="Consultation & Business-Structure Assessment">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Field label="Business objectives" full><Textarea rows={2} value={form.business_objectives} onChange={(e) => set('business_objectives', e.target.value)} /></Field>
+        <Field label="Ownership structure"><Input value={form.ownership_structure} onChange={(e) => set('ownership_structure', e.target.value)} /></Field>
+        <Field label="Recommended structure"><Input value={form.recommended_structure} onChange={(e) => set('recommended_structure', e.target.value)} placeholder="e.g. Private Limited Company" /></Field>
+        <Field label="Proposed activities" full><Textarea rows={2} value={form.proposed_activities} onChange={(e) => set('proposed_activities', e.target.value)} /></Field>
+        <Field label="Regulatory requirements" full><Textarea rows={2} value={form.regulatory_requirements} onChange={(e) => set('regulatory_requirements', e.target.value)} /></Field>
+        <Field label="Estimated timeline"><Input value={form.estimated_timeline} onChange={(e) => set('estimated_timeline', e.target.value)} /></Field>
+        <Field label="Risks / notes" full><Textarea rows={2} value={form.risks_notes} onChange={(e) => set('risks_notes', e.target.value)} /></Field>
+      </div>
+      <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save assessment'}</Button>
+        {saved && <span style={{ color: '#0d9488', fontSize: 13, fontWeight: 600 }}>✓ Saved{a?.assessed_at ? ` · ${new Date(a.assessed_at).toLocaleString()}` : ''}</span>}
+      </div>
+    </Section>
+  );
+}
+
+// ── Shareholders & directors (workbook Sheets 5 & 6) ─────────────────────────
+const PARTY_ROLES = [['shareholder', 'Shareholder'], ['director', 'Director']];
+function PartiesTab({ projectId }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [drawer, setDrawer] = useState(false);
+  const [form, setForm] = useState({ party_role: 'shareholder', name: '', nid: '', designation: '', share_percentage: '', mobile: '', email: '', address: '', nationality: '' });
+  const [saving, setSaving] = useState(false);
+  const load = useCallback(() => { setLoading(true); api.get(`/business-registration-projects/${projectId}/parties`).then((r) => setRows(r.data.data || [])).catch(() => {}).finally(() => setLoading(false)); }, [projectId]);
+  useEffect(() => { load(); }, [load]);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const openNew = () => { setForm({ party_role: 'shareholder', name: '', nid: '', designation: '', share_percentage: '', mobile: '', email: '', address: '', nationality: '' }); setDrawer(true); };
+  const save = () => {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    const payload = { ...form, share_percentage: form.share_percentage === '' ? null : Number(form.share_percentage) };
+    api.post(`/business-registration-projects/${projectId}/parties`, payload).then(() => { setDrawer(false); load(); }).catch(() => {}).finally(() => setSaving(false));
+  };
+  const remove = (r) => { if (!window.confirm(`Remove ${r.name}?`)) return; api.delete(`/business-registration-projects/${projectId}/parties/${r.id}`).then(load).catch(() => {}); };
+  const columns = [
+    { key: 'party_role', header: 'Role', render: (r) => <Badge tone={r.party_role === 'director' ? 'violet' : 'blue'}>{r.party_role}</Badge> },
+    { key: 'name', header: 'Name', render: (r) => <div><div style={{ fontWeight: 600 }}>{r.name}</div><div style={{ fontSize: 12, color: '#6b7280' }}>{r.designation || r.nid || ''}</div></div> },
+    { key: 'share_percentage', header: 'Share %', render: (r) => (r.share_percentage != null ? `${r.share_percentage}%` : '—') },
+    { key: 'mobile', header: 'Contact', render: (r) => <div style={{ fontSize: 12 }}>{r.mobile}<br />{r.email}</div> },
+    { key: 'actions', header: '', tdStyle: { textAlign: 'right' }, render: (r) => <Button size="sm" variant="ghost" icon={Trash2} onClick={() => remove(r)}>Remove</Button> },
+  ];
+  return (
+    <Section title={<><Users size={14} style={{ verticalAlign: -2 }} /> Shareholders & Directors <Button size="sm" icon={Plus} onClick={openNew} style={{ float: 'right' }}>Add party</Button></>}>
+      <DataTable columns={columns} rows={rows} loading={loading} empty={<EmptyState icon={Users} title="No parties yet" sub="Add shareholders and directors." />} />
+      {drawer && (
+        <Drawer open title="Add Party" width={480} onClose={() => setDrawer(false)}
+          footer={<><Button variant="ghost" onClick={() => setDrawer(false)}>Cancel</Button><Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Add'}</Button></>}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Field label="Role"><Select value={form.party_role} onChange={(e) => set('party_role', e.target.value)}>{PARTY_ROLES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
+            <Field label="Name" required><Input value={form.name} onChange={(e) => set('name', e.target.value)} /></Field>
+            <Field label="NID / Passport"><Input value={form.nid} onChange={(e) => set('nid', e.target.value)} /></Field>
+            {form.party_role === 'director'
+              ? <Field label="Designation"><Input value={form.designation} onChange={(e) => set('designation', e.target.value)} placeholder="Managing Director…" /></Field>
+              : <Field label="Share %"><Input type="number" value={form.share_percentage} onChange={(e) => set('share_percentage', e.target.value)} /></Field>}
+            <Field label="Mobile"><Input value={form.mobile} onChange={(e) => set('mobile', e.target.value)} /></Field>
+            <Field label="Email"><Input value={form.email} onChange={(e) => set('email', e.target.value)} /></Field>
+            <Field label="Nationality"><Input value={form.nationality} onChange={(e) => set('nationality', e.target.value)} /></Field>
+            <Field label="Address" full><Input value={form.address} onChange={(e) => set('address', e.target.value)} /></Field>
+          </div>
+        </Drawer>
+      )}
+    </Section>
+  );
+}
+
+// ── Document register / Schedule D KYC checklist (SOP Phase 4) ────────────────
+const DOC_CATEGORIES = [
+  ['client_identification', 'Client Identification'],
+  ['business_information', 'Business Information'],
+  ['company_registration', 'Company Registration'],
+  ['tax_regulatory', 'Tax & Regulatory'],
+];
+const DOC_STATUS_TONE = { pending: 'grey', received: 'blue', verified: 'green', rejected: 'red' };
+function DocumentsTab({ projectId }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [drawer, setDrawer] = useState(false);
+  const [form, setForm] = useState({ category: 'client_identification', doc_type: '', file_url: '', status: 'received', notes: '' });
+  const [saving, setSaving] = useState(false);
+  const load = useCallback(() => { setLoading(true); api.get(`/business-registration-projects/${projectId}/documents`).then((r) => setRows(r.data.data || [])).catch(() => {}).finally(() => setLoading(false)); }, [projectId]);
+  useEffect(() => { load(); }, [load]);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const openNew = () => { setForm({ category: 'client_identification', doc_type: '', file_url: '', status: 'received', notes: '' }); setDrawer(true); };
+  const save = () => {
+    if (!form.doc_type.trim()) return;
+    setSaving(true);
+    api.post(`/business-registration-projects/${projectId}/documents`, form).then(() => { setDrawer(false); load(); }).catch(() => {}).finally(() => setSaving(false));
+  };
+  const setStatus = (r, status) => api.put(`/business-registration-projects/${projectId}/documents/${r.id}`, { status }).then(load).catch(() => {});
+  const remove = (r) => { if (!window.confirm(`Remove ${r.doc_type}?`)) return; api.delete(`/business-registration-projects/${projectId}/documents/${r.id}`).then(load).catch(() => {}); };
+  const catLabel = Object.fromEntries(DOC_CATEGORIES);
+  const columns = [
+    { key: 'doc_type', header: 'Document', render: (r) => <div><div style={{ fontWeight: 600 }}>{r.doc_type}</div><div style={{ fontSize: 12, color: '#6b7280' }}>{catLabel[r.category] || r.category || ''}</div></div> },
+    { key: 'file_url', header: 'File', render: (r) => (r.file_url ? <a href={fileSrc(r.file_url)} target="_blank" rel="noreferrer" style={{ color: teal, fontSize: 13 }}>View</a> : <span style={{ color: '#9ca3af', fontSize: 13 }}>—</span>) },
+    { key: 'status', header: 'Status', render: (r) => <Badge tone={DOC_STATUS_TONE[r.status] || 'grey'}>{r.status}</Badge> },
+    { key: 'actions', header: '', tdStyle: { textAlign: 'right' }, render: (r) => (
+      <div style={{ display: 'inline-flex', gap: 6 }}>
+        {r.status !== 'verified' && <Button size="sm" icon={FileCheck} onClick={() => setStatus(r, 'verified')}>Verify</Button>}
+        <Button size="sm" variant="ghost" icon={Trash2} onClick={() => remove(r)} />
+      </div>
+    ) },
+  ];
+  return (
+    <Section title={<><FileCheck size={14} style={{ verticalAlign: -2 }} /> Document Register (Schedule D) <Button size="sm" icon={Plus} onClick={openNew} style={{ float: 'right' }}>Add document</Button></>}>
+      <DataTable columns={columns} rows={rows} loading={loading} empty={<EmptyState icon={FileCheck} title="No documents yet" sub="Add the KYC / registration documents." />} />
+      {drawer && (
+        <Drawer open title="Add Document" width={460} onClose={() => setDrawer(false)}
+          footer={<><Button variant="ghost" onClick={() => setDrawer(false)}>Cancel</Button><Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Add'}</Button></>}>
+          <div style={{ display: 'grid', gap: 12 }}>
+            <Field label="Category"><Select value={form.category} onChange={(e) => set('category', e.target.value)}>{DOC_CATEGORIES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
+            <Field label="Document type" required><Input value={form.doc_type} onChange={(e) => set('doc_type', e.target.value)} placeholder="e.g. National ID / Passport" /></Field>
+            <Field label="File (private)"><UploadButton value={form.file_url} onChange={(url) => set('file_url', url)} folder="documents" /></Field>
+            <Field label="Status"><Select value={form.status} onChange={(e) => set('status', e.target.value)}>{['pending', 'received', 'verified', 'rejected'].map((s) => <option key={s} value={s}>{s}</option>)}</Select></Field>
+            <Field label="Notes"><Textarea rows={2} value={form.notes} onChange={(e) => set('notes', e.target.value)} /></Field>
+          </div>
+        </Drawer>
+      )}
+    </Section>
   );
 }
