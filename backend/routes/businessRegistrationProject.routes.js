@@ -27,4 +27,14 @@ router.post('/:id/documents', child.createDocument);
 router.put('/:id/documents/:did', child.updateDocument);
 router.delete('/:id/documents/:did', child.removeDocument);
 
+// Phase 3: provider work orders + registration activities.
+router.get('/:id/work-orders', child.listWorkOrders);
+router.post('/:id/work-orders', child.createWorkOrder);
+router.put('/:id/work-orders/:wid', child.updateWorkOrder);
+router.delete('/:id/work-orders/:wid', child.removeWorkOrder);
+router.get('/:id/activities', child.listActivities);
+router.post('/:id/activities', child.createActivity);
+router.put('/:id/activities/:aid', child.updateActivity);
+router.delete('/:id/activities/:aid', child.removeActivity);
+
 module.exports = router;

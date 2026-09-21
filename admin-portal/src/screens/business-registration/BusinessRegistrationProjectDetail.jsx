@@ -152,13 +152,13 @@ export default function BusinessRegistrationProjectDetail() {
       {tab === 'consultation' && <ConsultationTab projectId={id} />}
       {tab === 'parties' && <PartiesTab projectId={id} />}
       {tab === 'documents' && <DocumentsTab projectId={id} />}
+      {tab === 'providers' && <WorkOrdersTab projectId={id} />}
 
-      {(tab === 'providers' || tab === 'finance') && (
-        <Section title={tab === 'providers' ? 'Provider Work Orders' : 'Finance'}>
+      {tab === 'finance' && (
+        <Section title="Finance">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#6b7280', fontSize: 13, padding: '8px 0' }}>
             <FileSignature size={16} color={teal} />
-            {tab === 'providers' && 'Provider assignment, work orders & registration activities (name clearance, RJSC, TIN/BIN/VAT) arrive in Phase 3.'}
-            {tab === 'finance' && 'Quotation, deposit / progress / final invoicing & payments arrive in Phase 4.'}
+            Quotation, deposit / progress / final invoicing &amp; payments arrive in Phase 4.
           </div>
         </Section>
       )}
@@ -307,5 +307,117 @@ function DocumentsTab({ projectId }) {
         </Drawer>
       )}
     </Section>
+  );
+}
+
+// ── Provider work orders + registration activities (SOP Phase 5-6) ───────────
+const WO_STATUS_TONE = { issued: 'blue', accepted: 'violet', in_progress: 'amber', completed: 'green', cancelled: 'red' };
+const ACT_TYPES = [
+  ['name_clearance', 'Name Clearance'], ['trade_licence', 'Trade Licence'], ['rjsc', 'RJSC Registration'],
+  ['tin', 'TIN Registration'], ['bin', 'BIN Registration'], ['vat', 'VAT Registration'],
+  ['authority_liaison', 'Authority Liaison'], ['documentation', 'Documentation'],
+];
+const ACT_TYPE_LABEL = Object.fromEntries(ACT_TYPES);
+const ACT_STATUS = ['pending', 'submitted', 'in_review', 'approved', 'rejected', 'completed'];
+const ACT_STATUS_TONE = { pending: 'grey', submitted: 'blue', in_review: 'amber', approved: 'green', rejected: 'red', completed: 'green' };
+
+function WorkOrdersTab({ projectId }) {
+  const [wos, setWos] = useState([]);
+  const [acts, setActs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [woDrawer, setWoDrawer] = useState(false);
+  const [actDrawer, setActDrawer] = useState(false);
+  const [wo, setWo] = useState({ provider_name: '', provider_category: '', total_fee: '', special_instructions: '' });
+  const [act, setAct] = useState({ activity_type: 'name_clearance', title: '', authority: '', reference_no: '', status: 'pending' });
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    Promise.all([
+      api.get(`/business-registration-projects/${projectId}/work-orders`),
+      api.get(`/business-registration-projects/${projectId}/activities`),
+    ]).then(([w, a]) => { setWos(w.data.data || []); setActs(a.data.data || []); }).catch(() => {}).finally(() => setLoading(false));
+  }, [projectId]);
+  useEffect(() => { load(); }, [load]);
+
+  const saveWo = () => {
+    if (!wo.provider_name.trim()) return;
+    setSaving(true);
+    api.post(`/business-registration-projects/${projectId}/work-orders`, { ...wo, total_fee: wo.total_fee === '' ? null : Number(wo.total_fee) })
+      .then(() => { setWoDrawer(false); setWo({ provider_name: '', provider_category: '', total_fee: '', special_instructions: '' }); load(); }).catch(() => {}).finally(() => setSaving(false));
+  };
+  const setWoStatus = (r, status) => api.put(`/business-registration-projects/${projectId}/work-orders/${r.id}`, { status }).then(load).catch(() => {});
+  const removeWo = (r) => { if (!window.confirm(`Remove ${r.work_order_no}?`)) return; api.delete(`/business-registration-projects/${projectId}/work-orders/${r.id}`).then(load).catch(() => {}); };
+
+  const saveAct = () => {
+    setSaving(true);
+    api.post(`/business-registration-projects/${projectId}/activities`, act)
+      .then(() => { setActDrawer(false); setAct({ activity_type: 'name_clearance', title: '', authority: '', reference_no: '', status: 'pending' }); load(); }).catch(() => {}).finally(() => setSaving(false));
+  };
+  const setActStatus = (r, status) => api.put(`/business-registration-projects/${projectId}/activities/${r.id}`, { status }).then(load).catch(() => {});
+  const removeAct = (r) => { if (!window.confirm('Remove activity?')) return; api.delete(`/business-registration-projects/${projectId}/activities/${r.id}`).then(load).catch(() => {}); };
+
+  const woCols = [
+    { key: 'work_order_no', header: 'Work order', render: (r) => <div><div style={{ fontWeight: 700 }}>{r.work_order_no}</div><div style={{ fontSize: 12, color: '#6b7280' }}>{r.provider_name}</div></div> },
+    { key: 'provider_category', header: 'Provider type', render: (r) => r.provider_category || '—' },
+    { key: 'total_fee', header: 'Fee', tdStyle: { textAlign: 'right' }, render: (r) => money(r.total_fee) },
+    { key: 'status', header: 'Status', render: (r) => <Badge tone={WO_STATUS_TONE[r.status] || 'grey'}>{r.status}</Badge> },
+    { key: 'actions', header: '', tdStyle: { textAlign: 'right' }, render: (r) => (
+      <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+        <Select value={r.status} onChange={(e) => setWoStatus(r, e.target.value)} style={{ height: 28, fontSize: 12 }}>
+          {['issued', 'accepted', 'in_progress', 'completed', 'cancelled'].map((s) => <option key={s} value={s}>{s}</option>)}
+        </Select>
+        <Button size="sm" variant="ghost" icon={Trash2} onClick={() => removeWo(r)} />
+      </div>
+    ) },
+  ];
+  const actCols = [
+    { key: 'activity_type', header: 'Activity', render: (r) => <div><div style={{ fontWeight: 600 }}>{ACT_TYPE_LABEL[r.activity_type] || r.activity_type}</div><div style={{ fontSize: 12, color: '#6b7280' }}>{r.title || r.authority || ''}</div></div> },
+    { key: 'authority', header: 'Authority', render: (r) => r.authority || '—' },
+    { key: 'reference_no', header: 'Reference', render: (r) => r.reference_no || '—' },
+    { key: 'status', header: 'Status', render: (r) => <Badge tone={ACT_STATUS_TONE[r.status] || 'grey'}>{r.status}</Badge> },
+    { key: 'actions', header: '', tdStyle: { textAlign: 'right' }, render: (r) => (
+      <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+        <Select value={r.status} onChange={(e) => setActStatus(r, e.target.value)} style={{ height: 28, fontSize: 12 }}>
+          {ACT_STATUS.map((s) => <option key={s} value={s}>{s}</option>)}
+        </Select>
+        <Button size="sm" variant="ghost" icon={Trash2} onClick={() => removeAct(r)} />
+      </div>
+    ) },
+  ];
+
+  return (
+    <>
+      <Section title={<><Building2 size={14} style={{ verticalAlign: -2 }} /> Provider Work Orders (SSPC-BR-PWO) <Button size="sm" icon={Plus} onClick={() => setWoDrawer(true)} style={{ float: 'right' }}>Issue work order</Button></>}>
+        <DataTable columns={woCols} rows={wos} loading={loading} empty={<EmptyState icon={Building2} title="No work orders yet" sub="Assign an approved provider." />} />
+      </Section>
+      <Section title={<><Landmark size={14} style={{ verticalAlign: -2 }} /> Registration Activities <Button size="sm" icon={Plus} onClick={() => setActDrawer(true)} style={{ float: 'right' }}>Add activity</Button></>}>
+        <DataTable columns={actCols} rows={acts} loading={loading} empty={<EmptyState icon={Landmark} title="No activities yet" sub="Track name clearance, RJSC, TIN/BIN/VAT and authority liaison." />} />
+      </Section>
+
+      {woDrawer && (
+        <Drawer open title="Issue Work Order" width={480} onClose={() => setWoDrawer(false)}
+          footer={<><Button variant="ghost" onClick={() => setWoDrawer(false)}>Cancel</Button><Button onClick={saveWo} disabled={saving}>{saving ? 'Saving…' : 'Issue'}</Button></>}>
+          <div style={{ display: 'grid', gap: 12 }}>
+            <Field label="Provider name" required><Input value={wo.provider_name} onChange={(e) => setWo((f) => ({ ...f, provider_name: e.target.value }))} /></Field>
+            <Field label="Provider category"><Input value={wo.provider_category} onChange={(e) => setWo((f) => ({ ...f, provider_category: e.target.value }))} placeholder="RJSC Consultant / Trade Licence Consultant…" /></Field>
+            <Field label="Total fee (BDT)"><Input type="number" value={wo.total_fee} onChange={(e) => setWo((f) => ({ ...f, total_fee: e.target.value }))} /></Field>
+            <Field label="Special instructions"><Textarea rows={2} value={wo.special_instructions} onChange={(e) => setWo((f) => ({ ...f, special_instructions: e.target.value }))} /></Field>
+          </div>
+        </Drawer>
+      )}
+      {actDrawer && (
+        <Drawer open title="Add Registration Activity" width={460} onClose={() => setActDrawer(false)}
+          footer={<><Button variant="ghost" onClick={() => setActDrawer(false)}>Cancel</Button><Button onClick={saveAct} disabled={saving}>{saving ? 'Saving…' : 'Add'}</Button></>}>
+          <div style={{ display: 'grid', gap: 12 }}>
+            <Field label="Activity type"><Select value={act.activity_type} onChange={(e) => setAct((f) => ({ ...f, activity_type: e.target.value }))}>{ACT_TYPES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
+            <Field label="Title"><Input value={act.title} onChange={(e) => setAct((f) => ({ ...f, title: e.target.value }))} /></Field>
+            <Field label="Authority"><Input value={act.authority} onChange={(e) => setAct((f) => ({ ...f, authority: e.target.value }))} placeholder="RJSC / NBR / City Corporation…" /></Field>
+            <Field label="Reference no."><Input value={act.reference_no} onChange={(e) => setAct((f) => ({ ...f, reference_no: e.target.value }))} /></Field>
+            <Field label="Status"><Select value={act.status} onChange={(e) => setAct((f) => ({ ...f, status: e.target.value }))}>{ACT_STATUS.map((s) => <option key={s} value={s}>{s}</option>)}</Select></Field>
+          </div>
+        </Drawer>
+      )}
+    </>
   );
 }
