@@ -76,10 +76,27 @@ async function phase2() {
   ok((scopedM.body?.data || []).every((x) => x.category === 'business'), 'business mandate list holds only business mandates');
 }
 
+async function phase3() {
+  console.log('\n— Phase 3: business profile + teaser —');
+  const p = await req('POST', '/api/properties', { body: { title: `Secret Traders ${STAMP}`, category: 'business', property_type: 'Business', listing_type: 'sale' } });
+  const id = p.body?.data?.id; ok(!!id, 'business property created', id);
+  const put = await req('PUT', `/api/properties/${id}/business-profile`, { body: { business_type: 'trading', industry: 'Import', staff_count: 9, year_established: 2015, annual_turnover: 15000000, annual_profit: 3000000, teaser_headline: `Importer ${STAMP}` } });
+  ok(put.status === 200 && put.body?.data?.business_type === 'trading', 'profile upsert', `HTTP ${put.status}`);
+  const partial = await req('PUT', `/api/properties/${id}/business-profile`, { body: { staff_count: 11 } });
+  ok(partial.body?.data?.industry === 'Import' && partial.body?.data?.staff_count === 11, 'partial update keeps other fields');
+  const got = await req('GET', `/api/properties/${id}/business-profile`);
+  ok(got.status === 200 && Array.isArray(got.body?.data?.preparation), 'profile reads back (preparation parsed to a list)');
+  const com = await req('POST', '/api/properties', { body: { title: `Com ${STAMP}`, category: 'commercial', property_type: 'Office', listing_type: 'sale' } });
+  const bad = await req('PUT', `/api/properties/${com.body?.data?.id}/business-profile`, { body: { industry: 'x' } });
+  ok(bad.status === 400, 'profile refused on a non-business property', `HTTP ${bad.status}`);
+  return id;
+}
+
 (async () => {
   console.log(`\n===== BUSINESS PARITY E2E (run ${STAMP}) =====`);
   if (!(await login())) return finish();
   if (want(1)) await phase1();
   if (want(2)) await phase2();
+  const bizId = want(3) ? await phase3() : null; // eslint-disable-line no-unused-vars
   finish();
 })().catch((e) => { ok(false, 'harness crashed', e.message); finish(); });

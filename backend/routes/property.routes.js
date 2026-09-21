@@ -12,6 +12,11 @@ router.post('/', ctrl.create);
 router.get('/:id', ctrl.getOne);
 router.put('/:id', ctrl.update);
 router.delete('/:id', ctrl.remove);
+
+// Business properties (category='business') — profile, teaser copy, preparation.
+const businessProfile = require('../controllers/propertyBusinessProfile.controller');
+router.get('/:id/business-profile', businessProfile.get);
+router.put('/:id/business-profile', businessProfile.upsert);
 router.post('/:id/draft-campaign', ctrl.draftCampaign);
 
 // Property tenancies
