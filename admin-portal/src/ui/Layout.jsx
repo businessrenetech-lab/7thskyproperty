@@ -38,9 +38,10 @@ const NAV = [
     { to: '/commercial/sell', label: 'Sale' },
     { to: '/commercial/rent', label: 'Rent' },
   ] },
-  { key: 'business', label: 'Business Sales', icon: Briefcase, children: [
-    { to: '/business/sale', label: 'Sell a Business' },
-    { to: '/business/mandates', label: 'Buy a Business' },
+  { key: 'business', label: 'Business', icon: Briefcase, children: [
+    { to: '/business-buy', label: 'Buy' },
+    { to: '/business/sale', label: 'Sale' },
+    { to: '/business-rent', label: 'Rent' },
   ] },
   { to: '/business-registration', label: 'Business Registration', icon: ScrollText },
   { key: 'rural', label: 'Rural Properties', icon: Trees, children: [

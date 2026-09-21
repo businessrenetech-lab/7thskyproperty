@@ -9,7 +9,16 @@ const STAGE_LABEL = Object.fromEntries(STAGES);
 const money = (n) => (n == null || n === '' ? '—' : `৳${Number(n).toLocaleString()}`);
 const EMPTY = { enquirer_name: '', company_name: '', phone: '', email: '', enquiry_type: 'buyer', interest: '', preferred_industry: '', preferred_location: '', budget: '', source: '', buyer_seriousness: 'medium', financial_capability: 'unknown', business_listing_id: '', stage: 'new', message: '', next_action: '', follow_up_date: '' };
 
+// mode → enquiry_type scope. Each business console shows only its own enquiries:
+// Sale = buyer, Buy = investor (acquirer), Rent = tenant.
+const MODE_META = {
+  buyer: { type: 'buyer', title: 'Buyer Enquiries', desc: 'Buyers & investors interested in acquiring a listed business — screening and lead pipeline (SOP Steps 11–12).', listingType: 'sale', empty: 'No buyer enquiries yet.' },
+  investor: { type: 'investor', title: 'Acquirer Enquiries', desc: 'Acquirers looking to buy a business — requirements, budget and the acquisition lead pipeline.', listingType: null, empty: 'No acquirer enquiries yet.' },
+  tenant: { type: 'tenant', title: 'Tenant Enquiries', desc: 'Tenants / operators looking to lease a business — screening and lead pipeline.', listingType: 'rent', empty: 'No tenant enquiries yet.' },
+};
+
 export default function BusinessEnquiries({ mode = 'buyer' }) {
+  const meta = MODE_META[mode] || MODE_META.buyer;
   const isTenant = mode === 'tenant';
   const toast = useToast();
   const [rows, setRows] = useState([]);
@@ -23,13 +32,13 @@ export default function BusinessEnquiries({ mode = 'buyer' }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api.get('/business-enquiries', { params: { limit: 200, ...(isTenant ? { enquiry_type: 'tenant' } : {}), ...(stageFilter !== 'all' ? { stage: stageFilter } : {}), ...(search ? { search } : {}) } });
+      const r = await api.get('/business-enquiries', { params: { limit: 200, enquiry_type: meta.type, ...(stageFilter !== 'all' ? { stage: stageFilter } : {}), ...(search ? { search } : {}) } });
       setRows(r.data.data || []);
     } catch { toast.error('Failed to load business enquiries'); }
     finally { setLoading(false); }
-  }, [stageFilter, search, isTenant, toast]);
+  }, [stageFilter, search, meta.type, toast]);
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { api.get('/business-listings', { params: { limit: 200, ...(isTenant ? { listing_type: 'rent' } : {}) } }).then((r) => setListings(r.data.data || [])).catch(() => {}); }, [isTenant]);
+  useEffect(() => { if (!meta.listingType) { setListings([]); return; } api.get('/business-listings', { params: { limit: 200, listing_type: meta.listingType } }).then((r) => setListings(r.data.data || [])).catch(() => {}); }, [meta.listingType]);
 
   const set = (k, v) => setDrawer((d) => ({ ...d, form: { ...d.form, [k]: v } }));
   const save = async () => {
@@ -56,8 +65,8 @@ export default function BusinessEnquiries({ mode = 'buyer' }) {
 
   return (
     <div className="pm-scope">
-      <PageHead title={isTenant ? 'Tenant Enquiries' : 'Business Buyer Enquiries'} desc={isTenant ? 'Tenants / operators looking to lease a business — screening and lead pipeline.' : 'Buyers & investors interested in acquiring a business — screening and lead pipeline (SOP Steps 11–12).'}
-        actions={<Button icon={Plus} onClick={() => setDrawer({ id: null, form: { ...EMPTY, enquiry_type: isTenant ? 'tenant' : 'buyer' } })}>New Enquiry</Button>} />
+      <PageHead title={meta.title} desc={meta.desc}
+        actions={<Button icon={Plus} onClick={() => setDrawer({ id: null, form: { ...EMPTY, enquiry_type: meta.type } })}>New Enquiry</Button>} />
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', margin: '4px 0 12px', flexWrap: 'wrap' }}>
         <SearchInput value={search} onChange={setSearch} placeholder="Search enquirer, code, interest…" />
@@ -68,7 +77,7 @@ export default function BusinessEnquiries({ mode = 'buyer' }) {
       </div>
 
       <DataTable columns={columns} rows={rows} loading={loading} onRowClick={(r) => setDrawer({ id: r.id, form: { ...EMPTY, ...Object.fromEntries(Object.entries(r).filter(([, v]) => v != null)) } })}
-        empty="No buyer enquiries yet." />
+        empty={meta.empty} />
 
       {drawer && (
         <Drawer open title={drawer.id ? `Edit — ${drawer.form.enquirer_name || 'Enquiry'}` : 'New Buyer Enquiry'} width={560}

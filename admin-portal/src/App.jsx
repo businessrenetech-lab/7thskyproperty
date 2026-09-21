@@ -146,7 +146,12 @@ import CommercialRentConsole from './screens/CommercialRentConsole';
 import ResidentialConsole from './screens/ResidentialConsole';
 import CommercialConsole, { CommercialBuyerConsole } from './screens/CommercialConsole';
 import BusinessSaleConsole from './screens/BusinessSaleConsole';
+import BusinessBuyConsole from './screens/BusinessBuyConsole';
+import BusinessRentConsole from './screens/BusinessRentConsole';
 import BusinessSaleDashboard from './screens/business/BusinessSaleDashboard';
+import BusinessBuyDashboard from './screens/business/BusinessBuyDashboard';
+import BusinessRentDashboard from './screens/business/BusinessRentDashboard';
+import BusinessBuyReports from './screens/business/BusinessBuyReports';
 import BusinessListings from './screens/business/BusinessListings';
 import BusinessListingDetail from './screens/business/BusinessListingDetail';
 import BusinessEnquiries from './screens/business/BusinessEnquiries';
@@ -1468,30 +1473,60 @@ export default function App() {
               <Route path="/commercial/rent/price-schedule" element={<SalesPriceSchedule scope="commercial_rent" title="Commercial Rent · Price Schedules" />} />
             </Route>
 
-            {/* ── Business Sales — its own console (a business is not a property).
-                Phase 0: the two Customer Service Agreements (SSPC-BSS-01 sale /
-                SSPC-BPS-01 purchase) on the isolated category="business", plus
-                their price schedules. Later phases add the SOP pipeline. ── */}
+            {/* ── Business SALE console (sell a business on the owner's behalf).
+                Scoped to listing_type='sale', buyer enquiries, sale agreements,
+                sale invoices (deal_side='sale') and sale reports. ── */}
             <Route element={<RequireAuth><AdminGate><BusinessSaleConsole /></AdminGate></RequireAuth>}>
               <Route path="/business" element={<Navigate to="/business/sale" replace />} />
               <Route path="/business/sale" element={<BusinessSaleDashboard />} />
-              <Route path="/business/listings" element={<BusinessListings />} />
+              <Route path="/business/listings" element={<BusinessListings listingType="sale" />} />
               <Route path="/business/listings/:id" element={<BusinessListingDetail />} />
-              <Route path="/business/enquiries" element={<BusinessEnquiries />} />
-              <Route path="/business/invoices" element={<BusinessInvoices />} />
-              <Route path="/business/reports" element={<BusinessReports listingType="sale" />} />
-              <Route path="/business/rent/reports" element={<BusinessReports listingType="rent" />} />
-              <Route path="/business/mandates" element={<BusinessMandates />} />
-              <Route path="/business/mandates/:id" element={<BusinessMandateDetail />} />
-              <Route path="/business/rent/listings" element={<BusinessListings listingType="rent" />} />
-              <Route path="/business/rent/tenant-enquiries" element={<BusinessEnquiries mode="tenant" />} />
-              <Route path="/business/rent/rental-agreements" element={<BrmAgreements category="business_rent" />} />
-              <Route path="/business/rent/tenancy-agreements" element={<BtmAgreements category="business_rent" />} />
-              <Route path="/business/rent/price-schedule" element={<SalesPriceSchedule scope="business_rent" title="Business Rent · Price Schedules" />} />
+              <Route path="/business/enquiries" element={<BusinessEnquiries mode="buyer" />} />
               <Route path="/business/sale/agreements" element={<SaleAgreements category="business" />} />
-              <Route path="/business/purchase/agreements" element={<PurchaseAgreements category="business" />} />
-              <Route path="/business/price-schedule" element={<SalesPriceSchedule scope="business" title="Business · Price Schedules" />} />
+              <Route path="/business/price-schedule" element={<SalesPriceSchedule scope="business" verticals={['sale_sale_business']} title="Business Sale · Price Schedules" />} />
+              <Route path="/business/invoices" element={<BusinessInvoices dealSide="sale" />} />
+              <Route path="/business/reports" element={<BusinessReports listingType="sale" />} />
             </Route>
+
+            {/* ── Business BUY console (acquire a business for a client). Mandate-
+                driven: acquisition mandates, acquirer enquiries, purchase
+                agreements, buy invoices (deal_side='buy', raised against a
+                mandate) and buy reports. ── */}
+            <Route element={<RequireAuth><AdminGate><BusinessBuyConsole /></AdminGate></RequireAuth>}>
+              <Route path="/business-buy" element={<BusinessBuyDashboard />} />
+              <Route path="/business-buy/mandates" element={<BusinessMandates />} />
+              <Route path="/business-buy/mandates/:id" element={<BusinessMandateDetail />} />
+              <Route path="/business-buy/enquiries" element={<BusinessEnquiries mode="investor" />} />
+              <Route path="/business-buy/agreements" element={<PurchaseAgreements category="business" />} />
+              <Route path="/business-buy/price-schedule" element={<SalesPriceSchedule scope="business" verticals={['sale_purchase_business']} title="Business Buy · Price Schedules" />} />
+              <Route path="/business-buy/invoices" element={<BusinessInvoices dealSide="buy" />} />
+              <Route path="/business-buy/reports" element={<BusinessBuyReports />} />
+            </Route>
+
+            {/* ── Business RENT console (lease a business / premises). Scoped to
+                listing_type='rent', tenant enquiries, rental & tenancy
+                management agreements, rent price schedules and rent reports. ── */}
+            <Route element={<RequireAuth><AdminGate><BusinessRentConsole /></AdminGate></RequireAuth>}>
+              <Route path="/business-rent" element={<BusinessRentDashboard />} />
+              <Route path="/business-rent/listings" element={<BusinessListings listingType="rent" />} />
+              <Route path="/business-rent/listings/:id" element={<BusinessListingDetail />} />
+              <Route path="/business-rent/enquiries" element={<BusinessEnquiries mode="tenant" />} />
+              <Route path="/business-rent/rental-agreements" element={<BrmAgreements category="business_rent" />} />
+              <Route path="/business-rent/tenancy-agreements" element={<BtmAgreements category="business_rent" />} />
+              <Route path="/business-rent/price-schedule" element={<SalesPriceSchedule scope="business_rent" title="Business Rent · Price Schedules" />} />
+              <Route path="/business-rent/reports" element={<BusinessReports listingType="rent" />} />
+            </Route>
+
+            {/* Back-compat: old combined-console paths → new dedicated consoles. */}
+            <Route path="/business/mandates" element={<Navigate to="/business-buy/mandates" replace />} />
+            <Route path="/business/purchase/agreements" element={<Navigate to="/business-buy/agreements" replace />} />
+            <Route path="/business/rent" element={<Navigate to="/business-rent" replace />} />
+            <Route path="/business/rent/listings" element={<Navigate to="/business-rent/listings" replace />} />
+            <Route path="/business/rent/tenant-enquiries" element={<Navigate to="/business-rent/enquiries" replace />} />
+            <Route path="/business/rent/rental-agreements" element={<Navigate to="/business-rent/rental-agreements" replace />} />
+            <Route path="/business/rent/tenancy-agreements" element={<Navigate to="/business-rent/tenancy-agreements" replace />} />
+            <Route path="/business/rent/price-schedule" element={<Navigate to="/business-rent/price-schedule" replace />} />
+            <Route path="/business/rent/reports" element={<Navigate to="/business-rent/reports" replace />} />
 
             {/* ── Business Registration — its own console (a service-delivery
                 project line, not a marketplace). Phase 0: the Customer Service

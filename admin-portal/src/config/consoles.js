@@ -1150,50 +1150,99 @@ export const spacePlanningConsole = {
  * two Customer Service Agreements (SSPC-BSS-01 sale / SSPC-BPS-01 purchase) and
  * their price schedules, on the isolated 'business' category. Rebased on
  * /business/*. */
-export const BUSINESS_NAV = [
-  { key: 'biz-home', label: 'Home', items: [
-    { to: '/business/sale', label: 'Business Sale Dashboard', icon: LayoutGrid, end: true },
+// Business is split into three dedicated consoles — Sale / Buy / Rent — each with
+// its own dashboard, enquiries, agreements, price schedule, invoices and reports,
+// plus a Switch group cross-linking the others (mirrors the Commercial split).
+
+export const BUSINESS_SALE_NAV = [
+  { key: 'bsale-home', label: 'Home', items: [
+    { to: '/business/sale', label: 'Sale Dashboard', icon: LayoutGrid, end: true },
   ] },
-  { key: 'biz-pipeline', label: 'Pipeline', items: [
+  { key: 'bsale-pipeline', label: 'Pipeline', items: [
     { to: '/business/listings', label: 'Business Listings', icon: Building2 },
     { to: '/business/enquiries', label: 'Buyer Enquiries', icon: MessageSquareQuote },
-  ] },
-  { key: 'biz-selling', label: 'Selling a Business', items: [
     { to: '/business/sale/agreements', label: 'Sale Agreements', icon: FileSignature },
     { to: '/business/price-schedule', label: 'Price Schedules', icon: Tags },
   ] },
-  { key: 'biz-buying', label: 'Buying a Business', items: [
-    { to: '/business/mandates', label: 'Acquisition Mandates', icon: Briefcase },
-    { to: '/business/purchase/agreements', label: 'Purchase Agreements', icon: FileSignature },
+  { key: 'bsale-finance', label: 'Finance', items: [
+    { to: '/business/invoices', label: 'Sale Invoices', icon: Receipt },
+    { to: '/business/reports', label: 'Sale Reports', icon: BarChart3 },
   ] },
-  { key: 'biz-rent', label: 'Renting a Business', items: [
-    { to: '/business/rent/listings', label: 'Rental Listings', icon: Building2 },
-    { to: '/business/rent/tenant-enquiries', label: 'Tenant Enquiries', icon: MessageSquareQuote },
-    { to: '/business/rent/rental-agreements', label: 'Rental Management', icon: FileSignature },
-    { to: '/business/rent/tenancy-agreements', label: 'Tenancy Management', icon: FileSignature },
-    { to: '/business/rent/price-schedule', label: 'Rent Price Schedules', icon: Tags },
-    { to: '/business/rent/reports', label: 'Rent Reports', icon: BarChart3 },
-  ] },
-  { key: 'biz-finance', label: 'Finance', items: [
-    { to: '/business/invoices', label: 'Invoices', icon: Receipt },
-    { to: '/business/reports', label: 'Reports', icon: BarChart3 },
+  { key: 'bsale-switch', label: 'Switch', items: [
+    { to: '/business-buy', label: '→ Buy a Business', icon: Briefcase },
+    { to: '/business-rent', label: '→ Rent a Business', icon: Building2 },
   ] },
 ];
 
+export const BUSINESS_BUY_NAV = [
+  { key: 'bbuy-home', label: 'Home', items: [
+    { to: '/business-buy', label: 'Buy Dashboard', icon: LayoutGrid, end: true },
+  ] },
+  { key: 'bbuy-pipeline', label: 'Acquisition', items: [
+    { to: '/business-buy/mandates', label: 'Acquisition Mandates', icon: ClipboardList },
+    { to: '/business-buy/enquiries', label: 'Acquirer Enquiries', icon: MessageSquareQuote },
+    { to: '/business-buy/agreements', label: 'Purchase Agreements', icon: FileSignature },
+    { to: '/business-buy/price-schedule', label: 'Price Schedules', icon: Tags },
+  ] },
+  { key: 'bbuy-finance', label: 'Finance', items: [
+    { to: '/business-buy/invoices', label: 'Buy Invoices', icon: Receipt },
+    { to: '/business-buy/reports', label: 'Buy Reports', icon: BarChart3 },
+  ] },
+  { key: 'bbuy-switch', label: 'Switch', items: [
+    { to: '/business/sale', label: '→ Sell a Business', icon: Building2 },
+    { to: '/business-rent', label: '→ Rent a Business', icon: Building2 },
+  ] },
+];
+
+export const BUSINESS_RENT_NAV = [
+  { key: 'brent-home', label: 'Home', items: [
+    { to: '/business-rent', label: 'Rent Dashboard', icon: LayoutGrid, end: true },
+  ] },
+  { key: 'brent-pipeline', label: 'Leasing', items: [
+    { to: '/business-rent/listings', label: 'Rental Listings', icon: Building2 },
+    { to: '/business-rent/enquiries', label: 'Tenant Enquiries', icon: MessageSquareQuote },
+    { to: '/business-rent/rental-agreements', label: 'Rental Management', icon: FileSignature },
+    { to: '/business-rent/tenancy-agreements', label: 'Tenancy Management', icon: FileSignature },
+    { to: '/business-rent/price-schedule', label: 'Price Schedules', icon: Tags },
+  ] },
+  { key: 'brent-finance', label: 'Finance', items: [
+    { to: '/business-rent/reports', label: 'Rent Reports', icon: BarChart3 },
+  ] },
+  { key: 'brent-switch', label: 'Switch', items: [
+    { to: '/business/sale', label: '→ Sell a Business', icon: Building2 },
+    { to: '/business-buy', label: '→ Buy a Business', icon: Briefcase },
+  ] },
+];
+
+const businessBrand = (sub, accent, accentStrong, accentInk, tint, tint2) => ({
+  name: 'Seventh Sky', sub, icon: Briefcase, accent, accentStrong, accentInk, accentTint: tint, accentTint2: tint2,
+});
+
 export const businessSaleConsole = {
   slug: 'business',
-  storageKey: 'biz.nav.collapsed',
-  brand: {
-    name: 'Seventh Sky',
-    sub: 'Business Sales',
-    icon: Briefcase,
-    accent: '#7c3aed',          // violet-600 — tells Business apart from property sales
-    accentStrong: '#6d28d9',
-    accentInk: '#5b21b6',
-    accentTint: 'rgba(124,58,237,.12)',
-    accentTint2: '#ede9fe',
-  },
-  navGroups: BUSINESS_NAV,
+  storageKey: 'biz.sale.nav.collapsed',
+  brand: businessBrand('Business Sale', '#7c3aed', '#6d28d9', '#5b21b6', 'rgba(124,58,237,.12)', '#ede9fe'), // violet
+  navGroups: BUSINESS_SALE_NAV,
+  api: {},
+  contentClass: 'pm-scope',
+  exitTo: '/dashboard',
+};
+
+export const businessBuyConsole = {
+  slug: 'business-buy',
+  storageKey: 'biz.buy.nav.collapsed',
+  brand: businessBrand('Business Buy', '#4f46e5', '#4338ca', '#3730a3', 'rgba(79,70,229,.12)', '#e0e7ff'), // indigo
+  navGroups: BUSINESS_BUY_NAV,
+  api: {},
+  contentClass: 'pm-scope',
+  exitTo: '/dashboard',
+};
+
+export const businessRentConsole = {
+  slug: 'business-rent',
+  storageKey: 'biz.rent.nav.collapsed',
+  brand: businessBrand('Business Rent', '#db2777', '#be185d', '#9d174d', 'rgba(219,39,119,.12)', '#fce7f3'), // pink
+  navGroups: BUSINESS_RENT_NAV,
   api: {},
   contentClass: 'pm-scope',
   exitTo: '/dashboard',
@@ -1261,5 +1310,7 @@ export const CONSOLES = {
   residential: residentialConsole,
   commercial: commercialConsole,
   business: businessSaleConsole,
+  'business-buy': businessBuyConsole,
+  'business-rent': businessRentConsole,
   'business-registration': businessRegistrationConsole,
 };
