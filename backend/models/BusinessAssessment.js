@@ -9,7 +9,8 @@ const sequelize = require('../config/db.config');
 const BusinessAssessment = sequelize.define('BusinessAssessment', {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
   branch_id: { type: DataTypes.INTEGER, allowNull: false },
-  business_listing_id: { type: DataTypes.INTEGER, allowNull: false },
+  business_listing_id: { type: DataTypes.INTEGER, allowNull: true },
+  property_id: DataTypes.INTEGER, // business property on the shared sales engine (0143)
   assessment_type: { type: DataTypes.STRING(30), defaultValue: 'preliminary' },
   assessor_id: DataTypes.INTEGER,
   assessment_date: DataTypes.DATEONLY,

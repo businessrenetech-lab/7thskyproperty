@@ -112,12 +112,33 @@ async function phase3() {
   return id;
 }
 
+async function phase4(propertyId) {
+  console.log('\n— Phase 4: assessment + due diligence —');
+  if (!propertyId) { const p = await req('POST', '/api/properties', { body: { title: `DD Biz ${STAMP}`, category: 'business', property_type: 'Business', listing_type: 'sale' } }); propertyId = p.body?.data?.id; }
+  const a = await req('POST', '/api/business-assessments', { body: { property_id: propertyId, assessment_type: 'preliminary', operational_condition: 4, market_attractiveness: 3, risks: [] } });
+  ok(a.status === 201, 'assessment created for a property', `HTTP ${a.status}`);
+  const seeded = await req('POST', '/api/business-documents/seed-checklist', { body: { property_id: propertyId } });
+  const docs = seeded.body?.data || [];
+  ok(docs.length >= 8, 'due-diligence checklist seeded', `${docs.length} items`);
+  const again = await req('POST', '/api/business-documents/seed-checklist', { body: { property_id: propertyId } });
+  ok((again.body?.data || []).length === docs.length, 'seeding is idempotent');
+  const esc = await req('POST', `/api/business-documents/${docs[0].id}/escalate`, { body: { note: 'Licence expired' } });
+  const risks = esc.body?.data?.assessment?.risks;
+  const list = typeof risks === 'string' ? JSON.parse(risks) : risks;
+  ok(esc.status === 200 && esc.body?.data?.document?.status === 'rejected', 'escalation flags the document');
+  ok(Array.isArray(list) && list.some((r) => r.description.includes('Licence expired')), 'escalation adds a risk to the assessment');
+  const listed = await req('GET', `/api/business-assessments?property_id=${propertyId}`);
+  ok((listed.body?.data || []).length >= 1, 'assessments list by property');
+}
+
 (async () => {
   console.log(`\n===== BUSINESS PARITY E2E (run ${STAMP}) =====`);
   if (!(await login())) return finish();
   if (want(1)) await phase1();
   if (want(2)) await phase2();
-  const bizId = want(3) ? await phase3() : null; // eslint-disable-line no-unused-vars
+  const bizId = want(3) ? await phase3() : null;
+  if (want(4)) await phase4(bizId);
+  if (want(5) && typeof phase5 === 'function') await phase5(bizId);
   // The DB is shared with production: never leave a test fixture on the live site.
   if (bizId) {
     const off = await req('PUT', `/api/properties/${bizId}`, { body: { is_published: false } });
