@@ -41,7 +41,7 @@ verification register.
 |---|---|---|
 | 1 | Scope slice | Operating core first; pure log registers (complaints, feedback, variations, KPI detail) follow in a second plan |
 | 2 | Quotation | Water-Tank-style catalogue builder: line items, PDF, send, accept/decline, feeds agreement + deposit |
-| 3 | Providers | Reuse the shared `ServiceProvider` registry scoped to the registration line |
+| 3 | Providers | Reuse the shared service-line provider registry (`wt_providers` / `M.WtProvider`, scoped by `service_line`) |
 | 4 | Client surface | Website enquiry + tokenised document/progress link (no login) |
 | 5 | Finance | Registration keeps its own invoices; do its finance properly now, company-wide accounting later |
 | 6 | Approach | A — 16th service line (config, not a copy) |
@@ -180,9 +180,11 @@ each document with a who/when stamp; unverified required documents block the Pha
 
 ## 8. Providers, work orders, activities (Phases 5–6)
 
-- **Providers** — the shared `ServiceProvider` registry scoped to the registration line, so
-  onboarding, MSPA, insurance and qualification verification, non-circumvention and ratings are
-  inherited rather than rebuilt.
+- **Providers** — the shared service-line provider registry (`wt_providers` / `M.WtProvider`,
+  every row tagged `service_line`), so onboarding stages, MSPA, insurance and qualification
+  verification, territory/circumvention breach counters and performance scores are inherited
+  rather than rebuilt. (Note: this is the registry the other fifteen lines use; the separate
+  `service_providers` table belongs to the property-care side and is not used here.)
 - **Work orders** — the existing Project Work Order (SSPC-BR-PWO-01) issued to a real provider
   record instead of a typed-in name, visible in the provider portal.
 - **Activities** — the registration engine: name clearance, trade licence, RJSC, TIN, BIN, VAT,
