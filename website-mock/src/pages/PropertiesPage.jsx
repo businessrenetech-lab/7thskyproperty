@@ -19,6 +19,7 @@ import {
   Layers,
   Check
 } from 'lucide-react';
+import BusinessSpecs from '../components/BusinessSpecs';
 import { websiteApi } from '../services/api';
 import DetailFilterModal from '../components/DetailFilterModal';
 
@@ -627,11 +628,13 @@ export default function PropertiesPage({ onBookInspection }) {
                       </h3>
 
                       {/* Micro Specs Strip */}
+                      {prop.business ? <BusinessSpecs business={prop.business} compact /> : (
                       <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold border-t border-slate-100 pt-2">
                         {prop.bedrooms > 0 && <span>{prop.bedrooms} Bed</span>}
                         {prop.bathrooms > 0 && <span>{prop.bathrooms} Bath</span>}
                         <span>{prop.sizeSqft} sqft</span>
                       </div>
+                      )}
                     </div>
                   </Link>
                 ))}
@@ -770,12 +773,14 @@ export default function PropertiesPage({ onBookInspection }) {
                       </div>
 
                       {/* Micro Specs */}
+                      {prop.business ? <BusinessSpecs business={prop.business} compact /> : (
                       <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold border-t border-slate-100 pt-2 mt-2">
                         {prop.bedrooms > 0 && <span>{prop.bedrooms} Bed</span>}
                         {prop.bathrooms > 0 && <span>{prop.bathrooms} Bath</span>}
                         {prop.carSpaces > 0 && <span>{prop.carSpaces} Car</span>}
                         <span>{prop.sizeSqft} sqft</span>
                       </div>
+                      )}
                     </div>
                   </Link>
                 ))}

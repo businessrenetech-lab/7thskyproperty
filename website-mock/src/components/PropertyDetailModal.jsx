@@ -21,6 +21,7 @@ import {
   Sparkles,
   ShieldCheck
 } from 'lucide-react';
+import BusinessSpecs from './BusinessSpecs';
 import { mockApi } from '../services/mockApi';
 import { websiteApi } from '../services/api';
 
@@ -292,6 +293,7 @@ export default function PropertyDetailModal({ property, onClose, onBookInspectio
               </div>
 
               {/* Specs Bar */}
+              {property.business ? <BusinessSpecs business={property.business} /> : (
               <div className="grid grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
                 <div>
                   <div className="text-xs text-slate-400 uppercase font-semibold">Bedrooms</div>
@@ -310,6 +312,7 @@ export default function PropertyDetailModal({ property, onClose, onBookInspectio
                   <div className="text-lg font-bold text-[#012a4e] mt-0.5">{property.sizeSqft} sqft</div>
                 </div>
               </div>
+              )}
 
               {/* Description */}
               <div className="space-y-2">
