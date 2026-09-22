@@ -5,6 +5,7 @@ import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import PropertiesPage from './pages/PropertiesPage';
 import PropertyDetailPage from './pages/PropertyDetailPage';
+import BusinessDetailsPage from './pages/BusinessDetailsPage';
 import ServicesPage from './pages/ServicesPage';
 import ServiceDetailPage from './pages/ServiceDetailPage';
 import AboutPage from './pages/AboutPage';
@@ -63,10 +64,11 @@ export default function App() {
                 <PropertyDetailPage 
                   onBookInspection={handleBookInspection} 
                 />
-              } 
+              }
             />
-            <Route 
-              path="/services" 
+            <Route path="/business-details/:token" element={<BusinessDetailsPage />} />
+            <Route
+              path="/services"
               element={
                 <ServicesPage 
                   onOpenAppraisal={handleOpenAppraisal} 

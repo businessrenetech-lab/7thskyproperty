@@ -399,6 +399,15 @@ export const websiteApi = {
     });
   },
 
+  // Business listings: request the NDA, then read full details with the released token.
+  async requestBusinessNda(propertyId, form) {
+    return request('/public-website/business-nda-requests', { method: 'POST', body: JSON.stringify({ property: propertyId, ...form }) });
+  },
+
+  async getBusinessDetails(token) {
+    return request(`/public-website/business-details/${encodeURIComponent(token)}`);
+  },
+
   // Short Term Stay Public Reservation
   async submitShortStayBookingEnquiry(payload) {
     return request('/public/short-stay/enquiries', {

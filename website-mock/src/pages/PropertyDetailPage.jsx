@@ -27,6 +27,7 @@ import {
   FileText
 } from 'lucide-react';
 import BusinessSpecs from '../components/BusinessSpecs';
+import BusinessNdaRequest from '../components/BusinessNdaRequest';
 import { mockApi } from '../services/mockApi';
 import { websiteApi } from '../services/api';
 import { TenantApplicationModal } from '../components/Modals';
@@ -469,6 +470,7 @@ export default function PropertyDetailPage({ onBookInspection }) {
             )}
           </div>
           )}
+          {property.business && <BusinessNdaRequest propertyId={property.id} />}
 
           {/* Overview (Compact, Decluttered) */}
           <div className="space-y-2">
