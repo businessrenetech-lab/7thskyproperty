@@ -129,6 +129,21 @@ async function phase4(propertyId) {
   ok(Array.isArray(list) && list.some((r) => r.description.includes('Licence expired')), 'escalation adds a risk to the assessment');
   const listed = await req('GET', `/api/business-assessments?property_id=${propertyId}`);
   ok((listed.body?.data || []).length >= 1, 'assessments list by property');
+
+  // Buyer side: suitability + shortlist investment summary (Purchase SOP Steps 2, 8).
+  const prof = await req('GET', `/api/properties/${propertyId}/business-profile`);
+  if (!prof.body?.data?.annual_profit) await req('PUT', `/api/properties/${propertyId}/business-profile`, { body: { business_type: 'service', annual_turnover: 8000000, annual_profit: 2000000 } });
+  await req('PUT', `/api/properties/${propertyId}`, { body: { price: 12000000 } });
+  const buyer = await req('POST', '/api/contacts?category=business', { body: { full_name: `Suit Buyer ${STAMP}`, contact_type: 'individual', primary_phone: `0181${STAMP}` } });
+  const mandate = await req('POST', '/api/buyer-mandates?category=business', { body: { buyer_contact_id: buyer.body?.data?.id, notes: `Suit ${STAMP}` } });
+  const mid = mandate.body?.data?.id;
+  const put = await req('PUT', `/api/buyer-mandates/${mid}`, { body: { suitability: { readiness: 'strong', verdict: 'suitable' } } });
+  ok(put.status === 200, 'suitability saved on the mandate', `HTTP ${put.status}`);
+  await req('POST', `/api/buyer-mandates/${mid}/candidates`, { body: { property_id: propertyId, fit_note: 'e2e' } });
+  const got = await req('GET', `/api/buyer-mandates/${mid}`);
+  const cand = (got.body?.data?.candidates || []).find((c) => Number(c.property_id || c.property?.id) === Number(propertyId));
+  ok(!!cand?.investment_summary, 'business shortlist candidate has an investment summary', JSON.stringify(cand?.investment_summary));
+  ok(cand?.investment_summary?.price_to_profit > 0, 'price-to-profit multiple computed');
 }
 
 (async () => {

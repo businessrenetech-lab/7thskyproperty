@@ -4,6 +4,7 @@ const MandateCandidate = require('../models/MandateCandidate');
 const { salesCategory } = require('../utils/salesCategory');
 const PropertyDeal = require('../models/PropertyDeal');
 const Property = require('../models/Property');
+const PropertyBusinessProfile = require('../models/PropertyBusinessProfile');
 const Client = require('../models/Client');
 const Contact = require('../models/Contact');
 const User = require('../models/User');
@@ -13,7 +14,7 @@ const { asyncHandler, branchScope, resolveBranchId, pick } = require('../utils/c
 
 const MANDATE_FIELDS = ['buyer_client_id', 'buyer_contact_id', 'status', 'budget_min', 'budget_max', 'areas', 'property_type', 'beds_min', 'baths_min', 'timeframe', 'notes', 'assigned_to', 'cancel_reason', 'category', 'suitability',
   'finance_status', 'investment_use', 'risk_notes', 'search_strategy'];
-const PROP_ATTRS = ['id', 'property_code', 'title', 'area', 'price', 'owner_contact_id'];
+const PROP_ATTRS = ['id', 'property_code', 'title', 'area', 'price', 'owner_contact_id', 'category'];
 // Client belongsTo Contact with no alias, so the accessor is `.Contact`.
 const buyerName = (m) => m.buyerClient?.Contact?.full_name || m.buyerContact?.full_name || '—';
 
@@ -39,7 +40,21 @@ exports.list = asyncHandler(async (req, res) => {
 exports.getOne = asyncHandler(async (req, res) => {
   const m = await BuyerMandate.findOne({ where: { id: req.params.id, ...branchScope(req) }, include: mandateIncludes(true) });
   if (!m) return res.status(404).json({ error: 'Mandate not found.' });
-  res.json({ data: { ...m.toJSON(), buyer_name: buyerName(m) } });
+  const json = { ...m.toJSON(), buyer_name: buyerName(m) };
+  // Business shortlist candidates carry an investment summary (Purchase SOP Step 8).
+  const bizIds = (json.candidates || []).filter((c) => c.property?.category === 'business').map((c) => c.property.id);
+  if (bizIds.length) {
+    const profiles = await PropertyBusinessProfile.findAll({ where: { property_id: bizIds }, raw: true });
+    const byId = new Map(profiles.map((p) => [Number(p.property_id), p]));
+    json.candidates = json.candidates.map((c) => {
+      const p = c.property && byId.get(Number(c.property.id));
+      if (!p) return c;
+      const price = Number(c.property.price) || null;
+      const profit = Number(p.annual_profit) || null;
+      return { ...c, investment_summary: { asking_price: price, annual_turnover: Number(p.annual_turnover) || null, annual_profit: profit, price_to_profit: price && profit ? Math.round((price / profit) * 10) / 10 : null } };
+    });
+  }
+  res.json({ data: json });
 });
 
 exports.create = asyncHandler(async (req, res) => {
