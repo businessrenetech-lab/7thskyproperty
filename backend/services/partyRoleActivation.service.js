@@ -391,6 +391,12 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
       }
     }
 
+    // Business NDA signed → mark signed + record the buyer introduction (non-circumvention evidence).
+    if (envelope.related_type === 'business_nda') {
+      try { await require('./businessNda.service').onSigned(envelope, { transaction: tx }); }
+      catch (e) { console.warn('[business-nda] on sign:', e.message); }
+    }
+
     // Property-management service agreement signed (RPRM) → draft agency-fee
     // invoices for the ONE-TIME leasing/setup stages of the signed price schedule
     // (the recurring management fee stays on the owner statement, handled above).

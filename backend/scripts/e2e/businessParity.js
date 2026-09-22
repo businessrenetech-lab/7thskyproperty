@@ -146,6 +146,45 @@ async function phase4(propertyId) {
   ok(cand?.investment_summary?.price_to_profit > 0, 'price-to-profit multiple computed');
 }
 
+async function phase5(propertyId) {
+  console.log('\n— Phase 5: NDA gate —');
+  // Run alone: make (and afterwards unpublish) a published business listing of our own.
+  let ownFixture = null;
+  if (!propertyId) {
+    const p = await req('POST', '/api/properties', { body: { title: `NDA Biz ${STAMP}`, category: 'business', property_type: 'Business', listing_type: 'sale' } });
+    propertyId = ownFixture = p.body?.data?.id;
+    await req('PUT', `/api/properties/${propertyId}/business-profile`, { body: { business_type: 'retail', teaser_headline: `NDA teaser ${STAMP}` } });
+    await req('PUT', `/api/properties/${propertyId}`, { body: { is_published: true, price: 5000000 } });
+  }
+  try {
+    const email = `buyer${STAMP}@example.com`;
+    const r1 = await req('POST', '/api/public-website/business-nda-requests', { noAuth: true, body: { property: propertyId, full_name: `Buyer ${STAMP}`, email, phone: '01700000000', company: 'Acq Ltd' } });
+    ok(r1.status === 201, 'website NDA request accepted', `HTTP ${r1.status} ${r1.body?.error || ''}`);
+    const r2 = await req('POST', '/api/public-website/business-nda-requests', { noAuth: true, body: { property: propertyId, full_name: `Buyer ${STAMP}`, email } });
+    ok(r2.status === 200, 'repeat request returns the open one (no duplicate)', `HTTP ${r2.status}`);
+    const bad = await req('POST', '/api/public-website/business-nda-requests', { noAuth: true, body: { property: propertyId, full_name: 'x', email: 'nope' } });
+    ok(bad.status === 400, 'invalid email refused', `HTTP ${bad.status}`);
+    const list = await req('GET', `/api/business-ndas?property_id=${propertyId}`);
+    const nda = (list.body?.data || []).find((n) => n.buyer_email === email);
+    ok(!!nda && nda.status === 'requested', 'NDA listed for staff', nda?.status);
+    ok(nda && !('release_token' in nda), 'admin list never exposes the token');
+    const enq = await req('GET', '/api/sales/inbox?category=business');
+    ok((enq.body?.data || []).some((i) => Number(i.property_id) === Number(propertyId)), 'request lands in the Business inbox');
+    const sent = await req('POST', `/api/business-ndas/${nda.id}/approve`);
+    ok(sent.status === 200 && sent.body?.data?.status === 'sent', 'approve sends the NDA for e-signature', sent.body?.error || sent.body?.data?.status);
+    const early = await req('POST', `/api/business-ndas/${nda.id}/release`);
+    ok(early.status === 409, 'cannot release before signing', `HTTP ${early.status}`);
+    const junk = await req('GET', '/api/public-website/business-details/abc', { noAuth: true });
+    ok(junk.status === 404, 'invalid token → 404');
+    return nda.id;
+  } finally {
+    if (ownFixture) {
+      const off = await req('PUT', `/api/properties/${ownFixture}`, { body: { is_published: false } });
+      ok(off.status === 200, 'cleanup: phase 5 fixture unpublished', `id ${ownFixture}`);
+    }
+  }
+}
+
 (async () => {
   console.log(`\n===== BUSINESS PARITY E2E (run ${STAMP}) =====`);
   if (!(await login())) return finish();

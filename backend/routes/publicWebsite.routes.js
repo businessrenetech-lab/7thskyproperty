@@ -22,6 +22,8 @@ router.post('/service-requests', enquiryLimiter, ctrl.submitServiceRequest);
 router.post('/appraisals', enquiryLimiter, ctrl.submitAppraisalRequest);
 router.post('/contact', enquiryLimiter, ctrl.submitContactMessage);
 router.post('/offers', enquiryLimiter, ctrl.submitPropertyOffer);
+router.post('/business-nda-requests', enquiryLimiter, ctrl.requestBusinessNda);
+router.get('/business-details/:token', listingLimiter, ctrl.getBusinessDetailsByToken);
 
 // Public, read-only site content (contact/footer details, branding, social,
 // hero/service/card photos) — what the website renders.

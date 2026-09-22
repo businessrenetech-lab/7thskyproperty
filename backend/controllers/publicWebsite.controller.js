@@ -26,6 +26,7 @@ const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = requ
 const { isPubliclyVisible, pickPublic } = require('../services/publicPropertyShape');
 const PropertyBusinessProfile = require('../models/PropertyBusinessProfile');
 const { applyBusinessTeaser } = require('../services/businessTeaser.service');
+const businessNda = require('../services/businessNda.service');
 
 // Teaser every business row of a public list (one query for all their profiles).
 async function teaseBusinessRows(rows) {
@@ -1256,4 +1257,19 @@ exports.createOfferLink = asyncHandler(async (req, res) => {
     } catch { /* best-effort */ }
   }
   res.json({ data: { link, emailed, property: { id: property.id, title: property.title, status: property.status } } });
+});
+
+// POST /api/public-website/business-nda-requests
+exports.requestBusinessNda = asyncHandler(async (req, res) => {
+  try {
+    const { nda, created } = await businessNda.requestNda({ propertyIdOrSlug: req.body.property, form: req.body || {} });
+    res.status(created ? 201 : 200).json({ data: { status: nda.status }, message: 'Thank you — our team will verify your details and send the confidentiality agreement.' });
+  } catch (e) { res.status(e.status || 500).json({ error: e.message }); }
+});
+
+// GET /api/public-website/business-details/:token
+exports.getBusinessDetailsByToken = asyncHandler(async (req, res) => {
+  const data = await businessNda.fullDetailsByToken(req.params.token);
+  if (!data) return res.status(404).json({ error: 'This link is invalid or has expired. Please contact Seventh Sky.' });
+  res.json({ data });
 });
