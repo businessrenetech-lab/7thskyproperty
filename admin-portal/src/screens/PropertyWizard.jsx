@@ -18,7 +18,7 @@ import {
 import api from "../services/api";
 import { usePmScope } from '../config/pmScope';
 import { useToast } from "../context/ToastContext";
-import { propertyWizardPath } from "./sales/paths";
+import { propertyWizardPath, propertyFilePath } from "./sales/paths";
 import BusinessProfileStep, { EMPTY_BUSINESS_PROFILE } from "./sales/business/BusinessProfileStep";
 import { Spinner, Button, Field, Input, Select, Textarea } from "../ui/kit";
 import PropertyMediaGallery from "../components/PropertyMediaGallery";
@@ -366,7 +366,7 @@ export default function PropertyWizard() {
       );
       nav(
         saleMode
-          ? `/sales/property/${propertyId}`
+          ? propertyFilePath(f.category, propertyId)
           : `${scope.basePath}/rentals?open=${propertyId}`,
       );
     } catch (e) {
