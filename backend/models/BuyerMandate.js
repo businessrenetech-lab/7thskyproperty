@@ -24,6 +24,8 @@ const BuyerMandate = sequelize.define('BuyerMandate', {
   baths_min: DataTypes.INTEGER,
   timeframe: DataTypes.STRING,
   notes: DataTypes.TEXT,
+  category: DataTypes.STRING(20),      // sales category (business mandates only, 0141)
+  suitability: DataTypes.JSON,         // Business Purchase SOP Step 2 (0141)
   // Stage 2 — requirement assessment & planning
   finance_status: DataTypes.ENUM('unknown', 'pre_approved', 'cash', 'pending', 'declined'),
   investment_use: DataTypes.STRING,

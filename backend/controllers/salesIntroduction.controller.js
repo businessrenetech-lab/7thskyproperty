@@ -10,6 +10,8 @@ const Contact = require('../models/Contact');
 const Property = require('../models/Property');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, pick } = require('../utils/controllerHelpers');
+const { Op } = require('sequelize');
+const { salesCategory, propertyIdsInCategory } = require('../utils/salesCategory');
 
 const MONTHS = 12;
 const addMonths = (d, n) => { const x = new Date(d); x.setMonth(x.getMonth() + n); return x; };
@@ -43,6 +45,11 @@ exports.list = asyncHandler(async (req, res) => {
   const where = { ...branchScope(req), context: 'sale' };
   if (req.query.property_id) where.property_id = req.query.property_id;
   if (req.query.status) where.status = req.query.status;
+  const category = salesCategory(req.query.category);
+  if (category && !where.property_id) {
+    const ids = await propertyIdsInCategory(category, branchScope(req));
+    where.property_id = { [Op.in]: ids.length ? ids : [0] };
+  }
   const rows = await NonCircumventionRecord.findAll({ where, order: [['created_at', 'DESC']] });
   const { contacts, props } = await resolve(rows);
   let data = rows.map((r) => shape(r, contacts, props));

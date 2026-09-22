@@ -145,20 +145,13 @@ import PropertyMgmtConsole from './screens/PropertyMgmtConsole';
 import CommercialRentConsole from './screens/CommercialRentConsole';
 import ResidentialConsole from './screens/ResidentialConsole';
 import CommercialConsole, { CommercialBuyerConsole } from './screens/CommercialConsole';
-import BusinessSaleConsole from './screens/BusinessSaleConsole';
-import BusinessBuyConsole from './screens/BusinessBuyConsole';
+import BusinessSaleConsole, { BusinessBuyerConsole } from './screens/BusinessSaleConsole';
 import BusinessRentConsole from './screens/BusinessRentConsole';
-import BusinessSaleDashboard from './screens/business/BusinessSaleDashboard';
-import BusinessBuyDashboard from './screens/business/BusinessBuyDashboard';
 import BusinessRentDashboard from './screens/business/BusinessRentDashboard';
-import BusinessBuyReports from './screens/business/BusinessBuyReports';
 import BusinessListings from './screens/business/BusinessListings';
 import BusinessListingDetail from './screens/business/BusinessListingDetail';
 import BusinessEnquiries from './screens/business/BusinessEnquiries';
-import BusinessInvoices from './screens/business/BusinessInvoices';
 import BusinessReports from './screens/business/BusinessReports';
-import BusinessMandates from './screens/business/BusinessMandates';
-import BusinessMandateDetail from './screens/business/BusinessMandateDetail';
 import BrmAgreements from './screens/sales/BrmAgreements';
 import BtmAgreements from './screens/sales/BtmAgreements';
 import BusinessRegistrationConsole from './screens/BusinessRegistrationConsole';
@@ -1473,34 +1466,49 @@ export default function App() {
               <Route path="/commercial/rent/price-schedule" element={<SalesPriceSchedule scope="commercial_rent" title="Commercial Rent · Price Schedules" />} />
             </Route>
 
-            {/* ── Business SALE console (sell a business on the owner's behalf).
-                Scoped to listing_type='sale', buyer enquiries, sale agreements,
-                sale invoices (deal_side='sale') and sale reports. ── */}
+            {/* ── Business SALE — Commercial's sale console, category="business",
+                rebased onto /business/*. ── */}
             <Route element={<RequireAuth><AdminGate><BusinessSaleConsole /></AdminGate></RequireAuth>}>
-              <Route path="/business" element={<Navigate to="/business/sale" replace />} />
-              <Route path="/business/sale" element={<BusinessSaleDashboard />} />
-              <Route path="/business/listings" element={<BusinessListings listingType="sale" />} />
-              <Route path="/business/listings/:id" element={<BusinessListingDetail />} />
-              <Route path="/business/enquiries" element={<BusinessEnquiries mode="buyer" />} />
-              <Route path="/business/sale/agreements" element={<SaleAgreements category="business" />} />
-              <Route path="/business/price-schedule" element={<SalesPriceSchedule scope="business" verticals={['sale_sale_business']} title="Business Sale · Price Schedules" />} />
-              <Route path="/business/invoices" element={<BusinessInvoices dealSide="sale" />} />
-              <Route path="/business/reports" element={<BusinessReports listingType="sale" />} />
+              <Route path="/business" element={<Navigate to="/business/sell" replace />} />
+              <Route path="/business/sell" element={<PropertySellDashboard category="business" title="Business · Sale" desc="Business sale service — listings, sellers, agreements, commission and settlement." />} />
+              <Route path="/business/properties" element={<SalesProperties category="business" title="Business · Businesses for Sale" desc="Businesses engaged for sale — lifecycle stages, seller representation and business files." />} />
+              <Route path="/business/property/:id" element={<SalesPropertyFile />} />
+              <Route path="/business/property/:id/settlement" element={<SettlementDesk />} />
+              <Route path="/business/properties/new" element={<PropertyWizard />} />
+              <Route path="/business/properties/new/:id" element={<PropertyWizard />} />
+              <Route path="/business/compliance" element={<Compliance />} />
+              <Route path="/business/workflows" element={<Projects />} />
+              <Route path="/business/settlements" element={<SalesBulkSettlement />} />
+              <Route path="/business/accounting" element={<AccountingOverview />} />
+              <Route path="/business/work-queue" element={<SalesWorkQueue />} />
+              <Route path="/business/introductions" element={<SalesIntroductions category="business" />} />
+              <Route path="/business/calendar" element={<SalesCalendar category="business" />} />
+              <Route path="/business/agreements/sale" element={<SaleAgreements category="business" />} />
+              <Route path="/business/price-schedule" element={<SalesPriceSchedule scope="business" title="Business · Price Schedules" />} />
+              <Route path="/business/contracts" element={<SalesContracts />} />
+              <Route path="/business/inbox" element={<SalesInbox />} />
+              <Route path="/business/reports" element={<SalesReports />} />
+              <Route path="/business/contacts" element={<SalesContacts scope="sales" />} />
+              <Route path="/business/marketing" element={<SalesMarketingHub />} />
+              <Route path="/business/contacts/clients" element={<Clients />} />
+              <Route path="/business/clients" element={<Navigate to="/business/contacts/clients" replace />} />
             </Route>
 
-            {/* ── Business BUY console (acquire a business for a client). Mandate-
-                driven: acquisition mandates, acquirer enquiries, purchase
-                agreements, buy invoices (deal_side='buy', raised against a
-                mandate) and buy reports. ── */}
-            <Route element={<RequireAuth><AdminGate><BusinessBuyConsole /></AdminGate></RequireAuth>}>
-              <Route path="/business-buy" element={<BusinessBuyDashboard />} />
-              <Route path="/business-buy/mandates" element={<BusinessMandates />} />
-              <Route path="/business-buy/mandates/:id" element={<BusinessMandateDetail />} />
-              <Route path="/business-buy/enquiries" element={<BusinessEnquiries mode="investor" />} />
-              <Route path="/business-buy/agreements" element={<PurchaseAgreements category="business" />} />
-              <Route path="/business-buy/price-schedule" element={<SalesPriceSchedule scope="business" verticals={['sale_purchase_business']} title="Business Buy · Price Schedules" />} />
-              <Route path="/business-buy/invoices" element={<BusinessInvoices dealSide="buy" />} />
-              <Route path="/business-buy/reports" element={<BusinessBuyReports />} />
+            {/* ── Business BUYER service — Commercial's buyer console, category="business". ── */}
+            <Route element={<RequireAuth><AdminGate><BusinessBuyerConsole /></AdminGate></RequireAuth>}>
+              <Route path="/business/buyer-service" element={<BuyerServiceDashboard />} />
+              <Route path="/business/buyer/work-queue" element={<SalesWorkQueue dealScope="buy" />} />
+              <Route path="/business/buyer/calendar" element={<SalesCalendar category="business" scope="buy" />} />
+              <Route path="/business/buyer/contacts" element={<SalesContacts scope="buy" />} />
+              <Route path="/business/buyer/marketing" element={<SalesMarketingHub scope="buy" />} />
+              <Route path="/business/buyer/clients" element={<Clients />} />
+              <Route path="/business/buyer-invoices" element={<BuyerInvoices />} />
+              <Route path="/business/buy" element={<DealsBoard category="business" dealType="buy" title="Business · Buy" desc="Business buyer service — deals, buyers, agreements, commission and expenses." />} />
+              <Route path="/business/buy/:dealId" element={<BuyerDealFile />} />
+              <Route path="/business/mandates" element={<BuyerMandates category="business" />} />
+              <Route path="/business/mandates/:id" element={<BuyerMandateDetail category="business" />} />
+              <Route path="/business/enquiry" element={<SalesEnquiries category="business" title="Business · Buyer Enquiries" desc="Every buyer who enquired on a business for sale." />} />
+              <Route path="/business/agreements/purchase" element={<PurchaseAgreements category="business" />} />
             </Route>
 
             {/* ── Business RENT console (lease a business / premises). Scoped to
@@ -1517,9 +1525,21 @@ export default function App() {
               <Route path="/business-rent/reports" element={<BusinessReports listingType="rent" />} />
             </Route>
 
-            {/* Back-compat: old combined-console paths → new dedicated consoles. */}
-            <Route path="/business/mandates" element={<Navigate to="/business-buy/mandates" replace />} />
-            <Route path="/business/purchase/agreements" element={<Navigate to="/business-buy/agreements" replace />} />
+            {/* Retired Business screens → their new homes. */}
+            <Route path="/business/sale" element={<Navigate to="/business/sell" replace />} />
+            <Route path="/business/listings" element={<Navigate to="/business/properties" replace />} />
+            <Route path="/business/listings/:id" element={<Navigate to="/business/properties" replace />} />
+            <Route path="/business/enquiries" element={<Navigate to="/business/enquiry" replace />} />
+            <Route path="/business/invoices" element={<Navigate to="/business/buyer-invoices" replace />} />
+            <Route path="/business/sale/agreements" element={<Navigate to="/business/agreements/sale" replace />} />
+            <Route path="/business/purchase/agreements" element={<Navigate to="/business/agreements/purchase" replace />} />
+            <Route path="/business-buy" element={<Navigate to="/business/buyer-service" replace />} />
+            <Route path="/business-buy/mandates" element={<Navigate to="/business/mandates" replace />} />
+            <Route path="/business-buy/enquiries" element={<Navigate to="/business/enquiry" replace />} />
+            <Route path="/business-buy/agreements" element={<Navigate to="/business/agreements/purchase" replace />} />
+            <Route path="/business-buy/invoices" element={<Navigate to="/business/buyer-invoices" replace />} />
+            <Route path="/business-buy/reports" element={<Navigate to="/business/reports" replace />} />
+            <Route path="/business-buy/*" element={<Navigate to="/business/buyer-service" replace />} />
             <Route path="/business/rent" element={<Navigate to="/business-rent" replace />} />
             <Route path="/business/rent/listings" element={<Navigate to="/business-rent/listings" replace />} />
             <Route path="/business/rent/tenant-enquiries" element={<Navigate to="/business-rent/enquiries" replace />} />

@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Video
 } from 'lucide-react';
+import BusinessSpecs from './BusinessSpecs';
 
 export default function FeaturedProperties({ properties, onSelectProperty, onBookInspection }) {
   const [activeTab, setActiveTab] = useState('All');
@@ -137,6 +138,7 @@ export default function FeaturedProperties({ properties, onSelectProperty, onBoo
                 </div>
 
                 {/* Specs Strip (Beds, Baths, Cars, Sqft) */}
+                {prop.business ? <BusinessSpecs business={prop.business} compact /> : (
                 <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-600">
                   {prop.bedrooms > 0 && (
                     <div className="flex items-center gap-1">
@@ -163,6 +165,7 @@ export default function FeaturedProperties({ properties, onSelectProperty, onBoo
                     </div>
                   )}
                 </div>
+                )}
               </div>
             </div>
           ))}

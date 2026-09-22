@@ -406,7 +406,8 @@ exports.update = asyncHandler(async (req, res) => {
   const data = deriveUtilitiesActive(pick(req.body, FIELDS));
   if (req.body.status) {
     if (['listed', 'available'].includes(req.body.status)) {
-      data.is_published = true;
+      // An explicit website choice wins (the wizard's 'Keep website draft'), as in create.
+      data.is_published = req.body.is_published !== undefined ? Boolean(req.body.is_published) : true;
       data.listing_status = 'active';
     } else if (['under_offer', 'reserved'].includes(req.body.status)) {
       data.is_published = true;

@@ -13,7 +13,7 @@ import { useToast } from '../../context/ToastContext';
 import {
   Button, Spinner, Badge, StatusBadge, Drawer, Field, Input, Select, Textarea
 } from '../../ui/kit';
-import { propertyFilePath, settlementDeskPath } from './paths';
+import { propertyFilePath, settlementDeskPath, useSalesCategory } from './paths';
 
 const money = (v) => '৳' + Number(v || 0).toLocaleString('en-BD', { minimumFractionDigits: 2 });
 
@@ -50,6 +50,7 @@ const PIPELINE_KIND = {
 const PIPELINE_ORDER = ['prepare', 'submit', 'review', 'approve', 'record_receipt', 'match_bank', 'pay_out', 'lock', 'offer_review', 'sop_overdue'];
 
 export default function SalesWorkQueue({ dealScope }) {
+  const locked = useSalesCategory();
   const navigate = useNavigate();
   const { user } = useAuth();
   const toast = useToast();
@@ -99,7 +100,7 @@ export default function SalesWorkQueue({ dealScope }) {
   // Load staff, properties, contacts for drawer
   useEffect(() => {
     api.get('/auth/staff').then((r) => setStaffList(r.data || [])).catch(() => {});
-    api.get('/sales/dashboard?category=residential')
+    api.get(`/sales/dashboard?category=${locked || 'residential'}`)
       .then((r) => {
         const body = r.data?.data ?? r.data ?? {};
         const pList = body.properties || body.listings || [];
@@ -137,14 +138,14 @@ export default function SalesWorkQueue({ dealScope }) {
   const loadPipeline = useCallback(async () => {
     setPipelineLoading(true);
     try {
-      const { data } = await api.get(`/sales/work-queue${scope === 'all' ? '?scope=all' : ''}`);
+      const { data } = await api.get('/sales/work-queue', { params: { ...(scope === 'all' ? { scope: 'all' } : {}), ...(locked ? { category: locked } : {}) } });
       setPipelineItems(data.data.items || []);
     } catch (e) {
       toast.error(e.response?.data?.error || 'Could not load pipeline items');
     } finally {
       setPipelineLoading(false);
     }
-  }, [scope, toast]);
+  }, [scope, toast, locked]);
 
   useEffect(() => {
     loadTasks();

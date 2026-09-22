@@ -9,6 +9,7 @@ import { Download, Mail, Plus, Trash2, Save, RefreshCw, Eye, HandCoins } from 'l
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { Button, Spinner, StatusBadge, Drawer, Field, Input, Textarea, Select, EmptyState } from '../../ui/kit';
+import { useSalesCategory } from './paths';
 
 const bdt = (v) => '৳' + Number(v || 0).toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const th = { padding: '8px 10px', textAlign: 'left', fontSize: 11.5, textTransform: 'uppercase', color: 'var(--muted)', borderBottom: '1px solid var(--line)' };
@@ -19,6 +20,7 @@ const td = { padding: '8px 10px', borderBottom: '1px solid var(--line)', fontSiz
 // envelope) — never by title text — so this list shows ONLY residential
 // sales/purchase fees, not PM or other sections.
 export default function SalesInvoices({ kind }) {
+  const locked = useSalesCategory();
   const toast = useToast();
   const [rows, setRows] = useState(null);
   const [status, setStatus] = useState('');
@@ -30,12 +32,13 @@ export default function SalesInvoices({ kind }) {
     try {
       // scope: a specific kind (purchase|sale) or the whole sales section.
       const q = new URLSearchParams({ invoice_type: 'agreement_fee', scope: kind || 'sales' });
+      if (locked) q.set('category', locked);
       if (status) q.set('status', status);
       if (search) q.set('search', search);
       const r = await api.get(`/invoices?${q}`);
       setRows(r.data.data || []);
     } catch { toast.error('Could not load invoices'); setRows([]); }
-  }, [status, search, toast, kind]);
+  }, [status, search, toast, kind, locked]);
   useEffect(() => { load(); }, [load]);
 
   return (

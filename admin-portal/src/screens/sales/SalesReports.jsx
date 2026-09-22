@@ -31,6 +31,7 @@ import {
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { Spinner } from '../../ui/kit';
+import { useSalesCategory } from './paths';
 
 const bdt = (v) => '৳' + Number(v || 0).toLocaleString('en-BD');
 const iso = (d) => d.toISOString().slice(0, 10);
@@ -356,12 +357,13 @@ function SummaryStrip({ items }) {
 }
 
 export default function SalesReports() {
+  const locked = useSalesCategory();
   const toast = useToast();
   const ref = useRef(null);
 
   const [from, setFrom] = useState(iso(new Date(Date.now() - 90 * 86400000)));
   const [to, setTo] = useState(iso(new Date()));
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState(locked || '');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activePreset, setActivePreset] = useState('90D');
@@ -1464,6 +1466,9 @@ export default function SalesReports() {
               }}
             >
               <Filter size={13} color="var(--muted, #64748b)" />
+              {locked ? (
+                <span style={{ fontSize: 12, fontWeight: 600 }}>Business only</span>
+              ) : (<>
               <label htmlFor={categorySelectId} className="sr-only">Filter Category</label>
               <select
                 id={categorySelectId}
@@ -1487,6 +1492,7 @@ export default function SalesReports() {
                   </option>
                 ))}
               </select>
+              </>)}
             </div>
           </div>
         </div>

@@ -8,11 +8,13 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { PageHead, DataTable, StatusBadge, SearchInput, Badge, Select } from '../../ui/kit';
-import { propertyFilePath } from './paths';
+import { propertyFilePath, useSalesCategory } from './paths';
 
 const STATUSES = ['active', 'breached', 'closed'];
 
-export default function SalesIntroductions({ category = 'residential' }) {
+export default function SalesIntroductions({ category: categoryProp = 'residential' }) {
+  const locked = useSalesCategory();
+  const category = locked || categoryProp;
   const navigate = useNavigate();
   const toast = useToast();
   const [params, setParams] = useSearchParams();
@@ -30,10 +32,11 @@ export default function SalesIntroductions({ category = 'residential' }) {
       const q = new URLSearchParams();
       if (status) q.set('status', status);
       if (expiry) q.set('expiry', expiry);
+      if (locked) q.set('category', locked);
       const { data } = await api.get(`/sales/introductions${q.toString() ? `?${q}` : ''}`);
       setRows(data.data || []);
     } catch { toast.error('Failed to load introductions'); } finally { setLoading(false); }
-  }, [toast, status, expiry]);
+  }, [toast, status, expiry, locked]);
   useEffect(() => { load(); }, [load]);
 
   const columns = [

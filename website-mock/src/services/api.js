@@ -111,7 +111,8 @@ export const websiteApi = {
             title: p.title || 'Executive Residence',
             slug: p.slug || p.property_code,
             listing_type: p.listing_type,
-            purpose: p.listing_type === 'sale' ? 'For Sale' : isShort ? 'Short Term Stay' : 'For Rent',
+            purpose: p.business ? 'Business For Sale' : (p.listing_type === 'sale' ? 'For Sale' : isShort ? 'Short Term Stay' : 'For Rent'),
+            business: p.business || null,
             category: p.category || 'residential',
             propertyType: p.property_type || 'Apartment',
             price: numPrice,
@@ -120,10 +121,10 @@ export const websiteApi = {
             priceUnit: p.price_unit || (p.listing_type === 'sale' ? 'Total' : isShort ? 'per night' : 'per month'),
             location: `${p.area || ''}, ${p.city || p.district || ''}`.replace(/^,\s*|,\s*$/g, '') || 'Prime Sector',
             suburb: p.area || 'Executive Sector',
-            beds: p.bedrooms || 3,
-            baths: p.bathrooms || 2,
-            bedrooms: p.bedrooms || 3,
-            bathrooms: p.bathrooms || 2,
+            beds: p.business ? 0 : (p.bedrooms || 3),
+            baths: p.business ? 0 : (p.bathrooms || 2),
+            bedrooms: p.business ? 0 : (p.bedrooms || 3),
+            bathrooms: p.business ? 0 : (p.bathrooms || 2),
             balconies: p.balconies || 2,
             cars: p.parking || 1,
             carSpaces: p.parking || 1,
@@ -296,7 +297,8 @@ export const websiteApi = {
             title: p.title || 'Luxury Residence',
             slug: p.slug || p.property_code,
             listing_type: p.listing_type,
-            purpose: p.listing_type === 'sale' ? 'For Sale' : isShort ? 'Short Term Stay' : 'For Rent',
+            purpose: p.business ? 'Business For Sale' : (p.listing_type === 'sale' ? 'For Sale' : isShort ? 'Short Term Stay' : 'For Rent'),
+            business: p.business || null,
             category: p.category || 'residential',
             propertyType: p.property_type || 'Apartment',
             price: numPrice,
@@ -305,10 +307,10 @@ export const websiteApi = {
             priceUnit: p.price_unit || (p.listing_type === 'sale' ? 'Total' : isShort ? 'per night' : 'per month'),
             location: `${p.area || ''}, ${p.city || p.district || 'Dhaka'}`.replace(/^,\s*/, ''),
             suburb: p.area || 'Dhaka',
-            beds: p.bedrooms || 3,
-            baths: p.bathrooms || 2,
-            bedrooms: p.bedrooms || 3,
-            bathrooms: p.bathrooms || 2,
+            beds: p.business ? 0 : (p.bedrooms || 3),
+            baths: p.business ? 0 : (p.bathrooms || 2),
+            bedrooms: p.business ? 0 : (p.bedrooms || 3),
+            bathrooms: p.business ? 0 : (p.bathrooms || 2),
             balconies: p.balconies || 2,
             cars: p.parking || 1,
             carSpaces: p.parking || 1,
@@ -395,6 +397,15 @@ export const websiteApi = {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  },
+
+  // Business listings: request the NDA, then read full details with the released token.
+  async requestBusinessNda(propertyId, form) {
+    return request('/public-website/business-nda-requests', { method: 'POST', body: JSON.stringify({ property: propertyId, ...form }) });
+  },
+
+  async getBusinessDetails(token) {
+    return request(`/public-website/business-details/${encodeURIComponent(token)}`);
   },
 
   // Short Term Stay Public Reservation

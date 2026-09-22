@@ -10,6 +10,7 @@ import { useToast } from '../../context/ToastContext';
 import { PageHead, StatusBadge, Drawer, Field, Input, Select, Textarea, Button, Spinner, Badge, KV } from '../../ui/kit';
 import { Combo } from '../../ui/pickers';
 import { propertyFilePath } from './paths';
+import BuyerSuitabilityCard from './business/BuyerSuitabilityCard';
 
 const money = (v) => (v == null || v === '' ? '—' : 'BDT ' + Number(v).toLocaleString());
 const propLabel = (p) => `${p.title} (${p.property_code || p.area || ''})`;
@@ -91,6 +92,8 @@ export default function BuyerMandateDetail({ category = 'residential' }) {
         </div>
       </div>
 
+      {m.category === 'business' && <BuyerSuitabilityCard mandate={m} onSaved={load} />}
+
       <div className="card">
         <div className="card-pad" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0 }}>Shortlist ({(m.candidates || []).length})</h3>
@@ -108,6 +111,12 @@ export default function BuyerMandateDetail({ category = 'residential' }) {
                       <div className="cell-strong">{c.property?.property_code || c.property_id}</div>
                       <div className="cell-sub">{c.property?.title || ''}{c.property?.price ? ` · ${money(c.property.price)}` : ''}</div>
                     </button>
+                    {c.investment_summary && (
+                      <div className="cell-sub">
+                        Turnover {money(c.investment_summary.annual_turnover)} · Profit {money(c.investment_summary.annual_profit)}
+                        {c.investment_summary.price_to_profit ? ` · ${c.investment_summary.price_to_profit}× profit` : ''}
+                      </div>
+                    )}
                   </td>
                   <td className="cell-sub">{c.fit_note || '—'}</td>
                   <td>

@@ -174,7 +174,7 @@ exports.list = asyncHandler(async (req, res) => {
   // Property-category isolation (residential vs commercial console). Exact match
   // on the hard `category` column (backfilled in migration 0128, set on create),
   // so each console shows only its own directory in both directions.
-  if (req.query.category === 'commercial' || req.query.category === 'residential') {
+  if (['commercial', 'residential', 'business'].includes(req.query.category)) {
     where.category = req.query.category;
   }
 

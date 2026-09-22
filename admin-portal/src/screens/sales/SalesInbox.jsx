@@ -10,11 +10,13 @@ import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { PageHead, Spinner, Button, Badge } from '../../ui/kit';
 import { Combo } from '../../ui/pickers';
+import { useSalesCategory } from './paths';
 
 const sel = { border: '1px solid var(--line)', borderRadius: 8, padding: '7px 10px', font: 'inherit', width: '100%' };
 const DELIVERY_TONE = { sent: 'green', simulated: 'grey', failed: 'red', suppressed: 'amber', pending: 'grey' };
 
 export default function SalesInbox() {
+  const locked = useSalesCategory();
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const [list, setList] = useState([]);
@@ -36,10 +38,11 @@ export default function SalesInbox() {
     setLoading(true);
     try {
       const p = new URLSearchParams(); if (q) p.set('q', q); if (status) p.set('status', status); if (mine) p.set('mine', '1');
+      if (locked) p.set('category', locked);
       const r = await api.get(`/sales/inbox${p.toString() ? `?${p}` : ''}`);
       setList(r.data.data || []);
     } catch { toast.error('Failed to load the inbox'); } finally { setLoading(false); }
-  }, [q, status, mine, toast]);
+  }, [q, status, mine, toast, locked]);
   useEffect(() => { load(); }, [load]);
 
   const openThread = useCallback(async (key) => {

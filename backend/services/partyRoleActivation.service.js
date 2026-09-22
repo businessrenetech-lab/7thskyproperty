@@ -18,6 +18,7 @@
  *      receive a completion email; a Communication is logged on the property.
  */
 const sequelize = require('../config/db.config');
+const { ALL_SALES_AGREEMENTS } = require('../utils/saleAgreementTypes');
 const PartyRoleProfile = require('../models/PartyRoleProfile');
 const SigningEnvelope = require('../models/SigningEnvelope');
 const EnvelopeSigner = require('../models/EnvelopeSigner');
@@ -376,7 +377,7 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
     // Sales service agreement signed (RPPS/RPSS) → draft agency-fee invoices from
     // the signed payment schedule + flag the engagement. Idempotent + best-effort:
     // a failure here must never roll back a completed signature.
-    if (['sale_purchase_agreement', 'sale_sale_agreement', 'commercial_purchase_agreement', 'commercial_sale_agreement'].includes(envelope.related_type)) {
+    if (ALL_SALES_AGREEMENTS.includes(envelope.related_type)) {
       try {
         const salesBilling = require('./salesAgreementCompletion.service');
         const { invoices } = await salesBilling.onCompleted(envelope, { transaction: tx });
@@ -388,6 +389,12 @@ async function handleEnvelopeCompleted(envelope, options = {}) {
       } catch (e) {
         console.warn('[sales-agreement] billing on sign:', e.message);
       }
+    }
+
+    // Business NDA signed → mark signed + record the buyer introduction (non-circumvention evidence).
+    if (envelope.related_type === 'business_nda') {
+      try { await require('./businessNda.service').onSigned(envelope, { transaction: tx }); }
+      catch (e) { console.warn('[business-nda] on sign:', e.message); }
     }
 
     // Property-management service agreement signed (RPRM) → draft agency-fee

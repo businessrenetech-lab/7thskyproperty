@@ -9,7 +9,7 @@ import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { PageHead, DataTable, StatusBadge, SearchInput, Drawer, Field, Input, Select, Textarea, Button, Spinner } from '../../ui/kit';
 import { Combo } from '../../ui/pickers';
-import { mandateDetailPath } from './paths';
+import { mandateDetailPath, useSalesCategory } from './paths';
 
 const money = (v) => (v == null || v === '' ? '—' : 'BDT ' + Number(v).toLocaleString());
 const clientLabel = (c) => `${c.Contact?.full_name || c.client_code}`;
@@ -17,6 +17,7 @@ const contactLabel = (c) => `${c.full_name}${c.primary_phone ? ' · ' + c.primar
 const STATUSES = ['active', 'engaged', 'fulfilled', 'cancelled'];
 
 export default function BuyerMandates({ category = 'residential' }) {
+  const locked = useSalesCategory();
   const navigate = useNavigate();
   const toast = useToast();
   const [rows, setRows] = useState([]); const [loading, setLoading] = useState(true);
@@ -27,7 +28,7 @@ export default function BuyerMandates({ category = 'residential' }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { data } = await api.get('/buyer-mandates'); setRows(data.data || []); }
+    try { const { data } = await api.get('/buyer-mandates', { params: locked ? { category: locked } : {} }); setRows(data.data || []); }
     catch { toast.error('Failed to load mandates'); } finally { setLoading(false); }
   }, [toast]);
   useEffect(() => { load(); }, [load]);
@@ -36,7 +37,7 @@ export default function BuyerMandates({ category = 'residential' }) {
     if (!f.buyer_client_id && !f.buyer_contact_id) return toast.error('Pick a buyer client or contact');
     setSaving(true);
     try {
-      await api.post('/buyer-mandates', f);
+      await api.post('/buyer-mandates', locked ? { ...f, category: locked } : f);
       toast.success('Mandate created');
       setCreate(false); setF({ buyer_client_id: null, buyer_contact_id: null, budget_min: '', budget_max: '', areas: '', property_type: '', beds_min: '', timeframe: '', notes: '' });
       load();

@@ -11,6 +11,7 @@ router.post('/', ctrl.create);
 router.post('/seed-checklist', ctrl.seedChecklist);
 router.put('/:id', ctrl.update);
 router.patch('/:id/verify', ctrl.verify);
+router.post('/:id/escalate', ctrl.escalate);
 router.delete('/:id', ctrl.remove);
 
 module.exports = router;

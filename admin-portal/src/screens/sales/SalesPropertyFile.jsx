@@ -48,8 +48,9 @@ import {
 import { Combo } from "../../ui/pickers";
 import FileUpload, { fileSrc } from "../../ui/FileUpload";
 import SalesAssessmentWorkspace from "./SalesAssessmentWorkspace";
-import { settlementDeskPath, clientProfilePath } from "./paths";
+import { settlementDeskPath, clientProfilePath, propertyWizardPath } from "./paths";
 import UploadButton from "../../ui/UploadButton";
+import { BUSINESS_SECTIONS, BusinessAssessmentSection, DueDiligenceSection, PreparationSection, NdaSection } from "./business/BusinessPropertySections";
 import RoleKycManager from "../../components/RoleKycManager";
 
 const unwrap = (response) =>
@@ -343,7 +344,7 @@ export default function SalesPropertyFile({
   // Back hold position. Unknown/missing falls back to overview.
   const [searchParams, setSearchParams] = useSearchParams();
   const rawSection = searchParams.get("section");
-  const section = SECTIONS.some((s) => s.key === rawSection) ? rawSection : "overview";
+  const section = [...SECTIONS, ...BUSINESS_SECTIONS].some((s) => s.key === rawSection) ? rawSection : "overview";
   const [assessmentDirty, setAssessmentDirty] = useState(false);
   const [activityTab, setActivityTab] = useState("activity");
   const [inlineKyc, setInlineKyc] = useState(false); // KYC verified inline in the onboarding tab (no reroute)
@@ -764,6 +765,9 @@ export default function SalesPropertyFile({
     detail.property ||
     detail.listing ||
     (detail.data && !Array.isArray(detail.data) ? detail.data : detail);
+  const isBusinessProperty = property?.category === "business";
+  // Business SOP tabs sit right after Assessment on business properties only.
+  const sections = isBusinessProperty ? [...SECTIONS.slice(0, 3), ...BUSINESS_SECTIONS, ...SECTIONS.slice(3)] : SECTIONS;
   const profile =
     detail.profile ||
     detail.sale_profile ||
@@ -2345,7 +2349,7 @@ export default function SalesPropertyFile({
             icon={Edit}
             onClick={() =>
               navigate(
-                `/sales/properties/new/${property.id}?listing_type=sale&category=${encodeURIComponent(property.category)}`,
+                propertyWizardPath(property.category, property.id, `listing_type=sale&category=${encodeURIComponent(property.category)}`),
               )
             }
           >
@@ -2539,7 +2543,7 @@ export default function SalesPropertyFile({
       )}
 
       <div className="pm-segment" style={{ overflowX: "auto", width: "100%" }}>
-        {SECTIONS.map(({ key, label, icon: Icon }) => (
+        {sections.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             className={section === key ? "on" : ""}
@@ -2888,6 +2892,11 @@ export default function SalesPropertyFile({
           onDirtyChange={setAssessmentDirty}
         />
       )}
+
+      {isBusinessProperty && section === "biz_assessment" && <BusinessAssessmentSection propertyId={propertyId} />}
+      {isBusinessProperty && section === "due_diligence" && <DueDiligenceSection propertyId={propertyId} />}
+      {isBusinessProperty && section === "preparation" && <PreparationSection propertyId={propertyId} />}
+      {isBusinessProperty && section === "nda" && <NdaSection propertyId={propertyId} />}
 
       {section === "enquiries" && (
         <Panel

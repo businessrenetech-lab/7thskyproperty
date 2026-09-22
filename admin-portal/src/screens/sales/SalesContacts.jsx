@@ -25,6 +25,7 @@ import {
   Button, Spinner, Badge, StatusBadge, Drawer, Field, Input, Select, Textarea
 } from '../../ui/kit';
 import NewPartyKycDrawer from './NewPartyKycDrawer';
+import { useSalesCategory } from './paths';
 
 const money = (v) => '৳' + Number(v || 0).toLocaleString('en-BD');
 const dateFmt = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
@@ -52,6 +53,7 @@ const getInitials = (name) => {
 };
 
 export default function SalesContacts({ scope }) {
+  const locked = useSalesCategory();
   const navigate = useNavigate();
   const pmScope = usePmScope();
   const catQ = `&category=${pmScope.category}`;
@@ -277,7 +279,7 @@ export default function SalesContacts({ scope }) {
   // Load auxiliary data
   useEffect(() => {
     api.get('/auth/staff').then((r) => setStaff(r.data || [])).catch(() => {});
-    api.get('/sales/dashboard?category=residential')
+    api.get(`/sales/dashboard?category=${locked || 'residential'}`)
       .then((r) => {
         const body = r.data?.data ?? r.data ?? {};
         setProperties(body.properties || body.listings || []);
@@ -317,7 +319,7 @@ export default function SalesContacts({ scope }) {
       } else if (isInteriorScope || isOpsServiceScope) {
         const contactScopeParam = isInteriorScope ? 'interior' : (scope || 'all');
         const [cRes, reqRes, projRes, clRes, listRes] = await Promise.all([
-          api.get(`/contacts?limit=500&scope=${encodeURIComponent(contactScopeParam)}`).catch(() => ({ data: { data: [] } })),
+          api.get(`/contacts?limit=500&scope=${encodeURIComponent(contactScopeParam)}${locked ? `&category=${locked}` : ''}`).catch(() => ({ data: { data: [] } })),
           api.get('/wt-ops/service-requests?limit=100').catch(() => ({ data: { data: [] } })),
           api.get('/wt-projects?limit=100').catch(() => ({ data: { data: [] } })),
           api.get('/wt-ops/clients?limit=100').catch(() => ({ data: { data: [] } })),
@@ -1205,6 +1207,7 @@ export default function SalesContacts({ scope }) {
 
     try {
       await api.post('/contacts', {
+        ...(locked ? { category: locked } : {}),
         full_name: contactForm.full_name.trim(),
         contact_type: contactForm.contact_type,
         primary_phone: contactForm.primary_phone.trim() || null,

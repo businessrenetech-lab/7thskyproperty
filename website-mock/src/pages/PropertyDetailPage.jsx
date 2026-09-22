@@ -26,6 +26,8 @@ import {
   CheckCircle2,
   FileText
 } from 'lucide-react';
+import BusinessSpecs from '../components/BusinessSpecs';
+import BusinessNdaRequest from '../components/BusinessNdaRequest';
 import { mockApi } from '../services/mockApi';
 import { websiteApi } from '../services/api';
 import { TenantApplicationModal } from '../components/Modals';
@@ -437,6 +439,7 @@ export default function PropertyDetailPage({ onBookInspection }) {
           )}
 
           {/* Micro Specs Pill Bar (For All Properties) */}
+          {property.business ? <BusinessSpecs business={property.business} /> : (
           <div className="flex flex-wrap items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs font-bold text-[#012a4e]">
             {property.bedrooms > 0 && (
               <div className="flex items-center gap-1.5">
@@ -466,6 +469,8 @@ export default function PropertyDetailPage({ onBookInspection }) {
               </div>
             )}
           </div>
+          )}
+          {property.business && <BusinessNdaRequest propertyId={property.id} />}
 
           {/* Overview (Compact, Decluttered) */}
           <div className="space-y-2">

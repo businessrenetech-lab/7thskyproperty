@@ -1,4 +1,6 @@
 const crypto = require('crypto');
+const { ALL_SALES_AGREEMENTS } = require('../utils/saleAgreementTypes');
+const { salesCategory } = require('../utils/salesCategory');
 const { Op } = require('sequelize');
 const sequelize = require('../config/db.config');
 const Property = require('../models/Property');
@@ -254,7 +256,8 @@ async function stageValidation(saleTransaction, settlement, action, transaction)
 // overview and work queue). Returns settlements hydrated with transaction /
 // payments / disbursements / lines, plus a property lookup for codes/titles.
 async function scanSettlements(req) {
-  const category = req.query.category;
+  // Validated: an unknown category is ignored, not turned into an empty result.
+  const category = salesCategory(req.query.category);
   const where = { listing_type: 'sale', ...branchScope(req), ...(category ? { category } : {}) };
   const properties = await Property.findAll({ where, attributes: ['id', 'property_code', 'title', 'category', 'status', 'price'], raw: true });
   const propertyIds = properties.map((p) => p.id);
@@ -532,7 +535,7 @@ exports.getPropertyFile = asyncHandler(async (req, res) => {
   // multi-signer agreement method. Surfaced so onboarding reflects and links to
   // them rather than the legacy party_role flow.
   const saleAgreementEnvelopes = await SigningEnvelope.findAll({
-    where: { branch_id: property.branch_id, related_id: property.id, related_type: { [Op.in]: ['sale_purchase_agreement', 'sale_sale_agreement', 'commercial_purchase_agreement', 'commercial_sale_agreement'] } },
+    where: { branch_id: property.branch_id, related_id: property.id, related_type: { [Op.in]: ALL_SALES_AGREEMENTS } },
     include: [{ model: EnvelopeSigner, as: 'signers', attributes: ['id', 'name', 'email', 'role', 'status'] }],
     order: [['created_at', 'DESC']],
   });

@@ -9,7 +9,8 @@ const sequelize = require('../config/db.config');
 const BusinessDocument = sequelize.define('BusinessDocument', {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
   branch_id: { type: DataTypes.INTEGER, allowNull: false },
-  business_listing_id: { type: DataTypes.INTEGER, allowNull: false },
+  business_listing_id: { type: DataTypes.INTEGER, allowNull: true },
+  property_id: DataTypes.INTEGER, // business property on the shared sales engine (0143)
   doc_type: DataTypes.STRING(50),
   name: DataTypes.STRING,
   status: { type: DataTypes.STRING(20), defaultValue: 'required' },
