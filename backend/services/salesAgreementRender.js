@@ -493,4 +493,4 @@ function buildAgreement(cfg, data = {}) {
   return { title: cfg.title, doc_no: cfg.doc_no, html, terms, pricing };
 }
 
-module.exports = { getCatalog, computePricing, buildAgreement, money, esc };
+module.exports = { getCatalog, computePricing, buildAgreement, money, esc, signSlot };
