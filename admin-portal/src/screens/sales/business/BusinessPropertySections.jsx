@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ShieldCheck, FileSearch, Sparkles, Plus, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, FileSearch, Sparkles, Plus, AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
 import api from '../../../services/api';
 import { useToast } from '../../../context/ToastContext';
 import { Button, Badge, Field, Input, Select, Textarea, Drawer, Spinner } from '../../../ui/kit';
@@ -11,6 +11,7 @@ export const BUSINESS_SECTIONS = [
   { key: 'biz_assessment', label: 'Business Assessment', icon: ShieldCheck },
   { key: 'due_diligence', label: 'Due Diligence', icon: FileSearch },
   { key: 'preparation', label: 'Preparation', icon: Sparkles },
+  { key: 'nda', label: 'NDA / Confidentiality', icon: Lock },
 ];
 
 const asList = (v) => { if (Array.isArray(v)) return v; if (typeof v === 'string') { try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch { return []; } } return []; };
@@ -174,6 +175,59 @@ export function PreparationSection({ propertyId }) {
           ))}
         </tbody>
       </table>
+    </section>
+  );
+}
+
+// ── Confidentiality / NDA (Sale Step 13, Purchase Step 11) ──────────────────
+const NDA_TONE = { requested: 'amber', approved: 'blue', sent: 'blue', signed: 'green', released: 'green', declined: 'red' };
+
+export function NdaSection({ propertyId }) {
+  const toast = useToast();
+  const [rows, setRows] = useState(null);
+  const [decline, setDecline] = useState(null); // { nda, reason }
+  const load = useCallback(async () => {
+    try { const { data } = await api.get('/business-ndas', { params: { property_id: propertyId } }); setRows(data.data || []); }
+    catch { setRows([]); toast.error('Could not load NDAs'); }
+  }, [propertyId, toast]);
+  useEffect(() => { load(); }, [load]);
+  const act = async (nda, action) => {
+    try { const { data } = await api.post(`/business-ndas/${nda.id}/${action}`); toast.success(data.message || 'Done'); load(); }
+    catch (e) { toast.error(e.response?.data?.error || 'Action failed'); load(); }
+  };
+  const sendDecline = async () => {
+    try { await api.post(`/business-ndas/${decline.nda.id}/decline`, { reason: decline.reason }); setDecline(null); load(); }
+    catch (e) { toast.error(e.response?.data?.error || 'Decline failed'); }
+  };
+  if (rows === null) return <Spinner />;
+  return (
+    <section className="pm-card" style={{ padding: 18 }}>
+      <h3 style={{ margin: 0 }}>Confidentiality / NDA</h3>
+      <p className="cell-sub">Website visitors see only the teaser. Verify each buyer's identity before sending the NDA; release full details only once it is signed.</p>
+      <table className="tbl" style={{ marginTop: 10 }}>
+        <thead><tr><th>Buyer</th><th>Status</th><th>Requested</th><th /></tr></thead>
+        <tbody>
+          {rows.length === 0 && <tr><td colSpan={4} className="cell-sub">No requests yet.</td></tr>}
+          {rows.map((n) => (
+            <tr key={n.id}>
+              <td>{n.buyer_name}<div className="cell-sub">{[n.buyer_email, n.buyer_phone, n.buyer_company].filter(Boolean).join(' · ')}</div>{n.last_error && <div style={{ color: '#b91c1c', fontSize: 12 }}>Send failed: {n.last_error}</div>}</td>
+              <td><Badge tone={NDA_TONE[n.status] || 'grey'}>{n.status}</Badge>{n.decline_reason && <div className="cell-sub">{n.decline_reason}</div>}</td>
+              <td className="cell-sub">{new Date(n.created_at || n.createdAt).toLocaleDateString()}</td>
+              <td style={{ whiteSpace: 'nowrap' }}>
+                {['requested', 'approved'].includes(n.status) && <Button size="sm" onClick={() => act(n, 'approve')}>Approve &amp; send NDA</Button>}
+                {n.status === 'signed' && <Button size="sm" onClick={() => act(n, 'release')}>Release full details</Button>}
+                {!['released', 'declined'].includes(n.status) && <Button size="sm" variant="ghost" onClick={() => setDecline({ nda: n, reason: '' })}>Decline</Button>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {decline && (
+        <Drawer open title={`Decline — ${decline.nda.buyer_name}`} width={420} onClose={() => setDecline(null)}
+          footer={<div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}><Button variant="ghost" onClick={() => setDecline(null)}>Cancel</Button><Button onClick={sendDecline}>Decline</Button></div>}>
+          <Field label="Reason"><Textarea rows={3} value={decline.reason} onChange={(e) => setDecline({ ...decline, reason: e.target.value })} /></Field>
+        </Drawer>
+      )}
     </section>
   );
 }

@@ -50,7 +50,7 @@ import FileUpload, { fileSrc } from "../../ui/FileUpload";
 import SalesAssessmentWorkspace from "./SalesAssessmentWorkspace";
 import { settlementDeskPath, clientProfilePath, propertyWizardPath } from "./paths";
 import UploadButton from "../../ui/UploadButton";
-import { BUSINESS_SECTIONS, BusinessAssessmentSection, DueDiligenceSection, PreparationSection } from "./business/BusinessPropertySections";
+import { BUSINESS_SECTIONS, BusinessAssessmentSection, DueDiligenceSection, PreparationSection, NdaSection } from "./business/BusinessPropertySections";
 import RoleKycManager from "../../components/RoleKycManager";
 
 const unwrap = (response) =>
@@ -2896,6 +2896,7 @@ export default function SalesPropertyFile({
       {isBusinessProperty && section === "biz_assessment" && <BusinessAssessmentSection propertyId={propertyId} />}
       {isBusinessProperty && section === "due_diligence" && <DueDiligenceSection propertyId={propertyId} />}
       {isBusinessProperty && section === "preparation" && <PreparationSection propertyId={propertyId} />}
+      {isBusinessProperty && section === "nda" && <NdaSection propertyId={propertyId} />}
 
       {section === "enquiries" && (
         <Panel
