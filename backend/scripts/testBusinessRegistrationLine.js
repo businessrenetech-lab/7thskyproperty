@@ -26,4 +26,16 @@ assert.ok(sl.ui.service_catalogue['Business Registration Coordination'].includes
 // Registration has no site visit — shared screens read this to hide scheduling language.
 assert.strictEqual(sl.no_site_visit, true);
 
+// SOP Phase 4 — document collection checklist.
+const docs = sl.ui.client_docs;
+assert.ok(Array.isArray(docs) && docs.length >= 8, 'client_docs checklist present');
+const keys = docs.map((d) => d.key);
+for (const k of ['nid', 'passport_photo', 'utility_bill', 'trade_licence_existing', 'shareholder_docs', 'director_docs']) {
+  assert.ok(keys.includes(k), `checklist has ${k}`);
+}
+assert.ok(docs.find((d) => d.key === 'nid').required, 'NID is required');
+// Per-party documents expand as shareholders/directors are added.
+assert.strictEqual(docs.find((d) => d.key === 'shareholder_docs').per_party, 'shareholder');
+assert.strictEqual(docs.find((d) => d.key === 'director_docs').per_party, 'director');
+
 console.log('businessRegistrationLine OK');

@@ -1765,6 +1765,20 @@ const SERVICE_LINES = {
         capacity_label: 'Authorised Capital',
         capacity_placeholder: 'e.g. BDT 10,00,000',
       },
+      // SOP Phase 4 — Document Collection (workbook Sheet 7). `per_party` rows are
+      // expanded into one row per shareholder/director by the Doc Manager reference.
+      client_docs: [
+        { key: 'nid', label: 'NID (owner / applicant)', group: 'Identity', category: 'identity', required: true },
+        { key: 'passport', label: 'Passport (if foreign national)', group: 'Identity', category: 'identity', required: false },
+        { key: 'passport_photo', label: 'Passport-size photographs', group: 'Identity', category: 'identity', required: true },
+        { key: 'utility_bill', label: 'Utility bill (business address)', group: 'Address', category: 'address', required: true },
+        { key: 'rental_agreement', label: 'Rental agreement (leased premises)', group: 'Address', category: 'address', required: false },
+        { key: 'ownership_docs', label: 'Property ownership documents (owned premises)', group: 'Address', category: 'address', required: false },
+        { key: 'trade_licence_existing', label: 'Existing trade licence (renewal / amendment)', group: 'Business', category: 'business', required: false },
+        { key: 'name_clearance_letter', label: 'Name clearance letter (if already obtained)', group: 'Business', category: 'business', required: false },
+        { key: 'shareholder_docs', label: 'Shareholder documents', group: 'Parties', category: 'parties', required: true, per_party: 'shareholder' },
+        { key: 'director_docs', label: 'Director documents', group: 'Parties', category: 'parties', required: true, per_party: 'director' },
+      ],
     },
   },
 };
