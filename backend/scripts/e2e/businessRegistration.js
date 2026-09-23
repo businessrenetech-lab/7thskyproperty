@@ -113,13 +113,15 @@ async function commercial(clientName) {
       client_name: clientName,
       validity: '2026-12-31',
       advance_basis: 'percent', advance_percent: 30,
+      agreement_choice: 'continue',   // drafts the work order with the quotation
       lines: [
         { code: 'GOV-RJSC', name: 'RJSC filing fee', kind: 'fee', qty: 1, price: 12000, fee_kind: 'government' },
         { code: 'BRC-003', name: 'Private limited company formation coordination', qty: 1, price: 25000, fee_kind: 'professional' },
       ],
     },
   });
-  const quote = q.body?.quotation || q.body?.quote || q.body?.data || q.body;
+  const quote = q.body?.quote || q.body?.quotation || q.body?.data || q.body;
+  const draftedWo = q.body?.workOrder || q.body?.work_order || null;
   const code = quote?.code;
   ok([200, 201].includes(q.status), 'quotation created', `HTTP ${q.status} ${q.body?.error || ''}`);
   ok(!!code && code.startsWith('BRQ-'), 'quotation uses the registration code prefix', code);
@@ -140,7 +142,7 @@ async function commercial(clientName) {
   ok(totals.government === 12000 && totals.professional === 25000,
     'government and professional fees split correctly', `gov ${totals.government} / prof ${totals.professional}`);
   void stored;
-  return code;
+  return { code, workOrder: draftedWo };
 }
 
 async function providers() {
@@ -174,12 +176,44 @@ async function providers() {
   return p.body?.id;
 }
 
+async function workOrder(drafted, providerId) {
+  console.log('\n— Work order —');
+  // The shared core has no POST /wt-work-orders: a work order is drafted from the
+  // quotation, then a provider is bound to it through /:id/assign.
+  ok(!!drafted, 'work order drafted from the quotation', drafted && drafted.code);
+  if (!drafted) return null;
+  ok(String(drafted.code || '').startsWith('BRW-'), 'work order uses the registration prefix', drafted.code);
+
+  const assigned = await req('POST', `/api/wt-work-orders/${drafted.id}/assign`, {
+    ...LINE, body: { provider_id: providerId },
+  });
+  ok([200, 201, 400, 409, 422].includes(assigned.status), 'assign answers for a real provider record', `HTTP ${assigned.status}`);
+  if (assigned.status === 200 || assigned.status === 201) {
+    const after = await req('GET', `/api/wt-work-orders/${drafted.id}`, LINE);
+    const wo = after.body?.work_order || after.body?.data || after.body;
+    ok(Number(wo?.provider_id) === Number(providerId), 'work order is bound to the provider record, not a typed-in name');
+  } else {
+    // A provider onboarded seconds ago has no verified compliance or insurance
+    // documents, no signed MSPA and no verified payment account, so the shared
+    // gate (Sec. 6 Step 4) refuses the assignment. That refusal IS the rule
+    // working — and it proves the work order binds to a real provider record
+    // rather than accepting a typed-in name.
+    const blockers = assigned.body?.blocking || assigned.body?.operational_blocking || [];
+    ok(/cannot be assigned/i.test(String(assigned.body?.error || '')),
+      'unonboarded provider is refused by the compliance gate', assigned.body?.error);
+    ok(!Array.isArray(blockers) || blockers.length === 0 || blockers.some((b) => /agreement|compliance|insurance|approved|payment/i.test(String(b))),
+      'refusal names the onboarding blockers', Array.isArray(blockers) ? blockers.join('; ').slice(0, 120) : '');
+  }
+  return drafted.id;
+}
+
 (async () => {
   console.log(`\n===== BUSINESS REGISTRATION E2E (run ${STAMP}) =====`);
   if (!(await login())) return finish();
   const { projectId, clientId } = await lineModule();
   await documents(projectId, clientId);
-  await commercial(`Reg Client ${STAMP}`);
-  await providers();
+  const { workOrder: drafted } = await commercial(`Reg Client ${STAMP}`);
+  const providerId = await providers();
+  await workOrder(drafted, providerId);
   finish();
 })().catch((e) => { ok(false, 'harness crashed', e.message); finish(); });
