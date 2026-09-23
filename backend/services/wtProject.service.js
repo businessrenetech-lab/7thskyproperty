@@ -21,6 +21,7 @@ const M = require('../models/waterTankOps');
 const P = require('../models/waterTankProviders');
 const Property = require('../models/Property');
 const { generateCode } = require('../utils/codeGenerator');
+const { codePrefix: codePrefixFor } = require('../config/serviceLines');
 const customerSvc = require('./wtCustomerAgreement.service');
 
 const num = (v) => Number(v || 0);
@@ -187,16 +188,22 @@ const closureFor = (serviceLine) => CLOSURE_BY_LINE[serviceLine] || CLOSURE_CHEC
  * waterTankClients.controller.js registerProject() so a project opened from the
  * client file and one opened from the wizard can never collide on a number.
  */
-async function nextProjectCode(branchId, transaction) {
+async function nextProjectCode(branchId, transaction, serviceLine = 'water_tank') {
+  // The prefix comes from the service line's manifest, so a project opened from
+  // another console is coded for that console (water_tank still yields WTCM-P).
+  const prefix = codePrefixFor(serviceLine, 'project') || 'WTCM-P';
+  const lower = prefix.toLowerCase();
   const rows = await M.WtProject.findAll({
     where: { branch_id: branchId }, attributes: ['code'], raw: true, transaction,
   });
   let max = 0;
   rows.forEach((r) => {
-    const n = parseInt(String(r.code || '').replace(/^WTCM-P/i, ''), 10);
+    const code = String(r.code || '');
+    if (!code.toLowerCase().startsWith(lower)) return;
+    const n = parseInt(code.slice(prefix.length), 10);
     if (!Number.isNaN(n) && n > max) max = n;
   });
-  return `WTCM-P${String(max + 1).padStart(4, '0')}`;
+  return `${prefix}${String(max + 1).padStart(4, '0')}`;
 }
 
 async function nextSeqCode(model, prefix, branchId, { pad = 4, start = 1, transaction } = {}) {
@@ -402,6 +409,13 @@ async function updateProject(project, payload, ctx) {
 async function createProject(payload, ctx) {
   const { branchId, actor } = ctx;
   const p = payload || {};
+  // The project row copies site details from the submitted property block; this is
+  // the same shape resolveProperty() takes. Without it the fields below throw
+  // ReferenceError: prIn is not defined.
+  const prIn = p.property || {};
+  // The console that opened the project owns it. Without this, every line's wizard
+  // wrote a water_tank project with a WTCM-P code.
+  const serviceLine = ctx.serviceLine || p.service_line || 'water_tank';
 
   return sequelize.transaction(async (transaction) => {
     // Client and site resolution is shared with updateProject, so editing a
@@ -410,13 +424,13 @@ async function createProject(payload, ctx) {
     const property = await resolveProperty(p.property, { branchId, userId: ctx.userId }, transaction);
 
     // ── 3. the project ───────────────────────────────────────────────────
-    const code = await nextProjectCode(branchId, transaction);
+    const code = await nextProjectCode(branchId, transaction, serviceLine);
     const services = asArray(p.services);
     const contractValue = p.contract_value != null
       ? num(p.contract_value)
       : services.reduce((s, l) => s + num(l.price) * (Number(l.qty) || 1), 0);
 
-    const lineStages = stagesFor(p.service_line);
+    const lineStages = stagesFor(serviceLine);
     const stage = normaliseStage(p.stage || lineStages[0].label, lineStages);
     const timeline = [{
       title: 'Project opened',
@@ -426,6 +440,7 @@ async function createProject(payload, ctx) {
 
     const project = await M.WtProject.create({
       branch_id: branchId,
+      service_line: serviceLine,
       code,
       name: p.name || `${client.name} — ${p.project_type || 'Water Tank Service'}`,
       status: 'Open',

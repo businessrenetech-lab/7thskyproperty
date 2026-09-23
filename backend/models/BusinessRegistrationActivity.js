@@ -16,6 +16,7 @@ const BusinessRegistrationActivity = sequelize.define('BusinessRegistrationActiv
   submitted_at: DataTypes.DATE,
   completed_at: DataTypes.DATE,
   outcome: DataTypes.STRING,
+  rejection_reason: DataTypes.TEXT, // why the authority rejected it (0148)
   notes: DataTypes.TEXT,
   created_by: DataTypes.INTEGER,
 }, { tableName: 'business_registration_activities', underscored: true });

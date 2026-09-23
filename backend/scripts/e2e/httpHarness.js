@@ -21,6 +21,8 @@ function req(method, path, opts = {}) {
     const headers = { 'X-Branch-Id': '1' };
     if (!opts.noAuth && TOKEN) headers.Authorization = `Bearer ${TOKEN}`;
     if (data) { headers['Content-Type'] = 'application/json'; headers['Content-Length'] = Buffer.byteLength(data); }
+    // Per-call headers win — service-line scoping (X-Service-Line) rides here.
+    Object.assign(headers, opts.headers || {});
     const r = http.request({ host: '127.0.0.1', port: PORT, method, path, headers }, (x) => {
       let d = ''; x.on('data', (c) => { d += c; });
       x.on('end', () => { let j; try { j = JSON.parse(d); } catch { j = { _raw: d.slice(0, 300) }; } resolve({ status: x.statusCode, body: j }); });

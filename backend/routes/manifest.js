@@ -76,6 +76,7 @@ module.exports = [
   ['/api/business-registration-enquiries', './businessRegistrationEnquiry.routes'],
   ['/api/business-registration-invoices', './businessRegistrationInvoice.routes'],
   ['/api/business-registration-reports', './businessRegistrationReports.routes'],
+  ['/api/br-line', './businessRegistrationLine.routes'],
   ['/api/business-ndas', './businessNda.routes'],
   ['/api/rptm', './rptm.routes'],
   // Water Tank module — these were only mounted in server.js, so the Hostinger
