@@ -1260,23 +1260,25 @@ export const businessRentConsole = {
 // not a marketplace). Coordinates trade licence, company registration, tax and
 // corporate documentation on the client's behalf. Nav grows phase by phase;
 // Phase 0 ships the Customer Service Agreement (SSPC-BR-CSA-01) + price schedule.
-export const BUSINESS_REG_NAV = [
-  { key: 'br-home', label: 'Home', items: [
-    { to: '/business-registration', label: 'Registration Dashboard', icon: LayoutGrid, end: true },
-  ] },
-  { key: 'br-pipeline', label: 'Pipeline', items: [
-    { to: '/business-registration/enquiries', label: 'Enquiries', icon: MessageSquareQuote },
-    { to: '/business-registration/projects', label: 'Registration Projects', icon: ClipboardList },
-  ] },
-  { key: 'br-registration', label: 'Commercial', items: [
-    { to: '/business-registration/agreements', label: 'Registration Agreements', icon: FileSignature },
-    { to: '/business-registration/price-schedule', label: 'Price Schedules', icon: Tags },
-  ] },
-  { key: 'br-finance', label: 'Finance', items: [
-    { to: '/business-registration/invoices', label: 'Invoices', icon: Receipt },
-    { to: '/business-registration/reports', label: 'Reports', icon: BarChart3 },
-  ] },
-];
+// Registration rides the shared service-line core, so its nav is the Water Tank nav
+// rebased — minus AMC and site assessments (nothing is inspected on site), plus the
+// registration-specific Activities, Client Documents and SOP Dashboards screens.
+export const BUSINESS_REG_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/business-registration')
+  .map((g) => {
+    if (g.key.endsWith('intake')) {
+      return { ...g, items: g.items
+        .filter((it) => !/\/site-assessments$/.test(it.to))
+        .map((it) => (/\/service-requests$/.test(it.to) ? { ...it, label: 'Enquiries' } : it)) };
+    }
+    if (g.key.endsWith('delivery')) {
+      return { ...g, items: [
+        ...g.items.filter((it) => !/\/amc$/.test(it.to)),
+        { to: '/business-registration/activities', label: 'Registration Activities', icon: ClipboardList },
+        { to: '/business-registration/doc-manager', label: 'Client Documents', icon: FolderArchive },
+      ] };
+    }
+    return g;
+  });
 
 export const businessRegistrationConsole = {
   slug: 'business-registration',

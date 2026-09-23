@@ -1554,13 +1554,51 @@ export default function App() {
                 category="business_registration" + its Schedule C price schedule.
                 Later phases add the 9-phase SOP project pipeline. ── */}
             <Route element={<RequireAuth><AdminGate><BusinessRegistrationConsole /></AdminGate></RequireAuth>}>
-              <Route path="/business-registration" element={<BusinessRegistrationDashboard />} />
-              <Route path="/business-registration/enquiries" element={<BusinessRegistrationEnquiries />} />
-              <Route path="/business-registration/projects" element={<BusinessRegistrationProjects />} />
-              <Route path="/business-registration/projects/:id" element={<BusinessRegistrationProjectDetail />} />
-              <Route path="/business-registration/agreements" element={<BrgAgreements category="business_registration" />} />
-              <Route path="/business-registration/invoices" element={<BusinessRegistrationInvoices />} />
-              <Route path="/business-registration/reports" element={<BusinessRegistrationReports />} />
+              {/* Business Registration — shared service-line screens (see SERVICE_MODULE_DUPLICATION.md) */}
+              <Route path="/business-registration" element={<WaterTankDashboard />} />
+              <Route path="/business-registration/work-queue" element={<WTWorkQueue />} />
+              <Route path="/business-registration/calendar" element={<WTCalendar />} />
+              <Route path="/business-registration/contacts" element={<SalesContacts scope="business-registration" />} />
+              <Route path="/business-registration/clients" element={<WTClients />} />
+              <Route path="/business-registration/clients/new" element={<WTClientCreate />} />
+              <Route path="/business-registration/clients/:code" element={<WTClientDetail />} />
+              <Route path="/business-registration/service-requests" element={<WTServiceRequests />} />
+              <Route path="/business-registration/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/business-registration/quotations" element={<WTQuotations />} />
+              <Route path="/business-registration/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/business-registration/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/business-registration/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/business-registration/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/business-registration/projects" element={<WTProjects />} />
+              <Route path="/business-registration/projects/new" element={<WTProjectForm />} />
+              <Route path="/business-registration/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/business-registration/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/business-registration/work-orders" element={<WTWorkOrders />} />
+              <Route path="/business-registration/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/business-registration/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/business-registration/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/business-registration/providers" element={<WaterTankProviders />} />
+              <Route path="/business-registration/providers/new" element={<WaterTankProviderOnboarding />} />
+              <Route path="/business-registration/providers/:id" element={<WaterTankProviderDetail />} />
+              <Route path="/business-registration/providers/:code/edit" element={<WaterTankProviderOnboarding />} />
+              <Route path="/business-registration/compliance" element={<WTCompliance />} />
+              <Route path="/business-registration/agreements" element={<WTAgreementsHub />} />
+              <Route path="/business-registration/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/business-registration/agreements/provider" element={<WtProviderAgreements />} />
+              <Route path="/business-registration/invoices" element={<WTInvoices />} />
+              <Route path="/business-registration/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/business-registration/payments" element={<WTPayments />} />
+              <Route path="/business-registration/registers" element={<WTRegisters />} />
+              <Route path="/business-registration/registers/:kind" element={<WTRegisters />} />
+              <Route path="/business-registration/complaints" element={<WTComplaints />} />
+              <Route path="/business-registration/communication" element={<WTCommLog />} />
+              <Route path="/business-registration/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/business-registration/doc-manager" element={<DocManager />} />
+              <Route path="/business-registration/reports" element={<WTReports />} />
+              <Route path="/business-registration/reports/:kind" element={<WTReports />} />
+              <Route path="/business-registration/portal-accounts" element={<WTPortalAccounts />} />
+              <Route path="/business-registration/settings" element={<WaterTankSettings />} />
+              {/* Price schedule keeps its existing screen (the BRC catalogue is a sales catalogue vertical) */}
               <Route path="/business-registration/price-schedule" element={<SalesPriceSchedule scope="business_registration" title="Business Registration · Price Schedules" />} />
             </Route>
 
