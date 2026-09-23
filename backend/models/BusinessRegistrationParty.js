@@ -5,7 +5,8 @@ const sequelize = require('../config/db.config');
 const BusinessRegistrationParty = sequelize.define('BusinessRegistrationParty', {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
   branch_id: { type: DataTypes.INTEGER, allowNull: false },
-  project_id: { type: DataTypes.INTEGER, allowNull: false },
+  project_id: { type: DataTypes.INTEGER, allowNull: true },
+  wt_project_id: DataTypes.INTEGER, // shared service-line project (wt_projects) — 0147
   party_role: { type: DataTypes.STRING(20), defaultValue: 'shareholder' },
   name: { type: DataTypes.STRING, allowNull: false },
   nid: DataTypes.STRING(80),
