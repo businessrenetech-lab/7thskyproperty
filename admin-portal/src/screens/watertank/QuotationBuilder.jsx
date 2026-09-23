@@ -5,7 +5,7 @@ import {
   RotateCcw, Sparkles, Eye, ChevronRight,
 } from 'lucide-react';
 import api from '../../services/api';
-import { useSvcNav, WtHead, Loading, EmptyState, bdt, toast, errText, svcProfile } from './common';
+import { useSvcNav, WtHead, Loading, EmptyState, bdt, toast, errText, svcProfile, svcRegistrationRegister } from './common';
 import QuotationSendDrawer from './QuotationSend';
 
 /*
@@ -315,6 +315,18 @@ export default function QuotationBuilder() {
                           )}
                         </div>
                         {edited && <span className="cell-sub" style={{ color: 'var(--wt-accent-ink)' }}>Std {bdt(l.standard_price)}</span>}
+                        {svcRegistrationRegister() && (
+                          <select
+                            className="wt-input sm"
+                            style={{ marginTop: 4 }}
+                            value={l.fee_kind || 'professional'}
+                            onChange={(e) => setLine(i, 'fee_kind', e.target.value)}
+                            title="Government fees are collected for the authority and are not Seventh Sky revenue"
+                          >
+                            <option value="professional">Professional fee</option>
+                            <option value="government">Government fee</option>
+                          </select>
+                        )}
                       </td>
                       <td style={{ textAlign: 'right', fontWeight: 700 }}>{bdt(lineTotal(l))}</td>
                       <td><button className="wt-iconbtn" onClick={() => delLine(i)}><X size={14} /></button></td>
@@ -327,6 +339,12 @@ export default function QuotationBuilder() {
             <div className="wt-tblfoot">
               <button className="wt-btn sm" onClick={addFee}><Plus size={13} /> Add other fee / material</button>
               <span style={{ marginLeft: 'auto' }}>{lines.length} line{lines.length === 1 ? '' : 's'}</span>
+              {svcRegistrationRegister() && lines.length > 0 && (
+                <span className="cell-sub" style={{ width: '100%', marginTop: 4 }}>
+                  Government fees (pass-through): <b>{bdt(lines.filter((l) => l.fee_kind === 'government').reduce((n, l) => n + lineTotal(l), 0))}</b>
+                  {' · '}Professional fees: <b>{bdt(lines.filter((l) => l.fee_kind !== 'government').reduce((n, l) => n + lineTotal(l), 0))}</b>
+                </span>
+              )}
             </div>
           </div>
 
