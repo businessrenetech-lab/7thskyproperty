@@ -143,12 +143,38 @@ const RIDS_CLOSURE = [
   { key: 'file_archived', label: 'Project file archived', sop: 'Sec. 12' },
 ];
 
+/* Business Registration — the nine phases of SOP Business Registration Client V0.1.
+ * Document-and-authority work: no site assessment, no AMC. The gates are the SOP's
+ * own: nothing is delivered before the agreement and deposit, and nothing closes
+ * before the final invoice is paid. */
+const BRG_STAGES = [
+  { key: 'lead_management', label: 'Lead Management', sop: 'Phase 1 Steps 1-3', phase: 'Phase 1 — Lead Management', pct: 8 },
+  { key: 'consultation', label: 'Consultation & Structure Advice', sop: 'Phase 2 Steps 4-6', phase: 'Phase 2 — Consultation', pct: 18 },
+  { key: 'commercial_approval', label: 'Quotation, Agreement & Deposit', sop: 'Phase 3 Steps 7-9', phase: 'Phase 3 — Commercial Approval', pct: 30, gate: 'quotation' },
+  { key: 'document_collection', label: 'Document Collection & Verification', sop: 'Phase 4 Steps 10-12', phase: 'Phase 4 — Document Collection', pct: 42, gate: 'agreement' },
+  { key: 'provider_assignment', label: 'Provider Assignment', sop: 'Phase 5 Steps 13-15', phase: 'Phase 5 — Provider Assignment', pct: 54, gate: 'agreement' },
+  { key: 'service_delivery', label: 'Registration & Government Liaison', sop: 'Phase 6 Steps 16-18', phase: 'Phase 6 — Service Delivery', pct: 70, gate: 'provider' },
+  { key: 'quality_assurance', label: 'Quality Assurance', sop: 'Phase 7 Steps 19-21', phase: 'Phase 7 — Quality Assurance', pct: 82 },
+  { key: 'client_reporting', label: 'Client Reporting & Handover', sop: 'Phase 8 Steps 22-23', phase: 'Phase 8 — Client Reporting', pct: 92 },
+  { key: 'project_completion', label: 'Final Invoice, Payment & Closure', sop: 'Phase 9 Steps 24-27', phase: 'Phase 9 — Project Completion', pct: 100 },
+];
+
+/* Business Registration closure — SOP Phase 9 Steps 24-27. */
+const BRG_CLOSURE = [
+  { key: 'registration_completed', label: 'Registration completed and certificates obtained', sop: 'Phase 8 Step 23' },
+  { key: 'deliverables_issued', label: 'Final documents delivered to the client', sop: 'Phase 8 Step 23' },
+  { key: 'final_invoice', label: 'Final invoice issued', sop: 'Phase 9 Step 24' },
+  { key: 'final_payment', label: 'Final payment received', sop: 'Phase 9 Step 25' },
+  { key: 'client_feedback', label: 'Client feedback collected', sop: 'Phase 9 Step 26' },
+  { key: 'records_archived', label: 'Project records archived', sop: 'Phase 9 Step 27' },
+];
+
 // Per-line stage machine + closure. Default is the Water Tank list, so every
 // existing line is unchanged; Interior Design gets its own SOP phases/closure.
 // Fitness Room shares the identical interior SOP workflow, so it reuses the same
 // project stages and closure checklist as Residential Interior Design.
-const STAGES_BY_LINE = { residential_interior_design: RIDS_STAGES, fitness_room_interior_design: RIDS_STAGES, commercial_interior_design: RIDS_STAGES, custom_design_fitout: RIDS_STAGES, furniture_styling_consultation: RIDS_STAGES, prayer_room_interior_design: RIDS_STAGES, space_planning_renovation: RIDS_STAGES };
-const CLOSURE_BY_LINE = { residential_interior_design: RIDS_CLOSURE, fitness_room_interior_design: RIDS_CLOSURE, commercial_interior_design: RIDS_CLOSURE, custom_design_fitout: RIDS_CLOSURE, furniture_styling_consultation: RIDS_CLOSURE, prayer_room_interior_design: RIDS_CLOSURE, space_planning_renovation: RIDS_CLOSURE };
+const STAGES_BY_LINE = { business_registration: BRG_STAGES, residential_interior_design: RIDS_STAGES, fitness_room_interior_design: RIDS_STAGES, commercial_interior_design: RIDS_STAGES, custom_design_fitout: RIDS_STAGES, furniture_styling_consultation: RIDS_STAGES, prayer_room_interior_design: RIDS_STAGES, space_planning_renovation: RIDS_STAGES };
+const CLOSURE_BY_LINE = { business_registration: BRG_CLOSURE, residential_interior_design: RIDS_CLOSURE, fitness_room_interior_design: RIDS_CLOSURE, commercial_interior_design: RIDS_CLOSURE, custom_design_fitout: RIDS_CLOSURE, furniture_styling_consultation: RIDS_CLOSURE, prayer_room_interior_design: RIDS_CLOSURE, space_planning_renovation: RIDS_CLOSURE };
 const stagesFor = (serviceLine) => STAGES_BY_LINE[serviceLine] || STAGES;
 const closureFor = (serviceLine) => CLOSURE_BY_LINE[serviceLine] || CLOSURE_CHECKLIST;
 
