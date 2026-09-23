@@ -15,7 +15,7 @@ import { Spinner } from '../../ui/kit';
 // Every non-default console base, matched against the URL. Water Tank is the
 // default. Add a service line by giving it a SERVICE_UI entry (below) and, if its
 // base isn't one of these, listing it here — keeping one N-way source of truth.
-const SVC_BASES = ['/air-conditioning', '/land-property-assessment', '/loan-financial-support', '/property-documentation-verification', '/property-will-succession', '/removal-relocation', '/property-care-concierge', '/residential-interior-design', '/fitness-room-interior-design', '/commercial-interior-design', '/custom-design-fit-out', '/furniture-styling-consultation', '/prayer-room-interior-design', '/space-planning-renovation'];
+const SVC_BASES = ['/air-conditioning', '/land-property-assessment', '/loan-financial-support', '/property-documentation-verification', '/property-will-succession', '/removal-relocation', '/property-care-concierge', '/residential-interior-design', '/fitness-room-interior-design', '/commercial-interior-design', '/custom-design-fit-out', '/furniture-styling-consultation', '/prayer-room-interior-design', '/space-planning-renovation', '/business-registration'];
 export const svcBase = () => {
   try {
     const p = window.location.pathname || '';
@@ -768,6 +768,8 @@ export const svcDocManager = () => !!svcProfile().doc_manager;
 export const svcLoanTracker = () => !!svcProfile().loan_tracker;
 /** Whether the active console has the Verification Register (Property Documentation & Verification). */
 export const svcVerificationRegister = () => !!svcProfile().verification_register;
+/** Whether the active console has the Registration register (parties + activities). */
+export const svcRegistrationRegister = () => !!svcProfile().registration_register;
 /** Whether the active console has the Beneficiary Register (Property Will & Succession). */
 export const svcBeneficiaryRegister = () => !!svcProfile().beneficiary_register;
 /** Whether the active console has internal Team & Fleet (Removal & Relocation). */
