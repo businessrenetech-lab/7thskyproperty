@@ -157,12 +157,6 @@ import BusinessReports from './screens/business/BusinessReports';
 import BrmAgreements from './screens/sales/BrmAgreements';
 import BtmAgreements from './screens/sales/BtmAgreements';
 import BusinessRegistrationConsole from './screens/BusinessRegistrationConsole';
-import BusinessRegistrationDashboard from './screens/business-registration/BusinessRegistrationDashboard';
-import BusinessRegistrationProjects from './screens/business-registration/BusinessRegistrationProjects';
-import BusinessRegistrationProjectDetail from './screens/business-registration/BusinessRegistrationProjectDetail';
-import BusinessRegistrationEnquiries from './screens/business-registration/BusinessRegistrationEnquiries';
-import BusinessRegistrationInvoices from './screens/business-registration/BusinessRegistrationInvoices';
-import BusinessRegistrationReports from './screens/business-registration/BusinessRegistrationReports';
 import BrgAgreements from './screens/sales/BrgAgreements';
 import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
 import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
@@ -205,6 +199,19 @@ const PH = (title, note) => <Placeholder title={title} note={note} />;
  * matched route, so /agreements/water-tank-provider/7 lands on
  * /water-tank/agreements/provider/7 rather than a literal ":id".
  */
+/*
+ * Business Registration used numeric project ids (/business-registration/projects/12)
+ * before it moved onto the shared service-line spine, which keys projects by code
+ * (BR-P0001). Old links and bookmarks land here: a numeric id has no equivalent on
+ * the new spine, so send it to the list instead of rendering "not found".
+ */
+function BrLegacyProject() {
+  const { code } = useParams();
+  return /^\d+$/.test(String(code))
+    ? <Navigate to="/business-registration/projects" replace />
+    : <WTProjectDetail />;
+}
+
 function LegacyRedirect({ to }) {
   const params = useParams();
   const { search, hash } = useLocation();
@@ -1573,7 +1580,7 @@ export default function App() {
               <Route path="/business-registration/quotations/:code/agreement" element={<WTQuotationAgreement />} />
               <Route path="/business-registration/projects" element={<WTProjects />} />
               <Route path="/business-registration/projects/new" element={<WTProjectForm />} />
-              <Route path="/business-registration/projects/:code" element={<WTProjectDetail />} />
+              <Route path="/business-registration/projects/:code" element={<BrLegacyProject />} />
               <Route path="/business-registration/projects/:code/edit" element={<WTProjectForm />} />
               <Route path="/business-registration/work-orders" element={<WTWorkOrders />} />
               <Route path="/business-registration/work-orders/:code" element={<WTWorkOrderDetail />} />
