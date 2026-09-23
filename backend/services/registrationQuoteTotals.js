@@ -15,17 +15,22 @@ const asList = (v) => {
 };
 const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 
-function quoteTotals(lines) {
+function quoteTotals(lines, quote = {}) {
   let government = 0;
   let professional = 0;
   for (const l of asList(lines)) {
     // The shared builder stores money as `price`; `amount` is accepted too so a
     // quote written by any other path still totals.
     const money = l.amount != null ? l.amount : l.price;
-    const value = num(money) * (l.qty == null ? 1 : num(l.qty) || 1);
+    // An explicit qty of 0 bills nothing; a missing qty means one.
+    const value = num(money) * (l.qty == null ? 1 : num(l.qty));
     if (l.fee_kind === 'government') government += value;
     else professional += value;
   }
+  // A negotiated discount reduces OUR fee, never the government fees we pass
+  // through, so the Revenue panel reconciles with what is actually invoiced.
+  const discount = num(quote.discount);
+  if (discount > 0) professional = Math.max(0, professional - discount);
   return { government, professional, subtotal: government + professional };
 }
 

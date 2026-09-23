@@ -10,8 +10,10 @@ const { quoteTotals } = require('./registrationQuoteTotals');
 
 const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 
-function projectMargin({ quoteLines, providerCost = 0, invoicedProfessional = null } = {}) {
-  const t = quoteTotals(quoteLines);
+function projectMargin({ quoteLines, providerCost = 0, invoicedProfessional = null, quote = undefined } = {}) {
+  // `quote` carries the quotation-level money (discount) so the fee reported here
+  // is what the client is actually charged.
+  const t = quoteTotals(quoteLines, quote);
   const professional = invoicedProfessional == null ? t.professional : num(invoicedProfessional);
   const provider_cost = num(providerCost);
   const gross_margin = professional - provider_cost;

@@ -44,7 +44,7 @@ export default function PartiesPanel({ projectId }) {
           Shareholding recorded: <b>{shareTotal}%</b>{shareTotal !== 100 ? ' — does not total 100%' : ''}
         </p>
       )}
-      <table className="tbl" style={{ marginTop: 10 }}>
+      <table className="wt-tbl" style={{ marginTop: 10 }}>
         <thead><tr><th>Name</th><th>Role</th><th>NID</th><th>Share</th><th>Contact</th><th /></tr></thead>
         <tbody>
           {rows.length === 0 && <tr><td colSpan={6} className="cell-sub">No shareholders or directors recorded yet.</td></tr>}

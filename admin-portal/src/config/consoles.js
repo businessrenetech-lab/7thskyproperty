@@ -1273,6 +1273,7 @@ export const BUSINESS_REG_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/busin
     if (g.key.endsWith('delivery')) {
       return { ...g, items: [
         ...g.items.filter((it) => !/\/amc$/.test(it.to)),
+        { to: '/business-registration/agreements/registration', label: 'Registration Agreements', icon: FileSignature },
         { to: '/business-registration/activities', label: 'Registration Activities', icon: ClipboardList },
         { to: '/business-registration/doc-manager', label: 'Client Documents', icon: FolderArchive },
       ] };

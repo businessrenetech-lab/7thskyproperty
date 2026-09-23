@@ -104,7 +104,7 @@ exports.reference = asyncHandler(async (req, res) => {
 
   const ui = serviceUi(req);
   res.json({
-    next_code: await svc.nextProjectCode(branchId),
+    next_code: await svc.nextProjectCode(branchId, undefined, resolveServiceLine(req)),
     stages: svc.stagesFor(resolveServiceLine(req)),
     // Vocabulary from the active service line (never Water Tank in the AC console).
     project_types: ui.project_types || svc.PROJECT_TYPES,

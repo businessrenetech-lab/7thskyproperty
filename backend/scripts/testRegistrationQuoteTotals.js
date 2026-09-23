@@ -27,4 +27,21 @@ assert.strictEqual(quoteTotals([{ amount: 'abc' }]).subtotal, 0, 'junk amounts a
 assert.strictEqual(quoteTotals(null).subtotal, 0, 'missing lines are safe');
 assert.strictEqual(quoteTotals('[{"amount":50,"fee_kind":"government"}]').government, 50, 'JSON string lines parse');
 
+// An explicit qty of 0 means nothing is billed for that line.
+assert.strictEqual(quoteTotals([{ price: 5000, qty: 0 }]).professional, 0, 'qty 0 bills nothing');
+
+// A negotiated discount is a reduction in OUR fee: it comes off the professional
+// side only, never off the government fees we merely pass through. Without this the
+// Revenue panel can never reconcile with the Invoiced tile beside it.
+const discounted = quoteTotals(
+  [{ price: 33000, fee_kind: 'professional' }, { price: 12000, fee_kind: 'government' }],
+  { discount: 3000 },
+);
+assert.strictEqual(discounted.professional, 30000, 'discount comes off the professional fee');
+assert.strictEqual(discounted.government, 12000, 'discount never touches government fees');
+assert.strictEqual(discounted.subtotal, 42000);
+
+// A discount larger than the fee cannot make revenue negative.
+assert.strictEqual(quoteTotals([{ price: 1000 }], { discount: 5000 }).professional, 0, 'discount clamps at zero');
+
 console.log('registrationQuoteTotals OK');

@@ -36,4 +36,14 @@ assert.strictEqual(passThrough.professional, 0, 'a government-only quote earns n
 assert.strictEqual(passThrough.government, 500000);
 assert.strictEqual(passThrough.margin_pct, 0);
 
+// A discount on the quotation reduces the professional fee, so margin follows it.
+const disc = projectMargin({
+  quoteLines: [{ price: 33000, fee_kind: 'professional' }, { price: 12000, fee_kind: 'government' }],
+  providerCost: 18000,
+  quote: { discount: 3000 },
+});
+assert.strictEqual(disc.professional, 30000, 'discounted professional fee');
+assert.strictEqual(disc.government, 12000, 'government fees untouched by the discount');
+assert.strictEqual(disc.gross_margin, 12000, 'margin follows the discounted fee');
+
 console.log('registrationMargin OK');

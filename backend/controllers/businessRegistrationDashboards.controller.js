@@ -3,7 +3,7 @@ const BusinessRegistrationActivity = require('../models/BusinessRegistrationActi
 const { getServiceLine } = require('../config/serviceLines');
 const { asyncHandler, branchScope, serviceScope, resolveServiceLine } = require('../utils/controllerHelpers');
 const { projectMargin } = require('../services/registrationMargin');
-const { quoteTotals } = require('../services/registrationQuoteTotals');
+const { quoteForProject, lineRevenue } = require('../services/registrationDashboardMath');
 const { stagesFor } = require('../services/wtProject.service');
 
 // The six dashboards named in the Business Registration workbook: Registration,
@@ -39,20 +39,24 @@ exports.dashboards = asyncHandler(async (req, res) => {
   };
 
   // Revenue and margin count the professional fee only — government fees are pass-through.
+  // Quotations join on the project CODE (project_id is a string), and a project may
+  // carry superseded quotes, so take the one that actually speaks for it.
   const perProject = projects.map((p) => {
-    const q = quotes.find((x) => Number(x.project_id) === Number(p.id));
-    return { project: p.code, name: p.name, ...projectMargin({ quoteLines: q ? q.lines : [], providerCost: p.provider_cost }) };
+    const q = quoteForProject(quotes, p);
+    return {
+      project: p.code,
+      name: p.name,
+      ...projectMargin({ quoteLines: q ? q.lines : [], providerCost: p.provider_cost, quote: q || undefined }),
+    };
   });
 
-  // Revenue counts every live quotation on the line, not only those already tied to
-  // a project: a direct quote (the common intake path) has no project_id yet, and
-  // counting only linked ones reported zero revenue however much was quoted.
-  const liveQuotes = quotes.filter((q) => String(q.decision || '').toLowerCase() !== 'rejected');
-  const quoted = liveQuotes.map((q) => quoteTotals(q.lines));
+  // Revenue counts one quotation per project (superseded ones are not re-billed)
+  // plus direct quotes not yet tied to a project — the common intake path.
+  const quoted = lineRevenue(quotes);
 
   const revenue = {
-    professional_total: quoted.reduce((n, t) => n + t.professional, 0),
-    government_collected: quoted.reduce((n, t) => n + t.government, 0),
+    professional_total: quoted.professional,
+    government_collected: quoted.government,
     invoiced: invoices.reduce((n, i) => n + Number(i.amount || 0), 0),
     by_service: [...new Set(projects.map((p) => p.project_type))].filter(Boolean).map((t) => ({
       service: t,

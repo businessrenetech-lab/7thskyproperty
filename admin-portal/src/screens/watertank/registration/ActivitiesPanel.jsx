@@ -12,7 +12,7 @@ export const ACTIVITY_TYPES = [
 const STATUS_TONE = { pending: 'grey', submitted: 'blue', completed: 'green', rejected: 'red' };
 const EMPTY = { activity_type: 'name_clearance', title: '', authority: '', reference_no: '', status: 'pending', notes: '', work_order_id: null };
 
-export default function ActivitiesPanel({ projectId }) {
+export default function ActivitiesPanel({ projectId, projectCode }) {
   const toast = useToast();
   const [rows, setRows] = useState(null);
   const [form, setForm] = useState(null);
@@ -26,10 +26,17 @@ export default function ActivitiesPanel({ projectId }) {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    api.get('/wt-work-orders', { params: { project_id: projectId } })
-      .then(({ data }) => setWorkOrders(data.data || data.rows || []))
+    // The shared list endpoint ignores query filters, and wt_work_orders.project_id
+    // holds the project CODE — so filter here rather than offering every work order
+    // on the line (binding an activity to another client's job would corrupt the
+    // provider dashboard).
+    api.get('/wt-work-orders')
+      .then(({ data }) => {
+        const rows = data.data || data.work_orders || data.rows || (Array.isArray(data) ? data : []);
+        setWorkOrders(projectCode ? rows.filter((w) => String(w.project_id || '') === String(projectCode)) : []);
+      })
       .catch(() => setWorkOrders([]));
-  }, [projectId]);
+  }, [projectCode]);
 
   const create = async () => {
     try { await api.post(`/br-line/projects/${projectId}/activities`, form); toast.success('Activity created'); setForm(null); load(); }
@@ -49,7 +56,7 @@ export default function ActivitiesPanel({ projectId }) {
         <h3 style={{ margin: 0 }}>Registration activities</h3>
         <Button icon={Plus} onClick={() => setForm({ ...EMPTY })}>New activity</Button>
       </div>
-      <table className="tbl" style={{ marginTop: 10 }}>
+      <table className="wt-tbl" style={{ marginTop: 10 }}>
         <thead><tr><th>Activity</th><th>Authority</th><th>Reference</th><th>Status</th><th>Submitted</th><th /></tr></thead>
         <tbody>
           {rows.length === 0 && <tr><td colSpan={6} className="cell-sub">Nothing lodged yet.</td></tr>}

@@ -1591,6 +1591,19 @@ export default function App() {
               <Route path="/business-registration/providers/:id" element={<WaterTankProviderDetail />} />
               <Route path="/business-registration/providers/:code/edit" element={<WaterTankProviderOnboarding />} />
               <Route path="/business-registration/compliance" element={<WTCompliance />} />
+              {/* SSPC-BR-CSA-01 — the registration Customer Service Agreement builder
+                  (services/brgAgreement.service.js, related_type business_registration_agreement).
+                  It predates the move onto the shared core and stays the document of record. */}
+              <Route path="/business-registration/agreements/registration" element={<BrgAgreements category="business_registration" />} />
+              <Route path="/business-registration/agreements/provider/new" element={<WtProviderAgreements />} />
+              <Route path="/business-registration/agreements/provider/:id" element={<WtProviderAgreements />} />
+              <Route path="/business-registration/agreements/provider/:id/edit" element={<WtProviderAgreements />} />
+              <Route path="/business-registration/service-reports" element={<WTServiceReports />} />
+              <Route path="/business-registration/service-reports/:code" element={<WTServiceReports />} />
+              <Route path="/business-registration/registers/:kind/:code" element={<WTRegisters />} />
+              <Route path="/business-registration/complaints/:code" element={<WTComplaints />} />
+              {/* Retired bespoke screen — its enquiries live on the shared intake now. */}
+              <Route path="/business-registration/enquiries" element={<LegacyRedirect to="/business-registration/service-requests" />} />
               <Route path="/business-registration/agreements" element={<WTAgreementsHub />} />
               <Route path="/business-registration/agreements/customer" element={<WtCustomerAgreements />} />
               <Route path="/business-registration/agreements/provider" element={<WtProviderAgreements />} />

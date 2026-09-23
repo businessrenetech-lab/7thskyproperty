@@ -153,7 +153,7 @@ export default function ProjectDetail() {
         {tab === 'Overview' && <><Overview d={d} nav={nav} /><div style={{ marginTop: 16 }}><Timeline p={p} /></div></>}
         {tab === 'Lifecycle' && <Lifecycle stage={stage} stages={stages} busy={busy} onSet={setStage} project={p} />}
         {tab === 'Parties' && <PartiesPanel projectId={p.id} />}
-        {tab === 'Activities' && <ActivitiesPanel projectId={p.id} />}
+        {tab === 'Activities' && <ActivitiesPanel projectId={p.id} projectCode={p.code} />}
         {tab === 'Work Orders' && <WorkOrders rows={related.workOrders} nav={nav} />}
         {tab === 'Billing' && <Billing d={d} reload={load} />}
         {tab === 'Costing' && <Costing d={d} reload={load} />}

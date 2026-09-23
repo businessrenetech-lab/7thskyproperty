@@ -225,7 +225,7 @@ async function nextSeqCode(model, prefix, branchId, { pad = 4, start = 1, transa
  * existing one matched on name+mobile (the shared contact directory feeds names
  * in from elsewhere, so a duplicate is easy to create by accident), or a new one.
  */
-async function resolveClient(p, { branchId }, transaction) {
+async function resolveClient(p, { branchId, serviceLine = 'water_tank' }, transaction) {
   const cIn = p.client || {};
   let client = null;
   if ((cIn.mode === 'existing' || cIn.id || cIn.code) && (cIn.id || cIn.code)) {
@@ -237,14 +237,17 @@ async function resolveClient(p, { branchId }, transaction) {
   if (!client) {
     if (!cIn.name) { const e = new Error('A client name is required.'); e.status = 400; throw e; }
     client = await M.WtClient.findOne({
-      where: { branch_id: branchId, name: cIn.name, ...(cIn.phone ? { mobile: cIn.phone } : {}) },
+      // Scoped by line: a same-named Water Tank client must not be silently
+      // adopted by a registration project (and vice versa).
+      where: { branch_id: branchId, service_line: serviceLine, name: cIn.name, ...(cIn.phone ? { mobile: cIn.phone } : {}) },
       transaction,
     });
   }
   if (!client) {
     client = await M.WtClient.create({
       branch_id: branchId,
-      code: await nextSeqCode(M.WtClient, 'WTCM-C', branchId, { transaction }),
+      service_line: serviceLine,
+      code: await nextSeqCode(M.WtClient, codePrefixFor(serviceLine, 'client') || 'WTCM-C', branchId, { transaction }),
       name: cIn.name,
       client_type: cIn.client_type || 'Residential',
       mobile: cIn.phone || null, email: cIn.email || null,
@@ -420,7 +423,7 @@ async function createProject(payload, ctx) {
   return sequelize.transaction(async (transaction) => {
     // Client and site resolution is shared with updateProject, so editing a
     // project follows exactly the same rules as creating one.
-    const client = await resolveClient(p, { branchId }, transaction);
+    const client = await resolveClient(p, { branchId, serviceLine }, transaction);
     const property = await resolveProperty(p.property, { branchId, userId: ctx.userId }, transaction);
 
     // ── 3. the project ───────────────────────────────────────────────────
@@ -523,7 +526,8 @@ async function createProject(payload, ctx) {
     if (!request) {
       request = await M.WtServiceRequest.create({
         branch_id: branchId,
-        code: await nextSeqCode(M.WtServiceRequest, 'SR-', branchId, { start: 1001, transaction }),
+        service_line: serviceLine,
+        code: await nextSeqCode(M.WtServiceRequest, codePrefixFor(serviceLine, 'request') || 'SR-', branchId, { start: 1001, transaction }),
         request_date: today(),
         client_name: client.name, client_code: client.code,
         phone: client.mobile, email: client.email,
@@ -556,7 +560,8 @@ async function createProject(payload, ctx) {
     } else if (p.needs_assessment) {
       assessment = await M.WtSiteAssessment.create({
         branch_id: branchId,
-        code: await nextSeqCode(M.WtSiteAssessment, 'SA-', branchId, { start: 401, transaction }),
+        service_line: serviceLine,
+        code: await nextSeqCode(M.WtSiteAssessment, codePrefixFor(serviceLine, 'assessment') || 'SA-', branchId, { start: 401, transaction }),
         project_id: project.code,
         client_name: client.name,
         provider: p.provider_name || null,

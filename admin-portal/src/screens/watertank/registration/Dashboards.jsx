@@ -18,13 +18,19 @@ function Panel({ title, children }) {
 export default function Dashboards() {
   const toast = useToast();
   const [d, setD] = useState(null);
+  const [err, setErr] = useState('');
 
   useEffect(() => {
     api.get('/br-line/dashboards')
       .then(({ data }) => setD(data.data))
-      .catch(() => toast.error('Could not load the registration dashboards'));
+      .catch((e) => {
+        // Without this the screen spun forever on a 403/500 and the toast vanished.
+        setErr(e.response?.data?.error || 'Could not load the registration dashboards');
+        toast.error(e.response?.data?.error || 'Could not load the registration dashboards');
+      });
   }, [toast]);
 
+  if (err) return <div className="wt-scope" style={{ padding: 24 }}><p>{err}</p></div>;
   if (!d) return <Spinner />;
   const row = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 };
 
@@ -39,7 +45,7 @@ export default function Dashboards() {
           <StatCard label="Completed" value={d.registration.completed} tone="green" />
           <StatCard label="Rejected submissions" value={d.registration.rejected} tone="red" />
         </div>
-        <table className="tbl" style={{ marginTop: 10 }}>
+        <table className="wt-tbl" style={{ marginTop: 10 }}>
           <thead><tr><th>SOP phase</th><th style={{ textAlign: 'right' }}>Projects</th></tr></thead>
           <tbody>
             {d.registration.by_stage.map((s) => (
@@ -85,7 +91,7 @@ export default function Dashboards() {
           <StatCard label="Awaiting authority" value={d.risk.government_queries} tone="amber" />
         </div>
         {d.risk.rejections.length > 0 && (
-          <table className="tbl" style={{ marginTop: 10 }}>
+          <table className="wt-tbl" style={{ marginTop: 10 }}>
             <thead><tr><th>Activity</th><th>Project</th><th>Reason</th></tr></thead>
             <tbody>
               {d.risk.rejections.slice(0, 20).map((r, i) => (
@@ -101,7 +107,7 @@ export default function Dashboards() {
           <StatCard label="Gross margin" value={money(d.profitability.gross_margin_total)} tone="green" />
           <StatCard label="Provider cost" value={money(d.profitability.provider_cost_total)} tone="grey" />
         </div>
-        <table className="tbl" style={{ marginTop: 10 }}>
+        <table className="wt-tbl" style={{ marginTop: 10 }}>
           <thead><tr><th>Project</th><th>Professional fee</th><th>Provider cost</th><th>Margin</th><th>%</th></tr></thead>
           <tbody>
             {d.profitability.per_project.length === 0 && <tr><td colSpan={5} className="cell-sub">No projects yet.</td></tr>}

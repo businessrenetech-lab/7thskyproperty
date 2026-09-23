@@ -36,6 +36,9 @@ exports.createParty = asyncHandler(async (req, res) => {
   const data = pick(req.body, PARTY_FIELDS);
   if (!PARTY_ROLES.includes(data.party_role)) return res.status(400).json({ error: 'party_role must be shareholder or director.' });
   if (!data.name) return res.status(400).json({ error: 'name is required.' });
+  // A director normally holds no shares: an empty box must store NULL, not '' —
+  // MySQL rejects the empty string for DECIMAL and the drawer just said "Save failed".
+  if (data.share_percentage === '' || data.share_percentage == null) data.share_percentage = null;
   const row = await BusinessRegistrationParty.create({
     ...data,
     wt_project_id: Number(req.params.projectId),
@@ -49,7 +52,9 @@ exports.updateParty = asyncHandler(async (req, res) => {
   if (!guard(req, res)) return;
   const row = await BusinessRegistrationParty.findOne({ where: { id: req.params.id, ...scope(req) } });
   if (!row) return res.status(404).json({ error: 'Party not found.' });
-  await row.update(pick(req.body, PARTY_FIELDS));
+  const patch = pick(req.body, PARTY_FIELDS);
+  if (patch.share_percentage === '') patch.share_percentage = null;
+  await row.update(patch);
   res.json({ data: row, message: 'Party updated.' });
 });
 

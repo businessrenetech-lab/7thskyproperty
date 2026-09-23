@@ -25,7 +25,7 @@ export default function Activities() {
         title="Registration Activities"
         desc="Name clearance, trade licence, RJSC, TIN/BIN/VAT and authority liaison across every project."
       />
-      <table className="tbl" style={{ marginTop: 12 }}>
+      <table className="wt-tbl" style={{ marginTop: 12 }}>
         <thead><tr><th>Activity</th><th>Project</th><th>Authority</th><th>Reference</th><th>Status</th><th>Submitted</th></tr></thead>
         <tbody>
           {rows.length === 0 && <tr><td colSpan={6} className="cell-sub">No registration activities yet.</td></tr>}

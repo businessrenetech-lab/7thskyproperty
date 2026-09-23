@@ -26,6 +26,24 @@ async function lineModule() {
     },
   });
   const projectId = p.body?.project?.id;
+  // The client the wizard creates alongside the project must belong to THIS line.
+  // It used to be written as water_tank with a WTCM-C code, so it surfaced in the
+  // Water Tank console and was invisible here.
+  // Reusing an existing client is the easy path; the leak is on the path where the
+  // wizard creates a BRAND NEW client (and its service request) inline.
+  const fresh = await req('POST', '/api/wt-projects', {
+    ...LINE,
+    body: {
+      client: { name: `Walk-in Client ${STAMP}`, phone: `0199${STAMP}` },
+      project: { project_type: 'Trade Licence Only', name: `Walk-in Project ${STAMP}` },
+    },
+  });
+  const madeClient = fresh.body?.client || {};
+  ok(String(madeClient.code || '').startsWith('BR-C'), 'wizard-created client carries the registration prefix', madeClient.code);
+  ok(madeClient.service_line === 'business_registration', 'wizard-created client belongs to the registration line', madeClient.service_line);
+  const wtClients = await req('GET', '/api/wt-clients', { headers: { 'X-Service-Line': 'water_tank' } });
+  const wtRows = wtClients.body?.data || wtClients.body?.clients || (Array.isArray(wtClients.body) ? wtClients.body : []);
+  ok(!wtRows.some((r) => String(r.name || '').includes(`Walk-in Client ${STAMP}`)), 'wizard-created client does not leak into Water Tank');
   ok(!!projectId, 'registration project created on the shared spine', `HTTP ${p.status} ${p.body?.error || ''}`);
   ok(String(p.body?.project?.code || '').startsWith('BR-P'), 'project uses the registration code prefix', p.body?.project?.code);
 
