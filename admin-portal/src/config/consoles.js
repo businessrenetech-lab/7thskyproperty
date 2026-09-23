@@ -1277,6 +1277,9 @@ export const BUSINESS_REG_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/busin
         { to: '/business-registration/doc-manager', label: 'Client Documents', icon: FolderArchive },
       ] };
     }
+    if (g.key.endsWith('finance')) {
+      return { ...g, items: [...g.items, { to: '/business-registration/dashboards', label: 'SOP Dashboards', icon: BarChart3 }] };
+    }
     return g;
   });
 

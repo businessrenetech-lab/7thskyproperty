@@ -6,6 +6,11 @@ const { authMiddleware, roleMiddleware } = require('../middleware/auth.middlewar
 const ROLES = ['super_admin', 'branch_admin', 'property_manager', 'sales_executive', 'accounts'];
 router.use(authMiddleware, roleMiddleware(ROLES));
 
+const dash = require('../controllers/businessRegistrationDashboards.controller');
+
+// The six SOP dashboards.
+router.get('/dashboards', dash.dashboards);
+
 // Console-level list first, so it is not shadowed by /projects/:projectId/activities.
 router.get('/activities', ctrl.allActivities);
 

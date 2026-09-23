@@ -65,6 +65,7 @@ import AirConditioningConsole from './screens/watertank/AirConditioningConsole';
 import LandPropertyAssessmentConsole from './screens/watertank/LandPropertyAssessmentConsole';
 import DocManager from './screens/watertank/DocManager';
 import BRActivities from './screens/watertank/registration/Activities';
+import BRDashboards from './screens/watertank/registration/Dashboards';
 import DocumentRequest from './screens/DocumentRequest';
 import LoanFinancialSupportConsole from './screens/watertank/LoanFinancialSupportConsole';
 import LoanApplications from './screens/watertank/LoanApplications';
@@ -1595,6 +1596,7 @@ export default function App() {
               <Route path="/business-registration/communication" element={<WTCommLog />} />
               <Route path="/business-registration/catalogue" element={<WaterTankCatalogue />} />
               <Route path="/business-registration/activities" element={<BRActivities />} />
+              <Route path="/business-registration/dashboards" element={<BRDashboards />} />
               <Route path="/business-registration/doc-manager" element={<DocManager />} />
               <Route path="/business-registration/reports" element={<WTReports />} />
               <Route path="/business-registration/reports/:kind" element={<WTReports />} />
