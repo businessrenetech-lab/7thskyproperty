@@ -1705,6 +1705,68 @@ const SERVICE_LINES = {
       incident_types: ['Injury', 'Property Damage', 'Fire', 'Electrical Incident', 'Water Damage', 'Other'],
     },
   },
+
+  business_registration: {
+    key: 'business_registration',
+    label: 'Business Registration',
+    short: 'BRG',
+    accent: '#0d9488',                 // teal — the console's existing colour
+    api_base: 'wt',
+    route_base: 'business-registration',
+    env_tag: 'BRG',
+    catalogue_vertical: 'registration_registration_business',
+    no_provider: false,                // Third-Party SOP: trade licence / RJSC consultants
+    no_amc: true,                      // one-off registrations, no annual maintenance
+    no_site_visit: true,               // document-and-authority work, nothing is inspected on site
+    delivery_model: 'third_party_provider',
+    completion_signoff: true,
+    doc_manager: true,                 // SOP Phase 4 — document collection
+    registration_register: true,       // line module: shareholders/directors + registration activities
+    code_prefix: {
+      client: 'BR-C', project: 'BR-P', request: 'BRR-', assessment: 'BRA-',
+      quotation: 'BRQ-', work_order: 'BRW-', invoice: 'BRI-', provider: 'BR-SP-',
+    },
+    required_docs: {
+      compliance: ['Trade Licence', 'Company Registration', 'TIN', 'BIN', 'Professional Registration'],
+      insurance: ['Professional Indemnity Insurance', 'Public Liability Insurance'],
+    },
+    service_categories: [
+      'Trade Licence Consultant', 'RJSC Consultant', 'Corporate Secretary',
+      'Business Registration Agent', 'Legal Documentation Consultant', 'Tax Registration Consultant',
+    ],
+    related_type: {
+      customer: 'business_registration_agreement',            // EXISTING — SSPC-BR-CSA-01
+      provider: 'business_registration_provider_agreement',   // new, added in Task 11
+    },
+    agreement_template: {
+      customer: 'Business Registration Customer Service Agreement',
+      provider: 'Master Service Delivery Provider Agreement',
+    },
+    ui: {
+      full_label: 'Business Registration Services',
+      project_types: ['Sole Proprietorship', 'Partnership', 'Private Limited Company',
+        'Public Limited Company', 'Trade Licence Only', 'Renewal', 'Amendment', 'Mixed Scope'],
+      categories: ['Trade Licence', 'Company Formation', 'RJSC', 'Tax Registration', 'Corporate Documentation'],
+      service_catalogue: {
+        'Trade Licence Documentation Support': ['New Trade Licence', 'Trade Licence Renewal',
+          'Trade Licence Amendment', 'Municipality Documentation', 'City Corporation Documentation',
+          'Local Authority Documentation', 'Business Address Documentation'],
+        'Business Registration Coordination': ['Sole Proprietorship Registration',
+          'Partnership Registration', 'Private Limited Company Registration',
+          'Public Limited Company Registration', 'RJSC Registration', 'Business Name Registration',
+          'Memorandum & Articles Coordination', 'Shareholder Documentation Coordination',
+          'Director Documentation Coordination', 'Company Secretarial Coordination'],
+      },
+      equipment: {                     // the core's site/equipment block, re-labelled
+        section_label: 'Business Details',
+        type_label: 'Business Type',
+        type_options: ['Sole Proprietorship', 'Partnership', 'Private Limited', 'Public Limited', 'Other'],
+        count_label: 'Number of Shareholders',
+        capacity_label: 'Authorised Capital',
+        capacity_placeholder: 'e.g. BDT 10,00,000',
+      },
+    },
+  },
 };
 
 const DEFAULT_SERVICE_LINE = 'water_tank';
