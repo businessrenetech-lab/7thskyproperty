@@ -207,6 +207,22 @@ async function workOrder(drafted, providerId) {
   return drafted.id;
 }
 
+async function isolation(projectId) {
+  console.log('\n— Isolation —');
+  const wt = await req('GET', '/api/wt-projects', { headers: { 'X-Service-Line': 'water_tank' } });
+  const rowsOf = (b) => b?.data || b?.projects || b?.rows || (Array.isArray(b) ? b : []);
+  ok(!rowsOf(wt.body).some((p) => Number(p.id) === Number(projectId)), 'registration project invisible to Water Tank');
+
+  const mine = await req('GET', '/api/wt-projects', LINE);
+  ok(rowsOf(mine.body).every((p) => !p.code || String(p.code).startsWith('BR-P')), 'registration list holds only registration projects');
+
+  const dash = await req('GET', '/api/br-line/dashboards', { headers: { 'X-Service-Line': 'air_conditioning' } });
+  ok(dash.status === 403, 'dashboards refuse another line', `HTTP ${dash.status}`);
+
+  const parties = await req('GET', `/api/br-line/projects/${projectId}/parties`, { headers: { 'X-Service-Line': 'air_conditioning' } });
+  ok(parties.status === 403, 'line module refuses another line', `HTTP ${parties.status}`);
+}
+
 (async () => {
   console.log(`\n===== BUSINESS REGISTRATION E2E (run ${STAMP}) =====`);
   if (!(await login())) return finish();
@@ -215,5 +231,6 @@ async function workOrder(drafted, providerId) {
   const { workOrder: drafted } = await commercial(`Reg Client ${STAMP}`);
   const providerId = await providers();
   await workOrder(drafted, providerId);
+  await isolation(projectId);
   finish();
 })().catch((e) => { ok(false, 'harness crashed', e.message); finish(); });
