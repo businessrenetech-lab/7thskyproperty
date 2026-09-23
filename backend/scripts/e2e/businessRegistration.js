@@ -72,9 +72,41 @@ async function lineModule() {
   return { projectId, clientId };
 }
 
+async function documents(projectId, clientId) {
+  console.log('\n— Documents: checklist, request, client link —');
+  const ref = await req('GET', `/api/wt-client-docs/reference?project_id=${projectId}`, LINE);
+  const keys = (ref.body?.client_docs || []).map((d) => d.key);
+  ok(ref.status === 200 && keys.includes('nid'), 'registration checklist served', `${keys.length} items`);
+  // lineModule() added one shareholder and one director, so the party rows expand.
+  ok(keys.some((k) => k.startsWith('shareholder_docs_')), 'shareholder document row expanded per party');
+  ok(keys.some((k) => k.startsWith('director_docs_')), 'director document row expanded per party');
+
+  // Without a project there is nothing to expand against — the generic rows stand.
+  const plain = await req('GET', '/api/wt-client-docs/reference', LINE);
+  ok((plain.body?.client_docs || []).some((d) => d.key === 'shareholder_docs'), 'generic checklist unchanged without a project');
+
+  const made = await req('POST', '/api/wt-client-docs/requests', {
+    ...LINE,
+    body: { client_id: clientId, requested_docs: ['nid', 'utility_bill'], message: `e2e ${STAMP}` },
+  });
+  ok([200, 201].includes(made.status), 'document request created', `HTTP ${made.status} ${made.body?.error || ''}`);
+  const token = String(made.body?.link || '').split('/document-request/')[1];
+  ok(!!token, 'tokenised client link issued');
+  ok(made.body?.request?.token_hash === undefined, 'response never returns the token hash');
+
+  if (token) {
+    const pub = await req('GET', `/api/public/doc-request/${token}`, { noAuth: true });
+    ok(pub.status === 200, 'client opens the link without logging in', `HTTP ${pub.status}`);
+    ok(!JSON.stringify(pub.body || {}).includes('token_hash'), 'public payload never leaks the token hash');
+  }
+  const bad = await req('GET', '/api/public/doc-request/not-a-real-token', { noAuth: true });
+  ok([403, 404].includes(bad.status), 'invalid document token refused', `HTTP ${bad.status}`);
+}
+
 (async () => {
   console.log(`\n===== BUSINESS REGISTRATION E2E (run ${STAMP}) =====`);
   if (!(await login())) return finish();
-  await lineModule();
+  const { projectId, clientId } = await lineModule();
+  await documents(projectId, clientId);
   finish();
 })().catch((e) => { ok(false, 'harness crashed', e.message); finish(); });
