@@ -143,11 +143,43 @@ async function commercial(clientName) {
   return code;
 }
 
+async function providers() {
+  console.log('\n— Providers —');
+  // POST / takes business_name (see controllers/waterTankProviders.controller.js).
+  const p = await req('POST', '/api/wt-providers', {
+    ...LINE,
+    body: {
+      business_name: `RJSC Consultants ${STAMP}`, contact_person: 'Mr Karim',
+      phone: `0191${STAMP}`, email: `provider${STAMP}@example.com`,
+      service_categories: ['RJSC Consultant'],
+    },
+  });
+  ok([200, 201].includes(p.status), 'registration provider created', `HTTP ${p.status} ${p.body?.error || ''}`);
+  const code = p.body?.code;
+  ok(String(code || '').startsWith('BR-SP-'), 'provider uses the registration code prefix', code);
+
+  const mine = await req('GET', '/api/wt-providers/directory', LINE);
+  const rowsOf = (b) => b?.data || b?.providers || b?.rows || (Array.isArray(b) ? b : []);
+  ok(rowsOf(mine.body).some((r) => String(r.business_name || '').includes(String(STAMP))), 'provider listed on its own line');
+
+  const other = await req('GET', '/api/wt-providers/directory', { headers: { 'X-Service-Line': 'water_tank' } });
+  ok(!rowsOf(other.body).some((r) => String(r.business_name || '').includes(String(STAMP))), 'provider invisible to Water Tank');
+
+  // The provider agreement and its required documents come from the manifest.
+  const { getServiceLine } = require('../../config/serviceLines');
+  const sl = getServiceLine('business_registration');
+  ok(sl.agreement_template.provider === 'Master Service Delivery Provider Agreement', 'provider agreement named in the manifest');
+  ok(sl.required_docs.compliance.includes('Trade Licence') && sl.required_docs.insurance.includes('Professional Indemnity Insurance'),
+    'provider compliance + insurance documents come from the manifest');
+  return p.body?.id;
+}
+
 (async () => {
   console.log(`\n===== BUSINESS REGISTRATION E2E (run ${STAMP}) =====`);
   if (!(await login())) return finish();
   const { projectId, clientId } = await lineModule();
   await documents(projectId, clientId);
   await commercial(`Reg Client ${STAMP}`);
+  await providers();
   finish();
 })().catch((e) => { ok(false, 'harness crashed', e.message); finish(); });
