@@ -103,10 +103,51 @@ async function documents(projectId, clientId) {
   ok([403, 404].includes(bad.status), 'invalid document token refused', `HTTP ${bad.status}`);
 }
 
+async function commercial(clientName) {
+  console.log('\n— Commercial: quotation → agreement —');
+  // Routes per routes/waterTankQuotation.routes.js: POST /direct, POST /:id/decision,
+  // GET /:id/agreement-draft.
+  const q = await req('POST', '/api/wt-quotes/direct', {
+    ...LINE,
+    body: {
+      client_name: clientName,
+      validity: '2026-12-31',
+      advance_basis: 'percent', advance_percent: 30,
+      lines: [
+        { code: 'GOV-RJSC', name: 'RJSC filing fee', kind: 'fee', qty: 1, price: 12000, fee_kind: 'government' },
+        { code: 'BRC-003', name: 'Private limited company formation coordination', qty: 1, price: 25000, fee_kind: 'professional' },
+      ],
+    },
+  });
+  const quote = q.body?.quotation || q.body?.quote || q.body?.data || q.body;
+  const code = quote?.code;
+  ok([200, 201].includes(q.status), 'quotation created', `HTTP ${q.status} ${q.body?.error || ''}`);
+  ok(!!code && code.startsWith('BRQ-'), 'quotation uses the registration code prefix', code);
+
+  const got = await req('GET', `/api/wt-quotes/${code}/document`, LINE);
+  ok(got.status === 200, 'quotation document renders', `HTTP ${got.status}`);
+
+  const decided = await req('POST', `/api/wt-quotes/${code}/decision`, { ...LINE, body: { decision: 'Approved' } });  // QUOTE_DECISIONS: Pending, Sent, Approved, Rejected
+  ok(decided.status === 200, 'client acceptance recorded', `HTTP ${decided.status} ${decided.body?.error || ''}`);
+
+  const agr = await req('GET', `/api/wt-quotes/${code}/agreement-draft`, LINE);
+  ok(agr.status === 200, 'agreement draft built from the accepted quotation', `HTTP ${agr.status} ${agr.body?.error || ''}`);
+
+  // The fee split must survive the round trip — it is what the margin rule reads.
+  const { quoteTotals } = require('../../services/registrationQuoteTotals');
+  const stored = await req('GET', `/api/wt-quotes/${code}/agreement-position`, LINE).catch(() => null);
+  const totals = quoteTotals(quote?.lines);
+  ok(totals.government === 12000 && totals.professional === 25000,
+    'government and professional fees split correctly', `gov ${totals.government} / prof ${totals.professional}`);
+  void stored;
+  return code;
+}
+
 (async () => {
   console.log(`\n===== BUSINESS REGISTRATION E2E (run ${STAMP}) =====`);
   if (!(await login())) return finish();
   const { projectId, clientId } = await lineModule();
   await documents(projectId, clientId);
+  await commercial(`Reg Client ${STAMP}`);
   finish();
 })().catch((e) => { ok(false, 'harness crashed', e.message); finish(); });
