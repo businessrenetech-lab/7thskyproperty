@@ -35,6 +35,13 @@ const Tenancy = sequelize.define('Tenancy', {
   structure_warnings: { type: DataTypes.JSON, defaultValue: [] },
   structure_override_by: DataTypes.INTEGER,
   structure_override_reason: DataTypes.TEXT,
+  // Commission and handover (0154) — SOP Rental §15: occupancy follows payment.
+  commission_amount: DataTypes.DECIMAL(15, 2),
+  commission_paid_amount: DataTypes.DECIMAL(15, 2),
+  commission_invoice_id: DataTypes.INTEGER,
+  handover_completed_at: DataTypes.DATE,
+  handover_override_by: DataTypes.INTEGER,
+  handover_override_reason: DataTypes.TEXT,
   minimum_lease_period_months: { type: DataTypes.INTEGER, defaultValue: 6 },
   payment_method: DataTypes.STRING,
   agreement_sent_date: DataTypes.DATEONLY,

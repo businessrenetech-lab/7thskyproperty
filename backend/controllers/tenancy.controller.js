@@ -8,6 +8,7 @@ const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = requ
 const { checkLeaseStructure } = require('../services/businessLeaseStructure');
 const TenancyDeposit = require('../models/TenancyDeposit');
 const { DEPOSIT_TYPES, advanceState, depositSummary } = require('../services/advanceSchedule');
+const { canHandover } = require('../services/handoverGate');
 const { ensureFoliosForTenancy, ensureTenantFolio, postFolioTransaction } = require('../services/folio.service');
 const AccountCategory = require('../models/AccountCategory');
 const Agreement = require('../models/Agreement');
@@ -19,7 +20,10 @@ const PartyRoleProfile = require('../models/PartyRoleProfile');
 const FIELDS = ['property_id', 'owner_contact_id', 'tenant_contact_id', 'lease_start', 'move_in_date', 'lease_end',
   'move_out_date', 'security_deposit', 'monthly_rent', 'service_charge', 'rent_due_day', 'payment_frequency', 'status', 'lease_status', 'notes',
   // Business lease structure (0151) — SOP Rental §9 / Tenancy §9.
-  'advance_rent', 'lease_term_months', 'extension_option', 'renewal_increment_pct', 'advance_months', 'advance_received'];
+  'advance_rent', 'lease_term_months', 'extension_option', 'renewal_increment_pct', 'advance_months', 'advance_received',
+  // Commission (0154) — SOP Rental §15. handover_* are set by the handover
+  // endpoint alone, never by a plain update.
+  'commission_amount', 'commission_paid_amount', 'commission_invoice_id'];
 const propInc = { model: Property, attributes: ['id', 'property_code', 'title', 'address', 'area', 'district', 'category'] };
 const ownerInc = { model: Contact, as: 'owner', attributes: ['id', 'full_name', 'primary_phone', 'email'] };
 const tenantInc = { model: Contact, as: 'tenant', attributes: ['id', 'full_name', 'primary_phone', 'email'] };
@@ -149,6 +153,29 @@ exports.updateDeposit = asyncHandler(async (req, res) => {
   if (!row) return res.status(404).json({ error: 'Deposit not found on this tenancy.' });
   await row.update(pick(req.body, ['deposit_type', 'amount', 'received_amount', 'received_on', 'settled_amount', 'settled_on', 'notes']));
   res.json({ data: row, message: 'Deposit updated.' });
+});
+
+// ─── Complete the operational handover (SOP Rental §15) ─────────────────────
+// Occupancy follows payment: an unpaid commission blocks the handover. A lease
+// that was never charged one is not gated, and a manager override is recorded.
+exports.handover = asyncHandler(async (req, res) => {
+  const t = await Tenancy.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!t) return res.status(404).json({ error: 'Tenancy not found.' });
+  if (t.handover_completed_at) return res.status(400).json({ error: 'Handover is already complete.' });
+
+  const override = Boolean(req.body.override);
+  const { allowed, reason } = canHandover(t.toJSON(), { override });
+  if (!allowed) return res.status(400).json({ error: reason });
+  if (override && reason && !req.body.override_reason) {
+    return res.status(400).json({ error: 'An override must state why.' });
+  }
+
+  await t.update({
+    handover_completed_at: new Date(),
+    handover_override_by: reason ? (req.user?.id || null) : null,
+    handover_override_reason: reason ? req.body.override_reason : null,
+  });
+  res.json({ data: t, message: reason || 'Handover recorded.' });
 });
 
 exports.startAgreement = asyncHandler(async (req, res) => {

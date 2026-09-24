@@ -24,6 +24,9 @@ router.post('/:id/start-agreement', ctrl.startAgreement);
 router.get('/:id/deposits', ctrl.listDeposits);
 router.post('/:id/deposits', ctrl.addDeposit);
 router.put('/:id/deposits/:depositId', ctrl.updateDeposit);
+
+// Operational handover, gated on commission (SOP Rental §15).
+router.post('/:id/handover', ctrl.handover);
 router.post('/:id/raise-invoice', ctrl.raiseInvoice);
 router.post('/bulk-raise-invoices', ctrl.bulkRaiseInvoices);
 
