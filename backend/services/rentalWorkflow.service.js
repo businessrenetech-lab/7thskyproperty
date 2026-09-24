@@ -65,6 +65,26 @@ const ROOM_ASSESSMENT_ITEMS = [
   { section: 'Utilities & safety', assessment_item: 'Fire safety / smoke detection', is_blocking: false },
 ];
 
+// ── Commercial/business premises assessment (SOP Business Rental Mgmt §8) ──
+// Business premises are assessed on trade suitability, not on bedrooms: a
+// warehouse has no Bedroom 2, and a retail unit lives or dies on frontage,
+// signage rights and whether the electrical load carries the trade.
+const premisesItems = (section, items, is_blocking = false) =>
+  items.map((assessment_item) => ({ section, assessment_item, is_blocking }));
+const PREMISES_ASSESSMENT_ITEMS = [
+  ...premisesItems('Location suitability', ['Catchment & footfall', 'Neighbouring trade mix', 'Transport access']),
+  ...premisesItems('Business suitability', ['Zoning permits the intended activity', 'Floor plate suits the trade', 'Fit-out constraints identified']),
+  ...premisesItems('Operational condition', ['Floors, walls & ceiling', 'Lighting & ventilation', 'Loading / service access']),
+  ...premisesItems('Maintenance condition', ['Outstanding repairs listed', 'Plant & equipment condition', 'Cleaning & presentation']),
+  ...premisesItems('Accessibility', ['Entrance & circulation', 'Lift / stair access', 'Disability access']),
+  ...premisesItems('Signage & visibility', ['Signage rights confirmed', 'Frontage visibility', 'Display area']),
+  ...premisesItems('Security', ['Locks & shutters', 'Alarm / CCTV', 'After-hours access control']),
+  ...premisesItems('Parking', ['Customer parking', 'Staff parking', 'Loading bay']),
+  // Blocking: a premises that cannot be powered or lawfully let is not marketable.
+  ...premisesItems('Utility readiness', ['Electricity load adequate for the trade', 'Water & drainage connected', 'Gas / generator provision'], true),
+  ...premisesItems('Leasing readiness', ['Ownership & authority to lease confirmed', 'Trade licence obtainable at this address'], true),
+];
+
 // ── Owner onboarding checklist (Owner Onboarding Checklist sheet) ──
 const OWNER_ONBOARDING_ITEMS = [
   { checklist_item: 'Owner identity / KYC collected', evidence_required: 'NID / Passport / Company document', action_required: 'Collect documents' },
@@ -172,6 +192,7 @@ module.exports = {
   VERIFICATION_ITEMS,
   ASSESSMENT_ITEMS,
   ROOM_ASSESSMENT_ITEMS,
+  PREMISES_ASSESSMENT_ITEMS,
   OWNER_ONBOARDING_ITEMS,
   createLeasingProject,
   seedOwnerOnboardingItems,
