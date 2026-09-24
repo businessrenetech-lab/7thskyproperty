@@ -14,6 +14,9 @@ const ProjectStage = sequelize.define('ProjectStage', {
   completed_at: DataTypes.DATE,
   checklist: { type: DataTypes.JSON, defaultValue: [] },
   required_documents: { type: DataTypes.JSON, defaultValue: [] },
+  // SOP stage attributes (0149): which team owns the stage and what escalates it.
+  department: DataTypes.STRING(80),
+  escalation_trigger: DataTypes.STRING(255),
   notes: DataTypes.TEXT,
 }, { tableName: 'project_stages', underscored: true });
 

@@ -64,6 +64,8 @@ async function createProjectFromTemplate(meta, transaction) {
           remarks: '',
         })),
         required_documents: s.required_docs || [],
+        department: s.department || null,
+        escalation_trigger: s.escalation_trigger || null,
       }, { transaction });
     }
     // current_stage_key = first active stage (gated → first non-blocked; else first).
