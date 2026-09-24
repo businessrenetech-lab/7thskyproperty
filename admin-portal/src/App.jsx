@@ -148,6 +148,7 @@ import CommercialRentConsole from './screens/CommercialRentConsole';
 import ResidentialConsole from './screens/ResidentialConsole';
 import CommercialConsole, { CommercialBuyerConsole } from './screens/CommercialConsole';
 import BusinessSaleConsole, { BusinessBuyerConsole } from './screens/BusinessSaleConsole';
+import BusinessRentDashboards from './screens/rental/BusinessRentDashboards';
 import BusinessRentConsole from './screens/BusinessRentConsole';
 import BrmAgreements from './screens/sales/BrmAgreements';
 import BtmAgreements from './screens/sales/BtmAgreements';
@@ -1553,6 +1554,7 @@ export default function App() {
               <Route path="/business-rent/folios" element={<Folios />} />
               <Route path="/business-rent/landlord-bills" element={<LandlordBills />} />
               <Route path="/business-rent/agency-income" element={<AgencyIncome />} />
+              <Route path="/business-rent/dashboards" element={<BusinessRentDashboards />} />
               {/* Business-specific — the documents of record for this line. */}
               <Route path="/business-rent/agreements" element={<BrmAgreements category="business_rent" />} />
               <Route path="/business-rent/tenancy-agreements" element={<BtmAgreements category="business_rent" />} />

@@ -136,6 +136,7 @@ module.exports = [
   ['/api/sales/inbox', './salesInbox.routes'], // before /api/sales so the prefix wins
   ['/api/sales/introductions', './salesIntroduction.routes'], // before /api/sales so the prefix wins
   ['/api/rent-protections', './rentProtection.routes'], // non-circumvention for the rent consoles
+  ['/api/business-rent', './businessRentDashboards.routes'],
   ['/api/sales/calendar', './salesCalendar.routes'], // before /api/sales so the prefix wins
   ['/api/sales', './sales.routes'],
   ['/api/sales-payments', './salesPayment.routes'],

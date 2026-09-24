@@ -1237,6 +1237,9 @@ export const BUSINESS_RENT_NAV = [
     '/property-management',
     '/business-rent',
   ),
+  { key: 'brent-sop', label: 'SOP Dashboards', items: [
+    { to: '/business-rent/dashboards', label: 'Business Rent Dashboards', icon: BarChart3 },
+  ] },
   { key: 'brent-switch', label: 'Switch', items: [
     { to: '/business/sell', label: '→ Sell a Business', icon: Building2 },
     { to: '/business/buyer-service', label: '→ Buy a Business', icon: Briefcase },
