@@ -1205,20 +1205,38 @@ export const BUSINESS_BUYER_NAV = [
   ] },
 ];
 
+/* ── Business Rent ─────────────────────────────────────────────────────────
+ * Leasing business premises (office, retail, restaurant, warehouse, factory).
+ * Like Commercial Rent, it runs the SAME Property Management screens scoped by
+ * PmScopeProvider, so its nav is the PM nav rebased onto /business-rent/*.
+ *
+ * Two deliberate differences from a plain rebase:
+ *  - the agreements group keeps the BUSINESS builders, BRM (rental management)
+ *    and BTM (tenancy management), which are this line's documents of record;
+ *  - Workflows points at the business_rent vertical, not leasing/short_stay.
+ */
 export const BUSINESS_RENT_NAV = [
-  { key: 'brent-home', label: 'Home', items: [
-    { to: '/business-rent', label: 'Rent Dashboard', icon: LayoutGrid, end: true },
-  ] },
-  { key: 'brent-pipeline', label: 'Leasing', items: [
-    { to: '/business-rent/listings', label: 'Rental Listings', icon: Building2 },
-    { to: '/business-rent/enquiries', label: 'Tenant Enquiries', icon: MessageSquareQuote },
-    { to: '/business-rent/rental-agreements', label: 'Rental Management', icon: FileSignature },
-    { to: '/business-rent/tenancy-agreements', label: 'Tenancy Management', icon: FileSignature },
-    { to: '/business-rent/price-schedule', label: 'Price Schedules', icon: Tags },
-  ] },
-  { key: 'brent-finance', label: 'Finance', items: [
-    { to: '/business-rent/reports', label: 'Rent Reports', icon: BarChart3 },
-  ] },
+  ...rebasePmNav(
+    PROPERTY_MGMT_NAV.map((g) => (g.key === 'agreements'
+      ? {
+        ...g,
+        items: g.items
+          .filter((it) => it.to && (it.to.endsWith('/agreements') || it.to.endsWith('/tenancy-agreements') || it.to.includes('/price-schedule')))
+          .map((it) => {
+            if (it.to.endsWith('/tenancy-agreements')) return { ...it, label: 'Tenancy Mgmt Agreements' };
+            if (it.to.endsWith('/agreements')) return { ...it, label: 'Rental Mgmt Agreements' };
+            return it;
+          }),
+      }
+      : {
+        ...g,
+        items: (g.items || []).map((it) => (it.to && it.to.includes('/workflows')
+          ? { ...it, to: '/property-management/workflows?vertical_key=business_rent' }
+          : it)),
+      })),
+    '/property-management',
+    '/business-rent',
+  ),
   { key: 'brent-switch', label: 'Switch', items: [
     { to: '/business/sell', label: '→ Sell a Business', icon: Building2 },
     { to: '/business/buyer-service', label: '→ Buy a Business', icon: Briefcase },

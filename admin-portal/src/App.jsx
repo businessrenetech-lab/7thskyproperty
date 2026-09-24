@@ -149,11 +149,6 @@ import ResidentialConsole from './screens/ResidentialConsole';
 import CommercialConsole, { CommercialBuyerConsole } from './screens/CommercialConsole';
 import BusinessSaleConsole, { BusinessBuyerConsole } from './screens/BusinessSaleConsole';
 import BusinessRentConsole from './screens/BusinessRentConsole';
-import BusinessRentDashboard from './screens/business/BusinessRentDashboard';
-import BusinessListings from './screens/business/BusinessListings';
-import BusinessListingDetail from './screens/business/BusinessListingDetail';
-import BusinessEnquiries from './screens/business/BusinessEnquiries';
-import BusinessReports from './screens/business/BusinessReports';
 import BrmAgreements from './screens/sales/BrmAgreements';
 import BtmAgreements from './screens/sales/BtmAgreements';
 import BusinessRegistrationConsole from './screens/BusinessRegistrationConsole';
@@ -1520,21 +1515,54 @@ export default function App() {
               <Route path="/business/agreements/purchase" element={<PurchaseAgreements category="business" />} />
             </Route>
 
-            {/* ── Business RENT console (lease a business / premises). Scoped to
-                listing_type='rent', tenant enquiries, rental & tenancy
-                management agreements, rent price schedules and rent reports. ── */}
+            {/* ── Business RENT — the business premises leasing console. Runs the
+                SAME Property Management screens as the residential and commercial
+                rent consoles; BusinessRentConsole wraps them in a PmScopeProvider
+                scoped to category 'business' + listing_type 'rent'. The BRM/BTM
+                agreement builders and the rent price schedule are its own. ── */}
             <Route element={<RequireAuth><AdminGate><BusinessRentConsole /></AdminGate></RequireAuth>}>
-              <Route path="/business-rent" element={<BusinessRentDashboard />} />
-              <Route path="/business-rent/listings" element={<BusinessListings listingType="rent" />} />
-              <Route path="/business-rent/listings/:id" element={<BusinessListingDetail />} />
-              <Route path="/business-rent/enquiries" element={<BusinessEnquiries mode="tenant" />} />
-              <Route path="/business-rent/rental-agreements" element={<BrmAgreements category="business_rent" />} />
+              <Route path="/business-rent" element={<PropertyMgmtDashboard />} />
+              <Route path="/business-rent/rentals" element={<RentalProperties />} />
+              <Route path="/business-rent/rentals/new" element={<PropertyWizard />} />
+              <Route path="/business-rent/rentals/new/:id" element={<PropertyWizard />} />
+              <Route path="/business-rent/contacts" element={<SalesContacts scope="rental" />} />
+              <Route path="/business-rent/applications" element={<TenantApplications />} />
+              <Route path="/business-rent/enquiries" element={<RentalEnquiries />} />
+              <Route path="/business-rent/assessments" element={<RentalAssessments />} />
+              <Route path="/business-rent/statements" element={<OwnerStatements />} />
+              <Route path="/business-rent/renewals" element={<Renewals />} />
+              <Route path="/business-rent/vacancies" element={<Vacancies />} />
+              <Route path="/business-rent/settlements" element={<DepositSettlements />} />
+              <Route path="/business-rent/reports" element={<RentalReports />} />
+              <Route path="/business-rent/disbursements" element={<Disbursements />} />
+              <Route path="/business-rent/utilities" element={<UtilityBills />} />
+              <Route path="/business-rent/tenant-requests" element={<TenantRequests />} />
+              <Route path="/business-rent/arrears" element={<ArrearsActions />} />
+              <Route path="/business-rent/marketing" element={<MarketingActivities />} />
+              <Route path="/business-rent/expense-approvals" element={<ExpenseApprovals />} />
+              <Route path="/business-rent/risks" element={<PropertyRisks />} />
+              <Route path="/business-rent/work-orders" element={<WorkOrders />} />
+              <Route path="/business-rent/inspections" element={<Inspections />} />
+              <Route path="/business-rent/compliance" element={<Compliance />} />
+              <Route path="/business-rent/workflows" element={<Projects />} />
+              <Route path="/business-rent/invoices" element={<Invoices />} />
+              <Route path="/business-rent/receipts" element={<RentalReceipts />} />
+              <Route path="/business-rent/collect-rent" element={<BulkRentCollection />} />
+              <Route path="/business-rent/disburse-owners" element={<BulkOwnerDisbursement />} />
+              <Route path="/business-rent/inbox" element={<Communication />} />
+              <Route path="/business-rent/folios" element={<Folios />} />
+              <Route path="/business-rent/landlord-bills" element={<LandlordBills />} />
+              <Route path="/business-rent/agency-income" element={<AgencyIncome />} />
+              {/* Business-specific — the documents of record for this line. */}
+              <Route path="/business-rent/agreements" element={<BrmAgreements category="business_rent" />} />
               <Route path="/business-rent/tenancy-agreements" element={<BtmAgreements category="business_rent" />} />
               <Route path="/business-rent/price-schedule" element={<SalesPriceSchedule scope="business_rent" title="Business Rent · Price Schedules" />} />
-              <Route path="/business-rent/reports" element={<BusinessReports listingType="rent" />} />
             </Route>
 
             {/* Retired Business screens → their new homes. */}
+            <Route path="/business-rent/listings" element={<Navigate to="/business-rent/rentals" replace />} />
+            <Route path="/business-rent/listings/:id" element={<Navigate to="/business-rent/rentals" replace />} />
+            <Route path="/business-rent/rental-agreements" element={<Navigate to="/business-rent/agreements" replace />} />
             <Route path="/business/sale" element={<Navigate to="/business/sell" replace />} />
             <Route path="/business/listings" element={<Navigate to="/business/properties" replace />} />
             <Route path="/business/listings/:id" element={<Navigate to="/business/properties" replace />} />
