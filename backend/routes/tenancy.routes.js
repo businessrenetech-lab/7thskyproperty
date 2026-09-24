@@ -19,6 +19,11 @@ router.post('/send-reminders', ctrl.sendReminders);
 router.get('/:id', ctrl.getOne);
 router.put('/:id', ctrl.update);
 router.post('/:id/start-agreement', ctrl.startAgreement);
+
+// Deposits held by type (SOP Rental §9).
+router.get('/:id/deposits', ctrl.listDeposits);
+router.post('/:id/deposits', ctrl.addDeposit);
+router.put('/:id/deposits/:depositId', ctrl.updateDeposit);
 router.post('/:id/raise-invoice', ctrl.raiseInvoice);
 router.post('/bulk-raise-invoices', ctrl.bulkRaiseInvoices);
 

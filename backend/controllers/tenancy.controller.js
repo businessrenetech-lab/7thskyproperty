@@ -6,6 +6,8 @@ const Contact = require('../models/Contact');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
 const { checkLeaseStructure } = require('../services/businessLeaseStructure');
+const TenancyDeposit = require('../models/TenancyDeposit');
+const { DEPOSIT_TYPES, advanceState, depositSummary } = require('../services/advanceSchedule');
 const { ensureFoliosForTenancy, ensureTenantFolio, postFolioTransaction } = require('../services/folio.service');
 const AccountCategory = require('../models/AccountCategory');
 const Agreement = require('../models/Agreement');
@@ -108,6 +110,45 @@ exports.update = asyncHandler(async (req, res) => {
   applyLeaseStructure(patch, req);
   await t.update(patch);
   res.json({ data: t, message: 'Tenancy updated.' });
+});
+
+// ─── Deposits held against a tenancy, by type (SOP Rental §9) ───────────────
+// A single security_deposit column cannot express four deposits that are each
+// settled separately at exit.
+exports.listDeposits = asyncHandler(async (req, res) => {
+  const t = await Tenancy.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!t) return res.status(404).json({ error: 'Tenancy not found.' });
+  const rows = await TenancyDeposit.findAll({ where: { tenancy_id: t.id }, order: [['id', 'ASC']] });
+  const plain = rows.map((r) => r.toJSON());
+  res.json({
+    data: plain,
+    summary: depositSummary(plain),
+    types: DEPOSIT_TYPES,
+    advance: advanceState(t.toJSON(), []),
+  });
+});
+
+exports.addDeposit = asyncHandler(async (req, res) => {
+  const t = await Tenancy.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!t) return res.status(404).json({ error: 'Tenancy not found.' });
+  const data = pick(req.body, ['deposit_type', 'amount', 'received_amount', 'received_on', 'settled_amount', 'settled_on', 'notes']);
+  if (!data.deposit_type) return res.status(400).json({ error: 'deposit_type is required.' });
+  const row = await TenancyDeposit.create({
+    ...data,
+    tenancy_id: t.id,
+    branch_id: resolveBranchId(req, t.branch_id),
+    created_by: req.user?.id || null,
+  });
+  res.status(201).json({ data: row, message: 'Deposit recorded.' });
+});
+
+exports.updateDeposit = asyncHandler(async (req, res) => {
+  const t = await Tenancy.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!t) return res.status(404).json({ error: 'Tenancy not found.' });
+  const row = await TenancyDeposit.findOne({ where: { id: req.params.depositId, tenancy_id: t.id } });
+  if (!row) return res.status(404).json({ error: 'Deposit not found on this tenancy.' });
+  await row.update(pick(req.body, ['deposit_type', 'amount', 'received_amount', 'received_on', 'settled_amount', 'settled_on', 'notes']));
+  res.json({ data: row, message: 'Deposit updated.' });
 });
 
 exports.startAgreement = asyncHandler(async (req, res) => {
