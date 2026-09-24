@@ -241,6 +241,7 @@ mount('/api/deals', './routes/deal.routes');
 mount('/api/buyer-mandates', './routes/buyerMandate.routes');
 mount('/api/sales/inbox', './routes/salesInbox.routes'); // before /api/sales so the prefix wins
 mount('/api/sales/introductions', './routes/salesIntroduction.routes'); // before /api/sales so the prefix wins
+mount('/api/rent-protections', './routes/rentProtection.routes'); // non-circumvention for the rent consoles
 mount('/api/sales/calendar', './routes/salesCalendar.routes'); // before /api/sales so the prefix wins
 mount('/api/sales', './routes/sales.routes');
 mount('/api/sales-payments', './routes/salesPayment.routes');
