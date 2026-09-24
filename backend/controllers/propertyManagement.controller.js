@@ -12,6 +12,7 @@
  */
 const sequelize = require('../config/db.config');
 const { asyncHandler, branchScope } = require('../utils/controllerHelpers');
+const { pmCategoryClause } = require('../utils/pmCategory');
 
 // Build a branch filter fragment for raw queries. Super admins see all branches.
 function branchWhere(req, alias = null) {
@@ -33,10 +34,11 @@ async function cohort(sql, params, limit = 5) {
 
 exports.actionCenter = asyncHandler(async (req, res) => {
   const bw = branchWhere(req);
-  // Commercial rent console scopes the action centre to commercial properties.
-  // Values are whitelisted (never interpolated from raw user input).
-  const catClause = req.query.category === 'commercial' ? "AND p.category = 'commercial'"
-    : req.query.category === 'residential' ? "AND p.category = 'residential'" : '';
+  // The rent consoles scope the action centre to their own category
+  // (residential, commercial or business). Values are whitelisted by
+  // pmCategoryClause and never interpolated from raw user input; an
+  // unrecognised category leaves the query unfiltered, as it always did.
+  const catClause = pmCategoryClause(req.query.category, 'p.category').trimStart();
 
   // ── 1. Overdue rent — rental_ledger rows with outstanding + past due_date ──
   const overdueRent = await cohort(
@@ -51,7 +53,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
        LEFT JOIN contacts tc ON tc.id = rl.tenant_contact_id
       WHERE (rl.rent_due - rl.rent_received) > 0
         AND rl.due_date < CURDATE()
-        ${bw.sql.replace('branch_id', 'rl.branch_id')}
+        ${bw.sql.replace('branch_id', 'rl.branch_id')}${catClause}
       ORDER BY rl.due_date ASC`,
     bw.params
   );
@@ -66,7 +68,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
        LEFT JOIN contacts tc ON tc.id = rl.tenant_contact_id
       WHERE (rl.rent_due - rl.rent_received) > 0
         AND rl.due_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
-        ${bw.sql.replace('branch_id', 'rl.branch_id')}
+        ${bw.sql.replace('branch_id', 'rl.branch_id')}${catClause}
       ORDER BY rl.due_date ASC`,
     bw.params
   );
@@ -78,7 +80,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
        FROM tenant_applications ta
        LEFT JOIN properties p ON p.id = ta.property_id
       WHERE ta.status = 'awaiting_owner_approval'
-        ${bw.sql.replace('branch_id', 'ta.branch_id')}
+        ${bw.sql.replace('branch_id', 'ta.branch_id')}${catClause}
       ORDER BY ta.created_at ASC`,
     bw.params
   );
@@ -90,7 +92,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
        FROM tenant_applications ta
        LEFT JOIN properties p ON p.id = ta.property_id
       WHERE ta.status = 'awaiting_documents'
-        ${bw.sql.replace('branch_id', 'ta.branch_id')}
+        ${bw.sql.replace('branch_id', 'ta.branch_id')}${catClause}
       ORDER BY ta.created_at ASC`,
     bw.params
   );
@@ -120,7 +122,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
          LEFT JOIN contacts tc ON tc.id = t.tenant_contact_id
         WHERE t.status = 'active'
           AND t.lease_end BETWEEN DATE_ADD(CURDATE(), INTERVAL ${fromDays} DAY) AND DATE_ADD(CURDATE(), INTERVAL ${toDays} DAY)
-          ${bw.sql.replace('branch_id', 't.branch_id')}
+          ${bw.sql.replace('branch_id', 't.branch_id')}${catClause}
         ORDER BY t.lease_end ASC`,
       bw.params
     );
@@ -139,7 +141,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
       WHERE wo.status IN ('draft', 'issued', 'accepted', 'in_progress')
         AND wo.scheduled_date IS NOT NULL
         AND wo.scheduled_date < CURDATE()
-        ${bw.sql.replace('branch_id', 'wo.branch_id')}
+        ${bw.sql.replace('branch_id', 'wo.branch_id')}${catClause}
       ORDER BY wo.scheduled_date ASC`,
     bw.params
   );
@@ -220,7 +222,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
            LEFT JOIN properties p ON p.id = os.property_id
            LEFT JOIN contacts oc ON oc.id = os.owner_contact_id
           WHERE os.status = 'ready' AND os.sent_at IS NULL
-            ${bw.sql.replace('branch_id', 'os.branch_id')}
+            ${bw.sql.replace('branch_id', 'os.branch_id')}${catClause}
           ORDER BY os.period_label DESC`,
         bw.params
       );
@@ -234,7 +236,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
        LEFT JOIN properties p ON p.id = ub.property_id
       WHERE ub.payment_status IN ('pending','overdue','disputed')
         AND (ub.due_date IS NULL OR ub.due_date <= DATE_ADD(CURDATE(), INTERVAL 7 DAY))
-        ${bw.sql.replace('branch_id', 'ub.branch_id')}
+        ${bw.sql.replace('branch_id', 'ub.branch_id')}${catClause}
       ORDER BY ub.due_date ASC`,
     bw.params
   ).catch(() => ({ count: 0, top: [] }));
@@ -246,7 +248,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
        LEFT JOIN properties p ON p.id = tr.property_id
        LEFT JOIN contacts tc ON tc.id = tr.tenant_contact_id
       WHERE tr.status IN ('open','in_progress','waiting_owner','waiting_tenant')
-        ${bw.sql.replace('branch_id', 'tr.branch_id')}
+        ${bw.sql.replace('branch_id', 'tr.branch_id')}${catClause}
       ORDER BY FIELD(tr.priority, 'critical','high','medium','low'), tr.created_at ASC`,
     bw.params
   ).catch(() => ({ count: 0, top: [] }));
@@ -258,7 +260,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
        LEFT JOIN properties p ON p.id = aa.property_id
        LEFT JOIN contacts tc ON tc.id = aa.tenant_contact_id
       WHERE aa.status IN ('open','in_progress')
-        ${bw.sql.replace('branch_id', 'aa.branch_id')}
+        ${bw.sql.replace('branch_id', 'aa.branch_id')}${catClause}
       ORDER BY aa.days_overdue DESC, aa.created_at ASC`,
     bw.params
   ).catch(() => ({ count: 0, top: [] }));
@@ -270,7 +272,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
        LEFT JOIN properties p ON p.id = ea.property_id
        LEFT JOIN contacts oc ON oc.id = ea.owner_contact_id
       WHERE ea.status = 'pending'
-        ${bw.sql.replace('branch_id', 'ea.branch_id')}
+        ${bw.sql.replace('branch_id', 'ea.branch_id')}${catClause}
       ORDER BY ea.created_at ASC`,
     bw.params
   ).catch(() => ({ count: 0, top: [] }));
@@ -282,7 +284,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
        LEFT JOIN properties p ON p.id = pr.property_id
       WHERE pr.status IN ('open','monitoring')
         AND (pr.review_date IS NULL OR pr.review_date <= DATE_ADD(CURDATE(), INTERVAL 14 DAY))
-        ${bw.sql.replace('branch_id', 'pr.branch_id')}
+        ${bw.sql.replace('branch_id', 'pr.branch_id')}${catClause}
       ORDER BY FIELD(pr.risk_rating, 'critical','high','medium','low'), pr.review_date ASC`,
     bw.params
   ).catch(() => ({ count: 0, top: [] }));
@@ -294,7 +296,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
        LEFT JOIN properties p ON p.id = mic.property_id
        LEFT JOIN contacts tc ON tc.id = mic.tenant_contact_id
       WHERE mic.required = 1 AND mic.status NOT IN ('done','na')
-        ${bw.sql.replace('branch_id', 'mic.branch_id')}
+        ${bw.sql.replace('branch_id', 'mic.branch_id')}${catClause}
       GROUP BY mic.tenancy_id, mic.property_id, p.title, p.property_code, tc.full_name
       ORDER BY pending_items DESC`,
     bw.params
@@ -346,8 +348,7 @@ exports.actionCenter = asyncHandler(async (req, res) => {
 // 12-month rent-collection trend, arrears aging, owner held balance + income.
 exports.dashboardMetrics = asyncHandler(async (req, res) => {
   const bw = branchWhere(req);
-  const catCol = req.query.category === 'commercial' ? " AND category = 'commercial'"
-    : req.query.category === 'residential' ? " AND category = 'residential'" : '';
+  const catCol = pmCategoryClause(req.query.category, 'category');
   const q = (sql, extra = {}) => sequelize.query(sql, { replacements: { ...bw.params, ...extra } }).then(([r]) => r);
 
   // Occupancy — managed rental properties split by state.
