@@ -63,7 +63,6 @@ const LEGACY_TAB_MAP = {
 export default function RentalProperties() {
   const toast = useToast();
   const scope = usePmScope();
-  const isCommercial = scope.category === 'commercial';
   const [searchParams, setSearchParams] = useSearchParams();
   const nav = useNavigate();
   const [rows, setRows] = useState([]);
@@ -86,7 +85,7 @@ export default function RentalProperties() {
   // New Property Creation Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
-    title: '', category: isCommercial ? 'commercial' : 'residential', listing_type: 'rent', status: 'available', price: '',
+    title: '', category: scope.category, listing_type: scope.listingType || 'rent', status: 'available', price: '',
     bedrooms: '', bathrooms: '', parking: '', building_size: '', floor_number: '', furnishing: 'unfurnished',
     address: '', area: '', city: '', district: '', description: '',
     owner_contact_id: null, occupancy_status: 'vacant', utilities_active: false,
@@ -119,7 +118,10 @@ export default function RentalProperties() {
     setLoading(true);
     try {
       const q = search ? `&search=${encodeURIComponent(search)}` : '';
-      const catQ = `&category=${scope.category}`;
+      // Business Rent and Business Sale share the 'business' category and are told
+      // apart only by listing_type — without it this console lists the business
+      // properties that are for sale.
+      const catQ = `&category=${scope.category}&listing_type=${scope.listingType || 'rent'}`;
       const { data } = await api.get(`/properties?tab=${activeTab}&include_counts=true${q}${catQ}&limit=100`);
       setRows(data.data || []);
       if (data.tab_counts) setTabCounts(data.tab_counts);
@@ -344,7 +346,7 @@ export default function RentalProperties() {
       setShowCreateModal(false);
       // Reset form
       setCreateForm({
-        title: '', category: isCommercial ? 'commercial' : 'residential', listing_type: 'rent', status: 'available', price: '',
+        title: '', category: scope.category, listing_type: scope.listingType || 'rent', status: 'available', price: '',
         bedrooms: '', bathrooms: '', parking: '', building_size: '', floor_number: '',
         address: '', area: '', city: '', district: '', description: '',
         listing_status: 'active', is_published: true
