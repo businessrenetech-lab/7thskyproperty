@@ -5,6 +5,7 @@ const Property = require('../models/Property');
 const Contact = require('../models/Contact');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
+const { checkLeaseStructure } = require('../services/businessLeaseStructure');
 const { ensureFoliosForTenancy, ensureTenantFolio, postFolioTransaction } = require('../services/folio.service');
 const AccountCategory = require('../models/AccountCategory');
 const Agreement = require('../models/Agreement');
@@ -14,10 +15,30 @@ const SignatureField = require('../models/SignatureField');
 const PartyRoleProfile = require('../models/PartyRoleProfile');
 
 const FIELDS = ['property_id', 'owner_contact_id', 'tenant_contact_id', 'lease_start', 'move_in_date', 'lease_end',
-  'move_out_date', 'security_deposit', 'monthly_rent', 'service_charge', 'rent_due_day', 'payment_frequency', 'status', 'lease_status', 'notes'];
+  'move_out_date', 'security_deposit', 'monthly_rent', 'service_charge', 'rent_due_day', 'payment_frequency', 'status', 'lease_status', 'notes',
+  // Business lease structure (0151) — SOP Rental §9 / Tenancy §9.
+  'advance_rent', 'lease_term_months', 'extension_option', 'renewal_increment_pct', 'advance_months', 'advance_received'];
 const propInc = { model: Property, attributes: ['id', 'property_code', 'title', 'address', 'area', 'district', 'category'] };
 const ownerInc = { model: Contact, as: 'owner', attributes: ['id', 'full_name', 'primary_phone', 'email'] };
 const tenantInc = { model: Contact, as: 'tenant', attributes: ['id', 'full_name', 'primary_phone', 'email'] };
+
+/**
+ * Records any departure from the SOP business lease structure on the tenancy.
+ * Warnings never block the save — the SOP permits a departure with management
+ * approval, and refusing it here would stop work the manager already approved.
+ * Supplying an override reason records who approved it.
+ */
+function applyLeaseStructure(data, req) {
+  const touched = ['lease_term_months', 'advance_months', 'renewal_increment_pct', 'extension_option']
+    .some((k) => data[k] !== undefined);
+  if (!touched) return;
+  const { warnings } = checkLeaseStructure(data);
+  data.structure_warnings = warnings;
+  if (warnings.length && req.body.structure_override_reason) {
+    data.structure_override_by = req.user?.id || null;
+    data.structure_override_reason = req.body.structure_override_reason;
+  }
+}
 
 exports.list = asyncHandler(async (req, res) => {
   const { limit, offset, page } = getPagination(req);
@@ -54,6 +75,7 @@ exports.getOne = asyncHandler(async (req, res) => {
 
 exports.create = asyncHandler(async (req, res) => {
   const data = pick(req.body, FIELDS);
+  applyLeaseStructure(data, req);
   data.branch_id = resolveBranchId(req, req.body.branch_id);
   data.created_by = req.user?.id || null;
   data.tenancy_code = await generateCode(Tenancy, 'tenancy_code', 'SSPC-TN-');
@@ -82,7 +104,9 @@ exports.create = asyncHandler(async (req, res) => {
 exports.update = asyncHandler(async (req, res) => {
   const t = await Tenancy.findOne({ where: { id: req.params.id, ...branchScope(req) } });
   if (!t) return res.status(404).json({ error: 'Tenancy not found.' });
-  await t.update(pick(req.body, FIELDS));
+  const patch = pick(req.body, FIELDS);
+  applyLeaseStructure(patch, req);
+  await t.update(patch);
   res.json({ data: t, message: 'Tenancy updated.' });
 });
 
