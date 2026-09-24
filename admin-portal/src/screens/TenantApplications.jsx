@@ -4,6 +4,7 @@ import { Plus, FileCheck2, UserCheck, Users, ShieldCheck, ArrowRight, Check, X, 
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { usePmScope } from '../config/pmScope';
+import BusinessScreeningPanel from './rental/BusinessScreeningPanel';
 import { PageHead, DataTable, StatusBadge, Drawer, SearchInput, Spinner, Badge, Button, Field, Input, Select, Textarea, KV } from '../ui/kit';
 import { Combo } from '../ui/pickers';
 import FileUpload from '../ui/FileUpload';
@@ -72,6 +73,7 @@ export default function TenantApplications({ propertyId = null, embedded = false
       if (statusFilter !== 'all') params.set('status', statusFilter);
       if (search) params.set('search', search);
       params.set('category', scope.category);
+      params.set('listing_type', scope.listingType || 'rent');
       const { data } = await api.get(`/tenant-applications?${params.toString()}`);
       setRows(data.data || []);
       setCounts(data.status_counts || {});
@@ -259,6 +261,12 @@ export default function TenantApplications({ propertyId = null, embedded = false
             </div>
             <Field label="Work Address"><Textarea value={createForm.work_address} onChange={(e) => setCreateField('work_address', e.target.value)} /></Field>
             <Field label="Income Source Notes"><Textarea value={createForm.income_source_notes} onChange={(e) => setCreateField('income_source_notes', e.target.value)} /></Field>
+
+            {/* Business premises are let to a business, so the SOP screens the
+                business, not a salary. Business Rent console only. */}
+            {scope.category === 'business' && (
+              <BusinessScreeningPanel form={createForm} setForm={setCreateForm} />
+            )}
 
             {sectionTitle('References')}
             {(createForm.references || []).map((ref, index) => (

@@ -10,6 +10,7 @@ const AccountCategory = require('../models/AccountCategory');
 const PartyRoleProfile = require('../models/PartyRoleProfile');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
+const { pmCategory } = require('../utils/pmCategory');
 const { VERIFICATION_ITEMS } = require('../services/rentalWorkflow.service');
 const { ensureFoliosForTenancy, postFolioTransaction } = require('../services/folio.service');
 
@@ -50,6 +51,10 @@ const FIELDS = [
   'id_received', 'employment_verified', 'income_verified', 'references_checked', 'background_check_status', 'status',
   'recommendation', 'owner_approval_required', 'owner_decision', 'approved_rent', 'lease_start_target', 'risk_level',
   'screening_notes', 'assigned_officer_id', 'notes',
+  // Business tenant screening (0150) — SOP Rental §11 / Tenancy §6.
+  'business_name', 'business_type', 'intended_activity', 'trade_licence_no', 'trade_licence_expiry',
+  'corporate_profile', 'financial_capability', 'operational_suitability', 'previous_leasing_history',
+  'screening_verdict',
   // Public application content (0041) — tokens are NEVER client-settable.
   'business_name', 'business_location', 'photo_url', 'nid_url', 'has_pets', 'pet_types',
   'employer_ref_name', 'employer_ref_email', 'employer_ref_phone', 'employer_ref_role', 'employer_ref_company',
@@ -84,10 +89,15 @@ exports.list = asyncHandler(async (req, res) => {
       where[Op.or] = searchOr;
     }
   }
-  // Scope to a property category (residential | commercial) when asked — used by
-  // the commercial rent console so it only sees commercial-property applications.
-  const propI = req.query.category
-    ? { ...propInc, where: { category: req.query.category }, required: true }
+  // Scope to the console's property category when asked. Business Rent must also
+  // pass listing_type: the business SALE book shares the 'business' category, so
+  // category alone would show sale applications in the rent console.
+  const propWhere = {};
+  const cat = pmCategory(req.query.category);
+  if (cat) propWhere.category = cat;
+  if (req.query.listing_type) propWhere.listing_type = req.query.listing_type;
+  const propI = Object.keys(propWhere).length
+    ? { ...propInc, where: propWhere, required: true }
     : propInc;
   const { rows, count } = await TenantApplication.findAndCountAll({
     where, include: [propI, tenantInc], limit, offset, order: [['created_at', 'DESC']],
