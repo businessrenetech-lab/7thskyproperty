@@ -5,6 +5,7 @@ const Property = require('../models/Property');
 const Contact = require('../models/Contact');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
+const { pmCategory } = require('../utils/pmCategory');
 const { checkLeaseStructure } = require('../services/businessLeaseStructure');
 const TenancyDeposit = require('../models/TenancyDeposit');
 const { DEPOSIT_TYPES, advanceState, depositSummary } = require('../services/advanceSchedule');
@@ -373,12 +374,17 @@ exports.bulkRaiseInvoices = asyncHandler(async (req, res) => {
 
 exports.globalInvoices = asyncHandler(async (req, res) => {
   const now = new Date();
-  const period = req.body.period_label || req.query.period_label || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const previewOnly = req.method === 'GET' || req.body.preview === true;
+  // req.body is undefined on a GET, which used to throw a 500 here.
+  const body = req.body || {};
+  const period = body.period_label || req.query.period_label || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const previewOnly = req.method === 'GET' || body.preview === true;
   const where = { status: 'active', ...branchScope(req) };
-  if (req.body.property_id || req.query.property_id) where.property_id = req.body.property_id || req.query.property_id;
+  if (body.property_id || req.query.property_id) where.property_id = body.property_id || req.query.property_id;
 
-  const tenancies = await Tenancy.findAll({ where, include: [propInc, ownerInc, tenantInc], order: [['created_at', 'DESC']] });
+  // Global invoicing runs per console, not across all of them.
+  const giCat = pmCategory(req.query.property_category || body.property_category);
+  const giProp = giCat ? { ...propInc, where: { category: giCat }, required: true } : propInc;
+  const tenancies = await Tenancy.findAll({ where, include: [giProp, ownerInc, tenantInc], order: [['created_at', 'DESC']] });
   const preview = [];
   for (const t of tenancies) {
     const existing = await RentalLedger.findOne({ where: { property_id: t.property_id, period_label: period } });
@@ -402,7 +408,7 @@ exports.globalInvoices = asyncHandler(async (req, res) => {
     return res.json({ period_label: period, data: preview, ready: preview.filter((r) => r.status === 'ready').length });
   }
 
-  req.body.period_label = period;
+  body.period_label = period;
   return exports.bulkRaiseInvoices(req, res);
 });
 
@@ -422,7 +428,10 @@ exports.collectRentData = asyncHandler(async (req, res) => {
   const where = { ...branchScope(req), status: 'active' };
   if (req.query.owner_id) where.owner_contact_id = Number(req.query.owner_id);
   if (req.query.property_id) where.property_id = Number(req.query.property_id);
-  const tenancies = await Tenancy.findAll({ where, include: [propInc, ownerInc, tenantInc], order: [['id', 'ASC']] });
+  // Bulk rent collection runs per console, not across all of them.
+  const crCat = pmCategory(req.query.property_category);
+  const crProp = crCat ? { ...propInc, where: { category: crCat }, required: true } : propInc;
+  const tenancies = await Tenancy.findAll({ where, include: [crProp, ownerInc, tenantInc], order: [['id', 'ASC']] });
 
   const q = String(req.query.q || '').trim().toLowerCase();
   const statusFilter = String(req.query.status || '').toLowerCase(); // due | partial | paid | not_raised
@@ -583,6 +592,12 @@ exports.overdueReminders = asyncHandler(async (req, res) => {
     ? await Tenancy.findAll({ where: { id: { [Op.in]: tenancyIds } }, include: [propInc, ownerInc, tenantInc] })
     : [];
   const byId = new Map(tenancies.map((t) => [t.id, t.toJSON()]));
+
+  // Scope to the console: a reminder belongs to the console its property belongs to.
+  const orCat = pmCategory(req.query.property_category);
+  if (orCat) {
+    overdue = overdue.filter((r) => String(byId.get(r.tenancy_id)?.Property?.category || '') === orCat);
+  }
 
   // Last arrears reminder per property (subject marker), one grouped query.
   let lastByProp = {};

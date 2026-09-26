@@ -45,6 +45,19 @@ async function leads() {
   await assertScoped('contacts (directory)', (c) => `/api/contacts?limit=200&category=${c}`);
 }
 
+async function bulkAndInbox() {
+  console.log('\n— Bulk operations and the inbox —');
+  await assertScoped('tenancies/collect-rent-data', (c) => `/api/tenancies/collect-rent-data?property_category=${c}`);
+  await assertScoped('tenancies/overdue-reminders', (c) => `/api/tenancies/overdue-reminders?property_category=${c}`);
+  await assertScoped('disbursements/bulk-owner-data', (c) => `/api/disbursements/bulk-owner-data?property_category=${c}`);
+  await assertScoped('communications/inbox', (c) => `/api/communications/inbox?property_category=${c}`);
+
+  // Global Invoicing is broken for every console, not just leaking.
+  const gi = await req('GET', '/api/tenancies/global-invoices?property_category=residential');
+  ok(gi.status === 200, 'tenancies/global-invoices answers at all', `HTTP ${gi.status}`);
+  await assertScoped('tenancies/global-invoices', (c) => `/api/tenancies/global-invoices?property_category=${c}`);
+}
+
 module.exports = { assertScoped, sig, count, rowsOf };
 
 if (require.main === module) {
@@ -53,6 +66,7 @@ if (require.main === module) {
     if (!(await login())) return finish();
     await moneyAndReports();
     await leads();
+    await bulkAndInbox();
     finish();
   })().catch((e) => { ok(false, 'harness crashed', e.message); finish(); });
 }

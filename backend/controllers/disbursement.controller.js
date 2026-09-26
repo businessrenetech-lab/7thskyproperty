@@ -350,6 +350,10 @@ exports.listIncome = asyncHandler(async (req, res) => {
 exports.bulkOwnerData = asyncHandler(async (req, res) => {
   const scope = branchScope(req);
   const bw = scope.branch_id ? ' AND f.branch_id = :bid' : '';
+  // Paying owners runs per console. The join is a LEFT JOIN, so once a category is
+  // given a folio with no property drops out — correct, since a payout with no
+  // property cannot belong to a console.
+  const catClause = pmCategoryClause(req.query.property_category, 'p.category');
   const min = num(req.query.min);
   const [rows] = await sequelize.query(
     `SELECT f.id AS folio_id, f.folio_code, f.property_id, f.owner_contact_id, f.current_balance,
@@ -361,7 +365,7 @@ exports.bulkOwnerData = asyncHandler(async (req, res) => {
        LEFT JOIN contacts c ON c.id = f.owner_contact_id
        LEFT JOIN properties p ON p.id = f.property_id
        LEFT JOIN property_owner_profiles po ON po.property_id = f.property_id
-      WHERE f.folio_type = 'landlord' AND f.current_balance > 0${bw}
+      WHERE f.folio_type = 'landlord' AND f.current_balance > 0${bw}${catClause}
       ORDER BY f.current_balance DESC`,
     { replacements: { bid: scope.branch_id } },
   );
