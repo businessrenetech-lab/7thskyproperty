@@ -37,6 +37,8 @@ async function moneyAndReports() {
   console.log('\n— Owner money and reports —');
   await assertScoped('disbursements/owner-balances', (c) => `/api/disbursements/owner-balances?property_category=${c}`);
   await assertScoped('rental-reports/overview', (c) => `/api/rental-reports/overview?property_category=${c}`);
+  await assertScoped('disbursements/owner (list)', (c) => `/api/disbursements/owner?property_category=${c}`);
+  await assertScoped('disbursements/income (list)', (c) => `/api/disbursements/income?property_category=${c}`);
 }
 
 async function leads() {

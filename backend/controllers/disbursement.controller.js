@@ -12,6 +12,7 @@
  * reduces the balance, and records an OwnerDisbursement row with before/after
  * balances so the owner dashboard always reconciles.
  */
+const { Op } = require('sequelize');
 const sequelize = require('../config/db.config');
 const OwnerDisbursement = require('../models/OwnerDisbursement');
 const PmIncomeEntry = require('../models/PmIncomeEntry');
@@ -25,6 +26,19 @@ const Tenancy = require('../models/Tenancy');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
 const { pmCategory, pmCategoryClause } = require('../utils/pmCategory');
+const { propertyIdsInCategory } = require('../utils/salesCategory');
+
+/**
+ * The property ids this console may see, or null when unscoped.
+ * Returns [0] for a console with no properties so its lists come back EMPTY
+ * rather than unfiltered.
+ */
+async function scopedPropertyIds(req) {
+  const cat = pmCategory(req.query.property_category);
+  if (!cat) return null;
+  const ids = await propertyIdsInCategory(cat);
+  return ids.length ? ids : [0];
+}
 const { findBestLandlordFolio, findTenantFolioForTenancy, postFolioTransaction } = require('../services/folio.service');
 
 const num = (v) => Number(v || 0);
@@ -282,6 +296,9 @@ exports.listOwnerDisbursements = asyncHandler(async (req, res) => {
   const where = { ...branchScope(req) };
   if (req.query.owner_contact_id) where.owner_contact_id = req.query.owner_contact_id;
   if (req.query.property_id) where.property_id = req.query.property_id;
+  // Scope to the console through the property the payout belongs to.
+  const odIds = await scopedPropertyIds(req);
+  if (odIds && !where.property_id) where.property_id = { [Op.in]: odIds };
   const { rows, count } = await OwnerDisbursement.findAndCountAll({
     where,
     include: [{ model: Contact, as: 'owner', attributes: ['id', 'full_name'] }, { model: Property, as: 'property', attributes: ['id', 'title', 'property_code'] }],
@@ -319,8 +336,12 @@ exports.listIncome = asyncHandler(async (req, res) => {
   const { limit, offset, page } = getPagination(req);
   const where = { ...branchScope(req) };
   if (req.query.property_id) where.property_id = req.query.property_id;
+  // `category` here is the income TYPE, not the property category — the console
+  // scope arrives as property_category and is applied through the property.
   if (req.query.category) where.category = req.query.category;
   if (req.query.period_label) where.period_label = req.query.period_label;
+  const inIds = await scopedPropertyIds(req);
+  if (inIds && !where.property_id) where.property_id = { [Op.in]: inIds };
   const { rows, count } = await PmIncomeEntry.findAndCountAll({
     where,
     include: [{ model: Property, as: 'property', attributes: ['id', 'title', 'property_code'] }, { model: Contact, as: 'owner', attributes: ['id', 'full_name'] }],
@@ -328,7 +349,9 @@ exports.listIncome = asyncHandler(async (req, res) => {
   });
   // Category rollup
   const grp = await PmIncomeEntry.findAll({
-    where: branchScope(req),
+    // The rollup must carry the same scope as the list, or the totals report
+    // every console's income under this one.
+    where: { ...branchScope(req), ...(inIds ? { property_id: { [Op.in]: inIds } } : {}) },
     attributes: ['category', [sequelize.fn('SUM', sequelize.col('amount')), 'total']],
     group: ['category'], raw: true,
   });

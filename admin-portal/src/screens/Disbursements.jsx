@@ -159,9 +159,10 @@ function PayOwnerDrawer({ folio, onClose, onPaid }) {
 
 // ─── HISTORY ────────────────────────────────────────────────────────────────
 function HistoryTab() {
+  const scope = usePmScope();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { (async () => { try { const { data } = await api.get('/disbursements/owner'); setRows(data.data || []); } catch {} finally { setLoading(false); } })(); }, []);
+  useEffect(() => { (async () => { try { const { data } = await api.get(`/disbursements/owner?property_category=${scope.category}`); setRows(data.data || []); } catch {} finally { setLoading(false); } })(); }, [scope.category]);
   return (
     <div className="card">
       <DataTable loading={loading} rows={rows}
@@ -182,9 +183,10 @@ function HistoryTab() {
 
 // ─── PM INCOME ──────────────────────────────────────────────────────────────
 function IncomeTab() {
+  const scope = usePmScope();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { (async () => { try { const { data } = await api.get('/disbursements/income'); setData(data); } catch {} finally { setLoading(false); } })(); }, []);
+  useEffect(() => { (async () => { try { const { data } = await api.get(`/disbursements/income?property_category=${scope.category}`); setData(data); } catch {} finally { setLoading(false); } })(); }, [scope.category]);
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spinner /></div>;
   if (!data) return null;
   const cats = Object.entries(data.by_category || {});
