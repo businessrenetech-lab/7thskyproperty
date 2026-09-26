@@ -23,6 +23,7 @@ const { SaleOffer, SaleOfferParty, SaleOfferVersion } = require('../models/Sales
 const { generateCode } = require('../utils/codeGenerator');
 const { routeAndEnrol } = require('./salesEnquiry.controller');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
+const { pmCategory } = require('../utils/pmCategory');
 const { isPubliclyVisible, pickPublic } = require('../services/publicPropertyShape');
 const PropertyBusinessProfile = require('../models/PropertyBusinessProfile');
 const { applyBusinessTeaser } = require('../services/businessTeaser.service');
@@ -63,7 +64,16 @@ function parseArray(val, fallback = []) {
 }
 
 /** Ensure Contact exists or is created with matching phone/email */
-async function ensureContact({ branchId, name, phone, email, source = 'website', notes = '' }, transaction) {
+/**
+ * Which console a website submission belongs to. It follows the property that was
+ * enquired on; a general enquiry with no property stays residential so it lands on
+ * a desk instead of disappearing. Before this, every website lead was stamped
+ * residential whatever property it came from.
+ */
+const categoryForWebsiteRecord = (property) => pmCategory(property?.category) || 'residential';
+exports.categoryForWebsiteRecord = categoryForWebsiteRecord;
+
+async function ensureContact({ branchId, name, phone, email, source = 'website', notes = '', category = 'residential' }, transaction) {
   const or = [];
   if (phone) or.push({ primary_phone: phone });
   if (email) or.push({ email });
@@ -92,6 +102,8 @@ async function ensureContact({ branchId, name, phone, email, source = 'website',
       email: email || null,
       source: source || 'website',
       notes: notes || 'Created from public website submission.',
+      // The console this lead belongs to, from the property enquired on.
+      category,
     }, { transaction });
   }
 
@@ -464,6 +476,9 @@ exports.submitRentalEnquiry = asyncHandler(async (req, res) => {
 
   const branchId = property?.branch_id || await getDefaultBranchId();
 
+  // The console this submission belongs to, from the property enquired on.
+  const recordCategory = categoryForWebsiteRecord(property);
+
   const enquiry = await sequelize.transaction(async (tx) => {
     const contact = await ensureContact({
       branchId,
@@ -472,6 +487,7 @@ exports.submitRentalEnquiry = asyncHandler(async (req, res) => {
       email,
       source: 'website',
       notes: `Rental enquiry on ${property ? property.title : 'general rental'}`,
+      category: recordCategory,
     }, tx);
 
     const code = await generateCode(RentalEnquiry, 'enquiry_code', 'SSPC-EQ-');
@@ -493,6 +509,7 @@ exports.submitRentalEnquiry = asyncHandler(async (req, res) => {
       notes: message || null,
       stage: 'new',
       next_action: 'Contact prospective tenant to qualify and arrange viewing',
+      category: recordCategory,
     }, { transaction: tx });
 
     // If this is a short stay property, mirror to ShortStayEnquiry so it surfaces on Short Stay Enquiries desk
@@ -563,6 +580,7 @@ exports.submitSalesEnquiry = asyncHandler(async (req, res) => {
       email,
       source: 'website',
       notes: `Buyer enquiry on ${property ? property.title : 'general sale property'}`,
+      category: categoryForWebsiteRecord(property),
     }, tx);
 
     // Also link or ensure client record
@@ -650,6 +668,7 @@ exports.submitTenantApplication = asyncHandler(async (req, res) => {
       email: email || null,
       source: 'website',
       notes: `Tenant application for ${property ? property.title : 'rental unit'}`,
+      category: categoryForWebsiteRecord(property),
     }, tx);
 
     const appCode = await generateCode(TenantApplication, 'application_code', 'SSPC-APP-');
@@ -1209,7 +1228,7 @@ exports.submitPropertyOffer = asyncHandler(async (req, res) => {
   const branchId = property.branch_id || await getDefaultBranchId();
   const result = await sequelize.transaction(async (tx) => {
     // Buyer identity (contact + buyer client) so the offer carries a real party.
-    const contact = await ensureContact({ branchId, name, phone, email, source: 'website', notes: `Offer on ${property.title}` }, tx);
+    const contact = await ensureContact({ branchId, name, phone, email, source: 'website', notes: `Offer on ${property.title}`, category: categoryForWebsiteRecord(property) }, tx);
     let client = await Client.findOne({ where: { contact_id: contact.id }, transaction: tx });
     if (!client) client = await Client.create({ branch_id: branchId, contact_id: contact.id, client_code: await generateCode(Client, 'client_code', 'SSPC-CL-'), client_type: 'buyer', is_buyer: true, status: 'active' }, { transaction: tx });
 
