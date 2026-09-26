@@ -7,6 +7,7 @@ const Contact = require('../models/Contact');
 const Property = require('../models/Property');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
+const { verticalsForCategory } = require('../utils/projectVerticals');
 const { createProjectFromTemplate } = require('../services/workflowProject.service');
 
 const clientInc = { model: Client, as: 'client', include: [{ model: Contact, attributes: ['id', 'full_name'] }] };
@@ -44,6 +45,11 @@ exports.list = asyncHandler(async (req, res) => {
     } else {
       where.vertical_key = req.query.vertical_key;
     }
+  } else {
+    // Console isolation: a console may ask by category instead of naming its
+    // verticals. Without this, /projects returned all 82 projects everywhere.
+    const verticals = verticalsForCategory(req.query.category);
+    if (verticals) where.vertical_key = { [Op.in]: verticals };
   }
   if (req.query.status) where.status = req.query.status;
   if (req.query.search) where[Op.or] = [{ title: { [Op.like]: `%${req.query.search}%` } }, { project_code: { [Op.like]: `%${req.query.search}%` } }];

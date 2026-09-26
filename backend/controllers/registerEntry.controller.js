@@ -1,6 +1,8 @@
+const { Op } = require('sequelize');
 const sequelize = require('../config/db.config');
 const RegisterEntry = require('../models/RegisterEntry');
 const { asyncHandler, branchScope, resolveBranchId, pick } = require('../utils/controllerHelpers');
+const { verticalsForCategory } = require('../utils/projectVerticals');
 
 const arr = (v) => { if (Array.isArray(v)) return v; try { return JSON.parse(v || '[]'); } catch { return []; } };
 const obj = (v) => { if (v && typeof v === 'object') return v; try { return JSON.parse(v || '{}'); } catch { return {}; } };
@@ -22,6 +24,17 @@ exports.listEntries = asyncHandler(async (req, res) => {
   if (req.query.project_id) where.project_id = req.query.project_id;
   if (req.query.property_id) where.property_id = req.query.property_id;
   if (req.query.client_id) where.client_id = req.query.client_id;
+  // Console isolation: entries are keyed by vertical_key, so a console asking by
+  // category is mapped onto its own verticals. Without this every console saw all
+  // register entries.
+  if (req.query.vertical_key) {
+    where.vertical_key = req.query.vertical_key.includes(',')
+      ? { [Op.in]: req.query.vertical_key.split(',') }
+      : req.query.vertical_key;
+  } else {
+    const verticals = verticalsForCategory(req.query.category);
+    if (verticals) where.vertical_key = { [Op.in]: verticals };
+  }
   const rows = await RegisterEntry.findAll({ where, order: [['created_at', 'DESC']], limit: 500 });
   res.json({ data: rows.map((r) => ({ ...r.toJSON(), data: obj(r.data) })) });
 });
