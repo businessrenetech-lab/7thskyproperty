@@ -1145,6 +1145,10 @@ Unit-test the pure math the way `testBusinessRentDashboardMath.js` does: every t
 
 ### Task 10: Prove it and hand over
 
+> **Run this last — after Task 11.** It is numbered 10 because it was written before the
+> Land & Ownership task was split out; the verification battery only means something once
+> every other task has landed.
+
 **Files:**
 - Create: `backend/scripts/e2e/ruralRent.js`
 - Modify: `backend/scripts/e2e/consoleIsolation.js`
