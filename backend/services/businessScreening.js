@@ -20,8 +20,38 @@ const BUSINESS_SCREENING_FIELDS = [
 
 const VERDICTS = ['pending', 'suitable', 'conditional', 'declined'];
 
-function screeningVerdict(app = {}) {
-  const missing = BUSINESS_SCREENING_FIELDS
+/**
+ * Rural tenant screening — SOP Rural Property Rental Management §10 Step 11 and
+ * CRM Owner Sheet 8. A farmer is screened on farming experience and financial
+ * capacity, not on a trade licence and a corporate profile.
+ */
+const RURAL_SCREENING_FIELDS = [
+  { key: 'nid_verified', label: 'NID verification', required: true },
+  { key: 'business_verification', label: 'Business verification', required: true },
+  { key: 'farming_experience', label: 'Farming experience', required: true },
+  { key: 'financial_capacity', label: 'Financial capacity', required: true },
+  { key: 'references_verified', label: 'References', required: true },
+  { key: 'background_check', label: 'Background check', required: true },
+  { key: 'intended_use', label: 'Intended use', required: true },
+  { key: 'screening_notes', label: 'Screening notes', required: false },
+];
+
+/** One field set per console. A category absent here is not screened at all. */
+const SCREENING_FIELDS_BY_CATEGORY = {
+  business: BUSINESS_SCREENING_FIELDS,
+  rural: RURAL_SCREENING_FIELDS,
+};
+
+/** The field set for a category, or [] where screening does not apply. */
+function screeningFields(category) {
+  return SCREENING_FIELDS_BY_CATEGORY[String(category || '')] || [];
+}
+
+
+function screeningVerdict(app = {}, category = 'business') {
+  // Defaults to business so every existing single-argument caller is unaffected.
+  const fields = screeningFields(category).length ? screeningFields(category) : BUSINESS_SCREENING_FIELDS;
+  const missing = fields
     .filter((f) => f.required)
     .filter((f) => {
       const v = app[f.key];
@@ -32,4 +62,7 @@ function screeningVerdict(app = {}) {
   return { verdict: recorded, missing, ready: missing.length === 0 };
 }
 
-module.exports = { BUSINESS_SCREENING_FIELDS, VERDICTS, screeningVerdict };
+module.exports = {
+  BUSINESS_SCREENING_FIELDS, RURAL_SCREENING_FIELDS, SCREENING_FIELDS_BY_CATEGORY,
+  VERDICTS, screeningFields, screeningVerdict,
+};

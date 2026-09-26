@@ -5,6 +5,7 @@ import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { usePmScope } from '../config/pmScope';
 import BusinessScreeningPanel from './rental/BusinessScreeningPanel';
+import RuralScreeningPanel from './rural/RuralScreeningPanel';
 import { PageHead, DataTable, StatusBadge, Drawer, SearchInput, Spinner, Badge, Button, Field, Input, Select, Textarea, KV } from '../ui/kit';
 import { Combo } from '../ui/pickers';
 import FileUpload from '../ui/FileUpload';
@@ -266,6 +267,9 @@ export default function TenantApplications({ propertyId = null, embedded = false
                 business, not a salary. Business Rent console only. */}
             {scope.category === 'business' && (
               <BusinessScreeningPanel form={createForm} setForm={setCreateForm} />
+            )}
+            {scope.category === 'rural' && (
+              <RuralScreeningPanel form={createForm} setForm={setCreateForm} />
             )}
 
             {sectionTitle('References')}

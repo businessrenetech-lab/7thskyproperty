@@ -55,6 +55,9 @@ const FIELDS = [
   'business_name', 'business_type', 'intended_activity', 'trade_licence_no', 'trade_licence_expiry',
   'corporate_profile', 'financial_capability', 'operational_suitability', 'previous_leasing_history',
   'screening_verdict',
+  // Rural tenant screening (0157).
+  'nid_verified', 'business_verification', 'farming_experience', 'financial_capacity',
+  'references_verified', 'background_check', 'intended_use',
   // Public application content (0041) — tokens are NEVER client-settable.
   'business_name', 'business_location', 'photo_url', 'nid_url', 'has_pets', 'pet_types',
   'employer_ref_name', 'employer_ref_email', 'employer_ref_phone', 'employer_ref_role', 'employer_ref_company',
