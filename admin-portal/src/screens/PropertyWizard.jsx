@@ -14,12 +14,14 @@ import {
   Plus,
   Trash2,
   Briefcase,
+  Map as MapIcon,
 } from "lucide-react";
 import api from "../services/api";
 import { usePmScope } from '../config/pmScope';
 import { useToast } from "../context/ToastContext";
 import { propertyWizardPath, propertyFilePath } from "./sales/paths";
 import BusinessProfileStep, { EMPTY_BUSINESS_PROFILE } from "./sales/business/BusinessProfileStep";
+import RuralLandPanel from "./rural/RuralLandPanel";
 import { Spinner, Button, Field, Input, Select, Textarea } from "../ui/kit";
 import PropertyMediaGallery from "../components/PropertyMediaGallery";
 import FileUpload from "../ui/FileUpload";
@@ -71,10 +73,18 @@ const STEPS = [
   { key: "review", label: "Review & finish", icon: Flag },
 ];
 
-// Business properties get a Business profile step right after Basics.
-const stepsFor = (category) => (category === "business"
-  ? [STEPS[0], { key: "business", label: "Business profile", icon: Briefcase }, ...STEPS.slice(1)]
-  : STEPS);
+// Business properties get a Business profile step right after Basics; rural
+// properties get a Land record step, because a rural property is identified by
+// its mouza, khatiyan and dag rather than by a street address.
+const stepsFor = (category) => {
+  if (category === "business") {
+    return [STEPS[0], { key: "business", label: "Business profile", icon: Briefcase }, ...STEPS.slice(1)];
+  }
+  if (category === "rural") {
+    return [STEPS[0], { key: "land", label: "Land record", icon: MapIcon }, ...STEPS.slice(1)];
+  }
+  return STEPS;
+};
 
 const parseArr = (v) => {
   if (Array.isArray(v)) return v;
@@ -532,6 +542,19 @@ export default function PropertyWizard() {
               )}
 
               {current === "business" && <BusinessProfileStep value={bp} onChange={setBp} />}
+
+              {current === "land" && (
+                <div className="pm-card" style={{ padding: 22 }}>
+                  {/* The panel hands back a whole form object; this wizard sets one
+                      key at a time, and exactly one key changes per edit. */}
+                  <RuralLandPanel
+                    form={f}
+                    setForm={(next) => {
+                      Object.entries(next).forEach(([k, v]) => { if (v !== f[k]) set(k, v); });
+                    }}
+                  />
+                </div>
+              )}
 
               {current === "details" && (
                 <div className="pm-card" style={{ padding: 22 }}>
