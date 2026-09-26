@@ -180,6 +180,31 @@ async function cleanup() {
   ok(leftRisks === 0, 'no fixture risks left behind', `${leftRisks} remaining`);
 }
 
+/** The sales side: buy/sale consoles share one set of screens across categories. */
+async function salesSide() {
+  console.log('\n— Sales consoles (buy / sale) —');
+  const E = [
+    ['clients (client profile)', (c) => `/api/clients?limit=200&category=${c}`],
+    ['projects', (c) => `/api/projects?limit=200&category=${c}`],
+    ['registers/entries', (c) => `/api/registers/entries?limit=200&category=${c}`],
+    ['deals', (c) => `/api/deals?limit=200&category=${c}`],
+    ['buyer-mandates', (c) => `/api/buyer-mandates?limit=200&category=${c}`],
+    ['sales-enquiries', (c) => `/api/sales-enquiries?limit=200&category=${c}`],
+    ['sales/inbox', (c) => `/api/sales/inbox?category=${c}`],
+    ['sales/introductions', (c) => `/api/sales/introductions?category=${c}`],
+    ['invoices (kind=client)', (c) => `/api/invoices?kind=client&limit=200&category=${c}`],
+    ['properties (sale)', (c) => `/api/properties?category=${c}&listing_type=sale&limit=200`],
+  ];
+  for (const [label, mk] of E) await assertScoped(label, mk, ['commercial', 'business', 'rural']);
+
+  // The global lists stay unscoped, which is what the /sales/* and /clients
+  // screens outside any console rely on.
+  const all = await req('GET', '/api/clients?limit=200');
+  const res = await req('GET', '/api/clients?limit=200&category=residential');
+  ok((rowsOf(all.body) || []).length > (rowsOf(res.body) || []).length,
+    'the global client list is still unscoped', `${(rowsOf(all.body) || []).length} vs residential ${(rowsOf(res.body) || []).length}`);
+}
+
 module.exports = { assertScoped, sig, count, rowsOf };
 
 if (require.main === module) {
@@ -191,6 +216,7 @@ if (require.main === module) {
     await leads();
     await bulkAndInbox();
     await everythingElse();
+    await salesSide();
     await seedFixtures();
     await assertFixtureIsolation();
     await cleanup();
