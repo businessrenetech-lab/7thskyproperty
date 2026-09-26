@@ -39,6 +39,12 @@ async function moneyAndReports() {
   await assertScoped('rental-reports/overview', (c) => `/api/rental-reports/overview?property_category=${c}`);
 }
 
+async function leads() {
+  console.log('\n— Leads and contacts —');
+  await assertScoped('contacts (rental leads)', (c) => `/api/contacts?looking_for=rent&limit=200&category=${c}`);
+  await assertScoped('contacts (directory)', (c) => `/api/contacts?limit=200&category=${c}`);
+}
+
 module.exports = { assertScoped, sig, count, rowsOf };
 
 if (require.main === module) {
@@ -46,6 +52,7 @@ if (require.main === module) {
     console.log('\n===== CONSOLE ISOLATION =====');
     if (!(await login())) return finish();
     await moneyAndReports();
+    await leads();
     finish();
   })().catch((e) => { ok(false, 'harness crashed', e.message); finish(); });
 }
