@@ -24,6 +24,7 @@ const Payment = require('../models/Payment');
 const Tenancy = require('../models/Tenancy');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
+const { pmCategory, pmCategoryClause } = require('../utils/pmCategory');
 const { findBestLandlordFolio, findTenantFolioForTenancy, postFolioTransaction } = require('../services/folio.service');
 
 const num = (v) => Number(v || 0);
@@ -294,9 +295,9 @@ exports.listOwnerDisbursements = asyncHandler(async (req, res) => {
 exports.ownerBalances = asyncHandler(async (req, res) => {
   const scope = branchScope(req);
   const bw = scope.branch_id ? ' AND f.branch_id = :bid' : '';
-  // Commercial rent console scopes owner balances to commercial properties.
-  const catClause = req.query.property_category === 'commercial' ? " AND p.category = 'commercial'"
-    : req.query.property_category === 'residential' ? " AND p.category = 'residential'" : '';
+  // All four rent consoles scope owner money to their own category. An unknown
+  // value leaves the query unfiltered, exactly as before.
+  const catClause = pmCategoryClause(req.query.property_category, 'p.category');
   const [rows] = await sequelize.query(
     `SELECT f.id AS folio_id, f.folio_code, f.property_id, f.owner_contact_id,
             f.current_balance,
