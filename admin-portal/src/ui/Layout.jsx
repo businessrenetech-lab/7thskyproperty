@@ -44,12 +44,15 @@ const NAV = [
     { to: '/business-rent', label: 'Rent' },
   ] },
   { to: '/business-registration', label: 'Business Registration', icon: ScrollText },
+  /*
+   * Rural matches Commercial and Business: Sale and Rent, nothing else. Buy and
+   * Buyer Enquiries stay reachable from the Rural Sale dashboard's own quick
+   * links, and Compliance and Workflows live inside the Rent console's nav,
+   * scoped to rural.
+   */
   { key: 'rural', label: 'Rural Properties', icon: Trees, children: [
-    { to: '/rural/sell', label: 'Sales / Sell Dashboard' },
-    { to: '/rural/buy', label: 'Buy' },
-    { to: '/rural/enquiry', label: 'Buyer Enquiries' },
-    { to: '/compliance?category=rural', label: 'Compliance' },
-    { to: '/projects?vertical_key=rural_rent,rural_sale', label: 'Checklists / Workflows' },
+    { to: '/rural/sell', label: 'Sale' },
+    { to: '/rural/rent', label: 'Rent' },
   ] },
   { key: 'care', label: 'Services', icon: Layers, children: [
     { group: true, label: 'Service Lines' },
@@ -147,6 +150,7 @@ const TITLES = {
   '/contacts': 'Contacts', '/role-onboarding': 'Role Onboarding', '/clients': 'Clients', '/leads': 'Leads', '/providers': 'Service Providers',
   '/property-care': 'Property Care · Dashboard', '/property-care/work-orders': 'Work Orders & Service Tracking', '/property-care/invoicing': 'Service Invoicing', '/property-care/enquiries': 'Service Enquiries', '/property-care/leads': 'Service Leads', '/property-care/customers': 'Customer Lists', '/property-care/quotations': 'Quotations', '/property-care/amc': 'AMC Contracts',   '/consultations': 'Consultations', '/compliance': 'Compliance',
   '/rural/buy': 'Rural · Buy', '/rural/sell': 'Rural · Sell',
+  '/rural/rent': 'Rural · Rent',
   '/agreements': 'Agreements', '/agreements/property-management': 'PM Agreements', '/agreements/tenancy-management': 'TM Agreements', '/agreements/short-term-rental': 'STS Agreements', '/agreements/water-tank-customer': 'WT Customer Agreements', '/agreements/water-tank-provider': 'WT Provider Agreements', '/agreement-templates': 'Agreement Templates', '/documents': 'Documents', '/signing': 'eSign Envelopes',
   '/invoices': 'Tenant Invoices', '/landlord-bills': 'Landlord Bills', '/rental-receipts': 'Rental Receipts', '/folios': 'Folios', '/account-categories': 'Account Categories', '/payments': 'Payments', '/reports': 'Reports', '/users': 'Users & Roles', '/settings': 'Settings',
 };

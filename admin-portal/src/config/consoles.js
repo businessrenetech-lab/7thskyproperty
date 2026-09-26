@@ -5,7 +5,7 @@ import {
   Inbox, CalendarDays, KeyRound,
   Hotel, CalendarRange, MessageSquareQuote, BookOpen, UserCheck, DoorOpen,
   Home, Sparkles, Wrench, HandCoins, Landmark, BarChart3, TrendingUp,
-  Ruler, FolderArchive, Boxes, Plug, Building2, Wallet, Megaphone,
+  Ruler, FolderArchive, Boxes, Plug, Building2, Wallet, Megaphone, Trees,
 } from 'lucide-react';
 
 /*
@@ -1272,6 +1272,51 @@ export const businessRentConsole = {
   storageKey: 'biz.rent.nav.collapsed',
   brand: businessBrand('Business Rent', '#db2777', '#be185d', '#9d174d', 'rgba(219,39,119,.12)', '#fce7f3'), // pink
   navGroups: BUSINESS_RENT_NAV,
+  api: {},
+  contentClass: 'pm-scope',
+  exitTo: '/dashboard',
+};
+
+/* ── Rural · Rent ──────────────────────────────────────────────────────────
+ * Leasing rural property — agricultural land, farm houses, fisheries, ponds,
+ * dairy and poultry farms, orchards, rural houses, commercial and mixed-use
+ * rural property. The FOURTH console on the Property Management screens, so its
+ * nav is the PM nav rebased; Workflows points at the two rural verticals.
+ *
+ * The Land & Ownership, Tenant Sourcing, Dashboards and agreement groups arrive
+ * with the tasks that add their routes — a nav item without a route is a 404.
+ */
+export const RURAL_RENT_NAV = [
+  ...rebasePmNav(
+    PROPERTY_MGMT_NAV.map((g) => ({
+      ...g,
+      items: (g.items || []).map((it) => (it.to && it.to.includes('/workflows')
+        ? { ...it, to: '/property-management/workflows?vertical_key=rural_rent,rural_tenancy' }
+        : it)),
+    })),
+    '/property-management',
+    '/rural/rent',
+  ),
+  { key: 'rural-switch', label: 'Switch', items: [
+    { to: '/rural/sell', label: '→ Rural Sale', icon: Trees },
+  ] },
+];
+
+export const ruralRentConsole = {
+  slug: 'rural/rent',
+  storageKey: 'rural.rent.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Rural · Rent',
+    icon: Trees,
+    // Green — distinct from PM violet, commercial sky and business pink.
+    accent: '#16a34a',
+    accentStrong: '#15803d',
+    accentInk: '#166534',
+    accentTint: 'rgba(22,163,74,.12)',
+    accentTint2: '#dcfce7',
+  },
+  navGroups: RURAL_RENT_NAV,
   api: {},
   contentClass: 'pm-scope',
   exitTo: '/dashboard',

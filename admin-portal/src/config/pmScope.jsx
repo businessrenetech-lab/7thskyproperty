@@ -51,3 +51,10 @@ export const BUSINESS_RENT_SCOPE = {
   basePath: '/business-rent',
   label: 'Business Rent',
 };
+
+export const RURAL_RENT_SCOPE = {
+  category: 'rural',
+  listingType: 'rent',
+  basePath: '/rural/rent',
+  label: 'Rural · Rent',
+};

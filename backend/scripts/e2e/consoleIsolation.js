@@ -155,6 +155,17 @@ async function assertFixtureIsolation() {
     ok(mine.length === 1, `property-risks shows ${cat} its own fixture`, `${mine.length} of 1`);
   }
 
+  // Rural Rent is category AND listing_type. A rural SALE property must never
+  // appear in the rent console — no rural rows exist yet, so only a fixture proves it.
+  const saleProp = await req('POST', '/api/properties', {
+    body: { title: `ISO rural-sale ${STAMP}`, category: 'rural', listing_type: 'sale', status: 'available', price: 1000, branch_id: 1 },
+  });
+  if (saleProp.body?.data?.id) made.properties.push(saleProp.body.data.id);
+  const rentOnly = await req('GET', '/api/properties?category=rural&listing_type=rent&limit=200');
+  const leaked = (rowsOf(rentOnly.body) || []).filter((p) => p.listing_type === 'sale');
+  ok(leaked.length === 0, 'a rural sale property does not appear in Rural Rent',
+    leaked.map((p) => p.property_code).join(',') || 'clean');
+
   // The property list itself, proven the same way.
   for (const cat of CATS) {
     const r = await req('GET', `/api/properties?category=${cat}&listing_type=rent&limit=200`);

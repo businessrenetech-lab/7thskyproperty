@@ -150,6 +150,7 @@ import CommercialConsole, { CommercialBuyerConsole } from './screens/CommercialC
 import BusinessSaleConsole, { BusinessBuyerConsole } from './screens/BusinessSaleConsole';
 import BusinessRentDashboards from './screens/rental/BusinessRentDashboards';
 import BusinessRentConsole from './screens/BusinessRentConsole';
+import RuralRentConsole from './screens/RuralRentConsole';
 import BrmAgreements from './screens/sales/BrmAgreements';
 import BtmAgreements from './screens/sales/BtmAgreements';
 import BusinessRegistrationConsole from './screens/BusinessRegistrationConsole';
@@ -1564,6 +1565,46 @@ export default function App() {
               <Route path="/business-rent/price-schedule" element={<SalesPriceSchedule scope="business_rent" title="Business Rent · Price Schedules" />} />
             </Route>
 
+
+            {/* ── Rural · RENT — the FOURTH Property Management console. The same PM
+                screens, scoped to category 'rural' + listing_type 'rent' (Rural Sale
+                shares the category). Land & Ownership, Tenant Sourcing, the dashboards
+                and the rural agreement builders arrive with their own tasks. ── */}
+            <Route element={<RequireAuth><AdminGate><RuralRentConsole /></AdminGate></RequireAuth>}>
+              <Route path="/rural/rent" element={<PropertyMgmtDashboard />} />
+              <Route path="/rural/rent/rentals" element={<RentalProperties />} />
+              <Route path="/rural/rent/rentals/new" element={<PropertyWizard />} />
+              <Route path="/rural/rent/rentals/new/:id" element={<PropertyWizard />} />
+              <Route path="/rural/rent/contacts" element={<SalesContacts scope="rental" />} />
+              <Route path="/rural/rent/contacts/clients" element={<Clients />} />
+              <Route path="/rural/rent/applications" element={<TenantApplications />} />
+              <Route path="/rural/rent/enquiries" element={<RentalEnquiries />} />
+              <Route path="/rural/rent/assessments" element={<RentalAssessments />} />
+              <Route path="/rural/rent/statements" element={<OwnerStatements />} />
+              <Route path="/rural/rent/renewals" element={<Renewals />} />
+              <Route path="/rural/rent/vacancies" element={<Vacancies />} />
+              <Route path="/rural/rent/settlements" element={<DepositSettlements />} />
+              <Route path="/rural/rent/reports" element={<RentalReports />} />
+              <Route path="/rural/rent/disbursements" element={<Disbursements />} />
+              <Route path="/rural/rent/utilities" element={<UtilityBills />} />
+              <Route path="/rural/rent/tenant-requests" element={<TenantRequests />} />
+              <Route path="/rural/rent/arrears" element={<ArrearsActions />} />
+              <Route path="/rural/rent/marketing" element={<MarketingActivities />} />
+              <Route path="/rural/rent/expense-approvals" element={<ExpenseApprovals />} />
+              <Route path="/rural/rent/risks" element={<PropertyRisks />} />
+              <Route path="/rural/rent/work-orders" element={<WorkOrders />} />
+              <Route path="/rural/rent/inspections" element={<Inspections />} />
+              <Route path="/rural/rent/compliance" element={<Compliance />} />
+              <Route path="/rural/rent/workflows" element={<Projects />} />
+              <Route path="/rural/rent/invoices" element={<Invoices />} />
+              <Route path="/rural/rent/receipts" element={<RentalReceipts />} />
+              <Route path="/rural/rent/collect-rent" element={<BulkRentCollection />} />
+              <Route path="/rural/rent/disburse-owners" element={<BulkOwnerDisbursement />} />
+              <Route path="/rural/rent/inbox" element={<Communication />} />
+              <Route path="/rural/rent/folios" element={<Folios />} />
+              <Route path="/rural/rent/landlord-bills" element={<LandlordBills />} />
+              <Route path="/rural/rent/agency-income" element={<AgencyIncome />} />
+            </Route>
             {/* Retired Business screens → their new homes. */}
             <Route path="/business-rent/listings" element={<Navigate to="/business-rent/rentals" replace />} />
             <Route path="/business-rent/listings/:id" element={<Navigate to="/business-rent/rentals" replace />} />
