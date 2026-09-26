@@ -1309,6 +1309,9 @@ export const RURAL_RENT_NAV = [
     '/property-management',
     '/rural/rent',
   ),
+  { key: 'rural-sop', label: 'SOP Dashboards', items: [
+    { to: '/rural/rent/dashboards', label: 'Rural Rent Dashboards', icon: BarChart3 },
+  ] },
   { key: 'rural-sourcing', label: 'Tenant Sourcing', items: [
     { to: '/rural/rent/sourcing', label: 'Briefs & Shortlists', icon: ClipboardList },
   ] },
