@@ -1288,12 +1288,24 @@ export const businessRentConsole = {
  */
 export const RURAL_RENT_NAV = [
   ...rebasePmNav(
-    PROPERTY_MGMT_NAV.map((g) => ({
-      ...g,
-      items: (g.items || []).map((it) => (it.to && it.to.includes('/workflows')
-        ? { ...it, to: '/property-management/workflows?vertical_key=rural_rent,rural_tenancy' }
-        : it)),
-    })),
+    PROPERTY_MGMT_NAV.map((g) => (g.key === 'agreements'
+      ? {
+        // The rural builders: RPRMS-RURAL-01 (owner) and RPTMS-RURAL-01 (tenant).
+        ...g,
+        items: g.items
+          .filter((it) => it.to && (it.to.endsWith('/agreements') || it.to.endsWith('/tenancy-agreements') || it.to.includes('/price-schedule')))
+          .map((it) => {
+            if (it.to.endsWith('/tenancy-agreements')) return { ...it, label: 'Tenancy Mgmt Agreements' };
+            if (it.to.endsWith('/agreements')) return { ...it, label: 'Rental Mgmt Agreements' };
+            return it;
+          }),
+      }
+      : {
+        ...g,
+        items: (g.items || []).map((it) => (it.to && it.to.includes('/workflows')
+          ? { ...it, to: '/property-management/workflows?vertical_key=rural_rent,rural_tenancy' }
+          : it)),
+      })),
     '/property-management',
     '/rural/rent',
   ),

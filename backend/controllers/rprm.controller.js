@@ -26,6 +26,7 @@ const sequelize = require('../config/db.config');
 const PM_BUILDERS = {
   residential: { build: () => svc.buildResidentialPMAgreement, codePrefix: 'ENV-RPRM-', mgmtCode: 'RPRM-018' },
   commercial: { build: () => svc.buildCommercialPMAgreement, codePrefix: 'ENV-CPRM-', mgmtCode: 'CPRM-018' },
+  rural: { build: () => svc.buildRuralPMAgreement, codePrefix: 'ENV-RRPM-', mgmtCode: 'RPRM-010' },
 };
 
 function ctx(req) {

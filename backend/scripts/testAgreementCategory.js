@@ -11,7 +11,8 @@ assert.strictEqual(resolveAgreementCategory('', BUILDERS).category, 'residential
 assert.strictEqual(resolveAgreementCategory('COMMERCIAL', BUILDERS).category, 'commercial', 'case insensitive');
 
 // An unsupported console must NOT silently receive a residential document.
-for (const c of ['business', 'rural']) {
+// Rural now has builders (see rprmRuralAgreementPack); business still does not.
+for (const c of ['business']) {
   assert.throws(() => resolveAgreementCategory(c, BUILDERS), (e) => {
     assert.strictEqual(e.status, 400, 'carries an HTTP status');
     assert.ok(e.message.includes(c), `names the category: ${e.message}`);

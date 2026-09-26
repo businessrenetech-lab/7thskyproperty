@@ -70,6 +70,7 @@ const CLAUSES = [
 // Residential vs commercial run through the same renderer, differing only by a
 // content pack. The commercial pack lives in its own file (it is large).
 const { COMMERCIAL_PACK } = require('./cprmAgreementPack');
+const { RURAL_PACK } = require('./rprmRuralAgreementPack');
 const RESIDENTIAL_PACK = {
   doc_no: 'SSPC-RPRMS-01',
   title: 'Residential Property Rental Management Service Agreement',
@@ -86,7 +87,7 @@ const RESIDENTIAL_PACK = {
   service_groups: SERVICE_GROUPS,
   checklist_groups: CHECKLIST_GROUPS,
 };
-const PACK_BY_CATEGORY = { residential: RESIDENTIAL_PACK, commercial: COMMERCIAL_PACK };
+const PACK_BY_CATEGORY = { residential: RESIDENTIAL_PACK, commercial: COMMERCIAL_PACK, rural: RURAL_PACK };
 const packFor = (category) => PACK_BY_CATEGORY[String(category || 'residential').toLowerCase()] || RESIDENTIAL_PACK;
 
 /** The editable Schedule C standard price catalog (from ServiceItem, vertical residential_pm). */
@@ -650,11 +651,12 @@ function buildPMAgreement(data = {}, pack = RESIDENTIAL_PACK) {
 // Thin wrappers so callers pick a category without knowing the pack.
 const buildResidentialPMAgreement = (data = {}) => buildPMAgreement(data, RESIDENTIAL_PACK);
 const buildCommercialPMAgreement = (data = {}) => buildPMAgreement(data, COMMERCIAL_PACK);
+const buildRuralPMAgreement = (data = {}) => buildPMAgreement(data, RURAL_PACK);
 
 module.exports = {
   getRprmCatalog, computePricing,
-  buildPMAgreement, buildResidentialPMAgreement, buildCommercialPMAgreement,
-  packFor, RESIDENTIAL_PACK, COMMERCIAL_PACK,
+  buildPMAgreement, buildResidentialPMAgreement, buildCommercialPMAgreement, buildRuralPMAgreement,
+  packFor, RESIDENTIAL_PACK, COMMERCIAL_PACK, RURAL_PACK,
   SERVICE_GROUPS, CHECKLIST_GROUPS,
   COMMERCIAL_SERVICE_GROUPS: COMMERCIAL_PACK.service_groups,
   COMMERCIAL_CHECKLIST_GROUPS: COMMERCIAL_PACK.checklist_groups,

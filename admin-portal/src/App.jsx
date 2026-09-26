@@ -1604,6 +1604,11 @@ export default function App() {
               <Route path="/rural/rent/folios" element={<Folios />} />
               <Route path="/rural/rent/landlord-bills" element={<LandlordBills />} />
               <Route path="/rural/rent/agency-income" element={<AgencyIncome />} />
+              {/* The two rural agreement builders (SSPC-RPRMS-RURAL-01 and
+                  SSPC-RPTMS-RURAL-01) and the rural rent price schedule. */}
+              <Route path="/rural/rent/agreements" element={<RprmAgreements category="rural" />} />
+              <Route path="/rural/rent/tenancy-agreements" element={<TmAgreements category="rural" />} />
+              <Route path="/rural/rent/price-schedule" element={<SalesPriceSchedule scope="rural_rent" title="Rural Rent · Price Schedules" />} />
             </Route>
             {/* Retired Business screens → their new homes. */}
             <Route path="/business-rent/listings" element={<Navigate to="/business-rent/rentals" replace />} />

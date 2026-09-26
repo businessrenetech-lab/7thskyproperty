@@ -52,6 +52,7 @@ async function resolveRptmDefaults(body, user) {
 const TM_BUILDERS = {
   residential: { build: () => svc.buildResidentialTMAgreement, codePrefix: 'ENV-RPTM-' },
   commercial: { build: () => svc.buildCommercialTMAgreement, codePrefix: 'ENV-CPTM-' },
+  rural: { build: () => svc.buildRuralTMAgreement, codePrefix: 'ENV-RRTM-' },
 };
 
 function ctx(req) {
