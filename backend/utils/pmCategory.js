@@ -1,16 +1,17 @@
 /**
  * Property-Management category scoping.
  *
- * The PM screens run under three consoles — residential (/property-management),
- * commercial (/commercial/rent) and business (/business-rent) — off one set of
- * tables. Before this existed the controllers compared against 'commercial' and
- * 'residential' inline and an unknown value fell through to NO filter, so a
- * console asking for anything else saw every property and every tenancy.
+ * The PM screens run under four consoles — residential (/property-management),
+ * commercial (/commercial/rent), business (/business-rent) and rural
+ * (/rural/rent) — off one set of tables. Before this existed the controllers
+ * compared against 'commercial' and 'residential' inline and an unknown value
+ * fell through to NO filter, so a console asking for anything else saw every
+ * property and every tenancy.
  *
  * null means "not a console category": the caller leaves the query unfiltered,
  * which is exactly the behaviour every existing caller already had.
  */
-const PM_CATEGORIES = ['residential', 'commercial', 'business'];
+const PM_CATEGORIES = ['residential', 'commercial', 'business', 'rural'];
 
 function pmCategory(value) {
   const v = String(value == null ? '' : value).toLowerCase().trim();

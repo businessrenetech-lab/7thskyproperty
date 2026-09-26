@@ -9,7 +9,13 @@ assert.strictEqual(pmCategory('BUSINESS'), 'business', 'case insensitive');
 
 // Unknown and absent must be null so the query is left UNFILTERED exactly as before.
 // Returning a clause here would change what the live residential console shows.
-assert.strictEqual(pmCategory('rural'), null, 'rural is not a PM console');
+assert.strictEqual(pmCategory('rural'), 'rural', 'rural is the fourth PM console');
+assert.strictEqual(pmCategory('RURAL'), 'rural', 'case insensitive');
+assert.strictEqual(pmCategoryClause('rural', 'p.category'), " AND p.category = 'rural'");
+
+// Still not PM consoles — these must stay null so their queries stay unfiltered.
+assert.strictEqual(pmCategory('short_term'), null);
+assert.strictEqual(pmCategory('business_rent'), null, 'a service-line key is not a category');
 assert.strictEqual(pmCategory('nonsense'), null);
 assert.strictEqual(pmCategory(''), null);
 assert.strictEqual(pmCategory(undefined), null);
