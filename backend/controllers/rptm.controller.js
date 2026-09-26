@@ -5,6 +5,7 @@
 const crypto = require('crypto');
 const { asyncHandler, branchScope, resolveBranchId } = require('../utils/controllerHelpers');
 const svc = require('../services/rptmAgreement.service');
+const { resolveAgreementCategory } = require('../services/agreementCategory');
 const SigningEnvelope = require('../models/SigningEnvelope');
 const EnvelopeSigner = require('../models/EnvelopeSigner');
 const SignatureField = require('../models/SignatureField');
@@ -45,18 +46,24 @@ async function resolveRptmDefaults(body, user) {
   return { schedule_b: b, org };
 }
 
-// Residential vs commercial tenancy management run through this controller,
-// differing only by category (?category=commercial).
+// Tenancy management runs through this controller, differing only by category
+// (?category=commercial). A category with no builder is REFUSED rather than
+// quietly served the residential variant.
+const TM_BUILDERS = {
+  residential: { build: () => svc.buildResidentialTMAgreement, codePrefix: 'ENV-RPTM-' },
+  commercial: { build: () => svc.buildCommercialTMAgreement, codePrefix: 'ENV-CPTM-' },
+};
+
 function ctx(req) {
-  const category = String(req.query.category || req.body?.category || 'residential').toLowerCase() === 'commercial'
-    ? 'commercial' : 'residential';
+  const { category } = resolveAgreementCategory(req.query.category || req.body?.category, TM_BUILDERS);
+  const variant = TM_BUILDERS[category];
   const pack = svc.packFor(category);
   return {
     category,
     vertical: pack.catalog_vertical,
     related_type: pack.related_type,
-    build: category === 'commercial' ? svc.buildCommercialTMAgreement : svc.buildResidentialTMAgreement,
-    codePrefix: category === 'commercial' ? 'ENV-CPTM-' : 'ENV-RPTM-',
+    build: variant.build(),
+    codePrefix: variant.codePrefix,
     serviceGroups: pack.service_groups,
     checklistGroups: pack.checklist_groups,
   };
