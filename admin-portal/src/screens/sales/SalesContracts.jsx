@@ -8,6 +8,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Bell, Ban, Copy, Eye, GitBranch, Download } from 'lucide-react';
 import api from '../../services/api';
+import { useSalesHome } from './paths';
 import { Spinner } from '../../ui/kit';
 import { useToast } from '../../context/ToastContext';
 
@@ -20,6 +21,8 @@ const SECTIONS = [
 ];
 
 export default function SalesContracts() {
+  // Sale destinations live on the current console, not residential.
+  const salesHome = useSalesHome();
   const toast = useToast();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -72,7 +75,7 @@ export default function SalesContracts() {
     } catch { toast.error('Could not download the signed document'); }
   };
   const vary = async (it) => {
-    try { const r = await api.post(`/sales-agreements/contracts/${it.id}/variation`); toast.success('Original voided — complete the variation'); navigate(`/residential/agreements/${r.data.kind}`, { state: { prefill: r.data.prefill } }); }
+    try { const r = await api.post(`/sales-agreements/contracts/${it.id}/variation`); toast.success('Original voided — complete the variation'); navigate(`${salesHome}/agreements/${r.data.kind}`, { state: { prefill: r.data.prefill } }); }
     catch (e) { toast.error(e.response?.data?.error || 'Could not start variation'); }
   };
 

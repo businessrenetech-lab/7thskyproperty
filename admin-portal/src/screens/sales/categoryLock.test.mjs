@@ -32,3 +32,33 @@ assert.strictEqual(lockedCategoryForPath('/commercial/sell'), 'commercial');
 assert.strictEqual(lockedCategoryForPath('/business/sell'), 'business');
 
 console.log('categoryLock OK');
+
+// ── consoleBaseForPath: keep in-console links inside the console ──────────────
+import { consoleBaseForPath, isSalesConsoleBase } from './categoryLock.mjs';
+
+// Longest match wins: the rent consoles must not be mistaken for their sale siblings.
+assert.strictEqual(consoleBaseForPath('/commercial/rent/contacts'), '/commercial/rent');
+assert.strictEqual(consoleBaseForPath('/commercial/contacts'), '/commercial');
+assert.strictEqual(consoleBaseForPath('/rural/rent/contacts'), '/rural/rent');
+assert.strictEqual(consoleBaseForPath('/rural/sell'), '/rural');
+assert.strictEqual(consoleBaseForPath('/business-rent/contacts'), '/business-rent');
+assert.strictEqual(consoleBaseForPath('/business/contacts'), '/business');
+assert.strictEqual(consoleBaseForPath('/property-management/contacts'), '/property-management');
+assert.strictEqual(consoleBaseForPath('/residential/contacts'), '/residential');
+
+// The base itself, with no trailing segment.
+assert.strictEqual(consoleBaseForPath('/commercial'), '/commercial');
+assert.strictEqual(consoleBaseForPath('/commercial/rent'), '/commercial/rent');
+
+// A path that merely shares a prefix is not a console.
+assert.strictEqual(consoleBaseForPath('/commercial-interior-design/clients'), null);
+assert.strictEqual(consoleBaseForPath('/business-registration/clients'), null);
+assert.strictEqual(consoleBaseForPath('/clients'), null);
+assert.strictEqual(consoleBaseForPath('/'), null);
+
+// Only the buy/sale consoles have a buyer section.
+assert.strictEqual(isSalesConsoleBase('/commercial'), true);
+assert.strictEqual(isSalesConsoleBase('/commercial/rent'), false);
+assert.strictEqual(isSalesConsoleBase('/property-management'), false);
+
+console.log('consoleBaseForPath OK');

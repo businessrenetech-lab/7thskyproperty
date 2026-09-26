@@ -7,11 +7,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, Users, Briefcase, ClipboardList, HandCoins } from 'lucide-react';
 import api from '../../services/api';
+import { useSalesHome } from './paths';
 import { PageHead, StatCard, Button, Spinner } from '../../ui/kit';
 
 const BUY_STAGES = ['lead', 'negotiation', 'agreed', 'settlement', 'completed', 'cancelled'];
 
 export default function BuyerServiceDashboard() {
+  // Sale destinations live on the current console, not residential.
+  const salesHome = useSalesHome();
   const navigate = useNavigate();
   const [deals, setDeals] = useState(null);
   const [mandates, setMandates] = useState(null);
@@ -66,7 +69,7 @@ export default function BuyerServiceDashboard() {
 
       <WL
         title="Mandates awaiting approval to search (Stage 2)" icon={ClipboardList} rows={awaitingApproval}
-        onRow={() => navigate('/residential/mandates')}
+        onRow={() => navigate(`${salesHome}/mandates`)}
         empty="No mandates awaiting approval — all cleared to search."
         render={(m) => (<>
           <td><strong>{m.mandate_code}</strong></td>
@@ -78,7 +81,7 @@ export default function BuyerServiceDashboard() {
 
       <WL
         title="Active buyer mandates" icon={Users} rows={activeMandates}
-        onRow={() => navigate('/residential/mandates')}
+        onRow={() => navigate(`${salesHome}/mandates`)}
         empty="No active mandates. Create one from Buyer Mandates."
         render={(m) => (<>
           <td><strong>{m.mandate_code}</strong></td>
@@ -90,7 +93,7 @@ export default function BuyerServiceDashboard() {
 
       <WL
         title="Open buy deals" icon={Briefcase} rows={openDeals}
-        onRow={(d) => navigate(`/residential/buy/${d.id}`)}
+        onRow={(d) => navigate(`${salesHome}/buy/${d.id}`)}
         empty="No open buy deals."
         render={(d) => (<>
           <td><strong>{d.deal_code}</strong></td>

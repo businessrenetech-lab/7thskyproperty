@@ -8,6 +8,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ClipboardCheck, Users, HandCoins, FileSignature, ShieldCheck, Trash2, CheckCircle2 } from 'lucide-react';
 import api from '../../services/api';
+import { useSalesHome } from './paths';
 import { useToast } from '../../context/ToastContext';
 import { PageHead, Button, Spinner, StatusBadge, Badge, Field, Input, Textarea, Select } from '../../ui/kit';
 import UploadButton from '../../ui/UploadButton';
@@ -25,6 +26,8 @@ const TABS = [
 const REG_STATUS = ['not_started', 'in_progress', 'registered', 'delayed'];
 
 export default function BuyerDealFile() {
+  // Sale destinations live on the current console, not residential.
+  const salesHome = useSalesHome();
   const { dealId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
@@ -84,7 +87,7 @@ export default function BuyerDealFile() {
   };
 
   if (file === undefined) return <div className="card-pad" style={{ padding: 48, textAlign: 'center' }}><Spinner /></div>;
-  if (file === null) return <div className="pm-card card-pad">Buyer deal not found. <Button variant="ghost" onClick={() => navigate('/residential/buyer-service')}>Back</Button></div>;
+  if (file === null) return <div className="pm-card card-pad">Buyer deal not found. <Button variant="ghost" onClick={() => navigate(`${salesHome}/buyer-service`)}>Back</Button></div>;
 
   const deal = file.deal;
   const buyer = deal.buyer?.Contact?.full_name || '—';
@@ -93,7 +96,7 @@ export default function BuyerDealFile() {
   return (
     <div className="pm-scope">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-        <Button variant="ghost" icon={ArrowLeft} onClick={() => navigate('/residential/buyer-service')}>Back</Button>
+        <Button variant="ghost" icon={ArrowLeft} onClick={() => navigate(`${salesHome}/buyer-service`)}>Back</Button>
       </div>
       <PageHead
         title={`${deal.deal_code} · ${buyer}`}
@@ -175,7 +178,7 @@ export default function BuyerDealFile() {
         <div className="pm-col">
           {!file.mandate ? (
             <div className="pm-card card-pad"><p className="cell-sub">No buyer mandate linked. Create one from Buyer Mandates.</p>
-              <Button size="sm" variant="ghost" style={{ marginTop: 8 }} onClick={() => navigate('/residential/mandates')}>Open buyer mandates</Button></div>
+              <Button size="sm" variant="ghost" style={{ marginTop: 8 }} onClick={() => navigate(`${salesHome}/mandates`)}>Open buyer mandates</Button></div>
           ) : (
             <PlanningPanel mandate={file.mandate} onSave={saveMandate} onToggleApprove={toggleApprove} candidates={file.candidates} onSaveCandidate={saveCandidate} />
           )}
@@ -187,7 +190,7 @@ export default function BuyerDealFile() {
         <div className="pm-card"><div className="pm-card-body" style={{ padding: 16 }}>
           <div className="between" style={{ marginBottom: 8 }}>
             <strong>Purchase agreements (RPPS)</strong>
-            <Button size="sm" onClick={() => navigate(`/residential/agreements/purchase?property_id=${deal.property_id || ''}`)}>New / manage</Button>
+            <Button size="sm" onClick={() => navigate(`${salesHome}/agreements/purchase?property_id=${deal.property_id || ''}`)}>New / manage</Button>
           </div>
           {file.agreements.length === 0 ? <p className="cell-sub">No purchase agreement yet.</p> : (
             <table className="tbl"><thead><tr><th>Envelope</th><th>Status</th><th>Signed</th></tr></thead><tbody>
@@ -196,7 +199,7 @@ export default function BuyerDealFile() {
           )}
           <div className="between" style={{ margin: '16px 0 8px' }}>
             <strong>Fee invoices</strong>
-            <Button size="sm" variant="ghost" onClick={() => navigate('/residential/buyer-invoices')}>Open Buyer Invoices</Button>
+            <Button size="sm" variant="ghost" onClick={() => navigate(`${salesHome}/buyer-invoices`)}>Open Buyer Invoices</Button>
           </div>
           {file.invoices.length === 0 ? <p className="cell-sub">No fee invoices yet — they draft when the RPPS agreement is signed.</p> : (
             <table className="tbl"><thead><tr><th>Invoice</th><th>Title</th><th>Status</th><th style={{ textAlign: 'right' }}>Total</th><th style={{ textAlign: 'right' }}>Balance</th></tr></thead><tbody>

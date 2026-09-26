@@ -54,3 +54,21 @@ export function useSalesCategory() {
   const { pathname } = useLocation();
   return lockedCategoryForPath(pathname);
 }
+
+/**
+ * The sales console the current path belongs to — '/residential', '/commercial',
+ * '/business', or '/sales' outside those.
+ *
+ * Shared sales screens are mounted under several consoles and used to hard-code
+ * '/residential/...' in 27 places, so a button in Commercial dropped the user
+ * into the Residential console. Every sale destination (agreements, marketing,
+ * mandates, buy deals, buyer service, buyer invoices, work queue, property file)
+ * exists symmetrically under all three sales consoles, so rebasing is safe.
+ *
+ * A rent console rebases to its own SALES sibling (/commercial/rent -> /commercial),
+ * because that is where those destinations live.
+ */
+export function useSalesHome() {
+  const { pathname } = useLocation();
+  return salesBase(lockedCategoryForPath(pathname));
+}

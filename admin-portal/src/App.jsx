@@ -1290,6 +1290,7 @@ export default function App() {
               <Route path="/property-management/rentals/new" element={<PropertyWizard />} />
               <Route path="/property-management/rentals/new/:id" element={<PropertyWizard />} />
               <Route path="/property-management/contacts" element={<SalesContacts scope="rental" />} />
+              <Route path="/property-management/contacts/clients" element={<Clients />} />
               <Route path="/property-management/applications" element={<TenantApplications />} />
               <Route path="/property-management/enquiries" element={<RentalEnquiries />} />
               <Route path="/property-management/assessments" element={<RentalAssessments />} />
@@ -1439,6 +1440,7 @@ export default function App() {
               <Route path="/commercial/rent/rentals/new" element={<PropertyWizard />} />
               <Route path="/commercial/rent/rentals/new/:id" element={<PropertyWizard />} />
               <Route path="/commercial/rent/contacts" element={<SalesContacts scope="rental" />} />
+              <Route path="/commercial/rent/contacts/clients" element={<Clients />} />
               <Route path="/commercial/rent/applications" element={<TenantApplications />} />
               <Route path="/commercial/rent/enquiries" element={<RentalEnquiries />} />
               <Route path="/commercial/rent/assessments" element={<RentalAssessments />} />
@@ -1527,6 +1529,7 @@ export default function App() {
               <Route path="/business-rent/rentals/new" element={<PropertyWizard />} />
               <Route path="/business-rent/rentals/new/:id" element={<PropertyWizard />} />
               <Route path="/business-rent/contacts" element={<SalesContacts scope="rental" />} />
+              <Route path="/business-rent/contacts/clients" element={<Clients />} />
               <Route path="/business-rent/applications" element={<TenantApplications />} />
               <Route path="/business-rent/enquiries" element={<RentalEnquiries />} />
               <Route path="/business-rent/assessments" element={<RentalAssessments />} />

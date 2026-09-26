@@ -12,7 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   Button, Spinner, Badge, StatusBadge, Drawer, Field, Input, Select, Textarea
 } from '../../ui/kit';
-import { propertyFilePath, settlementDeskPath } from './paths';
+import { propertyFilePath, settlementDeskPath, salesBase } from './paths';
 import './sales-calendar.css';
 
 const TYPE_CONFIG = {
@@ -36,6 +36,8 @@ const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 export default function SalesCalendar({ category = 'residential', scope }) {
+  // Sale destinations live on this category's SALES console, not residential.
+  const salesHome = salesBase(category);
   const navigate = useNavigate();
   const toast = useToast();
   const { user } = useAuth();
@@ -215,7 +217,7 @@ export default function SalesCalendar({ category = 'residential', scope }) {
         : '?section=overview';
       navigate(`${propertyFilePath(category, e.property_id)}${section}`);
     } else {
-      navigate('/residential/work-queue');
+      navigate(`${salesHome}/work-queue`);
     }
   };
 

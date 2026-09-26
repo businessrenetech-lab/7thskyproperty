@@ -38,3 +38,32 @@ export function consoleCategoryForPath(pathname) {
 export function lockedCategoryForPath(pathname) {
   return consoleCategoryForPath(pathname);
 }
+
+// The console's own base path, longest match first so /commercial/rent is not
+// mistaken for /commercial. Used to keep in-console links inside the console a
+// user is actually standing in — the contacts list used to send every console to
+// /residential/contacts/clients, i.e. into the Residential console.
+const BASES = [
+  '/property-management',
+  '/commercial/rent',
+  '/rural/rent',
+  '/business-rent',
+  '/residential',
+  '/commercial',
+  '/business',
+  '/rural',
+];
+
+/** The base path of the console this path belongs to, or null outside one. */
+export function consoleBaseForPath(pathname) {
+  const p = String(pathname || '');
+  for (const base of BASES) {
+    if (p === base || p.startsWith(`${base}/`)) return base;
+  }
+  return null;
+}
+
+/** True when the base is a buy/sale console (the only ones with a buyer section). */
+export function isSalesConsoleBase(base) {
+  return ['/residential', '/commercial', '/business'].includes(base);
+}

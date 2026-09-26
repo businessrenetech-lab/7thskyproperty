@@ -48,7 +48,7 @@ import {
 import { Combo } from "../../ui/pickers";
 import FileUpload, { fileSrc } from "../../ui/FileUpload";
 import SalesAssessmentWorkspace from "./SalesAssessmentWorkspace";
-import { settlementDeskPath, clientProfilePath, propertyWizardPath } from "./paths";
+import { settlementDeskPath, clientProfilePath, propertyWizardPath, useSalesHome } from "./paths";
 import UploadButton from "../../ui/UploadButton";
 import { BUSINESS_SECTIONS, BusinessAssessmentSection, DueDiligenceSection, PreparationSection, NdaSection } from "./business/BusinessPropertySections";
 import RoleKycManager from "../../components/RoleKycManager";
@@ -323,6 +323,8 @@ export default function SalesPropertyFile({
   propertyId: propertyIdProp,
   onBack,
 }) {
+  // Sale destinations live on the current console, not residential.
+  const salesHome = useSalesHome();
   const params = useParams();
   const propertyId = propertyIdProp || params.id;
   const navigate = useNavigate();
@@ -1013,7 +1015,7 @@ export default function SalesPropertyFile({
   const goToSignatures = (role) => {
     const kind = role.role_type === "buyer" ? "purchase" : "sale";
     navigate(
-      `/residential/agreements/${kind}?property_id=${propertyId}${role.contact_id ? `&contact_id=${role.contact_id}` : ""}`,
+      `${salesHome}/agreements/${kind}?property_id=${propertyId}${role.contact_id ? `&contact_id=${role.contact_id}` : ""}`,
     );
   };
   // The buyer role profile (with KYC) matching an offer's buyer party, if the
@@ -3319,8 +3321,8 @@ export default function SalesPropertyFile({
               onAction={() =>
                 navigate(
                   saleAg.a
-                    ? `/residential/agreements/sale`
-                    : `/residential/agreements/sale?property_id=${propertyId}${vendorContactId ? `&contact_id=${vendorContactId}` : ""}`,
+                    ? `${salesHome}/agreements/sale`
+                    : `${salesHome}/agreements/sale?property_id=${propertyId}${vendorContactId ? `&contact_id=${vendorContactId}` : ""}`,
                 )
               }
             />
@@ -3337,8 +3339,8 @@ export default function SalesPropertyFile({
                 onAction={() =>
                   navigate(
                     purchaseAg.a
-                      ? `/residential/agreements/purchase`
-                      : `/residential/agreements/purchase?property_id=${propertyId}${buyerContactId ? `&contact_id=${buyerContactId}` : ""}`,
+                      ? `${salesHome}/agreements/purchase`
+                      : `${salesHome}/agreements/purchase?property_id=${propertyId}${buyerContactId ? `&contact_id=${buyerContactId}` : ""}`,
                   )
                 }
               />

@@ -6,7 +6,7 @@ import { PageHead, DataTable, StatusBadge, Drawer, SearchInput, KV, Spinner, But
 import { Plus, Building2 as BuildingIcon } from 'lucide-react';
 import { NewDealDrawer, NewPropertyDrawer } from './CrmForms';
 import { useNavigate } from 'react-router-dom';
-import { settlementDeskPath } from './sales/paths';
+import { settlementDeskPath, salesBase } from './sales/paths';
 import SavedViews from './sales/SavedViews';
 import './deals-board.css';
 
@@ -22,6 +22,8 @@ const today = new Date().toISOString().slice(0, 10);
 const isOverdue = (r) => r.settlement_date && r.settlement_date < today && !['completed', 'cancelled'].includes(r.status);
 
 export default function DealsBoard({ category, dealType, title, desc }) {
+  // Sale destinations live on this category's SALES console, not residential.
+  const salesHome = salesBase(category);
   const navigate = useNavigate();
   const toast = useToast();
   const [rows, setRows] = useState([]); const [loading, setLoading] = useState(true);
@@ -210,11 +212,11 @@ export default function DealsBoard({ category, dealType, title, desc }) {
                 return (
                   <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
                     {dealType === 'buy' && (
-                      <Button icon={ClipboardList} onClick={() => navigate(`/residential/buy/${detail.id || sel.id}`)}>
+                      <Button icon={ClipboardList} onClick={() => navigate(`${salesHome}/buy/${detail.id || sel.id}`)}>
                         Open buyer file
                       </Button>
                     )}
-                    <Button icon={ShieldCheck} variant="ghost" onClick={() => navigate(`/residential/property/${pid}?section=onboarding`)}>
+                    <Button icon={ShieldCheck} variant="ghost" onClick={() => navigate(`${salesHome}/property/${pid}?section=onboarding`)}>
                       {dealType === 'buy' ? 'Onboard buyer / KYC' : 'Onboard / KYC'}
                     </Button>
                     <Button icon={Wallet} onClick={() => navigate(settlementDeskPath(category, pid))}>

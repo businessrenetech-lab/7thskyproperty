@@ -10,7 +10,7 @@ import { useToast } from "../../context/ToastContext";
 import {
   Button, DataTable, EmptyState, SearchInput, StatusBadge, Badge
 } from "../../ui/kit";
-import { propertyFilePath, propertyWizardPath } from "./paths";
+import { propertyFilePath, propertyWizardPath, salesBase } from "./paths";
 
 const unwrap = (payload) => payload?.data?.data ?? payload?.data ?? payload ?? {};
 const listFrom = (payload) => {
@@ -37,6 +37,8 @@ export default function SalesProperties({
   desc = "Manage sales listings, lifecycle stages, vendor representations, and property files."
 }) {
   const toast = useToast();
+  // Sale destinations live on this category's SALES console, not residential.
+  const salesHome = salesBase(category);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -290,7 +292,7 @@ export default function SalesProperties({
                 toast.info("Generating luxury marketing campaign draft...");
                 const res = await api.post(`/properties/${row.id}/draft-campaign`);
                 toast.success(res.data?.message || "Marketing campaign ready!");
-                navigate('/residential/marketing', { state: { initialTab: 'campaigns' } });
+                navigate(`${salesHome}/marketing`, { state: { initialTab: 'campaigns' } });
               } catch (err) {
                 toast.error(err.response?.data?.error || "Failed to draft campaign");
               }

@@ -7,7 +7,7 @@ import {
   UserPlus, Users, WalletCards, Wrench, CreditCard, Send, Lock, Shield
 } from 'lucide-react';
 import api from '../services/api';
-import { consoleCategoryForPath } from './sales/categoryLock.mjs';
+import { consoleCategoryForPath, consoleBaseForPath } from './sales/categoryLock.mjs';
 import { useToast } from '../context/ToastContext';
 import {
   Badge, Button, DataTable, Drawer, EmptyState, Field, Input, PageHead,
@@ -213,8 +213,11 @@ export default function Clients() {
   }), [rows]);
 
   if (selectedId) {
-    const isBuyer = location.pathname.startsWith('/residential/buyer/');
+    const isBuyer = /^\/(residential|commercial|business)\/buyer\//.test(location.pathname);
     const isResidential = location.pathname.startsWith('/residential');
+    // Go back to the console the user came from. This used to send every console
+    // other than Residential out to the global /clients list.
+    const backBase = consoleBaseForPath(location.pathname);
     return (
       <ClientWorkspace
         detail={detail}
@@ -222,10 +225,10 @@ export default function Clients() {
         onBack={() => {
           setSelectedId(null);
           setDetail(null);
-          if (isBuyer) {
-            navigate('/residential/buyer/contacts', { replace: true });
-          } else if (isResidential) {
-            navigate('/residential/contacts', { replace: true });
+          if (backBase && isBuyer) {
+            navigate(`${backBase}/buyer/contacts`, { replace: true });
+          } else if (backBase) {
+            navigate(`${backBase}/contacts`, { replace: true });
           } else {
             navigate('/clients', { replace: true });
           }
