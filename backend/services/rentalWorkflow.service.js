@@ -85,6 +85,22 @@ const PREMISES_ASSESSMENT_ITEMS = [
   ...premisesItems('Leasing readiness', ['Ownership & authority to lease confirmed', 'Trade licence obtainable at this address'], true),
 ];
 
+// ── Rural land assessment (CRM Owner Sheet 5 + Tenant Sheet 10, SOP §8/§7) ──
+// Rural land is assessed on access, water and boundary — not on bedrooms, and
+// not on shop frontage. A disputed boundary or no water source stops marketing.
+const RURAL_ASSESSMENT_ITEMS = [
+  ...premisesItems('Access & roads', ['Approach road condition', 'Vehicle access to the plot', 'Distance from the main road']),
+  ...premisesItems('Boundary & ownership', ['Boundary demarcated and undisputed', 'Ownership and authority to let confirmed'], true),
+  ...premisesItems('Utilities & water', ['Water source (tube well, canal, pond)', 'Electricity connection', 'Irrigation provision'], true),
+  ...premisesItems('Land condition', ['Soil and drainage', 'Flood exposure', 'Current crop or use']),
+  ...premisesItems('Existing structures', ['Farm house / shed condition', 'Storage', 'Fencing']),
+  ...premisesItems('Farming suitability', ['Suitable for the intended crop', 'Season and yield history']),
+  ...premisesItems('Fishery suitability', ['Pond depth and water retention', 'Inlet and outlet']),
+  ...premisesItems('Commercial suitability', ['Permitted commercial use', 'Access for goods movement']),
+  ...premisesItems('Security', ['Site security and caretaker', 'Neighbouring risk']),
+  ...premisesItems('Marketing readiness', ['Photography and drone footage ready', 'Signboard placed']),
+];
+
 // ── Owner onboarding checklist (Owner Onboarding Checklist sheet) ──
 const OWNER_ONBOARDING_ITEMS = [
   { checklist_item: 'Owner identity / KYC collected', evidence_required: 'NID / Passport / Company document', action_required: 'Collect documents' },
@@ -193,6 +209,7 @@ module.exports = {
   ASSESSMENT_ITEMS,
   ROOM_ASSESSMENT_ITEMS,
   PREMISES_ASSESSMENT_ITEMS,
+  RURAL_ASSESSMENT_ITEMS,
   OWNER_ONBOARDING_ITEMS,
   createLeasingProject,
   seedOwnerOnboardingItems,
