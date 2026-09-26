@@ -223,3 +223,93 @@ document set), rural owner/tenant portals, and the public website surface for ru
   `agreement_templates` row exists yet.
 - **Deployment is blocked** — Hostinger has lost access to the repository, so this work queues
   behind that fix.
+
+---
+
+## 14. Corrections — 2026-09-26, after the console-isolation work
+
+This spec was written before `docs/superpowers/plans/2026-09-26-pm-console-isolation.md`
+was executed. Six of its statements are now out of date, and one was wrong when written.
+Everything below is re-measured, not assumed.
+
+### 14.1 The blocking prerequisite (§3) is DONE
+
+`pmCategory('rural')` now returns `'rural'`; the assertion that called rural "not a PM
+console" is inverted. **Task 1 of this plan is already delivered** and drops out of the
+Rural plan entirely. Also delivered, and none of it was in place when §3 was written:
+
+| Groundwork | Effect on Rural Rent |
+|---|---|
+| `contact.controller` scopes through `pmCategory` | rural **leads** isolate on day one |
+| `/clients` scopes via the contact's category | rural **clients** isolate on day one |
+| `/projects` + `/registers/entries` accept `category` | `verticalsForCategory('rural')` already returns `['rural_rent','rural_sale','rural_tenancy']` — the tenant template's key is pre-registered |
+| `rental_enquiries.category` (0155) + website inheritance | a website enquiry on a rural property already creates a **rural** lead and a **rural** enquiry |
+| `consoleCategoryForPath('/rural/rent')` → `rural`, `consoleBaseForPath` → `/rural/rent` | the console's shared screens resolve rural without further work |
+| 27 in-console links rebased off hard-coded `/residential/` | Rural's links will stay inside Rural |
+| `scripts/e2e/consoleIsolation.js` (140 checks) covers rural | the Rural plan **extends** that suite; it does not start a new one |
+
+### 14.2 Agreements now refuse rural outright
+
+§6 said no rural `agreement_templates` row exists. Since `f6d8093`, `GET /api/rprm/meta?category=rural`
+returns **HTTP 400** — *"No agreement builder is available for the 'rural' category."* That is the
+intended behaviour (better than silently issuing a residential agreement), but it means the
+console's two agreement links are **dead until the Rural plan registers the builders**. This is
+now a required task, not a nice-to-have.
+
+### 14.3 §10 was wrong: rural register data already exists
+
+§10 claimed "zero rural properties and zero rural projects … the cleanest slate of the four
+consoles". The first two hold — 0 properties, 0 projects, 0 enquiries — but **13 `rural_rent`
+register definitions were already seeded** (2026-06-26) straight from the CRM workbook, and
+**8 entries** are already recorded against Ownership Verification:
+
+| id | register_key | id | register_key |
+|---|---|---|---|
+| 149 | `owner_master_register` | 156 | `maintenance_register` |
+| 150 | `property_master_register` | 157 | `tenant_master_register` |
+| 151 | `ownership_verification` ← 8 entries | 158 | `requirement_register` |
+| 152 | `marketing_register` | 159 | `property_search_register` |
+| 153 | `tenant_screening` | 160 | `shortlist_register` |
+| 154 | `protected_tenant_register` | 161 | `protected_property_register` |
+| 155 | `lease_register` | | |
+
+`ownership_verification` already carries the workbook's columns
+(`document / required / received / verified / …`).
+
+**This changes §6 materially.** Five of the six modules the spec proposed building from scratch
+are already modelled:
+
+- **Ownership verification** → register 151 exists, with entries. No new table.
+- **Rural tenant screening** → register 153 exists.
+- **Protected Tenant / Protected Property** → registers 154 and 161 exist, alongside the
+  `non_circumvention_records` reuse §6 proposed. The plan must pick **one** home for this and say
+  which, rather than recording introductions in two places.
+- **Tenant Sourcing** → registers 158, 159 and 160 are the requirement / search / shortlist
+  sheets. The spec called this "the largest single piece … no PM precedent"; the *record-keeping*
+  half already exists.
+
+**Revised approach, and the one judgement call in it:** the registers give the records but not the
+pipeline — the Compliance screen that surfaces them is property-first, which does not fit a tenant
+brief that has no property yet. So the plan uses the existing registers as the store wherever they
+fit and adds a thin Tenant Sourcing **view** over registers 158/159/160, instead of new tables.
+Only two modules still need real schema:
+
+- the **land record** (must be columns on `properties`, because the console filters and searches on
+  district/upazila/mouza and Rural Sale needs them too), and
+- the **readiness assessment** (needs `RentalAssessment`'s blocking-gate machinery, which is what
+  gates marketing).
+
+If a register-backed sourcing view proves too thin in use, the bespoke tables remain the fallback —
+but building them first would duplicate thirteen registers the client's own workbook already defines.
+
+### 14.4 Migration numbering
+
+§10 said "next free number 0155". 0155 is taken (`rental-enquiry-category`). The Rural plan starts
+at **0156**.
+
+### 14.5 Unchanged
+
+§4 (the console and its `PmScopeProvider` value), §5 (the two 11-stage pipelines and the 12-stage
+`rural_rent` template still needing correction — verified still 12 stages, 0 projects), §7 (money),
+§8 (the five dashboards), §9 (the ten property types), §11 (verification), §12 (out of scope) and
+§13 (risks) all stand as written.
