@@ -12,7 +12,7 @@ const Property = require('../models/Property');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, pick } = require('../utils/controllerHelpers');
 const { pmCategory } = require('../utils/pmCategory');
-const { protectionExpiry, protectionState } = require('../services/protectionWindow');
+const { protectionExpiry, protectionState, protectionMonthsFor } = require('../services/protectionWindow');
 
 const FIELDS = ['owner_contact_id', 'tenant_contact_id', 'property_id', 'tenancy_id',
   'protected_relationship', 'introduction_date', 'protection_basis', 'direct_communication_allowed',
@@ -36,11 +36,14 @@ exports.list = asyncHandler(async (req, res) => {
 exports.create = asyncHandler(async (req, res) => {
   const data = pick(req.body, FIELDS);
   if (!data.introduction_date) data.introduction_date = new Date().toISOString().slice(0, 10);
-  // The SOP window is the engagement plus 12 months unless one was given.
-  if (!data.protection_expires_on) data.protection_expires_on = protectionExpiry(data.introduction_date);
 
+  // Resolve the property FIRST: the window length depends on the console, and
+  // rural is 24 months where everything else is 12.
   const property = data.property_id ? await Property.findByPk(data.property_id) : null;
   data.category = pmCategory(req.query.category) || property?.category || null;
+  if (!data.protection_expires_on) {
+    data.protection_expires_on = protectionExpiry(data.introduction_date, protectionMonthsFor(data.category));
+  }
   data.context = 'rental';
   data.branch_id = resolveBranchId(req, property?.branch_id ?? req.body.branch_id);
   data.created_by = req.user?.id || null;
@@ -59,7 +62,8 @@ exports.update = asyncHandler(async (req, res) => {
   const patch = pick(req.body, FIELDS);
   // Moving the introduction date moves the window with it, unless one is given.
   if (patch.introduction_date && !patch.protection_expires_on) {
-    patch.protection_expires_on = protectionExpiry(patch.introduction_date);
+    // Keep the console's own window when the introduction date moves.
+    patch.protection_expires_on = protectionExpiry(patch.introduction_date, protectionMonthsFor(row.category));
   }
   await row.update(patch);
   res.json({ data: withState(row), message: 'Protected introduction updated.' });
