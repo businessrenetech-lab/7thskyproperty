@@ -7,6 +7,7 @@ import {
   UserPlus, Users, WalletCards, Wrench, CreditCard, Send, Lock, Shield
 } from 'lucide-react';
 import api from '../services/api';
+import { consoleCategoryForPath } from './sales/categoryLock.mjs';
 import { useToast } from '../context/ToastContext';
 import {
   Badge, Button, DataTable, Drawer, EmptyState, Field, Input, PageHead,
@@ -132,6 +133,9 @@ const roleBadges = (client) => (
 export default function Clients() {
   const toast = useToast();
   const location = useLocation();
+  // Mounted under every console, so the console is read from the path. Without
+  // this each console listed all 77 clients.
+  const consoleCategory = consoleCategoryForPath(location.pathname);
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
@@ -151,6 +155,9 @@ export default function Clients() {
       if (role) params.set('role', role);
       if (segment) params.set('segment', segment);
       if (search) params.set('search', search);
+      // This screen is mounted under every console, so the console is read from
+      // the path. Without it each console listed all 77 clients.
+      if (consoleCategory) params.set('category', consoleCategory);
       const { data } = await api.get(`/clients?${params}`);
       setRows(data.data || []);
       setTotal(data.pagination?.total || 0);
@@ -159,7 +166,7 @@ export default function Clients() {
     } finally {
       setLoading(false);
     }
-  }, [role, segment, search, toast]);
+  }, [role, segment, search, toast, consoleCategory]);
 
   const loadDetail = useCallback(async (id) => {
     setDetailLoading(true);

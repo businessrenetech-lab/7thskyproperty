@@ -11,6 +11,7 @@ const Property = require('../models/Property');
 const SigningEnvelope = require('../models/SigningEnvelope');
 const KycDocument = require('../models/KycDocument');
 const { asyncHandler, branchScope, getPagination, pick } = require('../utils/controllerHelpers');
+const { pmCategory } = require('../utils/pmCategory');
 
 const CLIENT_FIELDS = [
   'is_buyer', 'is_seller', 'is_landlord', 'is_tenant', 'is_service_client', 'is_nrb_client',
@@ -58,7 +59,12 @@ exports.list = asyncHandler(async (req, res) => {
     }
   }
 
+  // Console isolation. A client has no category of its own — it inherits the
+  // one on its contact (migration 0128), so the scope rides the Contact include.
+  // Without this every console's client list showed all 77 clients.
   const contactWhere = {};
+  const cat = pmCategory(req.query.category);
+  if (cat) contactWhere.category = cat;
   if (req.query.search) {
     const s = `%${req.query.search}%`;
     contactWhere[Op.or] = [
@@ -69,7 +75,13 @@ exports.list = asyncHandler(async (req, res) => {
 
   const { rows, count } = await Client.findAndCountAll({
     where, limit, offset, order: [['created_at', 'DESC']],
-    include: [{ model: Contact, where: Object.keys(contactWhere).length ? contactWhere : undefined, required: !!req.query.search }],
+    include: [{
+      model: Contact,
+      where: Object.keys(contactWhere).length ? contactWhere : undefined,
+      // An inner join is required whenever we filter on the contact, or the
+      // category scope would be ignored for rows Sequelize can outer-join.
+      required: !!req.query.search || !!cat,
+    }],
   });
   res.json({ data: rows, pagination: { page, limit, total: count, pages: Math.ceil(count / limit) } });
 });
