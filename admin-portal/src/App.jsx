@@ -151,6 +151,7 @@ import BusinessSaleConsole, { BusinessBuyerConsole } from './screens/BusinessSal
 import BusinessRentDashboards from './screens/rental/BusinessRentDashboards';
 import BusinessRentConsole from './screens/BusinessRentConsole';
 import RuralRentConsole from './screens/RuralRentConsole';
+import RuralSourcing from './screens/rural/RuralSourcing';
 import BrmAgreements from './screens/sales/BrmAgreements';
 import BtmAgreements from './screens/sales/BtmAgreements';
 import BusinessRegistrationConsole from './screens/BusinessRegistrationConsole';
@@ -1604,6 +1605,7 @@ export default function App() {
               <Route path="/rural/rent/folios" element={<Folios />} />
               <Route path="/rural/rent/landlord-bills" element={<LandlordBills />} />
               <Route path="/rural/rent/agency-income" element={<AgencyIncome />} />
+              <Route path="/rural/rent/sourcing" element={<RuralSourcing />} />
               {/* The two rural agreement builders (SSPC-RPRMS-RURAL-01 and
                   SSPC-RPTMS-RURAL-01) and the rural rent price schedule. */}
               <Route path="/rural/rent/agreements" element={<RprmAgreements category="rural" />} />
