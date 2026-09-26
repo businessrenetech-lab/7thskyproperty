@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Send, RefreshCw, Bell, AlertTriangle, MailWarning, Clock } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, Button, Field, Input, Select, Spinner, Badge } from '../ui/kit';
 
@@ -14,6 +15,7 @@ const money = (v) => 'BDT ' + Number(v || 0).toLocaleString();
 const fmtDate = (v) => (v ? new Date(v).toLocaleDateString() : '—');
 
 export default function RentReminders() {
+  const scope = usePmScope();
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -28,7 +30,8 @@ export default function RentReminders() {
   const load = useCallback(async () => {
     setLoading(true); setResults(null);
     try {
-      const params = {};
+      // Reminders go out for this console's tenancies only.
+      const params = { property_category: scope.category };
       if (owner) params.owner_id = owner;
       if (minDays) params.min_days = minDays;
       const { data } = await api.get('/tenancies/overdue-reminders', { params });
@@ -39,7 +42,7 @@ export default function RentReminders() {
       setSel(seed);
     } catch (e) { toast.error(e.response?.data?.error || 'Could not load overdue tenancies'); }
     finally { setLoading(false); }
-  }, [owner, minDays, toast]);
+  }, [owner, minDays, toast, scope.category]);
 
   const owners = useMemo(() => {
     const seen = new Map();

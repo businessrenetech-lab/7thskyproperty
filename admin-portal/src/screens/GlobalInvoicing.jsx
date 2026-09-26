@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, Play } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, Button, DataTable, Field, Input, Spinner, Badge } from '../ui/kit';
 
@@ -8,6 +9,7 @@ const money = (v) => 'BDT ' + Number(v || 0).toLocaleString();
 const thisPeriod = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
 
 export default function GlobalInvoicing() {
+  const scope = usePmScope();
   const toast = useToast();
   const [period, setPeriod] = useState(thisPeriod());
   const [rows, setRows] = useState([]);
@@ -16,7 +18,7 @@ export default function GlobalInvoicing() {
 
   const preview = async () => {
     setLoading(true);
-    try { const { data } = await api.get(`/tenancies/global-invoices?period_label=${period}`); setRows(data.data || []); }
+    try { const { data } = await api.get(`/tenancies/global-invoices?period_label=${period}&property_category=${scope.category}`); setRows(data.data || []); }
     catch { toast.error('Preview failed'); }
     finally { setLoading(false); }
   };

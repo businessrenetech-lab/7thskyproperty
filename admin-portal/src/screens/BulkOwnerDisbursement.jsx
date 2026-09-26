@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Play, RefreshCw, Wallet, Users, Layers, Landmark } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, Button, Field, Input, Select, Spinner, Badge } from '../ui/kit';
 
@@ -15,6 +16,7 @@ const money = (v) => 'BDT ' + Number(v || 0).toLocaleString();
 const METHODS = ['bank_transfer', 'cash', 'bkash', 'nagad', 'cheque', 'other'];
 
 export default function BulkOwnerDisbursement() {
+  const scope = usePmScope();
   const toast = useToast();
   const [rows, setRows] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -28,7 +30,8 @@ export default function BulkOwnerDisbursement() {
   const load = useCallback(async () => {
     setLoading(true); setResults(null);
     try {
-      const params = {};
+      // Paying owners runs for this console only.
+      const params = { property_category: scope.category };
       if (owner) params.owner_id = owner;
       if (min) params.min = min;
       const { data } = await api.get('/disbursements/bulk-owner-data', { params });
@@ -40,7 +43,7 @@ export default function BulkOwnerDisbursement() {
       setEntries(seed);
     } catch (e) { toast.error(e.response?.data?.error || 'Could not load owner balances'); }
     finally { setLoading(false); }
-  }, [owner, min, toast]);
+  }, [owner, min, toast, scope.category]);
 
   const owners = useMemo(() => {
     const seen = new Map();

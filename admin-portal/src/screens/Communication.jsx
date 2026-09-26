@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Inbox, RefreshCw, Search, Send, Mail, MessageSquare, Phone, Globe, FileText, Pencil, Trash2, CornerUpLeft, User } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, Button, Field, Input, Select, Spinner, Badge } from '../ui/kit';
 
@@ -19,6 +20,7 @@ const channelIcon = (c) => ({ email: Mail, sms: MessageSquare, call: Phone, phon
 const fmt = (v) => { if (!v) return ''; const d = new Date(v); const now = new Date(); const sameDay = d.toDateString() === now.toDateString(); return sameDay ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString(); };
 
 export default function Communication() {
+  const scope = usePmScope();
   const toast = useToast();
   const [list, setList] = useState([]);
   const [summary, setSummary] = useState({ conversations: 0, unread: 0, needs_reply: 0, drafts: 0 });
@@ -33,7 +35,8 @@ export default function Communication() {
   const loadInbox = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
+      // The inbox belongs to this console.
+      const params = { property_category: scope.category };
       if (status) params.status = status;
       if (source) params.source = source;
       if (q.trim()) params.q = q.trim();
@@ -42,7 +45,7 @@ export default function Communication() {
       setSummary(data.summary || {});
     } catch (e) { toast.error(e.response?.data?.error || 'Could not load inbox'); }
     finally { setLoading(false); }
-  }, [status, source, q, toast]);
+  }, [status, source, q, toast, scope.category]);
   useEffect(() => { loadInbox(); }, [loadInbox]);
 
   const openThread = useCallback(async (key) => {

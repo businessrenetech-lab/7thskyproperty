@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, CheckCircle2, Circle, ChevronRight, ChevronDown, Paperclip, FileText, Trash2, ExternalLink, Upload } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, Button, DataTable, StatusBadge, Badge, Drawer, Field, Input, Select, Textarea, SearchInput, KV, Spinner } from '../ui/kit';
 import { Combo } from '../ui/pickers';
@@ -10,7 +11,17 @@ import RegistersPanel from './RegistersPanel';
 const clientLabel = (c) => c.Contact?.full_name || c.client_code;
 const propLabel = (p) => `${p.title} (${p.property_code || ''})`;
 
+// Which workflow verticals each PM console owns. rural_tenancy arrives with the
+// Rural plan; naming it early is harmless because the backend Op.in just misses.
+const VERTICAL_BY_CATEGORY = {
+  residential: 'leasing,short_stay',
+  commercial: 'commercial_rent',
+  business: 'business_rent',
+  rural: 'rural_rent,rural_tenancy',
+};
+
 export default function Projects() {
+  const scope = usePmScope();
   const toast = useToast();
   const [searchParams] = useSearchParams();
   const verticalFilter = searchParams.get('vertical_key');
@@ -29,12 +40,15 @@ export default function Projects() {
     try {
       const p = new URLSearchParams({ limit: 50 });
       if (search) p.set('search', search);
+      // The nav supplies vertical_key; when it does not, fall back to the
+      // console's own verticals so Workflows is never a cross-console list.
       if (verticalFilter) p.set('vertical_key', verticalFilter);
+      else if (VERTICAL_BY_CATEGORY[scope.category]) p.set('vertical_key', VERTICAL_BY_CATEGORY[scope.category]);
       const { data } = await api.get(`/projects?${p}`);
       setRows(data.data || []);
     }
     catch { toast.error('Failed to load projects'); } finally { setLoading(false); }
-  }, [search, verticalFilter, toast]);
+  }, [search, verticalFilter, toast, scope.category]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { api.get('/services/verticals').then(({ data }) => setVerticals(data.data || [])).catch(() => {}); }, []);
 
