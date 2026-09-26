@@ -812,6 +812,8 @@ const PROFILE_FIELDS = [
   'tax_responsibility_ack', 'owner_obligations_accepted', 'indemnity_accepted', 'management_commission',
   'onboarding_fee', 'maintenance_responsibility', 'assigned_officer_id', 'next_action', 'next_follow_up',
   'agreement_status', 'onboarding_status',
+  // Rural fee structure (0158) — SOP Rural Rental Management §7 Step 6.
+  'leasing_fee', 'marketing_budget', 'early_termination_fee', 'exclusive_until',
   // Agreement commercials + joint owner (0040)
   'repair_budget_max', 'termination_notice_days', 'security_money_amount', 'advance_rent_amount',
   'service_charge_amount', 'agreement_start_date',

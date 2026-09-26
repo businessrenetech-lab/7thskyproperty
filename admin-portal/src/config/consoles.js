@@ -1309,6 +1309,10 @@ export const RURAL_RENT_NAV = [
     '/property-management',
     '/rural/rent',
   ),
+  { key: 'rural-land', label: 'Land & Ownership', items: [
+    { to: '/rural/rent/land-records', label: 'Land Records', icon: Ruler },
+    { to: '/rural/rent/ownership', label: 'Ownership Verification', icon: ShieldCheck },
+  ] },
   { key: 'rural-sop', label: 'SOP Dashboards', items: [
     { to: '/rural/rent/dashboards', label: 'Rural Rent Dashboards', icon: BarChart3 },
   ] },

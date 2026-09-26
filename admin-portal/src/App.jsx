@@ -153,6 +153,8 @@ import BusinessRentConsole from './screens/BusinessRentConsole';
 import RuralRentConsole from './screens/RuralRentConsole';
 import RuralSourcing from './screens/rural/RuralSourcing';
 import RuralRentDashboards from './screens/rural/RuralRentDashboards';
+import RuralLandRecords from './screens/rural/RuralLandRecords';
+import RuralOwnershipVerification from './screens/rural/RuralOwnershipVerification';
 import BrmAgreements from './screens/sales/BrmAgreements';
 import BtmAgreements from './screens/sales/BtmAgreements';
 import BusinessRegistrationConsole from './screens/BusinessRegistrationConsole';
@@ -1608,6 +1610,8 @@ export default function App() {
               <Route path="/rural/rent/agency-income" element={<AgencyIncome />} />
               <Route path="/rural/rent/sourcing" element={<RuralSourcing />} />
               <Route path="/rural/rent/dashboards" element={<RuralRentDashboards />} />
+              <Route path="/rural/rent/land-records" element={<RuralLandRecords />} />
+              <Route path="/rural/rent/ownership" element={<RuralOwnershipVerification />} />
               {/* The two rural agreement builders (SSPC-RPRMS-RURAL-01 and
                   SSPC-RPTMS-RURAL-01) and the rural rent price schedule. */}
               <Route path="/rural/rent/agreements" element={<RprmAgreements category="rural" />} />

@@ -41,6 +41,13 @@ const PropertyOwnerProfile = sequelize.define('PropertyOwnerProfile', {
   owner_obligations_accepted: { type: DataTypes.BOOLEAN, defaultValue: false },
   indemnity_accepted: { type: DataTypes.BOOLEAN, defaultValue: false },
   management_commission: { type: DataTypes.DECIMAL(6, 2), defaultValue: 5 },
+  // Rural fee structure (0158) — SOP Rural Rental Management §7 Step 6. The other
+  // fees it names (management commission, onboarding fee, termination notice)
+  // already exist above.
+  leasing_fee: DataTypes.DECIMAL(15, 2),
+  marketing_budget: DataTypes.DECIMAL(15, 2),
+  early_termination_fee: DataTypes.DECIMAL(15, 2),
+  exclusive_until: DataTypes.DATEONLY,
   onboarding_fee: DataTypes.DECIMAL(15, 2),
   maintenance_responsibility: DataTypes.STRING,
   // Agreement commercials (0040) — feed the landlord management agreement.
