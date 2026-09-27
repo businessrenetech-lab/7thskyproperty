@@ -287,10 +287,20 @@ async function dashboards() {
 async function publicSurface() {
   console.log('\n-- The public website surface --');
 
-  // Publishing is what makes a listing public; an unpublished one must stay out.
+  /*
+   * The publish gate, tested in both directions.
+   *
+   * A property created with status 'available' is published automatically —
+   * property.controller sets is_published and listing_status 'active' when the
+   * caller does not say otherwise — so the fixture is already public here. It is
+   * un-published first, or the "unpublished stays out" check tests nothing.
+   */
+  const hide = await req('PUT', `/api/properties/${propertyId}`, { body: { is_published: false, listing_status: 'draft', status: 'available' } });
+  ok(hide.status === 200, 'the rural property can be un-published', `HTTP ${hide.status}`);
   const unpublished = await req('GET', `/api/public-website/properties?category=rural&mouza=${LAND.mouza}`, { noAuth: true });
   ok(!(unpublished.body?.data || []).some((p) => p.id === propertyId),
-    'an unpublished rural property is not on the public site');
+    'an un-published rural property is not on the public site',
+    `${(unpublished.body?.data || []).length} row(s) matched the mouza`);
 
   const pub = await req('PUT', `/api/properties/${propertyId}`, { body: { is_published: true } });
   ok(pub.status === 200, 'the rural property is published', `HTTP ${pub.status}`);
@@ -308,9 +318,11 @@ async function publicSurface() {
   ok(!(wrong.body?.data || []).some((p) => p.id === propertyId), 'a wrong mouza excludes it');
 
   // The card carries the land record a buyer searches on.
-  for (const f of ['upazila', 'union_name', 'village', 'mouza', 'land_area_decimal', 'current_use']) {
-    ok(mine && mine[f] !== undefined && mine[f] !== null, `the public card carries ${f}`, String(mine?.[f]));
+  for (const f of ['upazila', 'union_name', 'village', 'mouza', 'current_use']) {
+    ok(mine && String(mine[f]) === String(LAND[f]), `the public card carries ${f}`, String(mine?.[f]));
   }
+  ok(mine && Number(mine.land_area_decimal) === Number(LAND.land_area_decimal),
+    'the public card carries land_area_decimal', String(mine?.land_area_decimal));
   // And must NOT carry the two parcel identifiers.
   for (const f of ['khatiyan', 'dag']) {
     ok(mine && !(f in mine), `the public card withholds ${f}`, f in (mine || {}) ? 'LEAKED' : 'withheld');
@@ -325,7 +337,10 @@ async function publicSurface() {
   ok(detail.status === 200, 'the public detail page answers', `HTTP ${detail.status}`);
   const d = detail.body?.data || {};
   ok(d.mouza === LAND.mouza, 'the detail page carries the mouza', d.mouza);
-  ok(String(d.land_area_decimal) === String(LAND.land_area_decimal), 'and the land area', String(d.land_area_decimal));
+  // A DECIMAL column round-trips as a string with its full scale ("48.250"),
+  // so this compares numbers.
+  ok(Number(d.land_area_decimal) === Number(LAND.land_area_decimal), 'and the land area',
+    `${d.land_area_decimal} == ${LAND.land_area_decimal}`);
   for (const f of ['khatiyan', 'dag']) {
     ok(!(f in d), `the detail page withholds ${f}`);
   }
