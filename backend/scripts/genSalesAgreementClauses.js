@@ -18,6 +18,8 @@ const JOBS = [
   { txt: 'Business Rental Management Service Agreement - V0.2.txt', out: 'brmClauses.js' },
   { txt: 'Business Tenancy Management Service Agreement - V0.2.txt', out: 'btmClauses.js' },
   { txt: 'Business Registration Customer Service Agreement - V0.2.txt', out: 'brgClauses.js' },
+  { txt: 'Rural Property Sale Service Agreement - V0.2.txt', out: 'rlpssClauses.js' },
+  { txt: 'Rural Property Purchase Service Agreement - V0.2.txt', out: 'rlppsClauses.js' },
 ];
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -78,7 +80,13 @@ const SUBHEADS = new Set([
   'Corporate Compliance Services',
   'Business Advisory Services',
   'Registration & Documentation Services',
-  'Ongoing Compliance Services'
+  'Ongoing Compliance Services',
+  // Rural Property Sale (SSPC-RLPSS-01) / Purchase (SSPC-RLPPS-01) service groups
+  'Property Assessment & Sale Planning',
+  'Buyer & Sale Coordination',
+  'Sales Commission',
+  'Rural Property Sale Services',
+  'Rural Property Purchase Services'
 ]);
 
 // Turn a run of body lines into HTML: properly grouped bullet lists, checkbox
