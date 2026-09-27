@@ -22,6 +22,15 @@ const PropertyRisk = sequelize.define('PropertyRisk', {
   review_date: DataTypes.DATEONLY,
   status: { type: DataTypes.ENUM('open', 'monitoring', 'mitigated', 'closed'), defaultValue: 'open' },
   created_by: DataTypes.INTEGER,
+  // Dispute management (0159) — a dispute is a risk with a lifecycle. `status` is
+  // how the risk is managed; `dispute_stage` is where the dispute has got to.
+  is_dispute: { type: DataTypes.BOOLEAN, defaultValue: false },
+  dispute_stage: DataTypes.STRING(20),
+  escalated_at: DataTypes.DATE,
+  escalated_to: DataTypes.STRING(120),
+  resolved_on: DataTypes.DATEONLY,
+  resolution: DataTypes.TEXT,
+  stage_history: { type: DataTypes.JSON, defaultValue: [] },
 }, { tableName: 'property_risks', underscored: true });
 
 PropertyRisk.belongsTo(Property, { as: 'property', foreignKey: 'property_id' });

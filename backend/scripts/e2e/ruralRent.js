@@ -11,7 +11,7 @@
  */
 const { login, req, ok, finish, STAMP } = require('./httpHarness');
 
-const made = { properties: [], applications: [], assessments: [], protections: [], entries: [] };
+const made = { properties: [], applications: [], assessments: [], protections: [], entries: [], risks: [] };
 
 const LAND = {
   district: 'Cumilla', upazila: 'Barura', union_name: 'Payalgachha', village: 'Ramnagar',
@@ -145,6 +145,135 @@ async function dashboards() {
   ok((types.find((t) => t.type === 'Fishery')?.count || 0) >= 1, 'the fixture is counted under its own type');
 }
 
+async function disputes() {
+  console.log('\n— Disputes: a risk with a lifecycle —');
+  const propertyId = made.properties[made.properties.length - 1];
+
+  const junk = await req('POST', '/api/property-risks/disputes', {
+    body: { property_id: propertyId, risk_category: 'Not A Category', description: 'x', branch_id: 1 },
+  });
+  ok(junk.status === 400, 'an unknown dispute category is refused', `HTTP ${junk.status}`);
+
+  const d = await req('POST', '/api/property-risks/disputes', {
+    body: {
+      property_id: propertyId, risk_category: 'Boundary Dispute',
+      description: `Neighbour claims 4 decimal ${STAMP}`, likelihood: 'Medium', impact: 'High', branch_id: 1,
+    },
+  });
+  ok(d.status === 201, 'dispute raised', `HTTP ${d.status}`);
+  const id = d.body?.data?.id;
+  if (id) made.risks.push(id);
+  ok(d.body?.data?.dispute_stage === 'raised', 'it opens at raised', d.body?.data?.dispute_stage);
+  ok((d.body?.data?.stage_history || []).length === 1, 'the opening history entry exists');
+
+  // The stage machine is enforced by the API, not merely by the screen.
+  const jump = await req('PATCH', `/api/property-risks/${id}/dispute-stage`, { body: { dispute_stage: 'resolved' } });
+  ok(jump.status === 400, 'raised cannot jump straight to resolved', jump.body?.error);
+
+  await req('PATCH', `/api/property-risks/${id}/dispute-stage`, { body: { dispute_stage: 'under_review', note: 'Land office records pulled' } });
+  const noName = await req('PATCH', `/api/property-risks/${id}/dispute-stage`, { body: { dispute_stage: 'escalated' } });
+  ok(noName.status === 400, 'escalating without a recipient is refused', noName.body?.error);
+  const esc = await req('PATCH', `/api/property-risks/${id}/dispute-stage`, {
+    body: { dispute_stage: 'escalated', escalated_to: 'AC Land, Barura' },
+  });
+  ok(esc.status === 200 && !!esc.body?.data?.escalated_at, 'escalated, with a timestamp', esc.body?.data?.escalated_at);
+
+  const noRes = await req('PATCH', `/api/property-risks/${id}/dispute-stage`, { body: { dispute_stage: 'resolved' } });
+  ok(noRes.status === 400, 'resolving without a resolution is refused', noRes.body?.error);
+  const res3 = await req('PATCH', `/api/property-risks/${id}/dispute-stage`, {
+    body: { dispute_stage: 'resolved', resolution: 'Boundary re-surveyed' },
+  });
+  ok(res3.status === 200 && !!res3.body?.data?.resolved_on, 'resolved, with a date', res3.body?.data?.resolved_on);
+  const closed = await req('PATCH', `/api/property-risks/${id}/dispute-stage`, { body: { dispute_stage: 'closed' } });
+  ok(closed.body?.data?.status === 'closed', 'closing the dispute closes the risk', closed.body?.data?.status);
+  const after = await req('PATCH', `/api/property-risks/${id}/dispute-stage`, { body: { dispute_stage: 'raised' } });
+  ok(after.status === 400, 'nothing leaves closed', after.body?.error);
+
+  const list = await req('GET', '/api/property-risks/disputes');
+  ok((list.body?.data || []).every((x) => x.is_dispute), 'the dispute list contains only disputes');
+  ok((list.body?.meta?.categories || []).length === 8, 'the eight SOP categories are offered');
+  const mine = (list.body?.data || []).find((x) => x.id === id);
+  ok(Array.isArray(mine?.stage_history) && mine.stage_history.length === 5,
+    'the whole trail survived the JSON round trip', String(mine?.stage_history?.length));
+
+  // An ordinary risk is untouched by any of this.
+  const plain = await req('POST', '/api/property-risks', {
+    body: { property_id: propertyId, risk_category: 'Flood', description: `plain risk ${STAMP}`, branch_id: 1 },
+  });
+  if (plain.body?.data?.id) made.risks.push(plain.body.data.id);
+  ok(!plain.body?.data?.is_dispute, 'an ordinary risk is not a dispute');
+  const list2 = await req('GET', '/api/property-risks/disputes');
+  ok(!(list2.body?.data || []).some((x) => x.id === plain.body?.data?.id), 'it stays out of the dispute list');
+  const move = await req('PATCH', `/api/property-risks/${plain.body?.data?.id}/dispute-stage`, { body: { dispute_stage: 'under_review' } });
+  ok(move.status === 400, 'and cannot be transitioned', move.body?.error);
+}
+
+async function serviceRegisters() {
+  console.log('\n— The five service registers —');
+  const defs = await req('GET', '/api/registers/definitions');
+  const all = defs.body?.data || [];
+  const find = (key, vertical) => all.find((d) => d.register_key === key && d.vertical_key === vertical);
+
+  const expected = [
+    ['complaint_register', 'rural_rent'],
+    ['communication_log', 'rural_rent'],
+    ['owner_feedback_register', 'rural_rent'],
+    ['closure_register', 'rural_rent'],
+    ['tenant_feedback_register', 'rural_tenancy'],
+  ];
+  for (const [key, vertical] of expected) {
+    ok(!!find(key, vertical), `${vertical}/${key} is defined`);
+  }
+
+  // Retention is a COLUMN on closure, not a register of its own.
+  const closure = find('closure_register', 'rural_rent');
+  const cols = (closure?.columns || []).map((c) => c.key);
+  ok(cols.includes('retention_until'), 'closure carries the retention date', cols.join(','));
+  ok(!all.some((d) => /retention/.test(d.register_key)), 'retention is not a register of its own');
+
+  const complaint = await req('POST', '/api/registers/entries', {
+    body: {
+      register_definition_id: find('complaint_register', 'rural_rent').id, vertical_key: 'rural_rent',
+      property_id: made.properties[made.properties.length - 1],
+      data: { date: '2026-09-27', party: 'Tenant', complaint: `Water pump down ${STAMP}`, severity: 'High', action_taken: 'Provider dispatched' },
+    },
+  });
+  ok(complaint.status === 201, 'a complaint is recorded', `HTTP ${complaint.status}`);
+  if (complaint.body?.data?.id) made.entries.push(complaint.body.data.id);
+
+  const closureEntry = await req('POST', '/api/registers/entries', {
+    body: {
+      register_definition_id: closure.id, vertical_key: 'rural_rent',
+      data: { project: `E2E rural closure ${STAMP}`, closed_on: '2026-09-27', final_reconciliation: 'Nil balance', records_archived: 'Yes', retention_until: '2031-09-27' },
+    },
+  });
+  ok(closureEntry.status === 201, 'a closure is recorded with its retention date', `HTTP ${closureEntry.status}`);
+  ok(closureEntry.body?.data?.data?.retention_until === '2031-09-27', 'the retention date persisted',
+    closureEntry.body?.data?.data?.retention_until);
+  if (closureEntry.body?.data?.id) made.entries.push(closureEntry.body.data.id);
+
+  const tf = find('tenant_feedback_register', 'rural_tenancy');
+  const tfEntries = await req('GET', `/api/registers/entries?register_definition_id=${tf.id}&vertical_key=rural_tenancy`);
+  ok(tfEntries.status === 200, 'tenant feedback answers on rural_tenancy', `HTTP ${tfEntries.status}`);
+
+  // Other service lines own their OWN complaint_register and communication_log
+  // on their own verticals — that is the design, not a leak. What must hold is
+  // that the rural definitions are keyed to rural verticals, and that a rural
+  // query returns no other vertical's entries.
+  const duplicated = all.filter((d) => ['complaint_register', 'communication_log'].includes(d.register_key));
+  ok(duplicated.length > 5, 'each service line keeps its own complaint and communication registers',
+    `${duplicated.length} across ${new Set(duplicated.map((d) => d.vertical_key)).size} verticals`);
+  for (const [key, vertical] of expected) {
+    const mine = all.filter((d) => d.register_key === key && d.vertical_key === vertical);
+    ok(mine.length === 1, `${vertical}/${key} is defined exactly once`, String(mine.length));
+  }
+
+  const ruralEntries = await req('GET', '/api/registers/entries?category=rural&limit=500');
+  const foreign = (ruralEntries.body?.data || []).filter((e) => !/^rural_/.test(String(e.vertical_key || '')));
+  ok(foreign.length === 0, 'a rural entry query returns only rural verticals',
+    [...new Set(foreign.map((e) => e.vertical_key))].join(',') || 'clean');
+}
+
 async function isolation() {
   console.log('\n— The other three consoles are unmoved —');
   for (const cat of ['residential', 'commercial', 'business']) {
@@ -162,6 +291,7 @@ async function isolation() {
 async function cleanup() {
   console.log('\n— Fixture cleanup (this DB is the production DB) —');
   for (const id of made.protections) await req('PUT', `/api/rent-protections/${id}`, { body: { status: 'closed' } });
+  for (const id of made.risks) await req('DELETE', `/api/property-risks/${id}`);
   for (const id of made.applications) await req('DELETE', `/api/tenant-applications/${id}`);
   for (const id of made.properties) await req('DELETE', `/api/properties/${id}`);
 
@@ -169,7 +299,18 @@ async function cleanup() {
   const stragglers = (left.body?.data || []).filter((p) => String(p.title || '').includes(STAMP));
   ok(stragglers.length === 0, 'no fixture properties left behind',
     stragglers.map((p) => p.property_code).join(',') || 'clean');
-  console.log(`  NOTE: register entries and the protection record are closed, not deleted — ${made.entries.length} entry id(s), ${made.protections.length} protection id(s). Remove with a DB script if they matter.`);
+  const leftDisputes = await req('GET', '/api/property-risks/disputes');
+  ok(!(leftDisputes.body?.data || []).some((d) => String(d.description || '').includes(STAMP)),
+    'no fixture disputes left behind');
+  // Register entries used to be left behind. They are removed now — the
+  // protection record has no delete endpoint, so it stays closed instead.
+  for (const id of made.entries) await req('DELETE', `/api/registers/entries/${id}`);
+  const ruralEntries = await req('GET', '/api/registers/entries?category=rural&limit=500');
+  const strays = (ruralEntries.body?.data || [])
+    .filter((e) => JSON.stringify(e.data || {}).includes(STAMP));
+  ok(strays.length === 0, 'no fixture register entries left behind',
+    strays.map((e) => e.id).join(',') || 'clean');
+  console.log(`  NOTE: the protection record is closed, not deleted — ${made.protections.length} id(s); there is no delete endpoint for it.`);
 }
 
 (async () => {
@@ -179,6 +320,8 @@ async function cleanup() {
   await flow();
   await agreements();
   await dashboards();
+  await disputes();
+  await serviceRegisters();
   await isolation();
   await cleanup();
   finish();

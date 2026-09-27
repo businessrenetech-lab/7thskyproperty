@@ -1319,6 +1319,10 @@ export const RURAL_RENT_NAV = [
   { key: 'rural-sourcing', label: 'Tenant Sourcing', items: [
     { to: '/rural/rent/sourcing', label: 'Briefs & Shortlists', icon: ClipboardList },
   ] },
+  { key: 'rural-service', label: 'Service & Disputes', items: [
+    { to: '/rural/rent/disputes', label: 'Disputes', icon: AlertCircle },
+    { to: '/rural/rent/service-registers', label: 'Service Registers', icon: MessageSquare },
+  ] },
   { key: 'rural-switch', label: 'Switch', items: [
     { to: '/rural/sell', label: '→ Rural Sale', icon: Trees },
   ] },

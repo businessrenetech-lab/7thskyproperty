@@ -3,5 +3,10 @@ const router = express.Router();
 const ctrl = require('../controllers/propertyRisk.controller');
 const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
 router.use(authMiddleware, roleMiddleware(['super_admin', 'branch_admin', 'property_manager', 'accounts']));
+// Disputes are risks with a lifecycle. '/disputes' must precede '/:id' or the
+// id route swallows it.
+router.get('/disputes', ctrl.listDisputes);
+router.post('/disputes', ctrl.createDispute);
+router.patch('/:id/dispute-stage', ctrl.moveDisputeStage);
 router.get('/', ctrl.list); router.post('/', ctrl.create); router.get('/:id', ctrl.getOne); router.put('/:id', ctrl.update); router.delete('/:id', ctrl.remove);
 module.exports = router;
