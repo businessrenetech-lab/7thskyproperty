@@ -7,6 +7,10 @@ assert.ok(verticalsForCategory('residential').includes('properties_sale'));
 assert.ok(verticalsForCategory('commercial').includes('commercial_rent'));
 assert.ok(verticalsForCategory('business').includes('business_sale'));
 assert.ok(verticalsForCategory('rural').includes('rural_rent'));
+// All four rural verticals: the two rent pipelines and the two sale pipelines.
+for (const v of ['rural_rent', 'rural_tenancy', 'rural_sale', 'rural_purchase']) {
+  assert.ok(verticalsForCategory('rural').includes(v), `rural owns ${v}`);
+}
 
 // No vertical belongs to two consoles — that would leak projects both ways.
 const seen = new Map();

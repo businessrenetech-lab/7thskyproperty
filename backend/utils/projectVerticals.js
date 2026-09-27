@@ -15,8 +15,7 @@ const VERTICALS_BY_CATEGORY = {
   residential: ['leasing', 'short_stay', 'properties', 'properties_sale', 'residential_purchase'],
   commercial: ['commercial_rent', 'commercial_sale'],
   business: ['business_rent', 'business_sale', 'business_purchase'],
-  // rural_tenancy arrives with the Rural plan; naming it early is harmless.
-  rural: ['rural_rent', 'rural_sale', 'rural_tenancy'],
+  rural: ['rural_rent', 'rural_sale', 'rural_tenancy', 'rural_purchase'],
 };
 
 /** The verticals for a console category, or null when the value is not a console. */
