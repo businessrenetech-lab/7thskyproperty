@@ -14,7 +14,7 @@
  */
 const { login, req, ok, finish, STAMP } = require('./httpHarness');
 
-const made = { properties: [], contacts: [], enquiries: [], salesEnquiries: [], media: [] };
+const made = { properties: [], contacts: [], enquiries: [], salesEnquiries: [], media: [], entries2: [] };
 let saleId = null;
 let rentId = null;
 
@@ -280,6 +280,108 @@ async function pipelines() {
   }
 }
 
+async function marketingTemplates() {
+  console.log('\n-- Marketing templates, scoped to the console --');
+  const com = await req('GET', '/api/marketing/templates?property_category=commercial');
+  ok(com.status === 200, 'the commercial template list answers', `HTTP ${com.status}`);
+  const comRows = Array.isArray(com.body) ? com.body : (com.body?.data || []);
+  ok(comRows.length > 0, 'it returns templates', `${comRows.length}`);
+
+  // Every row must be commercial or category-agnostic. A residential-specific
+  // template in the commercial console is the bug this scoping exists to stop.
+  const wrong = comRows.filter((t) => t.property_category && t.property_category !== 'commercial');
+  ok(wrong.length === 0, 'no other category leaks into the commercial list',
+    wrong.map((t) => `${t.template_code}=${t.property_category}`).join(', ') || 'clean');
+
+  const ownCommercial = comRows.filter((t) => t.property_category === 'commercial');
+  ok(ownCommercial.length >= 8, 'the commercial set is present', `${ownCommercial.length} commercial template(s)`);
+  ok(comRows.some((t) => t.property_category === null || t.property_category === undefined),
+    'the category-agnostic templates are still offered');
+
+  // The residential-specific ones must NOT be here, by name.
+  for (const code of ['TPL-NL-01', 'TPL-NL-02', 'TPL-SU-04', 'TPL-BN-02']) {
+    ok(!comRows.some((t) => t.template_code === code),
+      `the residential template ${code} is not in the commercial console`);
+  }
+  // And the commercial ones must not be in the residential console.
+  const res = await req('GET', '/api/marketing/templates?property_category=residential');
+  const resRows = Array.isArray(res.body) ? res.body : (res.body?.data || []);
+  ok(!resRows.some((t) => String(t.template_code).startsWith('TPL-COM-')),
+    'no commercial template appears in the residential console');
+  ok(resRows.some((t) => t.template_code === 'TPL-NL-01'),
+    'the residential console still has its own templates');
+
+  // No scope at all -> unfiltered, exactly as before this change.
+  const all = await req('GET', '/api/marketing/templates');
+  const allRows = Array.isArray(all.body) ? all.body : (all.body?.data || []);
+  ok(allRows.length >= comRows.length && allRows.length >= resRows.length,
+    'an unscoped request is still unfiltered', `${allRows.length} total`);
+  // An unknown category must not silently return nothing.
+  const junk = await req('GET', '/api/marketing/templates?property_category=nonsense');
+  const junkRows = Array.isArray(junk.body) ? junk.body : (junk.body?.data || []);
+  ok(junkRows.length === allRows.length, 'an unknown category leaves the list unfiltered',
+    `${junkRows.length} vs ${allRows.length}`);
+
+  // A commercial template must actually read as commercial.
+  const office = comRows.find((t) => t.template_code === 'TPL-COM-NL-01');
+  ok(!!office, 'the office-floor template exists');
+  if (office) {
+    const body = `${office.subject} ${office.headline} ${office.body_text || ''}`.toLowerCase();
+    ok(!/bedroom|penthouse|home loan/.test(body), 'it does not talk about bedrooms or home loans');
+  }
+}
+
+async function registers() {
+  console.log('\n-- Commercial registers --');
+  for (const [vertical, expected] of [
+    ['commercial_rent', ['negotiation_register', 'handover_register', 'exit_checklist', 'communication_log']],
+    ['commercial_sale', ['ownership_verification', 'marketing_register', 'negotiation_register',
+      'due_diligence_register', 'communication_log', 'closure_register']],
+  ]) {
+    const r = await req('GET', `/api/registers/definitions?vertical_key=${vertical}`);
+    ok(r.status === 200, `${vertical} definitions answer`, `HTTP ${r.status}`);
+    const defs = r.body?.data || [];
+    for (const key of expected) {
+      ok(defs.some((d) => d.register_key === key), `${vertical}/${key} is defined`);
+    }
+    // The malformed auto-generated definition must no longer be offered.
+    ok(!defs.some((d) => String(d.register_key).includes('-')),
+      `${vertical} offers no hyphenated register_key`,
+      defs.filter((d) => String(d.register_key).includes('-')).map((d) => d.register_key).join(',') || 'clean');
+  }
+
+  // Write to one on each side and read it back, so the definitions are usable
+  // and not merely present.
+  const defsRent = (await req('GET', '/api/registers/definitions?vertical_key=commercial_rent')).body?.data || [];
+  const handover = defsRent.find((d) => d.register_key === 'handover_register');
+  const h = await req('POST', '/api/registers/entries', {
+    body: {
+      register_definition_id: handover.id, vertical_key: 'commercial_rent', property_id: rentId,
+      data: { date: '2026-09-27', party: `E2E Tenant ${STAMP}`, meter_readings: 'E-4471 / W-882', keys_issued: '3 sets', assets_verified: 'Yes' },
+    },
+  });
+  ok(h.status === 201, 'a handover is recorded on the rent register', `HTTP ${h.status} ${h.body?.error || ''}`);
+  if (h.body?.data?.id) made.entries2.push(h.body.data.id);
+  ok(h.body?.data?.data?.meter_readings === 'E-4471 / W-882', 'the handover detail persisted',
+    h.body?.data?.data?.meter_readings);
+
+  const defsSale = (await req('GET', '/api/registers/definitions?vertical_key=commercial_sale')).body?.data || [];
+  const own = defsSale.find((d) => d.register_key === 'ownership_verification');
+  const o = await req('POST', '/api/registers/entries', {
+    body: {
+      register_definition_id: own.id, vertical_key: 'commercial_sale', property_id: saleId,
+      data: { document: 'Title Deed', required: 'Yes', received: 'Yes', verified: 'Yes', remarks: `e2e ${STAMP}` },
+    },
+  });
+  ok(o.status === 201, 'an ownership document is recorded on the sale register', `HTTP ${o.status}`);
+  if (o.body?.data?.id) made.entries2.push(o.body.data.id);
+
+  // Commercial entries must not appear on another console's verticals.
+  const foreign = await req('GET', '/api/registers/entries?category=rural&limit=500');
+  ok(!(foreign.body?.data || []).some((e) => JSON.stringify(e.data || {}).includes(STAMP)),
+    'no commercial register entry leaked onto the rural verticals');
+}
+
 async function dashboards() {
   console.log('\n-- The commercial dashboards and money views --');
   const checks = [
@@ -327,6 +429,7 @@ async function isolation() {
 
 async function cleanup() {
   console.log('\n-- Fixture cleanup (this DB is the production DB) --');
+  for (const id of made.entries2) await req('DELETE', `/api/registers/entries/${id}`);
   for (const [pid, mid] of made.media) await req('DELETE', `/api/properties/${pid}/media/${mid}`);
   for (const id of made.enquiries) await req('DELETE', `/api/rental-enquiries/${id}`);
   for (const id of made.salesEnquiries) await req('DELETE', `/api/sales-enquiries/${id}`);
@@ -358,6 +461,12 @@ async function cleanup() {
   const reLeft = (re.body?.data || []).filter((x) => String(x.enquirer_name || x.name || '').includes(String(STAMP)));
   ok(reLeft.length === 0, 'no fixture rental enquiries left behind', reLeft.map((x) => x.id).join(',') || 'clean');
 
+  for (const v of ['commercial_rent', 'commercial_sale']) {
+    const e = await req('GET', `/api/registers/entries?vertical_key=${v}&limit=500`);
+    const strays = (e.body?.data || []).filter((x) => JSON.stringify(x.data || {}).includes(STAMP));
+    ok(strays.length === 0, `no fixture entries left on ${v}`, strays.map((x) => x.id).join(',') || 'clean');
+  }
+
   const se = await req('GET', '/api/sales-enquiries?limit=200');
   const seLeft = (se.body?.data || []).filter((x) => String(x.enquirer_name || x.name || '').includes(String(STAMP)));
   ok(seLeft.length === 0, 'no fixture sales enquiries left behind', seLeft.map((x) => x.id).join(',') || 'clean');
@@ -372,6 +481,8 @@ async function cleanup() {
   await enquiries();
   await agreements();
   await pipelines();
+  await marketingTemplates();
+  await registers();
   await dashboards();
   await isolation();
   await cleanup();
