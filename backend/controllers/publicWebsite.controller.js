@@ -24,7 +24,7 @@ const { generateCode } = require('../utils/codeGenerator');
 const { routeAndEnrol } = require('./salesEnquiry.controller');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
 const { pmCategory } = require('../utils/pmCategory');
-const { isPubliclyVisible, pickPublic } = require('../services/publicPropertyShape');
+const { isPubliclyVisible, pickPublic, RURAL_PUBLIC_FIELDS } = require('../services/publicPropertyShape');
 const PropertyBusinessProfile = require('../models/PropertyBusinessProfile');
 const { applyBusinessTeaser } = require('../services/businessTeaser.service');
 const businessNda = require('../services/businessNda.service');
@@ -131,6 +131,14 @@ exports.getPublishedProperties = asyncHandler(async (req, res) => {
   // Category filter: residential, commercial, rural, business
   if (req.query.category && ['residential', 'commercial', 'rural', 'business'].includes(String(req.query.category).toLowerCase())) {
     andConditions.push({ category: String(req.query.category).toLowerCase() });
+  }
+
+  // Rural land search. A rural buyer searches by upazila and mouza, not by a
+  // street address; migration 0156 indexed both. Exact match, server side — a
+  // client-side filter over one page of results is not a search.
+  for (const key of ['upazila', 'mouza']) {
+    const v = String(req.query[key] || '').trim();
+    if (v) andConditions.push({ [key]: v });
   }
 
   // Listing type: sale, rent, lease, short_term
@@ -327,6 +335,11 @@ exports.getPublishedProperties = asyncHandler(async (req, res) => {
         ['24/7 Security & CCTV', 'Backup Generator', 'Dedicated Parking', 'High-Speed Elevators']
       ),
       nearby_places: parseArray(plain.nearby_places, []),
+      // Rural cards carry the land record instead of a street shape. khatiyan and
+      // dag are withheld by publicPropertyShape — see the note there.
+      ...(String(plain.category) === 'rural'
+        ? Object.fromEntries(RURAL_PUBLIC_FIELDS.filter((k) => plain[k] !== undefined).map((k) => [k, plain[k]]))
+        : {}),
       featured_image_url: plain.featured_image_url || plain.media?.[0]?.file_url || null,
       media: plain.media || [],
       is_featured: plain.is_featured,

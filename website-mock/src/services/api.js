@@ -59,6 +59,9 @@ export const websiteApi = {
       if (params.balconies && params.balconies !== 'any') query.append('balconies', params.balconies);
       if (params.min_price) query.append('min_price', params.min_price);
       if (params.max_price) query.append('max_price', params.max_price);
+      // Rural land search — exact match on the indexed columns (migration 0156).
+      if (params.upazila) query.append('upazila', params.upazila);
+      if (params.mouza) query.append('mouza', params.mouza);
 
       const res = await request(`/public-website/properties?${query.toString()}`);
       if (res.data && res.data.length > 0) {
@@ -78,6 +81,11 @@ export const websiteApi = {
             try { features = JSON.parse(features); } catch { features = []; }
           }
           if (!Array.isArray(features)) features = [];
+
+          // A rural listing is a parcel: it has no rooms, and it is placed by
+          // mouza and upazila rather than by an area and a city.
+          const isRural = String(p.category || '') === 'rural';
+          const ruralLocation = [p.mouza, p.upazila, p.district].filter(Boolean).join(', ');
 
           const pStatus = String(p.status || '').toLowerCase();
           const pListingStatus = String(p.listing_status || '').toLowerCase();
@@ -119,12 +127,25 @@ export const websiteApi = {
             currency: p.currency || 'BDT',
             priceDisplay: displayPrice,
             priceUnit: p.price_unit || (p.listing_type === 'sale' ? 'Total' : isShort ? 'per night' : 'per month'),
-            location: `${p.area || ''}, ${p.city || p.district || ''}`.replace(/^,\s*|,\s*$/g, '') || 'Prime Sector',
-            suburb: p.area || 'Executive Sector',
-            beds: p.business ? 0 : (p.bedrooms || 3),
-            baths: p.business ? 0 : (p.bathrooms || 2),
-            bedrooms: p.business ? 0 : (p.bedrooms || 3),
-            bathrooms: p.business ? 0 : (p.bathrooms || 2),
+            location: isRural
+              ? (ruralLocation || 'Rural Bangladesh')
+              : (`${p.area || ''}, ${p.city || p.district || ''}`.replace(/^,\s*|,\s*$/g, '') || 'Prime Sector'),
+            suburb: isRural ? (p.upazila || p.district || 'Rural') : (p.area || 'Executive Sector'),
+            // Rooms are not invented for a parcel; the default of 3 beds / 2 baths
+            // would otherwise print on farmland.
+            beds: (p.business || isRural) ? 0 : (p.bedrooms || 3),
+            baths: (p.business || isRural) ? 0 : (p.bathrooms || 2),
+            bedrooms: (p.business || isRural) ? 0 : (p.bedrooms || 3),
+            bathrooms: (p.business || isRural) ? 0 : (p.bathrooms || 2),
+            // The land record, as the public API returns it. khatiyan and dag are
+            // withheld server side and deliberately absent here.
+            upazila: p.upazila || null,
+            union_name: p.union_name || null,
+            village: p.village || null,
+            mouza: p.mouza || null,
+            land_area_decimal: p.land_area_decimal || null,
+            current_use: p.current_use || null,
+            district: p.district || null,
             balconies: p.balconies || 2,
             cars: p.parking || 1,
             carSpaces: p.parking || 1,

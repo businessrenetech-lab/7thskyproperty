@@ -284,6 +284,80 @@ async function dashboards() {
   ok(typeof buyer.body?.data?.shortlisted === 'number', 'the buyer dashboard reads its registers');
 }
 
+async function publicSurface() {
+  console.log('\n-- The public website surface --');
+
+  // Publishing is what makes a listing public; an unpublished one must stay out.
+  const unpublished = await req('GET', `/api/public-website/properties?category=rural&mouza=${LAND.mouza}`, { noAuth: true });
+  ok(!(unpublished.body?.data || []).some((p) => p.id === propertyId),
+    'an unpublished rural property is not on the public site');
+
+  const pub = await req('PUT', `/api/properties/${propertyId}`, { body: { is_published: true } });
+  ok(pub.status === 200, 'the rural property is published', `HTTP ${pub.status}`);
+
+  // The two land filters, server side on the indexed columns.
+  const byMouza = await req('GET', `/api/public-website/properties?category=rural&mouza=${LAND.mouza}`, { noAuth: true });
+  ok(byMouza.status === 200, 'the public list answers a mouza search', `HTTP ${byMouza.status}`);
+  const mine = (byMouza.body?.data || []).find((p) => p.id === propertyId);
+  ok(!!mine, 'the published rural property is findable by mouza');
+  ok((byMouza.body?.data || []).every((p) => p.mouza === LAND.mouza), 'the mouza filter is exact');
+
+  const byUpazila = await req('GET', `/api/public-website/properties?category=rural&upazila=${LAND.upazila}`, { noAuth: true });
+  ok((byUpazila.body?.data || []).some((p) => p.id === propertyId), 'and findable by upazila');
+  const wrong = await req('GET', '/api/public-website/properties?category=rural&mouza=NoSuchMouza', { noAuth: true });
+  ok(!(wrong.body?.data || []).some((p) => p.id === propertyId), 'a wrong mouza excludes it');
+
+  // The card carries the land record a buyer searches on.
+  for (const f of ['upazila', 'union_name', 'village', 'mouza', 'land_area_decimal', 'current_use']) {
+    ok(mine && mine[f] !== undefined && mine[f] !== null, `the public card carries ${f}`, String(mine?.[f]));
+  }
+  // And must NOT carry the two parcel identifiers.
+  for (const f of ['khatiyan', 'dag']) {
+    ok(mine && !(f in mine), `the public card withholds ${f}`, f in (mine || {}) ? 'LEAKED' : 'withheld');
+  }
+  // Nor anything private.
+  for (const f of ['owner_contact_id', 'remarks', 'management_fee_pct', 'branch_id']) {
+    ok(mine && !(f in mine), `no private field on the public card: ${f}`);
+  }
+
+  // The detail endpoint tells the same story.
+  const detail = await req('GET', `/api/public-website/properties/${mine?.slug || propertyId}`, { noAuth: true });
+  ok(detail.status === 200, 'the public detail page answers', `HTTP ${detail.status}`);
+  const d = detail.body?.data || {};
+  ok(d.mouza === LAND.mouza, 'the detail page carries the mouza', d.mouza);
+  ok(String(d.land_area_decimal) === String(LAND.land_area_decimal), 'and the land area', String(d.land_area_decimal));
+  for (const f of ['khatiyan', 'dag']) {
+    ok(!(f in d), `the detail page withholds ${f}`);
+  }
+
+  // A residential published property's public payload is unchanged: no rural
+  // field leaks into it, which is the allowlist staying closed.
+  const res = await req('GET', '/api/public-website/properties?category=residential&limit=5', { noAuth: true });
+  const resRow = (res.body?.data || [])[0];
+  if (resRow) {
+    for (const f of ['upazila', 'union_name', 'village', 'mouza', 'land_area_decimal', 'current_use', 'khatiyan', 'dag']) {
+      ok(!(f in resRow), `no ${f} on a residential public card`);
+    }
+  } else {
+    ok(true, 'no published residential property to compare against (skipped)');
+  }
+}
+
+async function portal() {
+  console.log('\n-- The portal still answers --');
+  /*
+   * The linked rural-owner payload (land record + the seller sections) cannot be
+   * driven from here: it needs a portal USER account linked to an owner contact,
+   * which means creating a login. What is checked here is that the endpoint still
+   * answers and that an unlinked user gets a clean unlinked response rather than
+   * a crash from the new query attributes and the sellerSections join.
+   */
+  const r = await req('GET', '/api/portal/dashboard');
+  ok(r.status === 200, 'the portal dashboard answers', `HTTP ${r.status} ${r.body?.error || ''}`);
+  ok(typeof r.body?.data?.linked === 'boolean', 'it reports linkage', String(r.body?.data?.linked));
+  ok(!!r.body?.data?.sections, 'it returns a sections object');
+}
+
 async function isolation() {
   console.log('\n-- The other consoles are unmoved --');
   for (const cat of ['residential', 'commercial', 'business']) {
@@ -337,6 +411,8 @@ async function cleanup() {
   await disputes();
   await protection();
   await dashboards();
+  await publicSurface();
+  await portal();
   await isolation();
   await cleanup();
   finish();

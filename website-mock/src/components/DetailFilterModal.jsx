@@ -27,6 +27,10 @@ export default function DetailFilterModal({ isOpen, onClose, onApply, initialFil
   // Primary Filters
   const [purpose, setPurpose] = useState(initialFilters.purpose || 'all'); // 'all' | 'Sale' | 'Rent' | 'Guest House / Short Term Stay' | 'Business Buy'
   const [category, setCategory] = useState(initialFilters.category || 'all'); // 'all' | 'residential' | 'commercial' | 'rural' | 'business'
+  // Rural land search: a rural buyer looks for a mouza in an upazila, not a
+  // street. Both columns are indexed (migration 0156) and filtered server side.
+  const [upazila, setUpazila] = useState(initialFilters.upazila || '');
+  const [mouza, setMouza] = useState(initialFilters.mouza || '');
   const [status, setStatus] = useState(initialFilters.status || 'all'); // 'all' | 'available' | 'under_offer' | 'sold' | 'under_application' | 'leased'
   
   // Specs
@@ -91,6 +95,10 @@ export default function DetailFilterModal({ isOpen, onClose, onApply, initialFil
       purpose: resolvedPurpose,
       category: resolvedCategory,
       status,
+      // Only meaningful for rural, and cleared otherwise so a leftover mouza does
+      // not silently filter a residential search to nothing.
+      upazila: resolvedCategory === 'rural' ? upazila.trim() : '',
+      mouza: resolvedCategory === 'rural' ? mouza.trim() : '',
       bedrooms: bedrooms !== 'any' ? bedrooms : '',
       bathrooms: bathrooms !== 'any' ? bathrooms : '',
       balconies: balconies !== 'any' ? balconies : '',
@@ -239,6 +247,40 @@ export default function DetailFilterModal({ isOpen, onClose, onApply, initialFil
               })}
             </div>
           </div>
+
+          {/* 4a. Land record — rural only, where rooms do not apply. */}
+          {category === 'rural' && (
+            <div className="space-y-4 pt-5">
+              <label className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400 block">
+                Land Record
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <span className="text-slate-600 font-semibold text-xs">Upazila</span>
+                  <input
+                    type="text"
+                    value={upazila}
+                    onChange={(e) => setUpazila(e.target.value)}
+                    placeholder="e.g. Barura"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#00AEEF]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <span className="text-slate-600 font-semibold text-xs">Mouza</span>
+                  <input
+                    type="text"
+                    value={mouza}
+                    onChange={(e) => setMouza(e.target.value)}
+                    placeholder="e.g. Ramnagar"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#00AEEF]"
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Khatiyan and dag are shared after an enquiry.
+              </p>
+            </div>
+          )}
 
           {/* 4. Beds, Baths, Balconies */}
           {!isShortStay && category !== 'rural' && category !== 'business' && (
