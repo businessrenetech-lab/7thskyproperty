@@ -3,7 +3,8 @@ const { makeController } = require('./propertyControlCrud');
 const { asyncHandler, branchScope, resolveBranchId, pick } = require('../utils/controllerHelpers');
 const { generateCode } = require('../utils/codeGenerator');
 const {
-  canTransition, nextStages, needsAttention, DISPUTE_STAGES, RURAL_DISPUTE_CATEGORIES,
+  canTransition, nextStages, needsAttention, DISPUTE_STAGES,
+  ALL_DISPUTE_CATEGORIES, categoriesFor,
 } = require('../services/disputeLifecycle');
 
 const base = makeController({
@@ -32,9 +33,12 @@ const asArray = (v) => {
  */
 exports.createDispute = asyncHandler(async (req, res) => {
   const body = req.body || {};
+  // ?scope=rent|sale narrows what may be raised; without it the union is
+  // accepted, so an older caller is never blocked by the sale-side addition.
+  const allowed = categoriesFor(req.query.scope || body.scope);
   const category = String(body.risk_category || '');
-  if (!RURAL_DISPUTE_CATEGORIES.includes(category)) {
-    return res.status(400).json({ error: `risk_category must be one of: ${RURAL_DISPUTE_CATEGORIES.join(', ')}.` });
+  if (!allowed.includes(category)) {
+    return res.status(400).json({ error: `risk_category must be one of: ${allowed.join(', ')}.` });
   }
   const data = pick(body, RISK_FIELDS);
   data.branch_id = resolveBranchId(req, body.branch_id);
@@ -71,7 +75,8 @@ exports.listDisputes = asyncHandler(async (req, res) => {
     data,
     meta: {
       stages: DISPUTE_STAGES,
-      categories: RURAL_DISPUTE_CATEGORIES,
+      categories: categoriesFor(req.query.scope),
+      all_categories: ALL_DISPUTE_CATEGORIES,
       by_stage: byStage,
       escalated: data.filter((d) => d.needs_attention).length,
     },

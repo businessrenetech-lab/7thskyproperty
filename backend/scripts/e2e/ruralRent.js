@@ -149,7 +149,7 @@ async function disputes() {
   console.log('\n— Disputes: a risk with a lifecycle —');
   const propertyId = made.properties[made.properties.length - 1];
 
-  const junk = await req('POST', '/api/property-risks/disputes', {
+  const junk = await req('POST', '/api/property-risks/disputes?scope=rent', {
     body: { property_id: propertyId, risk_category: 'Not A Category', description: 'x', branch_id: 1 },
   });
   ok(junk.status === 400, 'an unknown dispute category is refused', `HTTP ${junk.status}`);
@@ -189,9 +189,24 @@ async function disputes() {
   const after = await req('PATCH', `/api/property-risks/${id}/dispute-stage`, { body: { dispute_stage: 'raised' } });
   ok(after.status === 400, 'nothing leaves closed', after.body?.error);
 
-  const list = await req('GET', '/api/property-risks/disputes');
+  const list = await req('GET', '/api/property-risks/disputes?scope=rent');
   ok((list.body?.data || []).every((x) => x.is_dispute), 'the dispute list contains only disputes');
-  ok((list.body?.meta?.categories || []).length === 8, 'the eight SOP categories are offered');
+  ok((list.body?.meta?.categories || []).length === 8, 'the eight lease-side categories are offered',
+    String((list.body?.meta?.categories || []).length));
+  // A sale-side risk must not be offered to a Rural RENT user.
+  ok(!(list.body?.meta?.categories || []).includes('Registration Delay'),
+    'no sale-side category leaks into the rent console');
+  const saleScoped = await req('GET', '/api/property-risks/disputes?scope=sale');
+  ok((saleScoped.body?.meta?.categories || []).includes('Government Acquisition Risk'),
+    'the sale scope offers its own four');
+  ok(!(saleScoped.body?.meta?.categories || []).includes('Tenant Default'),
+    'a sale has no tenant to default');
+  const tenantDefaultOnSale = await req('POST', '/api/property-risks/disputes?scope=sale', {
+    body: { property_id: propertyId, risk_category: 'Tenant Default', description: `wrong side ${STAMP}`, branch_id: 1 },
+  });
+  ok(tenantDefaultOnSale.status === 400, 'raising a tenant default on the sale scope is refused',
+    tenantDefaultOnSale.body?.error);
+  if (tenantDefaultOnSale.body?.data?.id) made.risks.push(tenantDefaultOnSale.body.data.id);
   const mine = (list.body?.data || []).find((x) => x.id === id);
   ok(Array.isArray(mine?.stage_history) && mine.stage_history.length === 5,
     'the whole trail survived the JSON round trip', String(mine?.stage_history?.length));

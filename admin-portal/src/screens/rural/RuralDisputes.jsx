@@ -19,7 +19,12 @@ const STAGE_TONE = {
 };
 const label = (s) => String(s || '').replace(/_/g, ' ');
 
-export default function RuralDisputes() {
+/**
+ * `scope` picks the category list: 'rent' offers the eight lease-side risks,
+ * 'sale' the eleven sale-side ones. Without it the API returns the union, which
+ * would offer a Rural Rent user "Registration Delay".
+ */
+export default function RuralDisputes({ scope: disputeScope = 'rent' }) {
   const scope = usePmScope();
   const toast = useToast();
   const [rows, setRows] = useState(null);
@@ -38,19 +43,19 @@ export default function RuralDisputes() {
   const load = useCallback(async () => {
     setRows(null);
     try {
-      const { data } = await api.get(`/property-risks/disputes${stage ? `?dispute_stage=${stage}` : ''}`);
+      const { data } = await api.get(`/property-risks/disputes?scope=${disputeScope}${stage ? `&dispute_stage=${stage}` : ''}`);
       setRows(data.data || []);
       setMeta(data.meta || {});
     } catch {
       setRows([]);
       toast.error('Could not load the dispute register');
     }
-  }, [stage, toast]);
+  }, [stage, disputeScope, toast]);
   useEffect(() => { load(); }, [load]);
 
   const raise = async () => {
     try {
-      await api.post('/property-risks/disputes', { ...form, property_id: Number(form.property_id) || null });
+      await api.post(`/property-risks/disputes?scope=${disputeScope}`, { ...form, property_id: Number(form.property_id) || null });
       toast.success('Dispute raised');
       setForm(null);
       load();
