@@ -14,6 +14,7 @@ import {
   Building2, Phone, ShieldCheck, Tag, Info, Trash2, Edit3, Code2
 } from 'lucide-react';
 import api from '../../services/api';
+import { useSalesCategory } from './paths';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Button, Badge, StatusBadge, Drawer, Field, Input, Select, Textarea, Spinner } from '../../ui/kit';
@@ -123,6 +124,14 @@ export default function SalesMarketingHub({ scope }) {
   const [campaignDetailRecipients, setCampaignDetailRecipients] = useState([]);
   const [drawerLoading, setDrawerLoading] = useState(false);
 
+  /*
+   * The console this hub is rendered in. Without it the Marketing hub listed all
+   * templates and all properties in every console, so Commercial showed emails
+   * written about Gulshan apartments and a property picker full of residential
+   * listings. null outside a console, which leaves both calls unscoped as before.
+   */
+  const salesCategory = useSalesCategory();
+
   // Auto-Draft Modal State
   const [autoDraftModal, setAutoDraftModal] = useState(false);
   const [selectedPropId, setSelectedPropId] = useState('');
@@ -135,13 +144,17 @@ export default function SalesMarketingHub({ scope }) {
 
   const fetchAllData = useCallback(async () => {
     setLoading(true);
+    const catParams = salesCategory ? { property_category: salesCategory } : {};
     try {
       const [tplRes, cmpRes, anaRes, segRes, propRes] = await Promise.all([
-        api.get('/marketing/templates').catch(() => ({ data: [] })),
+        api.get('/marketing/templates', { params: catParams }).catch(() => ({ data: [] })),
         api.get('/marketing/campaigns').catch(() => ({ data: [] })),
         api.get('/marketing/analytics').catch(() => ({ data: null })),
         api.get('/marketing/segments').catch(() => ({ data: [] })),
-        api.get('/properties', { params: { limit: 50 } }).catch(() => ({ data: { rows: [] } })),
+        // The property picker feeds auto-drafting, so it must offer THIS
+        // console's properties, not every category's.
+        api.get('/properties', { params: { limit: 50, ...(salesCategory ? { category: salesCategory } : {}) } })
+          .catch(() => ({ data: { rows: [] } })),
       ]);
 
       setTemplates(Array.isArray(tplRes.data) ? tplRes.data : []);
@@ -155,7 +168,7 @@ export default function SalesMarketingHub({ scope }) {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [salesCategory, toast]);
 
   useEffect(() => {
     fetchAllData();
@@ -221,7 +234,12 @@ export default function SalesMarketingHub({ scope }) {
         await api.put(`/marketing/templates/${builderModal.id}`, payload);
         toast.success('Template updated successfully');
       } else {
-        await api.post('/marketing/templates', payload);
+        // A template written inside a console belongs to that console, or it
+        // would appear in every one of them.
+        await api.post('/marketing/templates', {
+          ...payload,
+          ...(salesCategory ? { property_category: salesCategory } : {}),
+        });
         toast.success('New template created');
       }
       setBuilderModal(null);

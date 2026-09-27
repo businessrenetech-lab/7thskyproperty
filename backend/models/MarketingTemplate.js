@@ -13,6 +13,13 @@ const MarketingTemplate = sequelize.define('MarketingTemplate', {
     defaultValue: 'new_listing',
     allowNull: false
   },
+  /*
+   * `category` above is the CAMPAIGN type. This is the PROPERTY category the
+   * template's content is written about: NULL means it suits any of them (a market
+   * report, an NRB campaign), so an unstamped template keeps appearing everywhere
+   * exactly as before. Migration 0160.
+   */
+  property_category: { type: DataTypes.STRING(20), allowNull: true },
   channel: {
     type: DataTypes.ENUM('email', 'sms', 'whatsapp', 'any'),
     defaultValue: 'email',

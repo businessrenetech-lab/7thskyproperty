@@ -12,6 +12,7 @@ const User = require('../models/User');
 const Activity = require('../models/Activity');
 const communicationService = require('../services/communication.service');
 const { branchScope, resolveBranchId, pick, getPagination } = require('../utils/controllerHelpers');
+const { pmCategory } = require('../utils/pmCategory');
 
 /**
  * Replace placeholders like {{name}}, {{property_title}}, etc.
@@ -43,6 +44,24 @@ exports.listTemplates = async (req, res) => {
     const where = { is_active: true };
 
     if (category && category !== 'all') where.category = category;
+
+    /*
+     * Scope to the console's PROPERTY category. A template with no
+     * property_category suits any of them (a market report, an NRB campaign), so
+     * it is always included — that is why this is an OR and not an equals.
+     *
+     * pmCategory() returns null for anything that is not a console, and an absent
+     * or unknown value therefore leaves the list unfiltered, exactly as before.
+     * Without this, every console's Marketing hub listed all 20 templates, 19 of
+     * which are written about residential apartments.
+     */
+    const propCat = pmCategory(req.query.property_category);
+    if (propCat) {
+      where[Op.and] = [
+        ...(where[Op.and] || []),
+        { [Op.or]: [{ property_category: propCat }, { property_category: null }] },
+      ];
+    }
     if (channel && channel !== 'all') {
       where.channel = { [Op.in]: [channel, 'any'] };
     }
@@ -97,7 +116,7 @@ exports.updateTemplate = async (req, res) => {
     const tpl = await MarketingTemplate.findByPk(req.params.id);
     if (!tpl) return res.status(404).json({ error: 'Template not found' });
     
-    const allowed = ['name', 'category', 'channel', 'subject', 'preheader', 'headline', 'body_html', 'body_text', 'thumbnail_url', 'tags', 'is_active'];
+    const allowed = ['name', 'category', 'property_category', 'channel', 'subject', 'preheader', 'headline', 'body_html', 'body_text', 'thumbnail_url', 'tags', 'is_active'];
     await tpl.update(pick(req.body, allowed));
     res.json(tpl);
   } catch (err) {
