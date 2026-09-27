@@ -151,12 +151,16 @@ import BusinessSaleConsole, { BusinessBuyerConsole } from './screens/BusinessSal
 import BusinessRentDashboards from './screens/rental/BusinessRentDashboards';
 import BusinessRentConsole from './screens/BusinessRentConsole';
 import RuralRentConsole from './screens/RuralRentConsole';
+import RuralSaleConsole, { RuralBuyerConsole } from './screens/RuralSaleConsole';
 import RuralSourcing from './screens/rural/RuralSourcing';
 import RuralRentDashboards from './screens/rural/RuralRentDashboards';
 import RuralLandRecords from './screens/rural/RuralLandRecords';
 import RuralOwnershipVerification from './screens/rural/RuralOwnershipVerification';
 import RuralDisputes from './screens/rural/RuralDisputes';
 import RuralServiceRegisters from './screens/rural/RuralServiceRegisters';
+import RuralSaleDashboards from './screens/rural/RuralSaleDashboards';
+import RuralBuyerSearch from './screens/rural/RuralBuyerSearch';
+import RuralDueDiligence from './screens/rural/RuralDueDiligence';
 import BrmAgreements from './screens/sales/BrmAgreements';
 import BtmAgreements from './screens/sales/BtmAgreements';
 import BusinessRegistrationConsole from './screens/BusinessRegistrationConsole';
@@ -324,9 +328,6 @@ export default function App() {
               <Route path="/short-term-stay/properties/:profileId/edit" element={<LegacyRedirect to="/short-stay/properties/:profileId/edit" />} />
               <Route path="/short-term-stay/*" element={<ShortStayTabRedirect />} />
               <Route path="/agreements/short-term-rental" element={<LegacyRedirect to="/short-stay/agreements" />} />
-              <Route path="/rural/buy" element={<DealsBoard category="rural" dealType="buy" title="Rural · Buy" desc="Rural buyer service — farms, lands, buyers, agreements, commission and expenses." />} />
-              <Route path="/rural/sell" element={<PropertySellDashboard category="rural" title="Rural · Sell" desc="Rural seller service — farms, lands, owners, agreements, commission and settlement." />} />
-              <Route path="/rural/enquiry" element={<SalesEnquiries category="rural" title="Rural · Buyer Enquiries" desc="Every buyer who enquired on a rural sale property." />} />
               <Route path="/services" element={<ServiceCatalog />} />
               <Route path="/services/lines" element={<Services />} />
               <Route path="/services/lines/:slug" element={<ServiceLineDashboard />} />
@@ -1523,6 +1524,63 @@ export default function App() {
               <Route path="/business/mandates/:id" element={<BuyerMandateDetail category="business" />} />
               <Route path="/business/enquiry" element={<SalesEnquiries category="business" title="Business · Buyer Enquiries" desc="Every buyer who enquired on a business for sale." />} />
               <Route path="/business/agreements/purchase" element={<PurchaseAgreements category="business" />} />
+            </Route>
+
+            {/* ── Rural SALE — the seller console. Commercial's sales screens for
+                category="rural", plus the rural-only land record, ownership
+                verification, dashboards and service registers. The bare /rural/sell
+                route used to render with whatever sidebar the user arrived from. ── */}
+            <Route element={<RequireAuth><AdminGate><RuralSaleConsole /></AdminGate></RequireAuth>}>
+              <Route path="/rural" element={<Navigate to="/rural/sell" replace />} />
+              <Route path="/rural/sell" element={<PropertySellDashboard category="rural" title="Rural · Sell" desc="Rural seller service — farms, lands, owners, agreements, commission and settlement." />} />
+              <Route path="/rural/properties" element={<SalesProperties category="rural" title="Rural · Properties for Sale" desc="Rural property engaged for sale — land records, ownership, lifecycle stages and seller representation." />} />
+              <Route path="/rural/property/:id" element={<SalesPropertyFile />} />
+              <Route path="/rural/property/:id/settlement" element={<SettlementDesk />} />
+              <Route path="/rural/properties/new" element={<PropertyWizard />} />
+              <Route path="/rural/properties/new/:id" element={<PropertyWizard />} />
+              <Route path="/rural/compliance" element={<Compliance />} />
+              <Route path="/rural/workflows" element={<Projects />} />
+              <Route path="/rural/settlements" element={<SalesBulkSettlement />} />
+              <Route path="/rural/accounting" element={<AccountingOverview />} />
+              <Route path="/rural/work-queue" element={<SalesWorkQueue />} />
+              <Route path="/rural/introductions" element={<SalesIntroductions category="rural" />} />
+              <Route path="/rural/calendar" element={<SalesCalendar category="rural" />} />
+              <Route path="/rural/agreements/sale" element={<SaleAgreements category="rural" />} />
+              <Route path="/rural/price-schedule" element={<SalesPriceSchedule scope="rural_sale" title="Rural · Price Schedules" />} />
+              <Route path="/rural/contracts" element={<SalesContracts />} />
+              <Route path="/rural/inbox" element={<SalesInbox />} />
+              <Route path="/rural/reports" element={<SalesReports />} />
+              <Route path="/rural/contacts" element={<SalesContacts scope="sales" />} />
+              <Route path="/rural/marketing" element={<SalesMarketingHub />} />
+              <Route path="/rural/contacts/clients" element={<Clients />} />
+              <Route path="/rural/clients" element={<Navigate to="/rural/contacts/clients" replace />} />
+              {/* Rural-only: the land record, the nine ownership documents, the five
+                  SOP dashboards, and disputes on the SALE-side categories. */}
+              <Route path="/rural/land-records" element={<RuralLandRecords />} />
+              <Route path="/rural/ownership" element={<RuralOwnershipVerification vertical="rural_sale" />} />
+              <Route path="/rural/dashboards" element={<RuralSaleDashboards />} />
+              <Route path="/rural/disputes" element={<RuralDisputes scope="sale" />} />
+              <Route path="/rural/service-registers" element={<RuralServiceRegisters vertical="rural_sale" />} />
+            </Route>
+
+            {/* ── Rural BUYER service — the purchase side, its own console. ── */}
+            <Route element={<RequireAuth><AdminGate><RuralBuyerConsole /></AdminGate></RequireAuth>}>
+              <Route path="/rural/buyer-service" element={<BuyerServiceDashboard />} />
+              <Route path="/rural/buyer/work-queue" element={<SalesWorkQueue dealScope="buy" />} />
+              <Route path="/rural/buyer/calendar" element={<SalesCalendar category="rural" scope="buy" />} />
+              <Route path="/rural/buyer/contacts" element={<SalesContacts scope="buy" />} />
+              <Route path="/rural/buyer/marketing" element={<SalesMarketingHub scope="buy" />} />
+              <Route path="/rural/buyer/clients" element={<Clients />} />
+              <Route path="/rural/buyer-invoices" element={<BuyerInvoices />} />
+              <Route path="/rural/buy" element={<DealsBoard category="rural" dealType="buy" title="Rural · Buy" desc="Rural buyer service — farms, lands, buyers, agreements, commission and expenses." />} />
+              <Route path="/rural/buy/:dealId" element={<BuyerDealFile />} />
+              <Route path="/rural/mandates" element={<BuyerMandates category="rural" />} />
+              <Route path="/rural/mandates/:id" element={<BuyerMandateDetail category="rural" />} />
+              <Route path="/rural/enquiry" element={<SalesEnquiries category="rural" title="Rural · Buyer Enquiries" desc="Every buyer who enquired on a rural sale property." />} />
+              <Route path="/rural/agreements/purchase" element={<PurchaseAgreements category="rural" />} />
+              {/* The buyer's own registers: search / shortlist, and due diligence. */}
+              <Route path="/rural/buyer/search" element={<RuralBuyerSearch />} />
+              <Route path="/rural/buyer/due-diligence" element={<RuralDueDiligence />} />
             </Route>
 
             {/* ── Business RENT — the business premises leasing console. Runs the

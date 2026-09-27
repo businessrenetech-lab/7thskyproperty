@@ -139,6 +139,7 @@ module.exports = [
   ['/api/business-rent', './businessRentDashboards.routes'],
   ['/api/rural-sourcing', './ruralSourcing.routes'], // tenant sourcing over registers 158/159/160
   ['/api/rural-rent', './ruralRentDashboards.routes'],
+  ['/api/rural-sale', './ruralSaleDashboards.routes'],
   ['/api/sales/calendar', './salesCalendar.routes'], // before /api/sales so the prefix wins
   ['/api/sales', './sales.routes'],
   ['/api/sales-payments', './salesPayment.routes'],

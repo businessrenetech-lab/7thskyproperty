@@ -7,14 +7,19 @@ import { PageHead, Button, Field, Input, Select, Drawer, Spinner, Badge } from '
 
 /**
  * Rural ownership verification — deed, khatiyan, dag, mutation, tax receipts,
- * succession records, utility bills, court clearance and POA (SOP §6 Step 3).
+ * succession records, utility bills, court clearance and POA (rental SOP §6
+ * Step 3, sale SOP §6 Step 3).
  *
- * This reads and writes register definition 151 (`ownership_verification`), which
- * the client's CRM workbook already defined and which already holds entries. The
- * form is built from the register's OWN columns, so a workbook change does not
- * silently drop a field here.
+ * This reads and writes the `ownership_verification` register, which exists on
+ * BOTH rural_rent (the client's CRM workbook defined it, #151, with entries) and
+ * rural_sale (seeded with the sale build). The definition is resolved by
+ * register_key + vertical, never by id: the two verticals have different ids and
+ * a hard-coded 151 would have shown the RENT register inside the sale console.
+ *
+ * The form is built from the register's OWN columns, so a workbook change does
+ * not silently drop a field here.
  */
-const DEFINITION_ID = 151;
+const REGISTER_KEY = 'ownership_verification';
 
 // SOP §6 Step 3 — the nine documents, offered as a picker rather than typed.
 const DOCUMENTS = ['Title Deed', 'Khatiyan', 'Dag', 'Mutation', 'Tax Receipt',
@@ -26,11 +31,12 @@ const asObject = (v) => {
 };
 const VERIFIED_TONE = (v) => (/^(yes|verified|true)$/i.test(String(v || '')) ? 'green' : 'grey');
 
-export default function RuralOwnershipVerification() {
+export default function RuralOwnershipVerification({ vertical = 'rural_rent' }) {
   const scope = usePmScope();
   const toast = useToast();
   const [properties, setProperties] = useState([]);
   const [propertyId, setPropertyId] = useState('');
+  const [definition, setDefinition] = useState(undefined); // undefined = loading, null = missing
   const [columns, setColumns] = useState([]);
   const [rows, setRows] = useState(null);
   const [form, setForm] = useState(null);
@@ -47,34 +53,35 @@ export default function RuralOwnershipVerification() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope.category, scope.listingType]);
 
-  // The register's own columns drive the form.
+  // The register's own columns drive the form. Resolved by key + vertical.
   useEffect(() => {
-    api.get('/registers/definitions')
+    api.get(`/registers/definitions?vertical_key=${vertical}`)
       .then(({ data }) => {
-        const def = (data.data || []).find((d) => Number(d.id) === DEFINITION_ID);
+        const def = (data.data || []).find((d) => d.register_key === REGISTER_KEY);
+        setDefinition(def || null);
         setColumns(def ? asObject(def.columns) || [] : []);
       })
-      .catch(() => setColumns([]));
-  }, []);
+      .catch(() => { setDefinition(null); setColumns([]); });
+  }, [vertical]);
 
   const load = useCallback(async () => {
-    if (!propertyId) { setRows([]); return; }
+    if (!propertyId || !definition) { setRows(definition === null ? [] : null); return; }
     setRows(null);
     try {
-      const { data } = await api.get(`/registers/entries?register_definition_id=${DEFINITION_ID}&property_id=${propertyId}`);
+      const { data } = await api.get(`/registers/entries?register_definition_id=${definition.id}&vertical_key=${vertical}&property_id=${propertyId}`);
       setRows(data.data || []);
     } catch {
       setRows([]);
       toast.error('Could not load the ownership register');
     }
-  }, [propertyId, toast]);
+  }, [propertyId, definition, vertical, toast]);
   useEffect(() => { load(); }, [load]);
 
   const save = async () => {
     try {
       await api.post('/registers/entries', {
-        register_definition_id: DEFINITION_ID,
-        vertical_key: 'rural_rent',
+        register_definition_id: definition.id,
+        vertical_key: vertical,
         property_id: Number(propertyId),
         data: form,
       });
@@ -93,7 +100,7 @@ export default function RuralOwnershipVerification() {
   return (
     <div>
       <PageHead
-        title="Rural · Ownership Verification"
+        title={`${scope.label} · Ownership Verification`}
         desc="Deed, khatiyan, dag, mutation, tax receipts, succession, utilities, court clearance and POA — SOP §6 Step 3."
       />
 
@@ -101,7 +108,7 @@ export default function RuralOwnershipVerification() {
         <div className="card-head between">
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <Select value={propertyId} onChange={(e) => setPropertyId(e.target.value)} style={{ minWidth: 280 }}>
-              {properties.length === 0 && <option value="">No rural rental property yet</option>}
+              {properties.length === 0 && <option value="">No rural {scope.listingType} property yet</option>}
               {properties.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.property_code} — {p.title}{p.mouza ? ` · ${p.mouza}` : ''}
@@ -119,7 +126,11 @@ export default function RuralOwnershipVerification() {
           </Button>
         </div>
         <div className="card-pad">
-          {rows === null ? <Spinner /> : (
+          {definition === null ? (
+            <p className="cell-sub">
+              The ownership register is not defined for <code>{vertical}</code> yet.
+            </p>
+          ) : rows === null ? <Spinner /> : (
             <>
               <table className="data-table" style={{ width: '100%' }}>
                 <thead><tr><th>Document</th><th>Required</th><th>Received</th><th>Verified</th><th>Method</th><th>Remarks</th></tr></thead>

@@ -1325,6 +1325,7 @@ export const RURAL_RENT_NAV = [
   ] },
   { key: 'rural-switch', label: 'Switch', items: [
     { to: '/rural/sell', label: '→ Rural Sale', icon: Trees },
+    { to: '/rural/buyer-service', label: '→ Rural Buyer Service', icon: Briefcase },
   ] },
 ];
 
@@ -1395,6 +1396,108 @@ export const businessRegistrationConsole = {
   exitTo: '/dashboard',
 };
 
+/* ── Rural Sale / Purchase ────────────────────────
+ * Selling and buying rural property: agricultural land, farm houses, fisheries,
+ * ponds, orchards, dairy and poultry farms, commercial and mixed-use rural land.
+ *
+ * Two consoles, like Commercial and Business: the SELLER side at /rural/sell and
+ * the BUYER side at /rural/buyer-service. Both run the shared sales screens for
+ * category="rural", which already scope themselves (SALES_CATEGORIES has held
+ * 'rural' since the console-isolation work), so nothing is duplicated.
+ *
+ * Three rural-specific groups the other sales consoles do not have: Land &
+ * Ownership (the land record and the nine ownership documents), the five SOP
+ * dashboards, and Service & Disputes over the sale-side dispute categories.
+ */
+export const RURAL_SALE_NAV = [
+  { key: 'rsale-home', label: 'Home', items: [
+    { to: '/rural/sell', label: 'Sale Dashboard', icon: LayoutGrid, end: true },
+    { to: '/rural/work-queue', label: 'My Work Queue', icon: Inbox },
+    { to: '/rural/inbox', label: 'Sales Inbox', icon: Inbox },
+    { to: '/rural/calendar', label: 'Calendar', icon: CalendarDays },
+    { to: '/rural/reports', label: 'Reports', icon: BarChart3 },
+    { to: '/rural/contacts', label: 'Contacts', icon: Users },
+    { to: '/rural/marketing', label: 'Marketing', icon: Megaphone },
+  ] },
+  { key: 'rsale-selling', label: 'Selling', items: [
+    { to: '/rural/properties', label: 'Rural Properties', icon: Trees },
+    { to: '/rural/agreements/sale', label: 'Sale Agreements', icon: FileSignature },
+    { to: '/rural/price-schedule', label: 'Price Schedule', icon: Tags },
+  ] },
+  { key: 'rsale-land', label: 'Land & Ownership', items: [
+    { to: '/rural/land-records', label: 'Land Records', icon: Ruler },
+    { to: '/rural/ownership', label: 'Ownership Verification', icon: ShieldCheck },
+  ] },
+  { key: 'rsale-sop', label: 'SOP Dashboards', items: [
+    { to: '/rural/dashboards', label: 'Rural Sale Dashboards', icon: BarChart3 },
+  ] },
+  { key: 'rsale-assurance', label: 'Assurance', items: [
+    { to: '/rural/compliance?category=rural', label: 'Compliance', icon: ShieldCheck },
+    { to: '/rural/contracts', label: 'Contracts', icon: FileText },
+    { to: '/rural/introductions', label: 'Protected Buyers', icon: ShieldCheck },
+    { to: '/rural/workflows?vertical_key=rural_sale', label: 'Checklists / Workflows', icon: Folder },
+  ] },
+  { key: 'rsale-service', label: 'Service & Disputes', items: [
+    { to: '/rural/disputes', label: 'Disputes', icon: AlertCircle },
+    { to: '/rural/service-registers', label: 'Service Registers', icon: MessageSquare },
+  ] },
+  { key: 'rsale-money', label: 'Money', items: [
+    { to: '/rural/accounting', label: 'Accounting', icon: Landmark },
+    { to: '/rural/settlements', label: 'Settlements (Bulk)', icon: HandCoins },
+  ] },
+  { key: 'rsale-switch', label: 'Switch', items: [
+    { to: '/rural/buyer-service', label: '→ Buyer Service', icon: Briefcase },
+    { to: '/rural/rent', label: '→ Rural Rent', icon: Home },
+  ] },
+];
+
+export const RURAL_BUYER_NAV = [
+  { key: 'rbuy-home', label: 'Home', items: [
+    { to: '/rural/buyer-service', label: 'Buyer Dashboard', icon: LayoutGrid, end: true },
+    { to: '/rural/buyer/work-queue', label: 'My Work Queue', icon: Inbox },
+    { to: '/rural/buyer/calendar', label: 'Calendar', icon: CalendarDays },
+    { to: '/rural/enquiry', label: 'Buyer Enquiries', icon: MessageSquareQuote },
+  ] },
+  { key: 'rbuy-buying', label: 'Buying', items: [
+    { to: '/rural/buy', label: 'Buy Deals', icon: Briefcase },
+    { to: '/rural/mandates', label: 'Buyer Mandates', icon: ClipboardList },
+    { to: '/rural/agreements/purchase', label: 'Purchase Agreements', icon: FileSignature },
+  ] },
+  { key: 'rbuy-search', label: 'Search & Diligence', items: [
+    { to: '/rural/buyer/search', label: 'Search & Shortlist', icon: ClipboardList },
+    { to: '/rural/buyer/due-diligence', label: 'Due Diligence', icon: ClipboardCheck },
+  ] },
+  { key: 'rbuy-directory', label: 'Directory & Money', items: [
+    { to: '/rural/buyer/contacts', label: 'Contacts', icon: Users },
+    { to: '/rural/buyer-invoices', label: 'Buyer Invoices', icon: Landmark },
+  ] },
+  { key: 'rbuy-switch', label: 'Switch', items: [
+    { to: '/rural/sell', label: '→ Sale Dashboard', icon: LayoutGrid },
+  ] },
+];
+
+// Green, like Rural Rent — the same division, a darker shade for the sale side.
+const ruralBrand = (sub, accent, accentStrong, accentInk, tint, tint2) => ({
+  name: 'Seventh Sky', sub, icon: Trees, accent, accentStrong, accentInk, accentTint: tint, accentTint2: tint2,
+});
+
+export const ruralSaleConsole = {
+  slug: 'rural',
+  storageKey: 'rural.sale.nav.collapsed',
+  brand: ruralBrand('Rural Sale', '#0d9488', '#0f766e', '#115e59', 'rgba(13,148,136,.12)', '#ccfbf1'), // teal
+  navGroups: RURAL_SALE_NAV,
+  api: {},
+  contentClass: 'pm-scope',
+  exitTo: '/dashboard',
+};
+
+export const ruralBuyerConsole = {
+  ...ruralSaleConsole,
+  storageKey: 'rural.buyer.nav.collapsed',
+  brand: ruralBrand('Rural Buyer Service', '#059669', '#047857', '#065f46', 'rgba(5,150,105,.12)', '#d1fae5'), // emerald
+  navGroups: RURAL_BUYER_NAV,
+};
+
 export const CONSOLES = {
   'water-tank': waterTankConsole,
   'air-conditioning': airConditioningConsole,
@@ -1418,4 +1521,5 @@ export const CONSOLES = {
   business: businessSaleConsole,
   'business-rent': businessRentConsole,
   'business-registration': businessRegistrationConsole,
+  rural: ruralSaleConsole,
 };

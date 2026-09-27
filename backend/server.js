@@ -245,6 +245,7 @@ mount('/api/rent-protections', './routes/rentProtection.routes'); // non-circumv
 mount('/api/business-rent', './routes/businessRentDashboards.routes');
 mount('/api/rural-sourcing', './routes/ruralSourcing.routes'); // tenant sourcing over registers 158/159/160
 mount('/api/rural-rent', './routes/ruralRentDashboards.routes');
+mount('/api/rural-sale', './routes/ruralSaleDashboards.routes');
 mount('/api/sales/calendar', './routes/salesCalendar.routes'); // before /api/sales so the prefix wins
 mount('/api/sales', './routes/sales.routes');
 mount('/api/sales-payments', './routes/salesPayment.routes');

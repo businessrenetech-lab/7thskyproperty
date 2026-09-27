@@ -2,53 +2,16 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
-import { PageHead, Button, Field, Input, Select, Textarea, Drawer, Spinner } from '../../ui/kit';
+import { PageHead, Button, Field, Input, Select, Textarea, Drawer, Spinner, Badge } from '../../ui/kit';
 
 /**
- * Rural service registers — complaints, the communication log, owner and tenant
- * feedback, and project closure with its retention date (owner Sheets 19-22,
- * tenant Sheets 21-23).
+ * A tabbed board over a set of register definitions, built from each definition's
+ * OWN columns.
  *
- * Each tab is a register DEFINITION and its form is built from that definition's
- * own columns, so a workbook change reaches this screen without a code change.
- * Definitions are resolved by register_key, never by id — the ids were assigned
- * at seed time and differ between environments.
+ * Extracted from RuralServiceRegisters so the buyer's search/shortlist and due
+ * diligence screens do not each re-implement the same table, form and JSON
+ * defensiveness. Definitions are resolved by register_key + vertical, never by id.
  */
-/*
- * The tabs differ per console: the RENT side has owner and tenant feedback, the
- * SALE side has seller feedback and the legal-coordination register. Both are
- * register definitions on their own vertical, resolved by register_key.
- */
-const TABS_BY_VERTICAL = {
-  rural_rent: [
-    { key: 'complaint_register', vertical: 'rural_rent', label: 'Complaints' },
-    { key: 'communication_log', vertical: 'rural_rent', label: 'Communication Log' },
-    { key: 'owner_feedback_register', vertical: 'rural_rent', label: 'Owner Feedback' },
-    { key: 'tenant_feedback_register', vertical: 'rural_tenancy', label: 'Tenant Feedback' },
-    { key: 'closure_register', vertical: 'rural_rent', label: 'Closure & Retention' },
-  ],
-  rural_sale: [
-    { key: 'complaint_register', vertical: 'rural_sale', label: 'Complaints' },
-    { key: 'communication_log', vertical: 'rural_sale', label: 'Communication Log' },
-    { key: 'seller_feedback_register', vertical: 'rural_sale', label: 'Seller Feedback' },
-    { key: 'buyer_feedback_register', vertical: 'rural_purchase', label: 'Buyer Feedback' },
-    { key: 'legal_coordination_register', vertical: 'rural_sale', label: 'Legal Coordination' },
-    { key: 'closure_register', vertical: 'rural_sale', label: 'Closure & Retention' },
-  ],
-};
-
-// Column choices the workbook offers as a list rather than free text.
-const CHOICES = {
-  severity: ['Low', 'Medium', 'High', 'Critical'],
-  channel: ['Phone', 'SMS', 'Email', 'WhatsApp', 'In person', 'Letter'],
-  rating: ['1', '2', '3', '4', '5'],
-  records_archived: ['Yes', 'No', 'Partial'],
-  commission_reconciled: ['Yes', 'No', 'Partial'],
-  // Legal coordination register (sale workbook Sheet 11).
-  role: ['Lawyer', 'Surveyor', 'Valuer', 'Registration Consultant'],
-  status: ['Engaged', 'In progress', 'Completed', 'Disengaged'],
-};
-
 const asObject = (v) => {
   if (v && typeof v === 'object') return v;
   try { return JSON.parse(v || '{}'); } catch { return {}; }
@@ -60,22 +23,34 @@ const asColumns = (v) => {
   return Object.values(parsed).filter((c) => c && c.key);
 };
 
-export default function RuralServiceRegisters({ vertical = 'rural_rent' }) {
+const TONE = {
+  Shortlisted: 'green', Presented: 'blue', Rejected: 'red', Pending: 'amber',
+  Completed: 'green', Yes: 'green', No: 'grey', Partial: 'amber',
+  Approved: 'green', Declined: 'red', Submitted: 'blue',
+};
+
+export default function RuralRegisterBoard({
+  title, desc, tabs, choices = {}, badgeKeys = [], emptyHint,
+}) {
   const toast = useToast();
-  const TABS = TABS_BY_VERTICAL[vertical] || TABS_BY_VERTICAL.rural_rent;
-  const [tab, setTab] = useState(TABS[0].key);
+  const [tab, setTab] = useState(tabs[0].key);
   const [defs, setDefs] = useState(null);
   const [rows, setRows] = useState(null);
   const [form, setForm] = useState(null);
 
+  // One call per vertical the tabs need, then everything is resolved locally.
+  const verticals = useMemo(() => [...new Set(tabs.map((t) => t.vertical))], [tabs]);
+
   useEffect(() => {
-    api.get('/registers/definitions')
-      .then(({ data }) => setDefs(data.data || []))
+    Promise.all(verticals.map((v) => api.get(`/registers/definitions?vertical_key=${v}`)
+      .then(({ data }) => (data.data || []).map((d) => ({ ...d, vertical_key: d.vertical_key || v })))
+      .catch(() => [])))
+      .then((lists) => setDefs(lists.flat()))
       .catch(() => { setDefs([]); toast.error('Could not load the register definitions'); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [verticals.join(',')]);
 
-  const active = useMemo(() => TABS.find((t) => t.key === tab) || TABS[0], [TABS, tab]);
+  const active = useMemo(() => tabs.find((t) => t.key === tab) || tabs[0], [tabs, tab]);
   const def = useMemo(
     () => (defs || []).find((d) => d.register_key === active.key && d.vertical_key === active.vertical),
     [defs, active],
@@ -98,9 +73,7 @@ export default function RuralServiceRegisters({ vertical = 'rural_rent' }) {
   const save = async () => {
     try {
       await api.post('/registers/entries', {
-        register_definition_id: def.id,
-        vertical_key: def.vertical_key,
-        data: form,
+        register_definition_id: def.id, vertical_key: def.vertical_key, data: form,
       });
       toast.success('Recorded');
       setForm(null);
@@ -114,11 +87,11 @@ export default function RuralServiceRegisters({ vertical = 'rural_rent' }) {
   const blank = () => Object.fromEntries(columns.map((c) => [c.key, '']));
 
   const input = (c) => {
-    if (CHOICES[c.key]) {
+    if (choices[c.key]) {
       return (
         <Select value={form[c.key] || ''} onChange={(e) => setForm({ ...form, [c.key]: e.target.value })}>
           <option value="">—</option>
-          {CHOICES[c.key].map((v) => <option key={v} value={v}>{v}</option>)}
+          {choices[c.key].map((v) => <option key={v} value={v}>{v}</option>)}
         </Select>
       );
     }
@@ -134,18 +107,24 @@ export default function RuralServiceRegisters({ vertical = 'rural_rent' }) {
     );
   };
 
+  const cell = (e, c, i) => {
+    const v = e[c.key];
+    if (v && badgeKeys.includes(c.key)) return <Badge tone={TONE[v] || 'grey'}>{v}</Badge>;
+    return <span className={i === 0 ? 'cell-strong' : 'cell-sub'}>{v || '—'}</span>;
+  };
+
   return (
     <div>
       <PageHead
-        title="Rural · Service Registers"
-        desc="Complaints, communication, owner and tenant feedback, and project closure with its record-retention date."
+        title={title}
+        desc={desc}
         actions={<Button icon={Plus} disabled={!def} onClick={() => setForm(blank())}>Add entry</Button>}
       />
 
       <div className="card" style={{ marginTop: 12 }}>
         <div className="card-head between">
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {TABS.map((t) => (
+            {tabs.map((t) => (
               <Button key={t.key} size="sm" variant={t.key === tab ? 'primary' : 'ghost'} onClick={() => setTab(t.key)}>
                 {t.label}
               </Button>
@@ -155,11 +134,7 @@ export default function RuralServiceRegisters({ vertical = 'rural_rent' }) {
         </div>
         <div className="card-pad">
           {defs === null || rows === null ? <Spinner /> : !def ? (
-            <p className="cell-sub">
-              This register is not defined yet. Seed it with{' '}
-              <code>node scripts/{vertical === 'rural_sale' ? 'seedRuralSaleRegisters' : 'seedRuralServiceRegisters'}.js</code>{' '}
-              from <code>backend/</code>.
-            </p>
+            <p className="cell-sub">{emptyHint || 'This register is not defined yet.'}</p>
           ) : (
             <table className="data-table" style={{ width: '100%' }}>
               <thead><tr>{columns.map((c) => <th key={c.key}>{c.label || c.key}</th>)}</tr></thead>
@@ -169,9 +144,7 @@ export default function RuralServiceRegisters({ vertical = 'rural_rent' }) {
                 )}
                 {entries.map((e) => (
                   <tr key={e._id}>
-                    {columns.map((c, i) => (
-                      <td key={c.key} className={i === 0 ? 'cell-strong' : 'cell-sub'}>{e[c.key] || '—'}</td>
-                    ))}
+                    {columns.map((c, i) => <td key={c.key}>{cell(e, c, i)}</td>)}
                   </tr>
                 ))}
               </tbody>
