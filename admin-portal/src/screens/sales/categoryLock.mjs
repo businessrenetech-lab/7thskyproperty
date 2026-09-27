@@ -63,7 +63,11 @@ export function consoleBaseForPath(pathname) {
   return null;
 }
 
-/** True when the base is a buy/sale console (the only ones with a buyer section). */
+/**
+ * True when the base is a buy/sale console (the only ones with a buyer section).
+ * '/rural' joined them with the Rural Sale build: it has /rural/buyer-service,
+ * /rural/buy and /rural/buyer/clients. The rent bases do not.
+ */
 export function isSalesConsoleBase(base) {
-  return ['/residential', '/commercial', '/business'].includes(base);
+  return ['/residential', '/commercial', '/business', '/rural'].includes(base);
 }

@@ -60,5 +60,9 @@ assert.strictEqual(consoleBaseForPath('/'), null);
 assert.strictEqual(isSalesConsoleBase('/commercial'), true);
 assert.strictEqual(isSalesConsoleBase('/commercial/rent'), false);
 assert.strictEqual(isSalesConsoleBase('/property-management'), false);
+// /rural gained a buyer section with the Rural Sale build; /rural/rent has none.
+assert.strictEqual(isSalesConsoleBase('/rural'), true);
+assert.strictEqual(isSalesConsoleBase('/rural/rent'), false);
+assert.strictEqual(isSalesConsoleBase('/business-rent'), false);
 
 console.log('consoleBaseForPath OK');
