@@ -92,7 +92,13 @@ const SERVICE_LINES = {
     label: 'Air Conditioning',
     short: 'ACCM',
     accent: '#7c3aed',              // violet — tells the AC console apart at a glance
-    api_base: 'ac',                 // /api/ac-*
+    // Air conditioning shares the /api/wt-* mount with every other line and is
+    // separated by the X-Service-Line header, exactly like the rest. This said
+    // 'ac' and promised an /api/ac-* family that has never existed: no route
+    // mounts it, and the AC console calls /api/wt-work-orders like everyone
+    // else. A field that documents a mount you would get a 404 from is worse
+    // than no field, so it now says what is true.
+    api_base: 'wt',
     route_base: 'air-conditioning', // /air-conditioning/*
     env_tag: 'ACS',                 // signing-envelope code tag: ENV-ACSCSA-/ENV-ACSDP-/ENV-ACSPWO-
     // The public onboarding path differs from route_base for legacy reasons.
