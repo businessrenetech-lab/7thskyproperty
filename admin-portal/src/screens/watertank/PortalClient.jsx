@@ -746,14 +746,19 @@ export function Messages({ data, base, reload, who }) {
             }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span className="wt-chip" style={{ cursor: 'default' }}>
-                  {m.direction === 'inbound' ? 'You' : 'Seventh Sky'}
+                  {m.direction === 'inbound' ? 'You' : (m.author || 'Seventh Sky')}
                 </span>
                 <span className="muted" style={{ fontSize: 11.5 }}>
                   {m.logged_at ? dateFmt(m.logged_at) : ''}{m.channel ? ` · ${m.channel}` : ''}
                   {m.ref_code ? ` · ${m.ref_code}` : ''}
                 </span>
               </div>
-              <p style={{ fontSize: 13, margin: '6px 0 0' }}>{m.summary}</p>
+              {/*
+                `body` is the message; `summary` was only ever the list preview and
+                was truncated at 500 characters. Falls back for rows written before
+                migration 0162.
+              */}
+              <p style={{ fontSize: 13, margin: '6px 0 0', whiteSpace: 'pre-wrap' }}>{m.body || m.summary}</p>
             </div>
           ))}
         </div>

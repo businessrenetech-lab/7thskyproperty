@@ -1051,6 +1051,186 @@ exports.portalStatus = asyncHandler(async (req, res) => {
  * so being able to look at the list first — and to see why each one is or is not
  * going — matters more than the convenience of one endpoint.
  */
+/* ────────────────────────────────────────────────────────────────────────────
+ * Portal conversation (0162)
+ *
+ * Before this, every `channel: 'portal'` row in the codebase was
+ * `direction: 'inbound'`. A contractor could message the operations desk and
+ * could not be answered in the portal: staff replied by phone or WhatsApp and
+ * the thread died. These three endpoints are the other half.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const replyActor = (req) => req.user?.name || req.user?.email || 'Seventh Sky';
+
+/**
+ * GET /api/wt-ops/portal-threads
+ *
+ * The desk's view: who has written in, and who is still waiting. Sorted by the
+ * oldest unanswered message, because that is the one costing goodwill.
+ */
+exports.portalThreads = asyncHandler(async (req, res) => {
+  const scope = scoped(req);
+  const rows = await M.WtCommLog.findAll({
+    where: { ...scope, channel: 'portal' },
+    // logged_at is second-precision, so a message and its reply inside the same
+    // second tie. id is monotonic and breaks it correctly.
+    order: [['logged_at', 'DESC'], ['id', 'DESC']],
+    limit: 500,
+    raw: true,
+  });
+
+  const threads = new Map();
+  for (const r of rows) {
+    // A thread is a party, not a message. provider_id is the real key; the name
+    // is the fallback for rows written before 0162.
+    const key = r.provider_id ? `provider:${r.provider_id}` : `name:${r.client_name}`;
+    if (!threads.has(key)) {
+      threads.set(key, {
+        key,
+        provider_id: r.provider_id || null,
+        party_type: r.party_type || (r.provider_id ? 'provider' : null),
+        name: r.client_name,
+        last_at: r.logged_at,
+        last_summary: r.summary,
+        last_direction: r.direction,
+        messages: 0,
+        unanswered: 0,
+        oldest_unanswered_at: null,
+      });
+    }
+    const t = threads.get(key);
+    t.messages += 1;
+    if (r.direction === 'inbound' && !r.read_by_staff_at) {
+      t.unanswered += 1;
+      // rows arrive newest first, so the last one seen is the oldest
+      t.oldest_unanswered_at = r.logged_at;
+    }
+  }
+
+  const list = [...threads.values()].sort((a, b) => {
+    if (!!b.unanswered !== !!a.unanswered) return b.unanswered - a.unanswered;
+    if (a.oldest_unanswered_at && b.oldest_unanswered_at) {
+      return new Date(a.oldest_unanswered_at) - new Date(b.oldest_unanswered_at);
+    }
+    return new Date(b.last_at) - new Date(a.last_at);
+  });
+
+  res.json({
+    data: list,
+    summary: {
+      threads: list.length,
+      waiting: list.filter((t) => t.unanswered > 0).length,
+      unanswered_messages: list.reduce((n, t) => n + t.unanswered, 0),
+    },
+  });
+});
+
+/**
+ * GET /api/wt-ops/portal-threads/:partyType/:id
+ *
+ * One conversation, oldest first, the way it reads on screen. Opening it marks
+ * the party's messages as seen by the desk.
+ */
+exports.portalThread = asyncHandler(async (req, res) => {
+  const scope = scoped(req);
+  const id = Number(req.params.id);
+  const where = { ...scope, channel: 'portal' };
+
+  if (req.params.partyType === 'provider') {
+    const provider = await M.WtProvider.findOne({ where: { ...scope, id } });
+    if (!provider) return res.status(404).json({ error: 'Provider not found.' });
+    where[Op.or] = [{ provider_id: provider.id }, { client_name: provider.business_name }];
+  } else {
+    const client = await M.WtClient.findOne({ where: { ...scope, id } });
+    if (!client) return res.status(404).json({ error: 'Client not found.' });
+    where.client_name = client.name;
+  }
+
+  const rows = await M.WtCommLog.findAll({
+    where,
+    order: [['logged_at', 'ASC'], ['id', 'ASC']],
+    raw: true,
+  });
+
+  // Reading the thread is what marks it seen. Best-effort: a failed stamp must
+  // not stop the desk reading the message.
+  await M.WtCommLog.update(
+    { read_by_staff_at: new Date() },
+    { where: { ...where, direction: 'inbound', read_by_staff_at: null } },
+  ).catch(() => {});
+
+  res.json({
+    data: rows.map((r) => ({
+      id: r.id,
+      direction: r.direction,
+      summary: r.summary,
+      body: r.body || r.summary,
+      author: r.author || null,
+      ref_type: r.ref_type,
+      ref_code: r.ref_code,
+      logged_at: r.logged_at,
+      read_by_party_at: r.read_by_party_at || null,
+    })),
+  });
+});
+
+/**
+ * POST /api/wt-ops/portal-threads/:partyType/:id/reply
+ *
+ * The reply itself — the row nothing in the codebase could write until now.
+ */
+exports.portalReply = asyncHandler(async (req, res) => {
+  const scope = scoped(req);
+  const id = Number(req.params.id);
+  const body = String(req.body?.body || '').trim();
+  if (!body) return res.status(400).json({ error: 'Write a reply first.' });
+  if (body.length > 4000) return res.status(400).json({ error: 'That reply is too long.' });
+
+  let name = null;
+  let providerId = null;
+  let refCode = null;
+
+  if (req.params.partyType === 'provider') {
+    const provider = await M.WtProvider.findOne({ where: { ...scope, id } });
+    if (!provider) return res.status(404).json({ error: 'Provider not found.' });
+    name = provider.business_name;
+    providerId = provider.id;
+    refCode = provider.code;
+  } else {
+    const client = await M.WtClient.findOne({ where: { ...scope, id } });
+    if (!client) return res.status(404).json({ error: 'Client not found.' });
+    name = client.name;
+    refCode = client.code;
+  }
+
+  const subject = req.body?.subject ? String(req.body.subject).slice(0, 120) : null;
+  const row = await M.WtCommLog.create({
+    branch_id: resolveBranchId(req),
+    client_name: name,
+    provider_id: providerId,
+    party_type: req.params.partyType === 'provider' ? 'provider' : 'client',
+    channel: 'portal',
+    direction: 'outbound',
+    summary: `${subject ? `${subject}: ` : ''}${body.slice(0, 500)}`,
+    body,
+    author: replyActor(req),
+    ref_type: req.params.partyType === 'provider' ? 'providers' : 'clients',
+    ref_code: refCode,
+    logged_at: new Date(),
+  });
+
+  // Answering is also reading: the thread stops showing as waiting.
+  const seen = { ...scope, channel: 'portal', direction: 'inbound', read_by_staff_at: null };
+  if (providerId) seen[Op.or] = [{ provider_id: providerId }, { client_name: name }];
+  else seen.client_name = name;
+  await M.WtCommLog.update({ read_by_staff_at: new Date() }, { where: seen }).catch(() => {});
+
+  res.status(201).json({
+    data: { id: row.id, author: row.author, logged_at: row.logged_at },
+    message: `Reply sent to ${name}. They will see it in their portal.`,
+  });
+});
+
 exports.notificationPreview = asyncHandler(async (req, res) => {
   const notify = require('../services/wtNotify.service');
   res.json(await notify.sweep({ branch_id: resolveBranchId(req), dryRun: true }));

@@ -206,7 +206,26 @@ async function providerDossier(provider) {
     P.WtProtectedClient.findAll({ where: { ...scope, provider_id: provider.id }, raw: true }).catch(() => []),
     M.WtComplaint.findAll({ where: { ...scope, provider_name: provider.business_name }, order: [['id', 'DESC']], raw: true }).catch(() => []),
     M.WtIncident.findAll({ where: { ...scope, provider_name: provider.business_name }, order: [['id', 'DESC']], raw: true }).catch(() => []),
-    M.WtCommLog.findAll({ where: { ...scope, client_name: provider.business_name }, order: [['logged_at', 'DESC']], limit: 60, raw: true }).catch(() => []),
+    /*
+     * The provider's thread. Keyed on provider_id FIRST (0162) and falling back
+     * to the business name, because rows written before that migration have no
+     * id — matching on the name alone meant a renamed business lost its history.
+     * Both directions are returned now: a thread with only one side is a form.
+     */
+    M.WtCommLog.findAll({
+      where: {
+        ...scope,
+        [Op.or]: [
+          { provider_id: provider.id },
+          { client_name: provider.business_name },
+        ],
+      },
+      // Tie-break on id: logged_at is second-precision, so a message and its
+      // reply in the same second would otherwise order arbitrarily.
+      order: [['logged_at', 'DESC'], ['id', 'DESC']],
+      limit: 60,
+      raw: true,
+    }).catch(() => []),
     // Payment vouchers ARE the provider's receipt. They had no way to see one.
     M.WtProjectDisbursement.findAll({
       where: { ...scope, payee: provider.business_name, status: 'Paid' },
@@ -369,6 +388,10 @@ async function providerDossier(provider) {
 
     messages: messages.map((m) => ({
       channel: m.channel, direction: m.direction, summary: m.summary,
+      // `body` is the message; `summary` was only ever the list preview.
+      body: m.body || m.summary,
+      author: m.author || null,
+      read_by_party_at: m.read_by_party_at || null,
       ref_type: m.ref_type, ref_code: m.ref_code, logged_at: m.logged_at,
     })),
 

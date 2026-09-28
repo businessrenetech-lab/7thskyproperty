@@ -4,6 +4,7 @@ import {
   WtHead, WtTabs, dateTimeFmt, titleCase, useCollection, CreateDrawer, RecordDrawer,
   RowActions, Loading, EmptyState, toast, errText,
 } from './common';
+import PortalThreads from './PortalThreads';
 
 const CHANNELS = ['call', 'email', 'sms', 'whatsapp', 'visit', 'note'];
 const CHANNEL_ICON = { call: Phone, email: Mail, sms: MessageSquare, whatsapp: MessageSquare, visit: MapPin, note: StickyNote };
@@ -47,6 +48,13 @@ export default function CommLog() {
       >
         <button className="wt-btn primary" onClick={() => setCreating(true)}><Plus size={15} /> Log Entry</button>
       </WtHead>
+      {/*
+        The portal conversation sits above the log: a message from a contractor
+        needs answering, where the rest of the log is a record of what happened.
+        It renders nothing when there is nothing to answer.
+      */}
+      <PortalThreads />
+
       <WtTabs tabs={['All', ...CHANNELS.map(titleCase)]} value={tab} onChange={setTab} counts={counts} />
 
       <div className="wt-card wt-tblcard">

@@ -62,6 +62,8 @@ exports.view = asyncHandler(async (req, res) => {
       ? await portal.providerDossier(ctx.row)
       : await portal.clientDossier(ctx.row);
     await auditOf(req, ctx, 'viewed_portal');
+    // Opening the portal is how a reply gets read; the desk needs to know.
+    await markRepliesRead(ctx);
     // The party's service line drives the portal's wording (Tank vs Equipment),
     // since the portal runs outside the console's URL and can't infer it from the path.
     res.json({ party_type: ctx.party_type, service_line: ctx.row.service_line || 'water_tank', ...data });
@@ -104,7 +106,7 @@ exports.respond = asyncHandler(async (req, res) => {
       : { status: 'Draft', provider_name: null, provider_id: null });
 
     await M.WtCommLog.create({
-      branch_id: wo.branch_id, client_name: wo.client_name, channel: 'portal', direction: 'inbound',
+      branch_id: wo.branch_id, client_name: wo.client_name, channel: 'portal', direction: 'inbound', ...partyStamp(ctx),
       summary: accept
         ? `${ctx.row.business_name} accepted ${wo.code} through the provider portal`
         : `${ctx.row.business_name} declined ${wo.code}${req.body?.reason ? ` — ${req.body.reason}` : ''}`,
@@ -266,7 +268,7 @@ exports.quotationDecision = asyncHandler(async (req, res) => {
     await q.update({ decision });
 
     await M.WtCommLog.create({
-      branch_id: q.branch_id, client_name: q.client_name, channel: 'portal', direction: 'inbound',
+      branch_id: q.branch_id, client_name: q.client_name, channel: 'portal', direction: 'inbound', ...partyStamp(ctx),
       summary: `Client ${decision.toLowerCase()} quotation ${q.code} through the customer portal${req.body?.note ? ` — ${req.body.note}` : ''}`,
       ref_type: 'quotations', ref_code: q.code, logged_at: new Date(),
     }).catch(() => {});
@@ -309,7 +311,7 @@ exports.variationDecision = asyncHandler(async (req, res) => {
     const invoice = await applyDecision(v, decision, `${ctx.row.name} (portal)`);
 
     await M.WtCommLog.create({
-      branch_id: v.branch_id, client_name: v.client_name, channel: 'portal', direction: 'inbound',
+      branch_id: v.branch_id, client_name: v.client_name, channel: 'portal', direction: 'inbound', ...partyStamp(ctx),
       summary: `Client ${decision} variation ${v.variation_code} through the customer portal${req.body?.note ? ` — ${req.body.note}` : ''}`,
       ref_type: 'interior-variations', ref_code: v.variation_code, logged_at: new Date(),
     }).catch(() => {});
@@ -361,8 +363,11 @@ exports.message = asyncHandler(async (req, res) => {
     await M.WtCommLog.create({
       branch_id: ctx.row.branch_id,
       client_name: name,
-      channel: 'portal', direction: 'inbound',
+      channel: 'portal', direction: 'inbound', ...partyStamp(ctx),
+      // `summary` is the one-line preview the register lists; `body` is the
+      // message. It used to be truncated at 500 characters and the rest lost.
       summary: `${req.body?.subject ? `${req.body.subject}: ` : ''}${body.slice(0, 500)}`,
+      body,
       ref_type: ctx.party_type === 'provider' ? 'providers' : 'clients',
       ref_code: ctx.row.code, logged_at: new Date(),
     });
@@ -441,7 +446,7 @@ async function raiseComplaint(req, res, ctx) {
   // Still logged to comms, so the client's own history reads as one thread.
   await M.WtCommLog.create({
     branch_id: ctx.row.branch_id, client_name: name,
-    channel: 'portal', direction: 'inbound',
+    channel: 'portal', direction: 'inbound', ...partyStamp(ctx),
     summary: `Complaint ${row.code} raised: ${details.slice(0, 400)}`,
     ref_type: 'complaints', ref_code: row.code, logged_at: new Date(),
   }).catch(() => {});
@@ -491,6 +496,8 @@ exports.sessionView = asyncHandler(async (req, res) => {
       ? await portal.providerDossier(ctx.row)
       : await portal.clientDossier(ctx.row);
     await auditOf(req, ctx, 'viewed_portal');
+    // Opening the portal is how a reply gets read; the desk needs to know.
+    await markRepliesRead(ctx);
     res.json({ party_type: ctx.party_type, signed_in: true, ...data });
   } catch (e) { fail(res, e); }
 });
@@ -615,7 +622,7 @@ exports.sessionMessage = sessionAction(async (req, res, ctx) => {
   const name = ctx.party_type === 'provider' ? ctx.row.business_name : ctx.row.name;
   await M.WtCommLog.create({
     branch_id: ctx.row.branch_id, client_name: name,
-    channel: 'portal', direction: 'inbound',
+    channel: 'portal', direction: 'inbound', ...partyStamp(ctx),
     summary: `${req.body?.subject ? `${req.body.subject}: ` : ''}${body.slice(0, 500)}`,
     ref_type: ctx.party_type === 'provider' ? 'providers' : 'clients',
     ref_code: ctx.row.code, logged_at: new Date(),
@@ -692,6 +699,43 @@ async function handleUpload(req, res, ctx) {
     count: next.length,
     message: `Photo added to the ${stage} set.`,
   });
+}
+
+/*
+ * Opening the portal marks the desk's replies as read by the party.
+ *
+ * Without this the desk cannot tell an unanswered message from one the
+ * contractor simply has not opened yet, which is most of what an operations desk
+ * needs to know. Best-effort: failing to record a read must never block the view.
+ */
+async function markRepliesRead(ctx) {
+  const where = {
+    branch_id: ctx.row.branch_id,
+    channel: 'portal',
+    direction: 'outbound',
+    read_by_party_at: null,
+  };
+  if (ctx.party_type === 'provider' && ctx.row.id) where.provider_id = ctx.row.id;
+  else where.client_name = ctx.row.name || ctx.row.business_name;
+
+  await M.WtCommLog.update({ read_by_party_at: new Date() }, { where }).catch(() => {});
+}
+
+/*
+ * Who a portal row belongs to.
+ *
+ * `client_name` stays whatever the row is ABOUT — for a work-order action that is
+ * the client whose job it is, which is right for the job and useless for finding
+ * the contractor. Stamping provider_id and party_type alongside it means a
+ * provider's thread survives a rename and "everything this contractor said" is
+ * answerable. Before this, 0 of 13 portal rows could be traced to a provider.
+ */
+function partyStamp(ctx) {
+  const isProvider = ctx?.party_type === 'provider';
+  return {
+    party_type: ctx?.party_type || null,
+    provider_id: isProvider ? (ctx?.row?.id || null) : null,
+  };
 }
 
 /*

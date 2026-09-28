@@ -63,6 +63,14 @@ router.post('/portal-accounts/:partyType/:id/reinstate', canAdminister, accounts
 
 // Warranty & Issues: reference lists and the shared job lookup. Declared before
 // the generic /:entity family so they are not swallowed.
+/*
+ * The portal conversation. Declared before the generic /:entity family so they
+ * are not swallowed by it.
+ */
+router.get('/portal-threads', canRead, ctrl.portalThreads);
+router.get('/portal-threads/:partyType/:id', canRead, ctrl.portalThread);
+router.post('/portal-threads/:partyType/:id/reply', canOperate, ctrl.portalReply);
+
 const registersCtrl = require('../controllers/waterTankRegisters.controller');
 router.get('/registers/reference', canRead, registersCtrl.reference);
 router.get('/registers/jobs', canRead, registersCtrl.jobs);
