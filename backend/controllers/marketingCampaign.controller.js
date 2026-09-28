@@ -30,8 +30,8 @@ function interpolateVariables(content, data = {}) {
     .replace(/\{\{agent_name\}\}/gi, data.agent_name || 'Seventh Sky Advisory Desk')
     .replace(/\{\{agent_phone\}\}/gi, data.agent_phone || '+880 1711-223344')
     .replace(/\{\{agent_email\}\}/gi, data.agent_email || 'sales@seventhskyproperty.com')
-    .replace(/\{\{view_link\}\}/gi, data.view_link || 'https://seventhskypropertycare.com/properties')
-    .replace(/\{\{unsubscribe_link\}\}/gi, data.unsubscribe_link || 'https://seventhskypropertycare.com/preferences');
+    .replace(/\{\{view_link\}\}/gi, data.view_link || 'https://www.seventhskypropertycare.com/properties')
+    .replace(/\{\{unsubscribe_link\}\}/gi, data.unsubscribe_link || 'https://www.seventhskypropertycare.com/preferences');
 }
 
 // ────────────────────────────────────────────────────────────
