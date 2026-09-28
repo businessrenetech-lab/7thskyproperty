@@ -7,9 +7,23 @@ const rateLimit = require('express-rate-limit');
 const ctrl = require('../controllers/publicWebsite.controller');
 const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
 
-// Public rate limiters
-const enquiryLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false });
-const listingLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false });
+/*
+ * Public rate limiters.
+ *
+ * They key on IP, so a local end-to-end run — which sweeps four categories
+ * across three listing types, then every filter — exhausts the listing budget
+ * and the rest of the audit reads as a wall of failures that are really just
+ * 429s. Outside production, loopback is exempt: the limits still apply in full
+ * on the host, where NODE_ENV is production and the caller is never 127.0.0.1.
+ */
+const isLocal = (req) => {
+  if (process.env.NODE_ENV === 'production') return false;
+  const ip = req.ip || req.connection?.remoteAddress || '';
+  return ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(ip);
+};
+
+const enquiryLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, skip: isLocal });
+const listingLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false, skip: isLocal });
 
 // ─── Unauthenticated Public Endpoints ─────────────────────────────────────────
 router.get('/properties', listingLimiter, ctrl.getPublishedProperties);

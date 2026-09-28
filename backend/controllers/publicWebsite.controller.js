@@ -117,16 +117,50 @@ exports.getPublishedProperties = asyncHandler(async (req, res) => {
   const limitNum = Math.min(Math.max(parseInt(limit, 10) || 24, 1), 100);
   const offset = (pageNum - 1) * limitNum;
 
+  /*
+   * A short stay does not use `is_published` — it has its own website switch on
+   * the profile, `is_website_listed`, which staff set from the short-stay
+   * console. This branch used to admit EVERY `listing_type: 'short_term'` row
+   * unconditionally, which meant a property staff had deliberately kept off the
+   * website was advertised anyway: on 2026-09-28 that was a draft ("Flat 4B")
+   * and a sold QA record, both is_website_listed = 0, both live on the site.
+   * Resolve the ids the flag actually allows and admit only those.
+   */
+  const shortStayProfiles = await ShortStayPropertyProfile.findAll({
+    attributes: ['property_id', 'is_website_listed'],
+    where: { property_id: { [Op.ne]: null } },
+    raw: true,
+  }).catch(() => []);
+  const shortStayIds = shortStayProfiles.filter((p) => p.is_website_listed).map((p) => p.property_id);
+  const shortStayWithheld = shortStayProfiles.filter((p) => !p.is_website_listed).map((p) => p.property_id);
+
   const andConditions = [
     {
       [Op.or]: [
         { is_published: true },
-        { listing_type: 'short_term' },
+        // `[0]` matches nothing, which is the right answer when none are listed.
+        { id: { [Op.in]: shortStayIds.length ? shortStayIds : [0] } },
         { status: ['sold', 'settled', 'rented', 'occupied', 'under_application', 'under_offer', 'reserved'] },
         { listing_status: ['sold', 'let', 'under_offer', 'under_application'] },
       ],
     },
   ];
+
+  /*
+   * "Not for the website" is an instruction, not a preference, so it outranks
+   * every branch above — including the sold/let showcase, which would otherwise
+   * keep advertising a sold short stay that staff had already withdrawn.
+   */
+  if (shortStayWithheld.length) andConditions.push({ id: { [Op.notIn]: shortStayWithheld } });
+
+  /*
+   * A listing card is a title, a price and a photo. With no title the site
+   * renders a nameless card — which is how SSPC-PR-000009 came to advertise a
+   * ৳25 crore apartment as a blank tile with "RRWE" for an address. An untitled
+   * record is not a listing that is ready to be advertised, so it is not served.
+   * Giving it a title puts it back.
+   */
+  andConditions.push({ title: { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: '' }] } });
 
   // Category filter: residential, commercial, rural, business
   if (req.query.category && ['residential', 'commercial', 'rural', 'business'].includes(String(req.query.category).toLowerCase())) {
