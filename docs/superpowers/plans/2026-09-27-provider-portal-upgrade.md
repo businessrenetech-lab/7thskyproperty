@@ -140,7 +140,7 @@ Each phase is independently shippable, ends green, and is ordered by **value per
 Phase 1 is deliberately not a new feature — it is the two-way channel, because everything else
 assumes a provider can be answered.
 
-### Phase 0 — The photo defect, and provider control of their own evidence *(APPROVED — in progress)*
+### Phase 0 — The photo defect, and provider control of their own evidence *(DONE — 1ec8a89)*
 
 Added 2026-09-27 at the client's direction. Three items, all verified in code before planning.
 
@@ -185,7 +185,7 @@ provider's own work order, and keep a record of what was removed and by whom.
 order shows the survivor and not the removed one; amend a report and confirm both the new text and
 the fact of amendment are visible to admin.
 
-### Phase 1 — Make the conversation two-way *(the gap nothing else can work around)*
+### Phase 1 — Make the conversation two-way *(DONE — 22ac9d5)*
 
 1. Add an **admin → portal reply**: one endpoint that writes `channel:'portal',
    direction:'outbound'` against a provider (and client), and surface a **Reply** action on the
