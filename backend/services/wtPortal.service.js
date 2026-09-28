@@ -278,6 +278,11 @@ async function providerDossier(provider) {
       findings: r.findings,
       review_notes: r.review_notes,
       reviewed_date: r.reviewed_date,
+      // The amendment trail (0161), so the portal can say a report was corrected
+      // and the provider is not left wondering whether their change took.
+      amended_at: r.amended_at,
+      amended_by: r.amended_by,
+      amendment_count: Number(r.amendment_count || 0),
       photos_before: asArray(r.photos_before),
       photos_after: asArray(r.photos_after),
       filed_via: r.filed_via,

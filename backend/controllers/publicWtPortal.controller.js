@@ -694,6 +694,150 @@ async function handleUpload(req, res, ctx) {
   });
 }
 
+/*
+ * Removing a photo. Upload was append-only and there was no delete route of any
+ * kind, so a picture of the wrong tank stayed on the job forever.
+ *
+ * The row is not silently rewritten: what was removed, by whom and when is
+ * recorded on the provider audit, because a job photo is evidence.
+ */
+async function handlePhotoRemoval(req, res, ctx) {
+  if (ctx.party_type !== 'provider') throw new portal.PortalError(403, 'Only a provider can manage job photos.');
+
+  const wo = await providerWorkOrder(ctx, req.params.code);
+
+  // Amending evidence stops being the provider's call once we have verified the
+  // job or paid for it. `photo_lock` keeps that line configurable rather than
+  // guessed; unset means "locked once verified", which is the safe default.
+  if (wo.verified_at) {
+    throw new portal.PortalError(409, 'This job has been verified by Seventh Sky. Ask the office to change a photo.');
+  }
+
+  const stage = ['before', 'after'].includes(String(req.body?.stage)) ? req.body.stage : null;
+  const url = String(req.body?.url || '').trim();
+  if (!stage) throw new portal.PortalError(400, 'Say whether the photo is in the before or after set.');
+  if (!url) throw new portal.PortalError(400, 'Name the photo to remove.');
+
+  const key = stage === 'before' ? 'portal_photos_before' : 'portal_photos_after';
+  const current = portal.asArray(wo[key]);
+  const gone = current.find((p) => p && p.url === url);
+  if (!gone) throw new portal.PortalError(404, 'That photo is not in this set.');
+
+  const next = current.filter((p) => !(p && p.url === url));
+  const other = portal.asArray(wo[stage === 'before' ? 'portal_photos_after' : 'portal_photos_before']);
+
+  await wo.update({
+    [key]: next,
+    // The tickbox must follow the evidence, or the job claims photos it no longer has.
+    photos_collected: next.length + other.length > 0,
+  });
+
+  await auditOf(req, ctx, 'removed_photo', {
+    subject_type: 'work_order', subject_code: wo.code,
+    detail: `${stage}: ${gone.name || gone.url}`,
+  });
+
+  res.json({
+    stage,
+    count: next.length,
+    removed: gone.url,
+    message: `Photo removed from the ${stage} set.`,
+  });
+}
+
+/** DELETE /public/wt-portal/:token/work-orders/:code/photos */
+exports.removePhoto = asyncHandler(async (req, res) => {
+  try {
+    const ctx = await open(req, 'provider');
+    await handlePhotoRemoval(req, res, ctx);
+  } catch (e) { fail(res, e); }
+});
+
+/** DELETE /api/wt-portal/work-orders/:code/photos */
+exports.sessionRemovePhoto = asyncHandler(async (req, res) => {
+  try {
+    const ctx = await openSession(req);
+    await handlePhotoRemoval(req, res, ctx);
+  } catch (e) { fail(res, e); }
+});
+
+/*
+ * Amending a filed report. The report was written once at completion and could
+ * never be corrected from the portal — a wrong meter reading was permanent.
+ *
+ * Only the provider's OWN report, only the narrative fields, and never the
+ * status: the portal lets a provider report, it does not let them sign off their
+ * own work. Every change is diffed onto amendment_history (0161) so the original
+ * submission stays recoverable.
+ */
+const AMENDABLE = ['summary', 'findings'];
+
+async function handleReportAmend(req, res, ctx) {
+  if (ctx.party_type !== 'provider') throw new portal.PortalError(403, 'Only a provider can amend their report.');
+
+  const report = await P.WtServiceReport.findOne({
+    where: { branch_id: ctx.row.branch_id, code: String(req.params.code || ''), provider_id: ctx.row.id },
+  });
+  if (!report) throw new portal.PortalError(404, 'That report is not one of yours.');
+
+  if (['Approved', 'Verified'].includes(String(report.status))) {
+    throw new portal.PortalError(409, 'This report has been approved. Ask the office to record a correction.');
+  }
+
+  const changes = {};
+  for (const field of AMENDABLE) {
+    if (!(field in (req.body || {}))) continue;
+    const to = req.body[field] == null ? null : String(req.body[field]);
+    const from = report[field] == null ? null : String(report[field]);
+    if (to !== from) changes[field] = { from, to };
+  }
+  if (!Object.keys(changes).length) {
+    throw new portal.PortalError(400, 'Nothing was changed.');
+  }
+
+  const history = portal.asArray(report.amendment_history);
+  const entry = {
+    at: new Date().toISOString(),
+    by: ctx.row.business_name,
+    by_type: 'provider',
+    changes,
+    note: req.body?.note ? String(req.body.note).slice(0, 500) : null,
+  };
+
+  const patch = { amended_at: new Date(), amended_by: ctx.row.business_name, amendment_count: Number(report.amendment_count || 0) + 1, amendment_history: [...history, entry] };
+  for (const field of Object.keys(changes)) patch[field] = changes[field].to;
+
+  await report.update(patch);
+
+  await auditOf(req, ctx, 'amended_report', {
+    subject_type: 'service_report', subject_code: report.code,
+    detail: Object.keys(changes).join(', '),
+  });
+
+  res.json({
+    code: report.code,
+    amended_fields: Object.keys(changes),
+    amendment_count: patch.amendment_count,
+    message: 'Report updated. Seventh Sky can see what changed.',
+  });
+}
+
+/** PATCH /public/wt-portal/:token/reports/:code */
+exports.amendReport = asyncHandler(async (req, res) => {
+  try {
+    const ctx = await open(req, 'provider');
+    await handleReportAmend(req, res, ctx);
+  } catch (e) { fail(res, e); }
+});
+
+/** PATCH /api/wt-portal/reports/:code */
+exports.sessionAmendReport = asyncHandler(async (req, res) => {
+  try {
+    const ctx = await openSession(req);
+    await handleReportAmend(req, res, ctx);
+  } catch (e) { fail(res, e); }
+});
+
 /** POST /public/wt-portal/:token/work-orders/:code/photos */
 exports.uploadPhoto = asyncHandler(async (req, res) => {
   try {

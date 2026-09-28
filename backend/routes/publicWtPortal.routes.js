@@ -42,6 +42,11 @@ router.post('/:token/work-orders/:code/photos', writeLimit,
   upload.single('file'), ctrl.uploadPhoto);
 
 // Customer — accepting their own quotation rather than telling someone to.
+// Photos are append-only no longer: a picture of the wrong tank can be removed.
+router.delete('/:token/work-orders/:code/photos', writeLimit, ctrl.removePhoto);
+// A provider may correct their own filed report; the change is kept, not hidden.
+router.patch('/:token/reports/:code', writeLimit, ctrl.amendReport);
+
 router.post('/:token/quotations/:code/decision', writeLimit, ctrl.quotationDecision);
 router.post('/:token/variations/:code/decision', writeLimit, ctrl.variationDecision);
 

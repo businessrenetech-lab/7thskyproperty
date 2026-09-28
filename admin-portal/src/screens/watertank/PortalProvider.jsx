@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Home, Briefcase, Camera, Banknote, ShieldCheck, TrendingUp, Send,
   Check, X, CalendarDays, PlayCircle, CheckCircle2, FileSignature,
-  MessageSquareWarning, ClipboardCheck,
+  MessageSquareWarning, ClipboardCheck, Pencil,
 } from 'lucide-react';
 import api from '../../services/api';
 import { bdt, dateFmt, Pill, toast, errText } from './common';
@@ -63,10 +63,12 @@ function CompleteForm({ wo, onDone, onCancel, base }) {
       </div>
       <Photos label="Photos before the work" photos={f.photos_before}
         uploadUrl={`${base}/work-orders/${wo.code}/photos`} portalBase={base}
+        removeUrl={`${base}/work-orders/${wo.code}/photos`} stage="before"
         onChange={(x) => setF((s) => ({ ...s, photos_before: x }))}
         hint="Add a note to each photo — it is what makes the picture useful, and what protects you if the work is later questioned." />
       <Photos label="Photos after the work" photos={f.photos_after}
         uploadUrl={`${base}/work-orders/${wo.code}/photos`} portalBase={base}
+        removeUrl={`${base}/work-orders/${wo.code}/photos`} stage="after"
         onChange={(x) => setF((s) => ({ ...s, photos_after: x }))} />
       <div className="wt-field">
         <label>Anything Seventh Sky should know?</label>
@@ -266,7 +268,82 @@ function Jobs({ data, base, reload }) {
   );
 }
 
-function Reports({ data }) {
+/*
+ * Correcting a report you already filed.
+ *
+ * The report was written once when the job was completed and could never be
+ * touched again, so a wrong reading meant phoning the office. Only the narrative
+ * fields are editable, never the status: a provider reports, they do not sign off
+ * their own work. The server keeps what changed (amendment_history, 0161).
+ */
+function AmendReport({ report, base, reload }) {
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({ summary: report.summary || '', findings: report.findings || '', note: '' });
+  const [busy, setBusy] = useState(false);
+
+  const locked = ['Approved', 'Verified'].includes(String(report.status));
+  const dirty = f.summary !== (report.summary || '') || f.findings !== (report.findings || '');
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const r = await api.patch(`${base}/reports/${report.code}`, f);
+      toast.ok(r.data?.message || 'Report updated');
+      setOpen(false);
+      reload?.();
+    } catch (err) {
+      toast.err(errText(err, 'Could not update the report'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (locked) {
+    return (
+      <div className="wt-note" style={{ marginTop: 10 }}>
+        Seventh Sky has approved this report, so it can no longer be changed here.
+        Call the office if something in it is wrong.
+      </div>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button type="button" className="wt-btn ghost" style={{ marginTop: 10 }} onClick={() => setOpen(true)}>
+        <Pencil size={14} /> Correct this report
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+      <div className="wt-field">
+        <label>What you did</label>
+        <textarea rows={3} value={f.summary} onChange={(e) => setF((x) => ({ ...x, summary: e.target.value }))} />
+      </div>
+      <div className="wt-field">
+        <label>Findings</label>
+        <textarea rows={3} value={f.findings} onChange={(e) => setF((x) => ({ ...x, findings: e.target.value }))} />
+      </div>
+      <div className="wt-field">
+        <label>Why you are correcting it (optional)</label>
+        <input value={f.note} onChange={(e) => setF((x) => ({ ...x, note: e.target.value }))}
+          placeholder="e.g. corrected the chlorine reading" />
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button type="button" className="wt-btn" disabled={busy || !dirty} onClick={save}>
+          {busy ? 'Saving…' : 'Save correction'}
+        </button>
+        <button type="button" className="wt-btn ghost" disabled={busy} onClick={() => setOpen(false)}>Cancel</button>
+      </div>
+      <span className="muted" style={{ fontSize: 11.5 }}>
+        Seventh Sky can see what you changed and when.
+      </span>
+    </div>
+  );
+}
+
+function Reports({ data, base, reload }) {
   const reports = data.reports || [];
   return (
     <>
@@ -299,6 +376,13 @@ function Reports({ data }) {
           )}
           {(r.photos_before || []).length > 0 && <Photos key={`${r.code}-b`} readOnly label="Before" photos={r.photos_before} />}
           {(r.photos_after || []).length > 0 && <Photos key={`${r.code}-a`} readOnly label="After" photos={r.photos_after} />}
+          {Number(r.amendment_count) > 0 && (
+            <span className="muted" style={{ fontSize: 11.5, display: 'block', marginTop: 8 }}>
+              Corrected {r.amendment_count === 1 ? 'once' : `${r.amendment_count} times`}
+              {r.amended_at ? ` · last ${dateFmt(r.amended_at)}` : ''}
+            </span>
+          )}
+          <AmendReport report={r} base={base} reload={reload} />
         </Expandable>
       ))}
     </>
@@ -636,7 +720,7 @@ export default function PortalProvider({ data, base, reload }) {
 
       {tab === 'overview' && <Overview data={data} base={base} reload={reload} go={setTab} />}
       {tab === 'jobs' && <Jobs data={data} base={base} reload={reload} />}
-      {tab === 'reports' && <Reports data={data} />}
+      {tab === 'reports' && <Reports data={data} base={base} reload={reload} />}
       {tab === 'earnings' && <Earnings data={data} />}
       {tab === 'compliance' && <Compliance data={data} />}
       {tab === 'performance' && <Performance data={data} />}
