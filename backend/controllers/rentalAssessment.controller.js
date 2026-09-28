@@ -4,7 +4,7 @@ const Property = require('../models/Property');
 const WorkOrder = require('../models/WorkOrder');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
-const { ASSESSMENT_ITEMS, ROOM_ASSESSMENT_ITEMS, computeReadiness } = require('../services/rentalWorkflow.service');
+const { ASSESSMENT_ITEMS, ROOM_ASSESSMENT_ITEMS, PREMISES_ASSESSMENT_ITEMS, RURAL_ASSESSMENT_ITEMS, computeReadiness } = require('../services/rentalWorkflow.service');
 
 const propInc = { model: Property, as: 'property', attributes: ['id', 'property_code', 'title', 'area', 'district'] };
 const itemsInc = { model: RentalAssessmentItem, as: 'items', separate: true, order: [['sort_order', 'ASC']] };
@@ -64,7 +64,14 @@ exports.create = asyncHandler(async (req, res) => {
     const prop = await Property.findByPk(data.property_id, { transaction: tx });
     if (prop && !data.owner_contact_id) data.owner_contact_id = prop.owner_contact_id;
     const a = await RentalAssessment.create(data, { transaction: tx });
-    const seed = Array.isArray(req.body.items) && req.body.items.length ? req.body.items : ROOM_ASSESSMENT_ITEMS;
+    // Three templates, by what the property actually is: rural land is assessed on
+    // access, water and boundary (SOP Rural §8/§7); a business or commercial
+    // premises on trade suitability (SOP Business §8); everything else room by room.
+    const cat = String(prop?.category || '');
+    const template = cat === 'rural'
+      ? RURAL_ASSESSMENT_ITEMS
+      : (['business', 'commercial'].includes(cat) ? PREMISES_ASSESSMENT_ITEMS : ROOM_ASSESSMENT_ITEMS);
+    const seed = Array.isArray(req.body.items) && req.body.items.length ? req.body.items : template;
     await RentalAssessmentItem.bulkCreate(
       seed.map((it, i) => ({
         assessment_id: a.id, section: it.section || null, assessment_item: it.assessment_item,

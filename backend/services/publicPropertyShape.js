@@ -12,6 +12,24 @@ const PUBLIC_DETAIL_FIELDS = [
   'lease_min_period_months', 'seo_title', 'seo_description', 'created_at',
 ];
 
+/*
+ * Rural land record (migration 0156), published ONLY for category 'rural'.
+ *
+ * `khatiyan` and `dag` are deliberately NOT here. They are the parcel-level
+ * identifiers in the public land records, so printing them beside a named listing
+ * lets anyone look up the registered owner of a private individual's land. Mouza
+ * level plus area and current use is what a buyer searches on. Both fields are
+ * shown inside the OWNER PORTAL, where the viewer is the owner of that land.
+ *
+ * If the client decides they should be public, add them here — and update
+ * testPublicPropertyShape, which asserts their absence on purpose.
+ */
+const RURAL_PUBLIC_FIELDS = [
+  'upazila', 'union_name', 'village', 'mouza', 'land_area_decimal', 'current_use',
+];
+
+const RURAL_WITHHELD_FIELDS = ['khatiyan', 'dag'];
+
 // Same rule as getPublishedProperties' visibility filter.
 const PUBLIC_STATUSES = ['sold', 'settled', 'rented', 'occupied', 'under_application', 'under_offer', 'reserved'];
 const PUBLIC_LISTING_STATUSES = ['sold', 'let', 'under_offer', 'under_application'];
@@ -27,7 +45,18 @@ function isPubliclyVisible(p) {
 function pickPublic(plain) {
   const out = {};
   for (const k of PUBLIC_DETAIL_FIELDS) if (plain && plain[k] !== undefined) out[k] = plain[k];
+  // Rural listings additionally carry their land record. The allowlist stays
+  // closed for every other category.
+  if (plain && String(plain.category) === 'rural') {
+    for (const k of RURAL_PUBLIC_FIELDS) if (plain[k] !== undefined) out[k] = plain[k];
+  }
   return out;
 }
 
-module.exports = { PUBLIC_DETAIL_FIELDS, isPubliclyVisible, pickPublic };
+/** The fields a public RURAL listing may carry, for the list shape and the tests. */
+const publicRuralFields = () => [...RURAL_PUBLIC_FIELDS];
+
+module.exports = {
+  PUBLIC_DETAIL_FIELDS, RURAL_PUBLIC_FIELDS, RURAL_WITHHELD_FIELDS,
+  isPubliclyVisible, pickPublic, publicRuralFields,
+};

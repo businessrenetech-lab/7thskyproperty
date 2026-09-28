@@ -5,7 +5,7 @@ import {
   Inbox, CalendarDays, KeyRound,
   Hotel, CalendarRange, MessageSquareQuote, BookOpen, UserCheck, DoorOpen,
   Home, Sparkles, Wrench, HandCoins, Landmark, BarChart3, TrendingUp,
-  Ruler, FolderArchive, Boxes, Plug, Building2, Wallet, Megaphone,
+  Ruler, FolderArchive, Boxes, Plug, Building2, Wallet, Megaphone, Trees,
 } from 'lucide-react';
 
 /*
@@ -1205,19 +1205,40 @@ export const BUSINESS_BUYER_NAV = [
   ] },
 ];
 
+/* ── Business Rent ─────────────────────────────────────────────────────────
+ * Leasing business premises (office, retail, restaurant, warehouse, factory).
+ * Like Commercial Rent, it runs the SAME Property Management screens scoped by
+ * PmScopeProvider, so its nav is the PM nav rebased onto /business-rent/*.
+ *
+ * Two deliberate differences from a plain rebase:
+ *  - the agreements group keeps the BUSINESS builders, BRM (rental management)
+ *    and BTM (tenancy management), which are this line's documents of record;
+ *  - Workflows points at the business_rent vertical, not leasing/short_stay.
+ */
 export const BUSINESS_RENT_NAV = [
-  { key: 'brent-home', label: 'Home', items: [
-    { to: '/business-rent', label: 'Rent Dashboard', icon: LayoutGrid, end: true },
-  ] },
-  { key: 'brent-pipeline', label: 'Leasing', items: [
-    { to: '/business-rent/listings', label: 'Rental Listings', icon: Building2 },
-    { to: '/business-rent/enquiries', label: 'Tenant Enquiries', icon: MessageSquareQuote },
-    { to: '/business-rent/rental-agreements', label: 'Rental Management', icon: FileSignature },
-    { to: '/business-rent/tenancy-agreements', label: 'Tenancy Management', icon: FileSignature },
-    { to: '/business-rent/price-schedule', label: 'Price Schedules', icon: Tags },
-  ] },
-  { key: 'brent-finance', label: 'Finance', items: [
-    { to: '/business-rent/reports', label: 'Rent Reports', icon: BarChart3 },
+  ...rebasePmNav(
+    PROPERTY_MGMT_NAV.map((g) => (g.key === 'agreements'
+      ? {
+        ...g,
+        items: g.items
+          .filter((it) => it.to && (it.to.endsWith('/agreements') || it.to.endsWith('/tenancy-agreements') || it.to.includes('/price-schedule')))
+          .map((it) => {
+            if (it.to.endsWith('/tenancy-agreements')) return { ...it, label: 'Tenancy Mgmt Agreements' };
+            if (it.to.endsWith('/agreements')) return { ...it, label: 'Rental Mgmt Agreements' };
+            return it;
+          }),
+      }
+      : {
+        ...g,
+        items: (g.items || []).map((it) => (it.to && it.to.includes('/workflows')
+          ? { ...it, to: '/property-management/workflows?vertical_key=business_rent' }
+          : it)),
+      })),
+    '/property-management',
+    '/business-rent',
+  ),
+  { key: 'brent-sop', label: 'SOP Dashboards', items: [
+    { to: '/business-rent/dashboards', label: 'Business Rent Dashboards', icon: BarChart3 },
   ] },
   { key: 'brent-switch', label: 'Switch', items: [
     { to: '/business/sell', label: '→ Sell a Business', icon: Building2 },
@@ -1256,27 +1277,105 @@ export const businessRentConsole = {
   exitTo: '/dashboard',
 };
 
+/* ── Rural · Rent ──────────────────────────────────────────────────────────
+ * Leasing rural property — agricultural land, farm houses, fisheries, ponds,
+ * dairy and poultry farms, orchards, rural houses, commercial and mixed-use
+ * rural property. The FOURTH console on the Property Management screens, so its
+ * nav is the PM nav rebased; Workflows points at the two rural verticals.
+ *
+ * The Land & Ownership, Tenant Sourcing, Dashboards and agreement groups arrive
+ * with the tasks that add their routes — a nav item without a route is a 404.
+ */
+export const RURAL_RENT_NAV = [
+  ...rebasePmNav(
+    PROPERTY_MGMT_NAV.map((g) => (g.key === 'agreements'
+      ? {
+        // The rural builders: RPRMS-RURAL-01 (owner) and RPTMS-RURAL-01 (tenant).
+        ...g,
+        items: g.items
+          .filter((it) => it.to && (it.to.endsWith('/agreements') || it.to.endsWith('/tenancy-agreements') || it.to.includes('/price-schedule')))
+          .map((it) => {
+            if (it.to.endsWith('/tenancy-agreements')) return { ...it, label: 'Tenancy Mgmt Agreements' };
+            if (it.to.endsWith('/agreements')) return { ...it, label: 'Rental Mgmt Agreements' };
+            return it;
+          }),
+      }
+      : {
+        ...g,
+        items: (g.items || []).map((it) => (it.to && it.to.includes('/workflows')
+          ? { ...it, to: '/property-management/workflows?vertical_key=rural_rent,rural_tenancy' }
+          : it)),
+      })),
+    '/property-management',
+    '/rural/rent',
+  ),
+  { key: 'rural-land', label: 'Land & Ownership', items: [
+    { to: '/rural/rent/land-records', label: 'Land Records', icon: Ruler },
+    { to: '/rural/rent/ownership', label: 'Ownership Verification', icon: ShieldCheck },
+  ] },
+  { key: 'rural-sop', label: 'SOP Dashboards', items: [
+    { to: '/rural/rent/dashboards', label: 'Rural Rent Dashboards', icon: BarChart3 },
+  ] },
+  { key: 'rural-sourcing', label: 'Tenant Sourcing', items: [
+    { to: '/rural/rent/sourcing', label: 'Briefs & Shortlists', icon: ClipboardList },
+  ] },
+  { key: 'rural-service', label: 'Service & Disputes', items: [
+    { to: '/rural/rent/disputes', label: 'Disputes', icon: AlertCircle },
+    { to: '/rural/rent/service-registers', label: 'Service Registers', icon: MessageSquare },
+  ] },
+  { key: 'rural-switch', label: 'Switch', items: [
+    { to: '/rural/sell', label: '→ Rural Sale', icon: Trees },
+    { to: '/rural/buyer-service', label: '→ Rural Buyer Service', icon: Briefcase },
+  ] },
+];
+
+export const ruralRentConsole = {
+  slug: 'rural/rent',
+  storageKey: 'rural.rent.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Rural · Rent',
+    icon: Trees,
+    // Green — distinct from PM violet, commercial sky and business pink.
+    accent: '#16a34a',
+    accentStrong: '#15803d',
+    accentInk: '#166534',
+    accentTint: 'rgba(22,163,74,.12)',
+    accentTint2: '#dcfce7',
+  },
+  navGroups: RURAL_RENT_NAV,
+  api: {},
+  contentClass: 'pm-scope',
+  exitTo: '/dashboard',
+};
+
 // ── Business Registration — its own console (a service-delivery project line,
 // not a marketplace). Coordinates trade licence, company registration, tax and
 // corporate documentation on the client's behalf. Nav grows phase by phase;
 // Phase 0 ships the Customer Service Agreement (SSPC-BR-CSA-01) + price schedule.
-export const BUSINESS_REG_NAV = [
-  { key: 'br-home', label: 'Home', items: [
-    { to: '/business-registration', label: 'Registration Dashboard', icon: LayoutGrid, end: true },
-  ] },
-  { key: 'br-pipeline', label: 'Pipeline', items: [
-    { to: '/business-registration/enquiries', label: 'Enquiries', icon: MessageSquareQuote },
-    { to: '/business-registration/projects', label: 'Registration Projects', icon: ClipboardList },
-  ] },
-  { key: 'br-registration', label: 'Commercial', items: [
-    { to: '/business-registration/agreements', label: 'Registration Agreements', icon: FileSignature },
-    { to: '/business-registration/price-schedule', label: 'Price Schedules', icon: Tags },
-  ] },
-  { key: 'br-finance', label: 'Finance', items: [
-    { to: '/business-registration/invoices', label: 'Invoices', icon: Receipt },
-    { to: '/business-registration/reports', label: 'Reports', icon: BarChart3 },
-  ] },
-];
+// Registration rides the shared service-line core, so its nav is the Water Tank nav
+// rebased — minus AMC and site assessments (nothing is inspected on site), plus the
+// registration-specific Activities, Client Documents and SOP Dashboards screens.
+export const BUSINESS_REG_NAV = rebaseNav(WATER_TANK_NAV, '/water-tank', '/business-registration')
+  .map((g) => {
+    if (g.key.endsWith('intake')) {
+      return { ...g, items: g.items
+        .filter((it) => !/\/site-assessments$/.test(it.to))
+        .map((it) => (/\/service-requests$/.test(it.to) ? { ...it, label: 'Enquiries' } : it)) };
+    }
+    if (g.key.endsWith('delivery')) {
+      return { ...g, items: [
+        ...g.items.filter((it) => !/\/amc$/.test(it.to)),
+        { to: '/business-registration/agreements/registration', label: 'Registration Agreements', icon: FileSignature },
+        { to: '/business-registration/activities', label: 'Registration Activities', icon: ClipboardList },
+        { to: '/business-registration/doc-manager', label: 'Client Documents', icon: FolderArchive },
+      ] };
+    }
+    if (g.key.endsWith('finance')) {
+      return { ...g, items: [...g.items, { to: '/business-registration/dashboards', label: 'SOP Dashboards', icon: BarChart3 }] };
+    }
+    return g;
+  });
 
 export const businessRegistrationConsole = {
   slug: 'business-registration',
@@ -1295,6 +1394,108 @@ export const businessRegistrationConsole = {
   api: {},
   contentClass: 'pm-scope',
   exitTo: '/dashboard',
+};
+
+/* ── Rural Sale / Purchase ────────────────────────
+ * Selling and buying rural property: agricultural land, farm houses, fisheries,
+ * ponds, orchards, dairy and poultry farms, commercial and mixed-use rural land.
+ *
+ * Two consoles, like Commercial and Business: the SELLER side at /rural/sell and
+ * the BUYER side at /rural/buyer-service. Both run the shared sales screens for
+ * category="rural", which already scope themselves (SALES_CATEGORIES has held
+ * 'rural' since the console-isolation work), so nothing is duplicated.
+ *
+ * Three rural-specific groups the other sales consoles do not have: Land &
+ * Ownership (the land record and the nine ownership documents), the five SOP
+ * dashboards, and Service & Disputes over the sale-side dispute categories.
+ */
+export const RURAL_SALE_NAV = [
+  { key: 'rsale-home', label: 'Home', items: [
+    { to: '/rural/sell', label: 'Sale Dashboard', icon: LayoutGrid, end: true },
+    { to: '/rural/work-queue', label: 'My Work Queue', icon: Inbox },
+    { to: '/rural/inbox', label: 'Sales Inbox', icon: Inbox },
+    { to: '/rural/calendar', label: 'Calendar', icon: CalendarDays },
+    { to: '/rural/reports', label: 'Reports', icon: BarChart3 },
+    { to: '/rural/contacts', label: 'Contacts', icon: Users },
+    { to: '/rural/marketing', label: 'Marketing', icon: Megaphone },
+  ] },
+  { key: 'rsale-selling', label: 'Selling', items: [
+    { to: '/rural/properties', label: 'Rural Properties', icon: Trees },
+    { to: '/rural/agreements/sale', label: 'Sale Agreements', icon: FileSignature },
+    { to: '/rural/price-schedule', label: 'Price Schedule', icon: Tags },
+  ] },
+  { key: 'rsale-land', label: 'Land & Ownership', items: [
+    { to: '/rural/land-records', label: 'Land Records', icon: Ruler },
+    { to: '/rural/ownership', label: 'Ownership Verification', icon: ShieldCheck },
+  ] },
+  { key: 'rsale-sop', label: 'SOP Dashboards', items: [
+    { to: '/rural/dashboards', label: 'Rural Sale Dashboards', icon: BarChart3 },
+  ] },
+  { key: 'rsale-assurance', label: 'Assurance', items: [
+    { to: '/rural/compliance?category=rural', label: 'Compliance', icon: ShieldCheck },
+    { to: '/rural/contracts', label: 'Contracts', icon: FileText },
+    { to: '/rural/introductions', label: 'Protected Buyers', icon: ShieldCheck },
+    { to: '/rural/workflows?vertical_key=rural_sale', label: 'Checklists / Workflows', icon: Folder },
+  ] },
+  { key: 'rsale-service', label: 'Service & Disputes', items: [
+    { to: '/rural/disputes', label: 'Disputes', icon: AlertCircle },
+    { to: '/rural/service-registers', label: 'Service Registers', icon: MessageSquare },
+  ] },
+  { key: 'rsale-money', label: 'Money', items: [
+    { to: '/rural/accounting', label: 'Accounting', icon: Landmark },
+    { to: '/rural/settlements', label: 'Settlements (Bulk)', icon: HandCoins },
+  ] },
+  { key: 'rsale-switch', label: 'Switch', items: [
+    { to: '/rural/buyer-service', label: '→ Buyer Service', icon: Briefcase },
+    { to: '/rural/rent', label: '→ Rural Rent', icon: Home },
+  ] },
+];
+
+export const RURAL_BUYER_NAV = [
+  { key: 'rbuy-home', label: 'Home', items: [
+    { to: '/rural/buyer-service', label: 'Buyer Dashboard', icon: LayoutGrid, end: true },
+    { to: '/rural/buyer/work-queue', label: 'My Work Queue', icon: Inbox },
+    { to: '/rural/buyer/calendar', label: 'Calendar', icon: CalendarDays },
+    { to: '/rural/enquiry', label: 'Buyer Enquiries', icon: MessageSquareQuote },
+  ] },
+  { key: 'rbuy-buying', label: 'Buying', items: [
+    { to: '/rural/buy', label: 'Buy Deals', icon: Briefcase },
+    { to: '/rural/mandates', label: 'Buyer Mandates', icon: ClipboardList },
+    { to: '/rural/agreements/purchase', label: 'Purchase Agreements', icon: FileSignature },
+  ] },
+  { key: 'rbuy-search', label: 'Search & Diligence', items: [
+    { to: '/rural/buyer/search', label: 'Search & Shortlist', icon: ClipboardList },
+    { to: '/rural/buyer/due-diligence', label: 'Due Diligence', icon: ClipboardCheck },
+  ] },
+  { key: 'rbuy-directory', label: 'Directory & Money', items: [
+    { to: '/rural/buyer/contacts', label: 'Contacts', icon: Users },
+    { to: '/rural/buyer-invoices', label: 'Buyer Invoices', icon: Landmark },
+  ] },
+  { key: 'rbuy-switch', label: 'Switch', items: [
+    { to: '/rural/sell', label: '→ Sale Dashboard', icon: LayoutGrid },
+  ] },
+];
+
+// Green, like Rural Rent — the same division, a darker shade for the sale side.
+const ruralBrand = (sub, accent, accentStrong, accentInk, tint, tint2) => ({
+  name: 'Seventh Sky', sub, icon: Trees, accent, accentStrong, accentInk, accentTint: tint, accentTint2: tint2,
+});
+
+export const ruralSaleConsole = {
+  slug: 'rural',
+  storageKey: 'rural.sale.nav.collapsed',
+  brand: ruralBrand('Rural Sale', '#0d9488', '#0f766e', '#115e59', 'rgba(13,148,136,.12)', '#ccfbf1'), // teal
+  navGroups: RURAL_SALE_NAV,
+  api: {},
+  contentClass: 'pm-scope',
+  exitTo: '/dashboard',
+};
+
+export const ruralBuyerConsole = {
+  ...ruralSaleConsole,
+  storageKey: 'rural.buyer.nav.collapsed',
+  brand: ruralBrand('Rural Buyer Service', '#059669', '#047857', '#065f46', 'rgba(5,150,105,.12)', '#d1fae5'), // emerald
+  navGroups: RURAL_BUYER_NAV,
 };
 
 export const CONSOLES = {
@@ -1320,4 +1521,5 @@ export const CONSOLES = {
   business: businessSaleConsole,
   'business-rent': businessRentConsole,
   'business-registration': businessRegistrationConsole,
+  rural: ruralSaleConsole,
 };

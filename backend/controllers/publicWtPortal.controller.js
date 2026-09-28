@@ -62,6 +62,8 @@ exports.view = asyncHandler(async (req, res) => {
       ? await portal.providerDossier(ctx.row)
       : await portal.clientDossier(ctx.row);
     await auditOf(req, ctx, 'viewed_portal');
+    // Opening the portal is how a reply gets read; the desk needs to know.
+    await markRepliesRead(ctx);
     // The party's service line drives the portal's wording (Tank vs Equipment),
     // since the portal runs outside the console's URL and can't infer it from the path.
     res.json({ party_type: ctx.party_type, service_line: ctx.row.service_line || 'water_tank', ...data });
@@ -104,7 +106,7 @@ exports.respond = asyncHandler(async (req, res) => {
       : { status: 'Draft', provider_name: null, provider_id: null });
 
     await M.WtCommLog.create({
-      branch_id: wo.branch_id, client_name: wo.client_name, channel: 'portal', direction: 'inbound',
+      branch_id: wo.branch_id, client_name: wo.client_name, channel: 'portal', direction: 'inbound', ...partyStamp(ctx),
       summary: accept
         ? `${ctx.row.business_name} accepted ${wo.code} through the provider portal`
         : `${ctx.row.business_name} declined ${wo.code}${req.body?.reason ? ` — ${req.body.reason}` : ''}`,
@@ -266,7 +268,7 @@ exports.quotationDecision = asyncHandler(async (req, res) => {
     await q.update({ decision });
 
     await M.WtCommLog.create({
-      branch_id: q.branch_id, client_name: q.client_name, channel: 'portal', direction: 'inbound',
+      branch_id: q.branch_id, client_name: q.client_name, channel: 'portal', direction: 'inbound', ...partyStamp(ctx),
       summary: `Client ${decision.toLowerCase()} quotation ${q.code} through the customer portal${req.body?.note ? ` — ${req.body.note}` : ''}`,
       ref_type: 'quotations', ref_code: q.code, logged_at: new Date(),
     }).catch(() => {});
@@ -309,7 +311,7 @@ exports.variationDecision = asyncHandler(async (req, res) => {
     const invoice = await applyDecision(v, decision, `${ctx.row.name} (portal)`);
 
     await M.WtCommLog.create({
-      branch_id: v.branch_id, client_name: v.client_name, channel: 'portal', direction: 'inbound',
+      branch_id: v.branch_id, client_name: v.client_name, channel: 'portal', direction: 'inbound', ...partyStamp(ctx),
       summary: `Client ${decision} variation ${v.variation_code} through the customer portal${req.body?.note ? ` — ${req.body.note}` : ''}`,
       ref_type: 'interior-variations', ref_code: v.variation_code, logged_at: new Date(),
     }).catch(() => {});
@@ -361,8 +363,11 @@ exports.message = asyncHandler(async (req, res) => {
     await M.WtCommLog.create({
       branch_id: ctx.row.branch_id,
       client_name: name,
-      channel: 'portal', direction: 'inbound',
+      channel: 'portal', direction: 'inbound', ...partyStamp(ctx),
+      // `summary` is the one-line preview the register lists; `body` is the
+      // message. It used to be truncated at 500 characters and the rest lost.
       summary: `${req.body?.subject ? `${req.body.subject}: ` : ''}${body.slice(0, 500)}`,
+      body,
       ref_type: ctx.party_type === 'provider' ? 'providers' : 'clients',
       ref_code: ctx.row.code, logged_at: new Date(),
     });
@@ -441,7 +446,7 @@ async function raiseComplaint(req, res, ctx) {
   // Still logged to comms, so the client's own history reads as one thread.
   await M.WtCommLog.create({
     branch_id: ctx.row.branch_id, client_name: name,
-    channel: 'portal', direction: 'inbound',
+    channel: 'portal', direction: 'inbound', ...partyStamp(ctx),
     summary: `Complaint ${row.code} raised: ${details.slice(0, 400)}`,
     ref_type: 'complaints', ref_code: row.code, logged_at: new Date(),
   }).catch(() => {});
@@ -491,6 +496,8 @@ exports.sessionView = asyncHandler(async (req, res) => {
       ? await portal.providerDossier(ctx.row)
       : await portal.clientDossier(ctx.row);
     await auditOf(req, ctx, 'viewed_portal');
+    // Opening the portal is how a reply gets read; the desk needs to know.
+    await markRepliesRead(ctx);
     res.json({ party_type: ctx.party_type, signed_in: true, ...data });
   } catch (e) { fail(res, e); }
 });
@@ -615,7 +622,7 @@ exports.sessionMessage = sessionAction(async (req, res, ctx) => {
   const name = ctx.party_type === 'provider' ? ctx.row.business_name : ctx.row.name;
   await M.WtCommLog.create({
     branch_id: ctx.row.branch_id, client_name: name,
-    channel: 'portal', direction: 'inbound',
+    channel: 'portal', direction: 'inbound', ...partyStamp(ctx),
     summary: `${req.body?.subject ? `${req.body.subject}: ` : ''}${body.slice(0, 500)}`,
     ref_type: ctx.party_type === 'provider' ? 'providers' : 'clients',
     ref_code: ctx.row.code, logged_at: new Date(),
@@ -693,6 +700,187 @@ async function handleUpload(req, res, ctx) {
     message: `Photo added to the ${stage} set.`,
   });
 }
+
+/*
+ * Opening the portal marks the desk's replies as read by the party.
+ *
+ * Without this the desk cannot tell an unanswered message from one the
+ * contractor simply has not opened yet, which is most of what an operations desk
+ * needs to know. Best-effort: failing to record a read must never block the view.
+ */
+async function markRepliesRead(ctx) {
+  const where = {
+    branch_id: ctx.row.branch_id,
+    channel: 'portal',
+    direction: 'outbound',
+    read_by_party_at: null,
+  };
+  if (ctx.party_type === 'provider' && ctx.row.id) where.provider_id = ctx.row.id;
+  else where.client_name = ctx.row.name || ctx.row.business_name;
+
+  await M.WtCommLog.update({ read_by_party_at: new Date() }, { where }).catch(() => {});
+}
+
+/*
+ * Who a portal row belongs to.
+ *
+ * `client_name` stays whatever the row is ABOUT — for a work-order action that is
+ * the client whose job it is, which is right for the job and useless for finding
+ * the contractor. Stamping provider_id and party_type alongside it means a
+ * provider's thread survives a rename and "everything this contractor said" is
+ * answerable. Before this, 0 of 13 portal rows could be traced to a provider.
+ */
+function partyStamp(ctx) {
+  const isProvider = ctx?.party_type === 'provider';
+  return {
+    party_type: ctx?.party_type || null,
+    provider_id: isProvider ? (ctx?.row?.id || null) : null,
+  };
+}
+
+/*
+ * Removing a photo. Upload was append-only and there was no delete route of any
+ * kind, so a picture of the wrong tank stayed on the job forever.
+ *
+ * The row is not silently rewritten: what was removed, by whom and when is
+ * recorded on the provider audit, because a job photo is evidence.
+ */
+async function handlePhotoRemoval(req, res, ctx) {
+  if (ctx.party_type !== 'provider') throw new portal.PortalError(403, 'Only a provider can manage job photos.');
+
+  const wo = await providerWorkOrder(ctx, req.params.code);
+
+  // Amending evidence stops being the provider's call once we have verified the
+  // job or paid for it. `photo_lock` keeps that line configurable rather than
+  // guessed; unset means "locked once verified", which is the safe default.
+  if (wo.verified_at) {
+    throw new portal.PortalError(409, 'This job has been verified by Seventh Sky. Ask the office to change a photo.');
+  }
+
+  const stage = ['before', 'after'].includes(String(req.body?.stage)) ? req.body.stage : null;
+  const url = String(req.body?.url || '').trim();
+  if (!stage) throw new portal.PortalError(400, 'Say whether the photo is in the before or after set.');
+  if (!url) throw new portal.PortalError(400, 'Name the photo to remove.');
+
+  const key = stage === 'before' ? 'portal_photos_before' : 'portal_photos_after';
+  const current = portal.asArray(wo[key]);
+  const gone = current.find((p) => p && p.url === url);
+  if (!gone) throw new portal.PortalError(404, 'That photo is not in this set.');
+
+  const next = current.filter((p) => !(p && p.url === url));
+  const other = portal.asArray(wo[stage === 'before' ? 'portal_photos_after' : 'portal_photos_before']);
+
+  await wo.update({
+    [key]: next,
+    // The tickbox must follow the evidence, or the job claims photos it no longer has.
+    photos_collected: next.length + other.length > 0,
+  });
+
+  await auditOf(req, ctx, 'removed_photo', {
+    subject_type: 'work_order', subject_code: wo.code,
+    detail: `${stage}: ${gone.name || gone.url}`,
+  });
+
+  res.json({
+    stage,
+    count: next.length,
+    removed: gone.url,
+    message: `Photo removed from the ${stage} set.`,
+  });
+}
+
+/** DELETE /public/wt-portal/:token/work-orders/:code/photos */
+exports.removePhoto = asyncHandler(async (req, res) => {
+  try {
+    const ctx = await open(req, 'provider');
+    await handlePhotoRemoval(req, res, ctx);
+  } catch (e) { fail(res, e); }
+});
+
+/** DELETE /api/wt-portal/work-orders/:code/photos */
+exports.sessionRemovePhoto = asyncHandler(async (req, res) => {
+  try {
+    const ctx = await openSession(req);
+    await handlePhotoRemoval(req, res, ctx);
+  } catch (e) { fail(res, e); }
+});
+
+/*
+ * Amending a filed report. The report was written once at completion and could
+ * never be corrected from the portal — a wrong meter reading was permanent.
+ *
+ * Only the provider's OWN report, only the narrative fields, and never the
+ * status: the portal lets a provider report, it does not let them sign off their
+ * own work. Every change is diffed onto amendment_history (0161) so the original
+ * submission stays recoverable.
+ */
+const AMENDABLE = ['summary', 'findings'];
+
+async function handleReportAmend(req, res, ctx) {
+  if (ctx.party_type !== 'provider') throw new portal.PortalError(403, 'Only a provider can amend their report.');
+
+  const report = await P.WtServiceReport.findOne({
+    where: { branch_id: ctx.row.branch_id, code: String(req.params.code || ''), provider_id: ctx.row.id },
+  });
+  if (!report) throw new portal.PortalError(404, 'That report is not one of yours.');
+
+  if (['Approved', 'Verified'].includes(String(report.status))) {
+    throw new portal.PortalError(409, 'This report has been approved. Ask the office to record a correction.');
+  }
+
+  const changes = {};
+  for (const field of AMENDABLE) {
+    if (!(field in (req.body || {}))) continue;
+    const to = req.body[field] == null ? null : String(req.body[field]);
+    const from = report[field] == null ? null : String(report[field]);
+    if (to !== from) changes[field] = { from, to };
+  }
+  if (!Object.keys(changes).length) {
+    throw new portal.PortalError(400, 'Nothing was changed.');
+  }
+
+  const history = portal.asArray(report.amendment_history);
+  const entry = {
+    at: new Date().toISOString(),
+    by: ctx.row.business_name,
+    by_type: 'provider',
+    changes,
+    note: req.body?.note ? String(req.body.note).slice(0, 500) : null,
+  };
+
+  const patch = { amended_at: new Date(), amended_by: ctx.row.business_name, amendment_count: Number(report.amendment_count || 0) + 1, amendment_history: [...history, entry] };
+  for (const field of Object.keys(changes)) patch[field] = changes[field].to;
+
+  await report.update(patch);
+
+  await auditOf(req, ctx, 'amended_report', {
+    subject_type: 'service_report', subject_code: report.code,
+    detail: Object.keys(changes).join(', '),
+  });
+
+  res.json({
+    code: report.code,
+    amended_fields: Object.keys(changes),
+    amendment_count: patch.amendment_count,
+    message: 'Report updated. Seventh Sky can see what changed.',
+  });
+}
+
+/** PATCH /public/wt-portal/:token/reports/:code */
+exports.amendReport = asyncHandler(async (req, res) => {
+  try {
+    const ctx = await open(req, 'provider');
+    await handleReportAmend(req, res, ctx);
+  } catch (e) { fail(res, e); }
+});
+
+/** PATCH /api/wt-portal/reports/:code */
+exports.sessionAmendReport = asyncHandler(async (req, res) => {
+  try {
+    const ctx = await openSession(req);
+    await handleReportAmend(req, res, ctx);
+  } catch (e) { fail(res, e); }
+});
 
 /** POST /public/wt-portal/:token/work-orders/:code/photos */
 exports.uploadPhoto = asyncHandler(async (req, res) => {

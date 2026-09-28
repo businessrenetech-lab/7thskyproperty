@@ -44,3 +44,29 @@ export const COMMERCIAL_RENT_SCOPE = {
   basePath: '/commercial/rent',
   label: 'Commercial · Rent',
 };
+
+export const BUSINESS_RENT_SCOPE = {
+  category: 'business',
+  listingType: 'rent',
+  basePath: '/business-rent',
+  label: 'Business Rent',
+};
+
+export const RURAL_RENT_SCOPE = {
+  category: 'rural',
+  listingType: 'rent',
+  basePath: '/rural/rent',
+  label: 'Rural · Rent',
+};
+
+/*
+ * Rural SALE. Only the listingType differs from RURAL_RENT_SCOPE, and that is the
+ * whole point: rural sale and rural rent share category 'rural', so a screen that
+ * filtered on category alone would show the rent book inside the sale console.
+ */
+export const RURAL_SALE_SCOPE = {
+  category: 'rural',
+  listingType: 'sale',
+  basePath: '/rural',
+  label: 'Rural · Sale',
+};

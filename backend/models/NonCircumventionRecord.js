@@ -23,6 +23,11 @@ const NonCircumventionRecord = sequelize.define('NonCircumventionRecord', {
   context: { type: DataTypes.STRING(20), defaultValue: 'sale' },
   deal_id: DataTypes.INTEGER,
   introduced_by: DataTypes.INTEGER,
+  // Rent consoles (0152): category tells residential/commercial/business apart,
+  // and the SOP protection window is the engagement plus 12 months.
+  category: DataTypes.STRING(20),
+  protection_expires_on: DataTypes.DATEONLY,
+  evidence_trail: { type: DataTypes.JSON, defaultValue: [] },
 }, { tableName: 'non_circumvention_records', underscored: true });
 
 module.exports = NonCircumventionRecord;

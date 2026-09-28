@@ -577,6 +577,20 @@ const WtCommLog = sequelize.define('WtCommLog', {
   channel: { type: D.STRING(20), defaultValue: 'call' },
   direction: { type: D.STRING(20), defaultValue: 'outbound' },
   summary: D.TEXT, ref_type: D.STRING(40), ref_code: D.STRING(30), logged_at: D.DATE,
+  /*
+   * Two-way portal messaging (0162). `client_name` stays the thread's display
+   * name; `provider_id` + `party_type` give the row a real owner, so a renamed
+   * business keeps its thread and a provider's work-order actions can be found
+   * under the provider as well as under the client's job.
+   *
+   * The read stamps are per side, and NULL means unread.
+   */
+  provider_id: D.INTEGER,
+  party_type: D.STRING(20),
+  body: D.TEXT,
+  author: D.STRING(120),
+  read_by_staff_at: D.DATE,
+  read_by_party_at: D.DATE,
 }, { tableName: 'wt_comm_logs' });
 
 /*

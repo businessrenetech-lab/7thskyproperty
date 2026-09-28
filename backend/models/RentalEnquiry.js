@@ -14,6 +14,8 @@ const RentalEnquiry = sequelize.define('RentalEnquiry', {
   email: DataTypes.STRING,
   source: DataTypes.STRING,
   budget: DataTypes.DECIMAL(15, 2),
+  // The console this enquiry belongs to (0155), from the property enquired on.
+  category: DataTypes.STRING(20),
   preferred_area: DataTypes.STRING,
   bedrooms_wanted: DataTypes.INTEGER,
   preferred_move_in: DataTypes.DATEONLY,

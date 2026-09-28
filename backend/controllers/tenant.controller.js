@@ -31,6 +31,26 @@ async function resolveTenantContactId(user) {
 }
 
 /** Guard middleware — role='tenant' AND linked contact required. */
+/*
+ * What the tenant portal may see of the property it is tenanted in.
+ *
+ * `category` was absent, so the portal could not tell a commercial unit from a
+ * flat and described every tenancy with bedrooms and bathrooms. The rural land
+ * record is included because a rural tenant rents a parcel identified by mouza,
+ * khatiyan and dag, not by an area and a district — and the tenant of that land
+ * is entitled to know which parcel their lease covers.
+ *
+ * Still an allowlist: nothing about the OWNER or the commercials of the
+ * management agreement is exposed here.
+ */
+const TENANT_PROPERTY_ATTRS = [
+  'id', 'title', 'property_code', 'address', 'area', 'district',
+  'category', 'listing_type', 'property_type',
+  'bedrooms', 'bathrooms', 'building_size', 'floor_number',
+  'upazila', 'union_name', 'village', 'mouza', 'khatiyan', 'dag', 'land_area_decimal', 'current_use',
+  'access_contact', 'featured_image_url',
+];
+
 const requireTenant = asyncHandler(async (req, res, next) => {
   if (!req.user) return res.status(401).json({ error: 'Authentication required' });
   if (req.user.role !== 'tenant') return res.status(403).json({ error: 'Tenant access only' });
@@ -52,7 +72,9 @@ async function findMyTenancy(tenantContactId, { activeOnly = false } = {}) {
 exports.me = asyncHandler(async (req, res) => {
   const contact = await Contact.findByPk(req.tenantContactId, { attributes: ['id', 'full_name', 'primary_phone', 'email'] });
   const tenancy = await findMyTenancy(req.tenantContactId, { activeOnly: true });
-  const property = tenancy?.property_id ? await Property.findByPk(tenancy.property_id, { attributes: ['id', 'title', 'property_code', 'address', 'area', 'district'] }) : null;
+  const property = tenancy?.property_id
+    ? await Property.findByPk(tenancy.property_id, { attributes: TENANT_PROPERTY_ATTRS })
+    : null;
 
   // Metrics: outstanding balance + next rent due + deposit + open WOs
   const [[out]] = await sequelize.query(
@@ -92,7 +114,7 @@ exports.me = asyncHandler(async (req, res) => {
 exports.myTenancy = asyncHandler(async (req, res) => {
   const t = await findMyTenancy(req.tenantContactId, { activeOnly: true });
   if (!t) return res.json({ data: null });
-  const property = await Property.findByPk(t.property_id, { attributes: ['id', 'title', 'property_code', 'address', 'area', 'district', 'bedrooms', 'bathrooms', 'access_contact', 'featured_image_url'] });
+  const property = await Property.findByPk(t.property_id, { attributes: TENANT_PROPERTY_ATTRS });
   const bond = await BondDepositRecord.findOne({ where: { tenancy_id: t.id } });
   res.json({ data: { tenancy: t, property, bond } });
 });

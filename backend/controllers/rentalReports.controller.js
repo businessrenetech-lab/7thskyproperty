@@ -17,6 +17,7 @@
  */
 const sequelize = require('../config/db.config');
 const { asyncHandler, branchScope } = require('../utils/controllerHelpers');
+const { pmCategoryClause } = require('../utils/pmCategory');
 
 function branchClause(req, alias) {
   const scope = branchScope(req);
@@ -28,8 +29,7 @@ function branchClause(req, alias) {
 const num = (v) => Number(v || 0);
 
 // ═══ OCCUPANCY ═════════════════════════════════════════════════════════════
-const catClauseP = (req) => req.query.property_category === 'commercial' ? " AND p.category = 'commercial'"
-  : req.query.property_category === 'residential' ? " AND p.category = 'residential'" : '';
+const catClauseP = (req) => pmCategoryClause(req.query.property_category, 'p.category');
 
 exports.occupancy = asyncHandler(async (req, res) => {
   const bw = branchClause(req, 'p');

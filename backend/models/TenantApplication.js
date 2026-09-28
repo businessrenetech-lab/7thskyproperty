@@ -54,6 +54,28 @@ const TenantApplication = sequelize.define('TenantApplication', {
   other_income: DataTypes.DECIMAL(15, 2),
   income_source_notes: DataTypes.TEXT,
   references: { type: DataTypes.JSON, defaultValue: [] },
+  // Business tenant screening (0150) — SOP Rental §11 / Tenancy §6. Sequelize
+  // silently drops columns it does not know, so these must stay in step with
+  // the migration or the screening answers are written and lost.
+  business_name: DataTypes.STRING,
+  business_type: DataTypes.STRING,
+  intended_activity: DataTypes.TEXT,
+  trade_licence_no: DataTypes.STRING,
+  trade_licence_expiry: DataTypes.DATEONLY,
+  corporate_profile: DataTypes.TEXT,
+  financial_capability: DataTypes.TEXT,
+  operational_suitability: DataTypes.TEXT,
+  previous_leasing_history: DataTypes.TEXT,
+  screening_notes: DataTypes.TEXT,
+  screening_verdict: { type: DataTypes.ENUM('pending', 'suitable', 'conditional', 'declined'), defaultValue: 'pending' },
+  // Rural tenant screening (0157) — SOP Rural §10 Step 11 / CRM Owner Sheet 8.
+  nid_verified: DataTypes.STRING,
+  business_verification: DataTypes.TEXT,
+  farming_experience: DataTypes.TEXT,
+  financial_capacity: DataTypes.TEXT,
+  references_verified: DataTypes.TEXT,
+  background_check: DataTypes.TEXT,
+  intended_use: DataTypes.TEXT,
   emergency_contact_name: DataTypes.STRING,
   emergency_contact_phone: DataTypes.STRING,
   emergency_contact_relationship: DataTypes.STRING,

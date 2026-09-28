@@ -64,6 +64,8 @@ import WaterTankConsole from './screens/watertank/WaterTankConsole';
 import AirConditioningConsole from './screens/watertank/AirConditioningConsole';
 import LandPropertyAssessmentConsole from './screens/watertank/LandPropertyAssessmentConsole';
 import DocManager from './screens/watertank/DocManager';
+import BRActivities from './screens/watertank/registration/Activities';
+import BRDashboards from './screens/watertank/registration/Dashboards';
 import DocumentRequest from './screens/DocumentRequest';
 import LoanFinancialSupportConsole from './screens/watertank/LoanFinancialSupportConsole';
 import LoanApplications from './screens/watertank/LoanApplications';
@@ -146,21 +148,22 @@ import CommercialRentConsole from './screens/CommercialRentConsole';
 import ResidentialConsole from './screens/ResidentialConsole';
 import CommercialConsole, { CommercialBuyerConsole } from './screens/CommercialConsole';
 import BusinessSaleConsole, { BusinessBuyerConsole } from './screens/BusinessSaleConsole';
+import BusinessRentDashboards from './screens/rental/BusinessRentDashboards';
 import BusinessRentConsole from './screens/BusinessRentConsole';
-import BusinessRentDashboard from './screens/business/BusinessRentDashboard';
-import BusinessListings from './screens/business/BusinessListings';
-import BusinessListingDetail from './screens/business/BusinessListingDetail';
-import BusinessEnquiries from './screens/business/BusinessEnquiries';
-import BusinessReports from './screens/business/BusinessReports';
+import RuralRentConsole from './screens/RuralRentConsole';
+import RuralSaleConsole, { RuralBuyerConsole } from './screens/RuralSaleConsole';
+import RuralSourcing from './screens/rural/RuralSourcing';
+import RuralRentDashboards from './screens/rural/RuralRentDashboards';
+import RuralLandRecords from './screens/rural/RuralLandRecords';
+import RuralOwnershipVerification from './screens/rural/RuralOwnershipVerification';
+import RuralDisputes from './screens/rural/RuralDisputes';
+import RuralServiceRegisters from './screens/rural/RuralServiceRegisters';
+import RuralSaleDashboards from './screens/rural/RuralSaleDashboards';
+import RuralBuyerSearch from './screens/rural/RuralBuyerSearch';
+import RuralDueDiligence from './screens/rural/RuralDueDiligence';
 import BrmAgreements from './screens/sales/BrmAgreements';
 import BtmAgreements from './screens/sales/BtmAgreements';
 import BusinessRegistrationConsole from './screens/BusinessRegistrationConsole';
-import BusinessRegistrationDashboard from './screens/business-registration/BusinessRegistrationDashboard';
-import BusinessRegistrationProjects from './screens/business-registration/BusinessRegistrationProjects';
-import BusinessRegistrationProjectDetail from './screens/business-registration/BusinessRegistrationProjectDetail';
-import BusinessRegistrationEnquiries from './screens/business-registration/BusinessRegistrationEnquiries';
-import BusinessRegistrationInvoices from './screens/business-registration/BusinessRegistrationInvoices';
-import BusinessRegistrationReports from './screens/business-registration/BusinessRegistrationReports';
 import BrgAgreements from './screens/sales/BrgAgreements';
 import ShortStayPropertyOnboarding from './screens/shortstay/ShortStayPropertyOnboarding';
 import ShortStayPropertyFile from './screens/shortstay/ShortStayPropertyFile';
@@ -203,6 +206,19 @@ const PH = (title, note) => <Placeholder title={title} note={note} />;
  * matched route, so /agreements/water-tank-provider/7 lands on
  * /water-tank/agreements/provider/7 rather than a literal ":id".
  */
+/*
+ * Business Registration used numeric project ids (/business-registration/projects/12)
+ * before it moved onto the shared service-line spine, which keys projects by code
+ * (BR-P0001). Old links and bookmarks land here: a numeric id has no equivalent on
+ * the new spine, so send it to the list instead of rendering "not found".
+ */
+function BrLegacyProject() {
+  const { code } = useParams();
+  return /^\d+$/.test(String(code))
+    ? <Navigate to="/business-registration/projects" replace />
+    : <WTProjectDetail />;
+}
+
 function LegacyRedirect({ to }) {
   const params = useParams();
   const { search, hash } = useLocation();
@@ -312,9 +328,6 @@ export default function App() {
               <Route path="/short-term-stay/properties/:profileId/edit" element={<LegacyRedirect to="/short-stay/properties/:profileId/edit" />} />
               <Route path="/short-term-stay/*" element={<ShortStayTabRedirect />} />
               <Route path="/agreements/short-term-rental" element={<LegacyRedirect to="/short-stay/agreements" />} />
-              <Route path="/rural/buy" element={<DealsBoard category="rural" dealType="buy" title="Rural · Buy" desc="Rural buyer service — farms, lands, buyers, agreements, commission and expenses." />} />
-              <Route path="/rural/sell" element={<PropertySellDashboard category="rural" title="Rural · Sell" desc="Rural seller service — farms, lands, owners, agreements, commission and settlement." />} />
-              <Route path="/rural/enquiry" element={<SalesEnquiries category="rural" title="Rural · Buyer Enquiries" desc="Every buyer who enquired on a rural sale property." />} />
               <Route path="/services" element={<ServiceCatalog />} />
               <Route path="/services/lines" element={<Services />} />
               <Route path="/services/lines/:slug" element={<ServiceLineDashboard />} />
@@ -1285,6 +1298,7 @@ export default function App() {
               <Route path="/property-management/rentals/new" element={<PropertyWizard />} />
               <Route path="/property-management/rentals/new/:id" element={<PropertyWizard />} />
               <Route path="/property-management/contacts" element={<SalesContacts scope="rental" />} />
+              <Route path="/property-management/contacts/clients" element={<Clients />} />
               <Route path="/property-management/applications" element={<TenantApplications />} />
               <Route path="/property-management/enquiries" element={<RentalEnquiries />} />
               <Route path="/property-management/assessments" element={<RentalAssessments />} />
@@ -1434,6 +1448,7 @@ export default function App() {
               <Route path="/commercial/rent/rentals/new" element={<PropertyWizard />} />
               <Route path="/commercial/rent/rentals/new/:id" element={<PropertyWizard />} />
               <Route path="/commercial/rent/contacts" element={<SalesContacts scope="rental" />} />
+              <Route path="/commercial/rent/contacts/clients" element={<Clients />} />
               <Route path="/commercial/rent/applications" element={<TenantApplications />} />
               <Route path="/commercial/rent/enquiries" element={<RentalEnquiries />} />
               <Route path="/commercial/rent/assessments" element={<RentalAssessments />} />
@@ -1511,21 +1526,164 @@ export default function App() {
               <Route path="/business/agreements/purchase" element={<PurchaseAgreements category="business" />} />
             </Route>
 
-            {/* ── Business RENT console (lease a business / premises). Scoped to
-                listing_type='rent', tenant enquiries, rental & tenancy
-                management agreements, rent price schedules and rent reports. ── */}
-            <Route element={<RequireAuth><AdminGate><BusinessRentConsole /></AdminGate></RequireAuth>}>
-              <Route path="/business-rent" element={<BusinessRentDashboard />} />
-              <Route path="/business-rent/listings" element={<BusinessListings listingType="rent" />} />
-              <Route path="/business-rent/listings/:id" element={<BusinessListingDetail />} />
-              <Route path="/business-rent/enquiries" element={<BusinessEnquiries mode="tenant" />} />
-              <Route path="/business-rent/rental-agreements" element={<BrmAgreements category="business_rent" />} />
-              <Route path="/business-rent/tenancy-agreements" element={<BtmAgreements category="business_rent" />} />
-              <Route path="/business-rent/price-schedule" element={<SalesPriceSchedule scope="business_rent" title="Business Rent · Price Schedules" />} />
-              <Route path="/business-rent/reports" element={<BusinessReports listingType="rent" />} />
+            {/* ── Rural SALE — the seller console. Commercial's sales screens for
+                category="rural", plus the rural-only land record, ownership
+                verification, dashboards and service registers. The bare /rural/sell
+                route used to render with whatever sidebar the user arrived from. ── */}
+            <Route element={<RequireAuth><AdminGate><RuralSaleConsole /></AdminGate></RequireAuth>}>
+              <Route path="/rural" element={<Navigate to="/rural/sell" replace />} />
+              <Route path="/rural/sell" element={<PropertySellDashboard category="rural" title="Rural · Sell" desc="Rural seller service — farms, lands, owners, agreements, commission and settlement." />} />
+              <Route path="/rural/properties" element={<SalesProperties category="rural" title="Rural · Properties for Sale" desc="Rural property engaged for sale — land records, ownership, lifecycle stages and seller representation." />} />
+              <Route path="/rural/property/:id" element={<SalesPropertyFile />} />
+              <Route path="/rural/property/:id/settlement" element={<SettlementDesk />} />
+              <Route path="/rural/properties/new" element={<PropertyWizard />} />
+              <Route path="/rural/properties/new/:id" element={<PropertyWizard />} />
+              <Route path="/rural/compliance" element={<Compliance />} />
+              <Route path="/rural/workflows" element={<Projects />} />
+              <Route path="/rural/settlements" element={<SalesBulkSettlement />} />
+              <Route path="/rural/accounting" element={<AccountingOverview />} />
+              <Route path="/rural/work-queue" element={<SalesWorkQueue />} />
+              <Route path="/rural/introductions" element={<SalesIntroductions category="rural" />} />
+              <Route path="/rural/calendar" element={<SalesCalendar category="rural" />} />
+              <Route path="/rural/agreements/sale" element={<SaleAgreements category="rural" />} />
+              <Route path="/rural/price-schedule" element={<SalesPriceSchedule scope="rural_sale" title="Rural · Price Schedules" />} />
+              <Route path="/rural/contracts" element={<SalesContracts />} />
+              <Route path="/rural/inbox" element={<SalesInbox />} />
+              <Route path="/rural/reports" element={<SalesReports />} />
+              <Route path="/rural/contacts" element={<SalesContacts scope="sales" />} />
+              <Route path="/rural/marketing" element={<SalesMarketingHub />} />
+              <Route path="/rural/contacts/clients" element={<Clients />} />
+              <Route path="/rural/clients" element={<Navigate to="/rural/contacts/clients" replace />} />
+              {/* Rural-only: the land record, the nine ownership documents, the five
+                  SOP dashboards, and disputes on the SALE-side categories. */}
+              <Route path="/rural/land-records" element={<RuralLandRecords />} />
+              <Route path="/rural/ownership" element={<RuralOwnershipVerification vertical="rural_sale" />} />
+              <Route path="/rural/dashboards" element={<RuralSaleDashboards />} />
+              <Route path="/rural/disputes" element={<RuralDisputes scope="sale" />} />
+              <Route path="/rural/service-registers" element={<RuralServiceRegisters vertical="rural_sale" />} />
             </Route>
 
+            {/* ── Rural BUYER service — the purchase side, its own console. ── */}
+            <Route element={<RequireAuth><AdminGate><RuralBuyerConsole /></AdminGate></RequireAuth>}>
+              <Route path="/rural/buyer-service" element={<BuyerServiceDashboard />} />
+              <Route path="/rural/buyer/work-queue" element={<SalesWorkQueue dealScope="buy" />} />
+              <Route path="/rural/buyer/calendar" element={<SalesCalendar category="rural" scope="buy" />} />
+              <Route path="/rural/buyer/contacts" element={<SalesContacts scope="buy" />} />
+              <Route path="/rural/buyer/marketing" element={<SalesMarketingHub scope="buy" />} />
+              <Route path="/rural/buyer/clients" element={<Clients />} />
+              <Route path="/rural/buyer-invoices" element={<BuyerInvoices />} />
+              <Route path="/rural/buy" element={<DealsBoard category="rural" dealType="buy" title="Rural · Buy" desc="Rural buyer service — farms, lands, buyers, agreements, commission and expenses." />} />
+              <Route path="/rural/buy/:dealId" element={<BuyerDealFile />} />
+              <Route path="/rural/mandates" element={<BuyerMandates category="rural" />} />
+              <Route path="/rural/mandates/:id" element={<BuyerMandateDetail category="rural" />} />
+              <Route path="/rural/enquiry" element={<SalesEnquiries category="rural" title="Rural · Buyer Enquiries" desc="Every buyer who enquired on a rural sale property." />} />
+              <Route path="/rural/agreements/purchase" element={<PurchaseAgreements category="rural" />} />
+              {/* The buyer's own registers: search / shortlist, and due diligence. */}
+              <Route path="/rural/buyer/search" element={<RuralBuyerSearch />} />
+              <Route path="/rural/buyer/due-diligence" element={<RuralDueDiligence />} />
+            </Route>
+
+            {/* ── Business RENT — the business premises leasing console. Runs the
+                SAME Property Management screens as the residential and commercial
+                rent consoles; BusinessRentConsole wraps them in a PmScopeProvider
+                scoped to category 'business' + listing_type 'rent'. The BRM/BTM
+                agreement builders and the rent price schedule are its own. ── */}
+            <Route element={<RequireAuth><AdminGate><BusinessRentConsole /></AdminGate></RequireAuth>}>
+              <Route path="/business-rent" element={<PropertyMgmtDashboard />} />
+              <Route path="/business-rent/rentals" element={<RentalProperties />} />
+              <Route path="/business-rent/rentals/new" element={<PropertyWizard />} />
+              <Route path="/business-rent/rentals/new/:id" element={<PropertyWizard />} />
+              <Route path="/business-rent/contacts" element={<SalesContacts scope="rental" />} />
+              <Route path="/business-rent/contacts/clients" element={<Clients />} />
+              <Route path="/business-rent/applications" element={<TenantApplications />} />
+              <Route path="/business-rent/enquiries" element={<RentalEnquiries />} />
+              <Route path="/business-rent/assessments" element={<RentalAssessments />} />
+              <Route path="/business-rent/statements" element={<OwnerStatements />} />
+              <Route path="/business-rent/renewals" element={<Renewals />} />
+              <Route path="/business-rent/vacancies" element={<Vacancies />} />
+              <Route path="/business-rent/settlements" element={<DepositSettlements />} />
+              <Route path="/business-rent/reports" element={<RentalReports />} />
+              <Route path="/business-rent/disbursements" element={<Disbursements />} />
+              <Route path="/business-rent/utilities" element={<UtilityBills />} />
+              <Route path="/business-rent/tenant-requests" element={<TenantRequests />} />
+              <Route path="/business-rent/arrears" element={<ArrearsActions />} />
+              <Route path="/business-rent/marketing" element={<MarketingActivities />} />
+              <Route path="/business-rent/expense-approvals" element={<ExpenseApprovals />} />
+              <Route path="/business-rent/risks" element={<PropertyRisks />} />
+              <Route path="/business-rent/work-orders" element={<WorkOrders />} />
+              <Route path="/business-rent/inspections" element={<Inspections />} />
+              <Route path="/business-rent/compliance" element={<Compliance />} />
+              <Route path="/business-rent/workflows" element={<Projects />} />
+              <Route path="/business-rent/invoices" element={<Invoices />} />
+              <Route path="/business-rent/receipts" element={<RentalReceipts />} />
+              <Route path="/business-rent/collect-rent" element={<BulkRentCollection />} />
+              <Route path="/business-rent/disburse-owners" element={<BulkOwnerDisbursement />} />
+              <Route path="/business-rent/inbox" element={<Communication />} />
+              <Route path="/business-rent/folios" element={<Folios />} />
+              <Route path="/business-rent/landlord-bills" element={<LandlordBills />} />
+              <Route path="/business-rent/agency-income" element={<AgencyIncome />} />
+              <Route path="/business-rent/dashboards" element={<BusinessRentDashboards />} />
+              {/* Business-specific — the documents of record for this line. */}
+              <Route path="/business-rent/agreements" element={<BrmAgreements category="business_rent" />} />
+              <Route path="/business-rent/tenancy-agreements" element={<BtmAgreements category="business_rent" />} />
+              <Route path="/business-rent/price-schedule" element={<SalesPriceSchedule scope="business_rent" title="Business Rent · Price Schedules" />} />
+            </Route>
+
+
+            {/* ── Rural · RENT — the FOURTH Property Management console. The same PM
+                screens, scoped to category 'rural' + listing_type 'rent' (Rural Sale
+                shares the category). Land & Ownership, Tenant Sourcing, the dashboards
+                and the rural agreement builders arrive with their own tasks. ── */}
+            <Route element={<RequireAuth><AdminGate><RuralRentConsole /></AdminGate></RequireAuth>}>
+              <Route path="/rural/rent" element={<PropertyMgmtDashboard />} />
+              <Route path="/rural/rent/rentals" element={<RentalProperties />} />
+              <Route path="/rural/rent/rentals/new" element={<PropertyWizard />} />
+              <Route path="/rural/rent/rentals/new/:id" element={<PropertyWizard />} />
+              <Route path="/rural/rent/contacts" element={<SalesContacts scope="rental" />} />
+              <Route path="/rural/rent/contacts/clients" element={<Clients />} />
+              <Route path="/rural/rent/applications" element={<TenantApplications />} />
+              <Route path="/rural/rent/enquiries" element={<RentalEnquiries />} />
+              <Route path="/rural/rent/assessments" element={<RentalAssessments />} />
+              <Route path="/rural/rent/statements" element={<OwnerStatements />} />
+              <Route path="/rural/rent/renewals" element={<Renewals />} />
+              <Route path="/rural/rent/vacancies" element={<Vacancies />} />
+              <Route path="/rural/rent/settlements" element={<DepositSettlements />} />
+              <Route path="/rural/rent/reports" element={<RentalReports />} />
+              <Route path="/rural/rent/disbursements" element={<Disbursements />} />
+              <Route path="/rural/rent/utilities" element={<UtilityBills />} />
+              <Route path="/rural/rent/tenant-requests" element={<TenantRequests />} />
+              <Route path="/rural/rent/arrears" element={<ArrearsActions />} />
+              <Route path="/rural/rent/marketing" element={<MarketingActivities />} />
+              <Route path="/rural/rent/expense-approvals" element={<ExpenseApprovals />} />
+              <Route path="/rural/rent/risks" element={<PropertyRisks />} />
+              <Route path="/rural/rent/work-orders" element={<WorkOrders />} />
+              <Route path="/rural/rent/inspections" element={<Inspections />} />
+              <Route path="/rural/rent/compliance" element={<Compliance />} />
+              <Route path="/rural/rent/workflows" element={<Projects />} />
+              <Route path="/rural/rent/invoices" element={<Invoices />} />
+              <Route path="/rural/rent/receipts" element={<RentalReceipts />} />
+              <Route path="/rural/rent/collect-rent" element={<BulkRentCollection />} />
+              <Route path="/rural/rent/disburse-owners" element={<BulkOwnerDisbursement />} />
+              <Route path="/rural/rent/inbox" element={<Communication />} />
+              <Route path="/rural/rent/folios" element={<Folios />} />
+              <Route path="/rural/rent/landlord-bills" element={<LandlordBills />} />
+              <Route path="/rural/rent/agency-income" element={<AgencyIncome />} />
+              <Route path="/rural/rent/sourcing" element={<RuralSourcing />} />
+              <Route path="/rural/rent/dashboards" element={<RuralRentDashboards />} />
+              <Route path="/rural/rent/land-records" element={<RuralLandRecords />} />
+              <Route path="/rural/rent/ownership" element={<RuralOwnershipVerification />} />
+              <Route path="/rural/rent/disputes" element={<RuralDisputes scope="rent" />} />
+              <Route path="/rural/rent/service-registers" element={<RuralServiceRegisters />} />
+              {/* The two rural agreement builders (SSPC-RPRMS-RURAL-01 and
+                  SSPC-RPTMS-RURAL-01) and the rural rent price schedule. */}
+              <Route path="/rural/rent/agreements" element={<RprmAgreements category="rural" />} />
+              <Route path="/rural/rent/tenancy-agreements" element={<TmAgreements category="rural" />} />
+              <Route path="/rural/rent/price-schedule" element={<SalesPriceSchedule scope="rural_rent" title="Rural Rent · Price Schedules" />} />
+            </Route>
             {/* Retired Business screens → their new homes. */}
+            <Route path="/business-rent/listings" element={<Navigate to="/business-rent/rentals" replace />} />
+            <Route path="/business-rent/listings/:id" element={<Navigate to="/business-rent/rentals" replace />} />
+            <Route path="/business-rent/rental-agreements" element={<Navigate to="/business-rent/agreements" replace />} />
             <Route path="/business/sale" element={<Navigate to="/business/sell" replace />} />
             <Route path="/business/listings" element={<Navigate to="/business/properties" replace />} />
             <Route path="/business/listings/:id" element={<Navigate to="/business/properties" replace />} />
@@ -1554,13 +1712,66 @@ export default function App() {
                 category="business_registration" + its Schedule C price schedule.
                 Later phases add the 9-phase SOP project pipeline. ── */}
             <Route element={<RequireAuth><AdminGate><BusinessRegistrationConsole /></AdminGate></RequireAuth>}>
-              <Route path="/business-registration" element={<BusinessRegistrationDashboard />} />
-              <Route path="/business-registration/enquiries" element={<BusinessRegistrationEnquiries />} />
-              <Route path="/business-registration/projects" element={<BusinessRegistrationProjects />} />
-              <Route path="/business-registration/projects/:id" element={<BusinessRegistrationProjectDetail />} />
-              <Route path="/business-registration/agreements" element={<BrgAgreements category="business_registration" />} />
-              <Route path="/business-registration/invoices" element={<BusinessRegistrationInvoices />} />
-              <Route path="/business-registration/reports" element={<BusinessRegistrationReports />} />
+              {/* Business Registration — shared service-line screens (see SERVICE_MODULE_DUPLICATION.md) */}
+              <Route path="/business-registration" element={<WaterTankDashboard />} />
+              <Route path="/business-registration/work-queue" element={<WTWorkQueue />} />
+              <Route path="/business-registration/calendar" element={<WTCalendar />} />
+              <Route path="/business-registration/contacts" element={<SalesContacts scope="business-registration" />} />
+              <Route path="/business-registration/clients" element={<WTClients />} />
+              <Route path="/business-registration/clients/new" element={<WTClientCreate />} />
+              <Route path="/business-registration/clients/:code" element={<WTClientDetail />} />
+              <Route path="/business-registration/service-requests" element={<WTServiceRequests />} />
+              <Route path="/business-registration/service-requests/new" element={<WTServiceRequestNew />} />
+              <Route path="/business-registration/quotations" element={<WTQuotations />} />
+              <Route path="/business-registration/quotations/new" element={<WTQuotationDirect />} />
+              <Route path="/business-registration/quotations/:code" element={<WTQuotationDetail />} />
+              <Route path="/business-registration/quotations/:code/edit" element={<WTQuotationBuilder />} />
+              <Route path="/business-registration/quotations/:code/agreement" element={<WTQuotationAgreement />} />
+              <Route path="/business-registration/projects" element={<WTProjects />} />
+              <Route path="/business-registration/projects/new" element={<WTProjectForm />} />
+              <Route path="/business-registration/projects/:code" element={<BrLegacyProject />} />
+              <Route path="/business-registration/projects/:code/edit" element={<WTProjectForm />} />
+              <Route path="/business-registration/work-orders" element={<WTWorkOrders />} />
+              <Route path="/business-registration/work-orders/:code" element={<WTWorkOrderDetail />} />
+              <Route path="/business-registration/work-orders/:code/edit" element={<WTWorkOrderForm />} />
+              <Route path="/business-registration/work-orders/:code/document" element={<WTWorkOrderDocument />} />
+              <Route path="/business-registration/providers" element={<WaterTankProviders />} />
+              <Route path="/business-registration/providers/new" element={<WaterTankProviderOnboarding />} />
+              <Route path="/business-registration/providers/:id" element={<WaterTankProviderDetail />} />
+              <Route path="/business-registration/providers/:code/edit" element={<WaterTankProviderOnboarding />} />
+              <Route path="/business-registration/compliance" element={<WTCompliance />} />
+              {/* SSPC-BR-CSA-01 — the registration Customer Service Agreement builder
+                  (services/brgAgreement.service.js, related_type business_registration_agreement).
+                  It predates the move onto the shared core and stays the document of record. */}
+              <Route path="/business-registration/agreements/registration" element={<BrgAgreements category="business_registration" />} />
+              <Route path="/business-registration/agreements/provider/new" element={<WtProviderAgreements />} />
+              <Route path="/business-registration/agreements/provider/:id" element={<WtProviderAgreements />} />
+              <Route path="/business-registration/agreements/provider/:id/edit" element={<WtProviderAgreements />} />
+              <Route path="/business-registration/service-reports" element={<WTServiceReports />} />
+              <Route path="/business-registration/service-reports/:code" element={<WTServiceReports />} />
+              <Route path="/business-registration/registers/:kind/:code" element={<WTRegisters />} />
+              <Route path="/business-registration/complaints/:code" element={<WTComplaints />} />
+              {/* Retired bespoke screen — its enquiries live on the shared intake now. */}
+              <Route path="/business-registration/enquiries" element={<LegacyRedirect to="/business-registration/service-requests" />} />
+              <Route path="/business-registration/agreements" element={<WTAgreementsHub />} />
+              <Route path="/business-registration/agreements/customer" element={<WtCustomerAgreements />} />
+              <Route path="/business-registration/agreements/provider" element={<WtProviderAgreements />} />
+              <Route path="/business-registration/invoices" element={<WTInvoices />} />
+              <Route path="/business-registration/invoices/:code" element={<WTInvoiceEditor />} />
+              <Route path="/business-registration/payments" element={<WTPayments />} />
+              <Route path="/business-registration/registers" element={<WTRegisters />} />
+              <Route path="/business-registration/registers/:kind" element={<WTRegisters />} />
+              <Route path="/business-registration/complaints" element={<WTComplaints />} />
+              <Route path="/business-registration/communication" element={<WTCommLog />} />
+              <Route path="/business-registration/catalogue" element={<WaterTankCatalogue />} />
+              <Route path="/business-registration/activities" element={<BRActivities />} />
+              <Route path="/business-registration/dashboards" element={<BRDashboards />} />
+              <Route path="/business-registration/doc-manager" element={<DocManager />} />
+              <Route path="/business-registration/reports" element={<WTReports />} />
+              <Route path="/business-registration/reports/:kind" element={<WTReports />} />
+              <Route path="/business-registration/portal-accounts" element={<WTPortalAccounts />} />
+              <Route path="/business-registration/settings" element={<WaterTankSettings />} />
+              {/* Price schedule keeps its existing screen (the BRC catalogue is a sales catalogue vertical) */}
               <Route path="/business-registration/price-schedule" element={<SalesPriceSchedule scope="business_registration" title="Business Registration · Price Schedules" />} />
             </Route>
 

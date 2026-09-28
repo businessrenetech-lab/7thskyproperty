@@ -269,7 +269,7 @@ const brandedEmailWrapper = (title, bodyContent) => {
           <tr>
             <td class="header-pad" align="center" style="background-color:#003768;padding:28px 40px 24px 40px;border-radius:12px 12px 0 0;">
               <!-- Logo -->
-              <img src="https://seventhskypropertycare.com/logo.png" alt="Seventh Sky Property Care" width="72" height="72" style="display:block;margin:0 auto 12px auto;width:72px;height:72px;border-radius:12px;" />
+              <img src="https://www.seventhskypropertycare.com/logo.png" alt="Seventh Sky Property Care" width="72" height="72" style="display:block;margin:0 auto 12px auto;width:72px;height:72px;border-radius:12px;" />
               <!-- Brand Name -->
               <h1 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:0.3px;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">Seventh Sky Property Care</h1>
               <!-- Tagline -->
@@ -315,7 +315,7 @@ const brandedEmailWrapper = (title, bodyContent) => {
                 <!-- Social / Website -->
                 <tr>
                   <td align="center" style="padding-bottom:12px;">
-                    <a href="https://seventhskypropertycare.com" style="font-size:13px;color:#003768;text-decoration:none;font-weight:600;">seventhskypropertycare.com</a>
+                    <a href="https://www.seventhskypropertycare.com" style="font-size:13px;color:#003768;text-decoration:none;font-weight:600;">seventhskypropertycare.com</a>
                   </td>
                 </tr>
                 <!-- Copyright -->

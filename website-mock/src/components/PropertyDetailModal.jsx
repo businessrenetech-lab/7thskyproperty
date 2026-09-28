@@ -22,6 +22,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import BusinessSpecs from './BusinessSpecs';
+import RuralSpecs from './RuralSpecs';
 import { mockApi } from '../services/mockApi';
 import { websiteApi } from '../services/api';
 
@@ -293,7 +294,8 @@ export default function PropertyDetailModal({ property, onClose, onBookInspectio
               </div>
 
               {/* Specs Bar */}
-              {property.business ? <BusinessSpecs business={property.business} /> : (
+              {property.business ? <BusinessSpecs business={property.business} />
+                : property.category === 'rural' ? <RuralSpecs property={property} /> : (
               <div className="grid grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
                 <div>
                   <div className="text-xs text-slate-400 uppercase font-semibold">Bedrooms</div>

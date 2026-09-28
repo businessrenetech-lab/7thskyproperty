@@ -20,6 +20,7 @@ import {
   Check
 } from 'lucide-react';
 import BusinessSpecs from '../components/BusinessSpecs';
+import RuralSpecs from '../components/RuralSpecs';
 import { websiteApi } from '../services/api';
 import DetailFilterModal from '../components/DetailFilterModal';
 
@@ -43,6 +44,9 @@ export default function PropertiesPage({ onBookInspection }) {
   const currentGuests = searchParams.get('guests') || '';
   const currentFurnishing = searchParams.get('furnishing') || '';
   const currentAmenities = searchParams.get('amenities') || '';
+  // Rural land search, filtered server side on the indexed columns.
+  const currentUpazila = searchParams.get('upazila') || '';
+  const currentMouza = searchParams.get('mouza') || '';
 
   const [searchInput, setSearchInput] = useState(currentQuery);
 
@@ -68,6 +72,8 @@ export default function PropertiesPage({ onBookInspection }) {
         guests: currentGuests,
         furnishing: currentFurnishing,
         amenities: currentAmenities,
+        upazila: currentUpazila,
+        mouza: currentMouza,
       });
       if (res.success) {
         setProperties(res.data);
@@ -89,13 +95,16 @@ export default function PropertiesPage({ onBookInspection }) {
     currentMaxSize, 
     currentGuests, 
     currentFurnishing, 
-    currentAmenities
+    currentAmenities,
+    currentUpazila,
+    currentMouza
   ]);
 
   const detailedFilterKeys = [
     'bedrooms', 'bathrooms', 'balconies', 
     'min_price', 'max_price', 'min_size', 'max_size', 
-    'guests', 'furnishing', 'amenities'
+    'guests', 'furnishing', 'amenities',
+    'upazila', 'mouza'
   ];
 
   const activeDetailedFilterCount = detailedFilterKeys.filter(k => Boolean(searchParams.get(k))).length;
@@ -628,7 +637,8 @@ export default function PropertiesPage({ onBookInspection }) {
                       </h3>
 
                       {/* Micro Specs Strip */}
-                      {prop.business ? <BusinessSpecs business={prop.business} compact /> : (
+                      {prop.business ? <BusinessSpecs business={prop.business} compact />
+                        : prop.category === 'rural' ? <RuralSpecs property={prop} compact /> : (
                       <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold border-t border-slate-100 pt-2">
                         {prop.bedrooms > 0 && <span>{prop.bedrooms} Bed</span>}
                         {prop.bathrooms > 0 && <span>{prop.bathrooms} Bath</span>}
@@ -773,7 +783,8 @@ export default function PropertiesPage({ onBookInspection }) {
                       </div>
 
                       {/* Micro Specs */}
-                      {prop.business ? <BusinessSpecs business={prop.business} compact /> : (
+                      {prop.business ? <BusinessSpecs business={prop.business} compact />
+                        : prop.category === 'rural' ? <RuralSpecs property={prop} compact /> : (
                       <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold border-t border-slate-100 pt-2 mt-2">
                         {prop.bedrooms > 0 && <span>{prop.bedrooms} Bed</span>}
                         {prop.bathrooms > 0 && <span>{prop.bathrooms} Bath</span>}

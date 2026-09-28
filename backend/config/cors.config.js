@@ -16,6 +16,10 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'http://127.0.0.1:5177',
   'http://127.0.0.1:5178',
   'https://darkslateblue-cormorant-104679.hostingersite.com',
+  // The live site. www is canonical; the apex is listed too because it is what
+  // people type and what a redirect starts from.
+  'https://www.seventhskypropertycare.com',
+  'https://seventhskypropertycare.com',
   'https://languageacademy.com.bd',
   'https://www.languageacademy.com.bd',
 ];

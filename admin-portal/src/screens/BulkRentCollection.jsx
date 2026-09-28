@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, RefreshCw, Search, CheckCircle2, Wallet, Layers, Bell } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import { PageHead, Button, Field, Input, Select, Spinner, Badge } from '../ui/kit';
 
@@ -18,6 +19,7 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
 const METHODS = ['cash', 'bank', 'bkash', 'nagad', 'cheque', 'card', 'other'];
 
 export default function BulkRentCollection() {
+  const scope = usePmScope();
   const toast = useToast();
   const nav = useNavigate();
   const [month, setMonth] = useState(thisMonth());
@@ -38,7 +40,8 @@ export default function BulkRentCollection() {
   const load = useCallback(async () => {
     setLoading(true); setResults(null);
     try {
-      const params = { month };
+      // Bulk collection runs for this console only.
+      const params = { month, property_category: scope.category };
       if (owner) params.owner_id = owner;
       if (status) params.status = status;
       if (q.trim()) params.q = q.trim();
@@ -62,7 +65,7 @@ export default function BulkRentCollection() {
       setEntries(seed);
     } catch (e) { toast.error(e.response?.data?.error || 'Could not load rent data'); }
     finally { setLoading(false); }
-  }, [month, owner, status, q, toast]);
+  }, [month, owner, status, q, toast, scope.category]);
 
   const owners = useMemo(() => {
     const seen = new Map();

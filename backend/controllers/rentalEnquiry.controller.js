@@ -6,6 +6,7 @@ const Contact = require('../models/Contact');
 const { TenantApplication, TenantVerification } = require('../models/TenantApplication');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
+const { pmCategory } = require('../utils/pmCategory');
 const { VERIFICATION_ITEMS } = require('../services/rentalWorkflow.service');
 
 const FIELDS = ['property_id', 'contact_id', 'enquirer_name', 'phone', 'email', 'source', 'budget', 'preferred_area',
@@ -36,10 +37,12 @@ exports.list = asyncHandler(async (req, res) => {
     }
   }
 
-  // Scope to a property category when asked (commercial rent console).
-  const propI = req.query.category
-    ? { ...propInc, where: { category: req.query.category }, required: true }
-    : propInc;
+  // Scope by the enquiry's own category (0155). The old inner join on the property
+  // hid every enquiry that had no property attached — 2 of 10 were invisible in
+  // every console.
+  const cat = pmCategory(req.query.category);
+  if (cat) where.category = cat;
+  const propI = propInc;
 
   if (req.query.view === 'kanban') {
     const rows = await RentalEnquiry.findAll({ where, include: [propI], order: [['updated_at', 'DESC']] });

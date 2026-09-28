@@ -18,6 +18,8 @@ const RentalEnquiry = require('../models/RentalEnquiry');
 const Property = require('../models/Property');
 const Contact = require('../models/Contact');
 const { asyncHandler, branchScope, resolveBranchId } = require('../utils/controllerHelpers');
+const { pmCategory } = require('../utils/pmCategory');
+const { propertyIdsInCategory } = require('../utils/salesCategory');
 
 const snippet = (s, n = 120) => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n) + '…' : t; };
 
@@ -36,13 +38,34 @@ exports.inbox = asyncHandler(async (req, res) => {
   const scope = branchScope(req);
   const { source, channel, status, property_id, q } = req.query;
 
+  // Console scoping: the inbox belongs to one console, not all of them. Property
+  // threads carry the property in entity_id (not property_id — only 2 of 162 rows
+  // set that), so the scope is applied there. Threads of other entity types are
+  // surfaced only through their own parent, which is scoped below.
+  const cat = pmCategory(req.query.property_category);
+  const scopedIds = cat ? await propertyIdsInCategory(cat) : null;
+  const idList = scopedIds && scopedIds.length ? scopedIds : [0];
+
   // A) Rental enquiries as lead conversations.
   const enqWhere = { ...scope };
   if (property_id) enqWhere.property_id = Number(property_id);
-  const enquiries = await RentalEnquiry.findAll({ where: enqWhere, include: [{ model: Property, as: 'property', attributes: ['id', 'title', 'property_code'] }], order: [['updated_at', 'DESC']], limit: 500 });
+  const enqPropInc = { model: Property, as: 'property', attributes: ['id', 'title', 'property_code'] };
+  const enquiries = await RentalEnquiry.findAll({
+    where: scopedIds ? { ...enqWhere, property_id: { [Op.in]: idList } } : enqWhere,
+    include: [enqPropInc],
+    order: [['updated_at', 'DESC']],
+    limit: 500,
+  });
 
   // B) All communications (to group into conversations + attach to enquiries).
-  const comms = await Communication.findAll({ where: { ...scope }, order: [['occurred_at', 'DESC']], limit: 2000, raw: true });
+  const commWhere = { ...scope };
+  if (scopedIds) {
+    commWhere[Op.or] = [
+      { entity_type: 'property', entity_id: { [Op.in]: idList } },
+      { entity_type: { [Op.ne]: 'property' } },
+    ];
+  }
+  const comms = await Communication.findAll({ where: commWhere, order: [['occurred_at', 'DESC']], limit: 2000, raw: true });
 
   // Group comms by conversation key.
   const byKey = new Map();

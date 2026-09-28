@@ -23,6 +23,16 @@ const Property = sequelize.define('Property', {
   nearby_places: { type: DataTypes.JSON, defaultValue: [] },
   bedrooms: DataTypes.INTEGER, bathrooms: DataTypes.INTEGER, balconies: DataTypes.INTEGER, parking: DataTypes.INTEGER,
   land_size: DataTypes.STRING(60), building_size: DataTypes.STRING(60),
+  // Rural land record (0156) — see utils/ruralLandRecord.js. A rural property is
+  // identified by these, not by a street address.
+  upazila: DataTypes.STRING,
+  union_name: DataTypes.STRING,
+  village: DataTypes.STRING,
+  mouza: DataTypes.STRING,
+  khatiyan: DataTypes.STRING,
+  dag: DataTypes.STRING,
+  land_area_decimal: DataTypes.DECIMAL(12, 3),
+  current_use: DataTypes.STRING,
   floor_number: DataTypes.STRING(20), total_floors: DataTypes.STRING(20), total_units: DataTypes.INTEGER,
   building_height: DataTypes.STRING(40), year_built: DataTypes.STRING(10),
   unit_floor_plans: {

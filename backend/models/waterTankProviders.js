@@ -97,6 +97,15 @@ const WtServiceReport = sequelize.define('WtServiceReport', {
   photos_before: D.JSON,
   photos_after: D.JSON,
   status: { type: D.STRING(30), defaultValue: 'Submitted' },
+  /*
+   * Amendment trail (0161). A provider may correct a report they filed, but an
+   * amendment is evidence: the history keeps what each change altered, so the
+   * original submission stays recoverable.
+   */
+  amended_at: D.DATE,
+  amended_by: D.STRING(200),
+  amendment_count: { type: D.INTEGER, defaultValue: 0 },
+  amendment_history: D.JSON,
   reviewed_by: D.STRING(120),
   reviewed_date: D.DATEONLY,
   review_notes: D.TEXT,

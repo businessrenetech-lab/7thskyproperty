@@ -5,7 +5,7 @@ import {
   AlertTriangle, ClipboardList, ArrowRight,
 } from 'lucide-react';
 import api from '../../services/api';
-import { useSvcNav, WtHead, Loading, EmptyState, bdt, dateFmt, toast, errText } from './common';
+import { useSvcNav, WtHead, Loading, EmptyState, bdt, dateFmt, toast, errText, svcRegistrationRegister } from './common';
 
 /*
  * Direct quotation — Sec. 7 Step 5, "the job is well enough understood to price".
@@ -267,7 +267,21 @@ export default function QuotationDirect() {
                         ? <input className="wt-input sm" value={l.name || ''} onChange={(e) => setLine(i, 'name', e.target.value)} placeholder="Additional fee" />
                         : l.name}</td>
                       <td><input className="wt-input sm" type="number" min="1" value={l.qty} onChange={(e) => setLine(i, 'qty', e.target.value)} /></td>
-                      <td><input className="wt-input sm" type="number" min="0" value={l.price} onChange={(e) => setLine(i, 'price', e.target.value)} /></td>
+                      <td>
+                        <input className="wt-input sm" type="number" min="0" value={l.price} onChange={(e) => setLine(i, 'price', e.target.value)} />
+                        {svcRegistrationRegister() && (
+                          <select
+                            className="wt-input sm"
+                            style={{ marginTop: 4 }}
+                            value={l.fee_kind || 'professional'}
+                            onChange={(e) => setLine(i, 'fee_kind', e.target.value)}
+                            title="Government fees are collected for the authority and are not Seventh Sky revenue"
+                          >
+                            <option value="professional">Professional fee</option>
+                            <option value="government">Government fee</option>
+                          </select>
+                        )}
+                      </td>
                       <td style={{ textAlign: 'right', fontWeight: 700 }}>{bdt(Number(l.price || 0) * (Number(l.qty) || 1))}</td>
                       <td><button className="wt-iconbtn" onClick={() => delLine(i)}><Trash2 size={13} /></button></td>
                     </tr>

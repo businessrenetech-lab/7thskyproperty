@@ -14,6 +14,7 @@ const { generateCode } = require('../utils/codeGenerator');
 // contact scope, so treat its service-line key as an interior scope too.
 const { isInteriorLine } = require('../config/serviceLines');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
+const { pmCategory } = require('../utils/pmCategory');
 
 const CONTACT_FIELDS = [
   'contact_type', 'salutation', 'first_name', 'last_name', 'full_name', 'company_name', 'designation',
@@ -171,12 +172,11 @@ exports.list = asyncHandler(async (req, res) => {
   if (req.query.looking_for && req.query.looking_for !== 'all') {
     where.looking_for = req.query.looking_for;
   }
-  // Property-category isolation (residential vs commercial console). Exact match
-  // on the hard `category` column (backfilled in migration 0128, set on create),
-  // so each console shows only its own directory in both directions.
-  if (['commercial', 'residential', 'business'].includes(req.query.category)) {
-    where.category = req.query.category;
-  }
+  // Property-category isolation across the four consoles. Exact match on the hard
+  // `category` column (backfilled in migration 0128, set on create), so each
+  // console shows only its own directory in both directions.
+  const cat = pmCategory(req.query.category);
+  if (cat) where.category = cat;
 
   // Sorting
   let order = [['created_at', 'DESC']];

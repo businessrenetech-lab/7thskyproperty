@@ -306,6 +306,79 @@ const BUSINESS_REGISTRATION = {
   ],
 };
 
+// -- Rural Property Sale (SSPC-RLPSS-01) -- signed with the Seller / Owner -----
+// Transcribed VERBATIM from "Rural Property - Sale Service Agreement V0.2",
+// Schedules A, B and D. Schedule B carries the land record the sale turns on:
+// district, upazila, union, village, mouza, khatian and dag.
+const RURAL_SALE = {
+  party: 'Seller',
+  client_heading: 'PROPERTY OWNER / SELLER / CLIENT',
+  client_footer: 'Hereinafter referred to as the "Seller", "Owner" or "Client"',
+  commission_label: 'Sales Commission / Success Fee \u2014 % of Final Sale Price (or as agreed)',
+  schedule_a_title: 'SCHEDULE A \u2014 Selected Rural Property Sale Services',
+  schedule_a: [
+    ['Property Assessment & Sale Planning', ['Initial Consultation', 'Property Assessment', 'Rural Market Assessment', 'Property Pricing Guidance', 'Sale Strategy Planning']],
+    ['Property Preparation', ['Property Presentation Advice', 'Land Inspection Coordination', 'Boundary Verification Coordination', 'Cleaning Coordination', 'Property Improvement Recommendations']],
+    ['Marketing & Promotion', ['Professional Photography Coordination', 'Videography Coordination', 'Drone Photography Coordination', 'Online Marketing', 'Social Media Promotion', 'Buyer Database Promotion', 'Property Signboard Coordination']],
+    ['Buyer & Sale Coordination', ['Buyer Enquiry Management', 'Property Inspection Coordination', 'Buyer Communication', 'Negotiation Support', 'Offer Coordination', 'Sale Agreement Coordination', 'Settlement Coordination']],
+    ['Documentation & Professional Coordination', ['Ownership Verification Coordination', 'Khatian Review Coordination', 'Dag Review Coordination', 'Mutation Review Coordination', 'Survey Coordination', 'Legal Coordination', 'Registration Coordination']],
+    ['Additional Services', ['Property Valuation Coordination', 'Agricultural Assessment Coordination', 'Environmental Assessment Coordination', 'Other']],
+  ],
+  schedule_b_title: 'SCHEDULE B \u2014 Rural Property Sale Summary',
+  schedule_b_fields: [
+    ['Client Reference No.', 'client_ref_no'], ['Work Order No.', 'work_order_no'],
+    ['Property Address', 'property_address'], ['District', 'district'], ['Upazila', 'upazila'],
+    ['Union', 'union_name'], ['Village', 'village'], ['Mouza', 'mouza'],
+    ['Khatian No.', 'khatiyan'], ['Dag No.', 'dag'], ['Land Area', 'land_area_decimal'],
+    ['Property Type', 'property_type'], ['Ownership Status', 'ownership_status'],
+    ['Agreed Listing Price', 'listing_price'], ['Exclusive Appointment', 'exclusive_appointment'],
+    ['Exclusive Period', 'exclusive_period'], ['Preferred Settlement Timeframe', 'expected_date'],
+    ['Special Instructions', 'special_requirements'],
+  ],
+  schedule_d_title: 'SCHEDULE D \u2014 Rural Property Sale Checklist',
+  schedule_d: [
+    ['Before Commencement', ['Agreement Signed', 'Property Details Confirmed', 'Ownership Documents Received', 'Quotation / Work Order Approved', 'Deposit Received (If Applicable)']],
+    ['During the Engagement', ['Property Assessment Completed', 'Marketing Commenced', 'Property Listed', 'Buyer Enquiries Managed', 'Inspections Coordinated', 'Offers Presented', 'Negotiations Completed', 'Documentation Coordinated', 'Settlement Coordinated']],
+    ['Completion', ['Property Sold / Engagement Completed', 'Final Invoice / Commission Paid', 'Client Feedback Received', 'File Closed']],
+  ],
+};
+
+// -- Rural Property Purchase (SSPC-RLPPS-01) -- signed with the Buyer ----------
+// Transcribed VERBATIM from "Rural Property - Purchase Service Agreement V0.2".
+// Schedule B records the SEARCH criteria, not a property: the buyer has not
+// chosen one yet, which is why its fields differ from the sale side's.
+const RURAL_PURCHASE = {
+  party: 'Buyer',
+  client_heading: 'PROPERTY BUYER / CLIENT',
+  client_footer: 'Hereinafter referred to as the "Buyer", "Purchaser" or "Client"',
+  commission_label: 'Professional Success Fee / Commission \u2014 % of Purchase Price (or as agreed)',
+  schedule_a_title: 'SCHEDULE A \u2014 Selected Rural Property Purchase Services',
+  schedule_a: [
+    ['Buyer Consultation & Planning', ['Initial Consultation', 'Property Requirement Assessment', 'Budget Planning', 'Purchase Strategy', 'Rural Market Guidance']],
+    ['Property Search & Assessment', ['Rural Property Search', 'Property Shortlisting', 'Market Research', 'Property Comparison', 'Site Visit Coordination', 'Property Inspection Coordination']],
+    ['Purchase & Transaction Coordination', ['Seller Communication', 'Negotiation Support', 'Offer Preparation', 'Documentation Coordination', 'Registration Coordination', 'Settlement Coordination', 'Property Handover Coordination']],
+    ['Professional Coordination', ['Ownership Verification Coordination', 'Khatian Review Coordination', 'Dag & Mutation Coordination', 'Survey Coordination', 'Property Valuation Coordination', 'Legal Coordination', 'Finance Coordination']],
+    ['Additional Services', ['Agricultural Assessment Coordination', 'Environmental Assessment Coordination', 'Utility Connection Coordination', 'Other']],
+  ],
+  schedule_b_title: 'SCHEDULE B \u2014 Rural Property Purchase Summary',
+  schedule_b_fields: [
+    ['Client Reference No.', 'client_ref_no'], ['Work Order No.', 'work_order_no'],
+    ['Preferred District', 'district'], ['Preferred Upazila', 'upazila'],
+    ['Preferred Union', 'union_name'], ['Preferred Village', 'village'],
+    ['Preferred Property Type', 'property_type'], ['Intended Use', 'intended_use'],
+    ['Budget Range', 'budget_range'], ['Preferred Land Size', 'property_size'],
+    ['Finance Required', 'finance_method'], ['Selected Service Package', 'selected_services_text'],
+    ['Expected Purchase Timeframe', 'expected_date'], ['Payment Schedule', 'payment_schedule'],
+    ['Special Instructions', 'special_requirements'],
+  ],
+  schedule_d_title: 'SCHEDULE D \u2014 Rural Property Purchase Checklist',
+  schedule_d: [
+    ['Before Commencement', ['Agreement Signed', 'Buyer Requirements Confirmed', 'Quotation Accepted', 'Deposit Received']],
+    ['During the Engagement', ['Property Search Completed', 'Suitable Properties Presented', 'Site Inspection Coordinated', 'Negotiations Completed', 'Documentation Coordinated', 'Settlement Coordinated']],
+    ['Completion', ['Services Completed', 'Final Invoice Issued', 'Client Feedback Received', 'File Closed']],
+  ],
+};
+
 module.exports = {
   purchase: PURCHASE,
   sale: SALE,
@@ -316,4 +389,6 @@ module.exports = {
   rent_business: BUSINESS_RENTAL,
   tenancy_business: BUSINESS_TENANCY,
   registration_business: BUSINESS_REGISTRATION,
+  sale_rural: RURAL_SALE,
+  purchase_rural: RURAL_PURCHASE,
 };

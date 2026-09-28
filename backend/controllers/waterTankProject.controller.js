@@ -18,6 +18,8 @@ const { num, eq, asArray, today } = svc;
 const actorOf = (req) => req.user?.name || req.user?.email || 'Operations';
 const ctxOf = (req) => ({
   branchId: resolveBranchId(req), actor: actorOf(req), userId: req.user?.id || null,
+  // Which console is asking — the project is created for that service line.
+  serviceLine: resolveServiceLine(req),
 });
 const daysTo = (d) => (d ? Math.ceil((new Date(d) - Date.now()) / 864e5) : null);
 
@@ -102,7 +104,7 @@ exports.reference = asyncHandler(async (req, res) => {
 
   const ui = serviceUi(req);
   res.json({
-    next_code: await svc.nextProjectCode(branchId),
+    next_code: await svc.nextProjectCode(branchId, undefined, resolveServiceLine(req)),
     stages: svc.stagesFor(resolveServiceLine(req)),
     // Vocabulary from the active service line (never Water Tank in the AC console).
     project_types: ui.project_types || svc.PROJECT_TYPES,

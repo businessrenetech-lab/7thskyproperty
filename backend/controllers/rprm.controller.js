@@ -6,6 +6,7 @@
 const crypto = require('crypto');
 const { asyncHandler, branchScope, resolveBranchId } = require('../utils/controllerHelpers');
 const svc = require('../services/rprmAgreement.service');
+const { resolveAgreementCategory } = require('../services/agreementCategory');
 const SigningEnvelope = require('../models/SigningEnvelope');
 const EnvelopeSigner = require('../models/EnvelopeSigner');
 const SignatureField = require('../models/SignatureField');
@@ -18,19 +19,27 @@ const { generateCode } = require('../utils/codeGenerator');
 const { buildSignerDefs, persistSigners, dispatchEnvelope, emailFirstSigner } = require('../services/agreementSigners.service');
 const sequelize = require('../config/db.config');
 
-// Residential vs commercial rental-management agreements run through the same
-// controller and render service, differing only by category (?category=).
+// Rental-management agreements run through the same controller and render
+// service, differing only by category (?category=). A category with no builder
+// is REFUSED rather than quietly served the residential variant — a business or
+// rural console used to receive residential paperwork with residential codes.
+const PM_BUILDERS = {
+  residential: { build: () => svc.buildResidentialPMAgreement, codePrefix: 'ENV-RPRM-', mgmtCode: 'RPRM-018' },
+  commercial: { build: () => svc.buildCommercialPMAgreement, codePrefix: 'ENV-CPRM-', mgmtCode: 'CPRM-018' },
+  rural: { build: () => svc.buildRuralPMAgreement, codePrefix: 'ENV-RRPM-', mgmtCode: 'RPRM-010' },
+};
+
 function ctx(req) {
-  const category = String(req.query.category || req.body?.category || 'residential').toLowerCase() === 'commercial'
-    ? 'commercial' : 'residential';
+  const { category } = resolveAgreementCategory(req.query.category || req.body?.category, PM_BUILDERS);
+  const variant = PM_BUILDERS[category];
   const pack = svc.packFor(category);
   return {
     category,
     vertical: pack.catalog_vertical,
     related_type: pack.related_type,
-    build: category === 'commercial' ? svc.buildCommercialPMAgreement : svc.buildResidentialPMAgreement,
-    codePrefix: category === 'commercial' ? 'ENV-CPRM-' : 'ENV-RPRM-',
-    mgmtCode: category === 'commercial' ? 'CPRM-018' : 'RPRM-018',
+    build: variant.build(),
+    codePrefix: variant.codePrefix,
+    mgmtCode: variant.mgmtCode,
     serviceGroups: pack.service_groups,
     checklistGroups: pack.checklist_groups,
   };

@@ -180,6 +180,7 @@ mount('/api/business-registration-projects', './routes/businessRegistrationProje
 mount('/api/business-registration-enquiries', './routes/businessRegistrationEnquiry.routes');
 mount('/api/business-registration-invoices', './routes/businessRegistrationInvoice.routes');
 mount('/api/business-registration-reports', './routes/businessRegistrationReports.routes');
+mount('/api/br-line', './routes/businessRegistrationLine.routes');
 mount('/api/business-ndas', './routes/businessNda.routes');
 mount('/api/rptm', './routes/rptm.routes');
 mount('/api/sts', './routes/sts.routes');
@@ -240,6 +241,11 @@ mount('/api/deals', './routes/deal.routes');
 mount('/api/buyer-mandates', './routes/buyerMandate.routes');
 mount('/api/sales/inbox', './routes/salesInbox.routes'); // before /api/sales so the prefix wins
 mount('/api/sales/introductions', './routes/salesIntroduction.routes'); // before /api/sales so the prefix wins
+mount('/api/rent-protections', './routes/rentProtection.routes'); // non-circumvention for the rent consoles
+mount('/api/business-rent', './routes/businessRentDashboards.routes');
+mount('/api/rural-sourcing', './routes/ruralSourcing.routes'); // tenant sourcing over registers 158/159/160
+mount('/api/rural-rent', './routes/ruralRentDashboards.routes');
+mount('/api/rural-sale', './routes/ruralSaleDashboards.routes');
 mount('/api/sales/calendar', './routes/salesCalendar.routes'); // before /api/sales so the prefix wins
 mount('/api/sales', './routes/sales.routes');
 mount('/api/sales-payments', './routes/salesPayment.routes');

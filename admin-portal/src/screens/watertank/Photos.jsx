@@ -160,9 +160,12 @@ function Thumb({ photo, portalBase, onOpen, onCaption, onRemove, readOnly }) {
  * @param onChange    omit for a read-only gallery
  * @param uploadUrl   endpoint that accepts a multipart `file` and returns { url }
  * @param portalBase  set in the portal, so images route through its photo endpoint
+ * @param removeUrl   DELETE endpoint for a photo already stored on the server
+ * @param stage       'before' | 'after' — which set removeUrl should act on
  */
 export default function Photos({
   label, photos = [], onChange, uploadUrl, portalBase, readOnly = false, hint,
+  removeUrl, stage,
 }) {
   const [busy, setBusy] = useState(false);
   const [lightbox, setLightbox] = useState(-1);
@@ -201,7 +204,32 @@ export default function Photos({
   }, [list, onChange, uploadUrl]);
 
   const setCaption = (i, caption) => onChange(list.map((p, j) => (j === i ? { ...p, caption } : p)));
-  const remove = (i) => onChange(list.filter((_, j) => j !== i));
+
+  /*
+   * Removing a photo used to drop it from this list only. The file had already
+   * been uploaded by `pick` above, so the server copy stayed on the work order
+   * for ever — the tech saw it disappear and it was still there. When the caller
+   * gives us a removeUrl, tell the server too, and only forget it locally once
+   * the server agrees.
+   */
+  const remove = useCallback(async (i) => {
+    const photo = list[i];
+    const drop = () => onChange(list.filter((_, j) => j !== i));
+
+    if (!removeUrl || !photo?.url || /^blob:|^data:/i.test(photo.url)) { drop(); return; }
+
+    setBusy(true);
+    try {
+      await api.delete(removeUrl, { data: { url: photo.url, stage } });
+      drop();
+    } catch (err) {
+      // Keep it on screen if the server would not let it go, rather than showing
+      // a photo as gone when it is not.
+      toast.err(errText(err, 'Could not remove that photo'));
+    } finally {
+      setBusy(false);
+    }
+  }, [list, onChange, removeUrl, stage]);
 
   return (
     <div className="wt-field">

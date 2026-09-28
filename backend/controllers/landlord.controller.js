@@ -62,7 +62,7 @@ exports.requireLandlord = requireLandlord;
 // ─── GET /api/landlord/me — profile + summary metrics ───────────────────────
 exports.me = asyncHandler(async (req, res) => {
   const contact = await Contact.findByPk(req.ownerContactId, { attributes: ['id', 'full_name', 'primary_phone', 'email'] });
-  const props = await Property.findAll({ where: { owner_contact_id: req.ownerContactId }, attributes: ['id', 'listing_type', 'status', 'pm_status', 'approved_monthly_rent'] });
+  const props = await Property.findAll({ where: { owner_contact_id: req.ownerContactId }, attributes: ['id', 'category', 'listing_type', 'status', 'pm_status', 'approved_monthly_rent'] });
   const propIds = props.map((p) => p.id);
   const activeTenancies = await Tenancy.count({ where: { owner_contact_id: req.ownerContactId, status: 'active' } });
 
@@ -91,11 +91,33 @@ exports.me = asyncHandler(async (req, res) => {
   });
 });
 
+/*
+ * What every landlord-portal property row carries.
+ *
+ * `category` and `listing_type` were both absent, so the portal could not tell a
+ * commercial floor from a residential flat, and the rural land record was missing
+ * entirely — `area` and `district` cannot distinguish one rural parcel from
+ * another, so an owner of three plots in one upazila saw three identical rows.
+ *
+ * The land record is shown INSIDE the portal on purpose: the viewer owns that
+ * land. The PUBLIC website deliberately withholds khatiyan and dag — see
+ * services/publicPropertyShape.js.
+ *
+ * A residential row simply carries the rural columns as null.
+ */
+const RURAL_LAND_ATTRS = ['upazila', 'union_name', 'village', 'mouza', 'khatiyan', 'dag', 'land_area_decimal', 'current_use'];
+const PORTFOLIO_ATTRS = [
+  'id', 'property_code', 'title', 'address', 'area', 'district',
+  'category', 'listing_type', 'status', 'pm_status', 'rental_readiness_status',
+  'approved_monthly_rent', 'price', 'featured_image_url',
+  ...RURAL_LAND_ATTRS,
+];
+
 // ─── GET /api/landlord/portfolio — property list with per-property KPIs ────
 exports.portfolio = asyncHandler(async (req, res) => {
   const properties = await Property.findAll({
     where: { owner_contact_id: req.ownerContactId },
-    attributes: ['id', 'property_code', 'title', 'address', 'area', 'district', 'listing_type', 'status', 'pm_status', 'rental_readiness_status', 'approved_monthly_rent', 'featured_image_url'],
+    attributes: PORTFOLIO_ATTRS,
   });
   const propIds = properties.map((p) => p.id);
   if (!propIds.length) return res.json({ data: [] });

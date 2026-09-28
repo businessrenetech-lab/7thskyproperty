@@ -5,6 +5,7 @@ import {
   AlertCircle, Search, Home, Building2, Key, Receipt, Wallet, ClipboardCheck
 } from 'lucide-react';
 import api from '../services/api';
+import { usePmScope } from '../config/pmScope';
 import { useToast } from '../context/ToastContext';
 import {
   PageHead, Button, DataTable, StatusBadge, Badge, Drawer, Field,
@@ -12,6 +13,7 @@ import {
 } from '../ui/kit';
 
 export default function Compliance() {
+  const scope = usePmScope();
   const toast = useToast();
   const [searchParams] = useSearchParams();
   const categoryFilter = searchParams.get('category');
@@ -45,7 +47,12 @@ export default function Compliance() {
   const loadProperties = useCallback(async () => {
     setLoadingProps(true);
     try {
-      const { data } = await api.get('/properties?limit=100');
+      // The property picker every register entry is filed against belongs to this
+      // console, not to all of them. An explicit ?category= in the URL wins, so the
+      // legacy /compliance?category=rural style links keep working.
+      const cat = categoryFilter || scope.category;
+      const lt = listingTypeFilter || scope.listingType || 'rent';
+      const { data } = await api.get(`/properties?limit=100&category=${cat}&listing_type=${lt}`);
       setProperties(data.data || []);
       
       const filtered = (data.data || []).filter(p => {
@@ -62,7 +69,7 @@ export default function Compliance() {
     } finally {
       setLoadingProps(false);
     }
-  }, [selectedPropId, categoryFilter, listingTypeFilter, toast]);
+  }, [selectedPropId, categoryFilter, listingTypeFilter, toast, scope.category]);
 
   // 2. Fetch register definitions
   useEffect(() => {

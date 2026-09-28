@@ -30,6 +30,7 @@ import {
 import api from "../../services/api";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
+import { useSalesHome } from "./paths";
 import {
   Badge,
   Button,
@@ -310,6 +311,8 @@ export default function SalesAssessmentWorkspace({
   const navigate = useNavigate();
   const toast = useToast();
   const { user } = useAuth();
+  // Sale destinations live on the current console, not residential.
+  const salesHome = useSalesHome();
   const [workspace, setWorkspace] = useState(null);
   const [tab, setTab] = useState("workflow");
   const [loading, setLoading] = useState(true);
@@ -2569,7 +2572,7 @@ export default function SalesAssessmentWorkspace({
                           variant="ghost"
                           onClick={() =>
                             navigate(
-                              `/residential/agreements/sale?property_id=${propertyId}${entry.contact_id ? `&contact_id=${entry.contact_id}` : ""}`,
+                              `${salesHome}/agreements/sale?property_id=${propertyId}${entry.contact_id ? `&contact_id=${entry.contact_id}` : ""}`,
                             )
                           }
                         >
@@ -2609,7 +2612,7 @@ export default function SalesAssessmentWorkspace({
                               disabled={!complete}
                               onClick={() =>
                                 navigate(
-                                  `/residential/agreements/sale?property_id=${propertyId}${entry.contact_id ? `&contact_id=${entry.contact_id}` : ""}`,
+                                  `${salesHome}/agreements/sale?property_id=${propertyId}${entry.contact_id ? `&contact_id=${entry.contact_id}` : ""}`,
                                 )
                               }
                             >
@@ -2620,7 +2623,7 @@ export default function SalesAssessmentWorkspace({
                               variant="ghost"
                               onClick={() =>
                                 navigate(
-                                  `/residential/agreements/sale?property_id=${propertyId}${entry.contact_id ? `&contact_id=${entry.contact_id}` : ""}`,
+                                  `${salesHome}/agreements/sale?property_id=${propertyId}${entry.contact_id ? `&contact_id=${entry.contact_id}` : ""}`,
                                 )
                               }
                             >

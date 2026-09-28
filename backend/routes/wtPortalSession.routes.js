@@ -32,6 +32,9 @@ router.post('/work-orders/:code/photos', portalOnly,
   upload.single('file'), ctrl.sessionUploadPhoto);
 
 // Client actions
+router.delete('/work-orders/:code/photos', portalOnly, ctrl.sessionRemovePhoto);
+router.patch('/reports/:code', portalOnly, ctrl.sessionAmendReport);
+
 router.post('/quotations/:code/decision', portalOnly, ctrl.sessionQuotationDecision);
 
 // Either

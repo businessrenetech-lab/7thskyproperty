@@ -6,9 +6,34 @@
  * carries the delivery stages that drive the progress bar everywhere it appears.
  */
 const M = require('../models/waterTankOps');
-const { serviceLineForRelatedType } = require('../config/serviceLines');
+const { serviceLineForRelatedType, getServiceLine } = require('../config/serviceLines');
 
 const num = (v) => Number(v || 0);
+
+/**
+ * Split a contract into what the provider is owed and what Seventh Sky keeps.
+ *
+ * On a line that allocates a contractor the quotation dictates the split:
+ * `provider_allocation_fee` is our cut for placing and standing behind the
+ * provider, and the rest (or an explicit `service_charges`) is the provider's.
+ *
+ * Eleven lines have no contractor at all — Interior Design, the four Doc
+ * Verification & Transfer lines, and the rest carry `no_provider`. Nothing is
+ * allocated on those, so `provider_allocation_fee` is 0, and the old
+ * `total - ss_fee` remainder quietly handed the ENTIRE contract to a provider
+ * that does not exist while recording no margin. In-house work is delivered by
+ * Seventh Sky's own crew: there is nobody to pay, and the whole contract is ours.
+ */
+function splitFees(quote, total, serviceLine) {
+  const contract = Math.max(0, num(total));
+  if (getServiceLine(serviceLine)?.no_provider) {
+    return { provider_fee: 0, ss_fee: contract };
+  }
+  const ssFee = Math.min(contract, Math.max(0, num(quote?.provider_allocation_fee)));
+  const providerFee = Math.max(0, num(quote?.service_charges) || (contract - ssFee));
+  // Neither figure may exceed what the client is actually paying.
+  return { provider_fee: Math.min(providerFee, contract - ssFee), ss_fee: ssFee };
+}
 const today = () => new Date().toISOString().slice(0, 10);
 const addDays = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
 
@@ -141,12 +166,12 @@ async function createFromSignedAgreement(envelope, options = {}) {
     }))
     : (quote ? asArray(quote.lines) : []);
   const totalContract = num(summary.total_contract_value) || num(quote?.total);
-  const ssFee = num(quote?.provider_allocation_fee);
-  const providerFee = Math.max(0, num(quote?.service_charges) || (totalContract - ssFee));
 
   const stages = { ...blankStages(), raised: true };
 
   const woSl = (quote && quote.service_line) || (envelope && serviceLineForRelatedType(envelope.related_type)) || 'water_tank';
+  // The line decides whether there is a provider to pay at all.
+  const { provider_fee: providerFee, ss_fee: ssFee } = splitFees(quote, totalContract, woSl);
 
   // Project linkage: an explicit reference from the quotation/agreement wins; when
   // there is none (e.g. a direct agreement), fall under the client's existing OPEN
@@ -257,8 +282,7 @@ async function createFromQuotation(quote, { branchId, actor = 'System', transact
 
   const lines = asArray(quote.lines);
   const total = num(quote.total);
-  const ssFee = num(quote.provider_allocation_fee);
-  const providerFee = Math.max(0, num(quote.service_charges) || (total - ssFee));
+  const { provider_fee: providerFee, ss_fee: ssFee } = splitFees(quote, total, quote.service_line || 'water_tank');
   const stages = { ...blankStages(), raised: true };
 
   // Stack this repeat job under the client's ongoing project: the quote's project
@@ -326,8 +350,10 @@ async function refreshDraftFromQuotation(quote, { branchId, transaction } = {}) 
 
   const lines = asArray(quote.lines);
   const total = num(quote.total);
-  const ssFee = num(quote.provider_allocation_fee);
-  const providerFee = Math.max(0, num(quote.service_charges) || (total - ssFee));
+  // The work order's own line, not the quote's — the job is what is being repriced.
+  const { provider_fee: providerFee, ss_fee: ssFee } = splitFees(
+    quote, total, wo.service_line || quote.service_line || 'water_tank',
+  );
   await wo.update({
     lines,
     total_contract: total,
@@ -344,6 +370,7 @@ async function refreshDraftFromQuotation(quote, { branchId, transaction } = {}) 
 
 module.exports = {
   STAGES,
+  splitFees,
   createFromQuotation,
   refreshDraftFromQuotation,
   blankStages,

@@ -92,7 +92,13 @@ const SERVICE_LINES = {
     label: 'Air Conditioning',
     short: 'ACCM',
     accent: '#7c3aed',              // violet — tells the AC console apart at a glance
-    api_base: 'ac',                 // /api/ac-*
+    // Air conditioning shares the /api/wt-* mount with every other line and is
+    // separated by the X-Service-Line header, exactly like the rest. This said
+    // 'ac' and promised an /api/ac-* family that has never existed: no route
+    // mounts it, and the AC console calls /api/wt-work-orders like everyone
+    // else. A field that documents a mount you would get a 404 from is worse
+    // than no field, so it now says what is true.
+    api_base: 'wt',
     route_base: 'air-conditioning', // /air-conditioning/*
     env_tag: 'ACS',                 // signing-envelope code tag: ENV-ACSCSA-/ENV-ACSDP-/ENV-ACSPWO-
     // The public onboarding path differs from route_base for legacy reasons.
@@ -1703,6 +1709,82 @@ const SERVICE_LINES = {
       warranty_months: { 'Space Planning Services': 12, 'Renovation Workmanship': 12, 'Carpentry & Joinery': 12, 'Partition Installation': 12, 'Flooring Installation': 12, 'Ceiling Installation': 12, 'Furniture Installation': 12, Manufacturer: 12 },
       complaint_types: ['Design Quality', 'Workmanship', 'Incomplete Work', 'Damage During Work', 'Material Quality', 'Staff Conduct', 'Delays', 'Billing Dispute', 'Other'],
       incident_types: ['Injury', 'Property Damage', 'Fire', 'Electrical Incident', 'Water Damage', 'Other'],
+    },
+  },
+
+  business_registration: {
+    key: 'business_registration',
+    label: 'Business Registration',
+    short: 'BRG',
+    accent: '#0d9488',                 // teal — the console's existing colour
+    api_base: 'wt',
+    route_base: 'business-registration',
+    env_tag: 'BRG',
+    catalogue_vertical: 'registration_registration_business',
+    no_provider: false,                // Third-Party SOP: trade licence / RJSC consultants
+    no_amc: true,                      // one-off registrations, no annual maintenance
+    no_site_visit: true,               // document-and-authority work, nothing is inspected on site
+    delivery_model: 'third_party_provider',
+    completion_signoff: true,
+    doc_manager: true,                 // SOP Phase 4 — document collection
+    registration_register: true,       // line module: shareholders/directors + registration activities
+    code_prefix: {
+      client: 'BR-C', project: 'BR-P', request: 'BRR-', assessment: 'BRA-',
+      quotation: 'BRQ-', work_order: 'BRW-', invoice: 'BRI-', provider: 'BR-SP-',
+    },
+    required_docs: {
+      compliance: ['Trade Licence', 'Company Registration', 'TIN', 'BIN', 'Professional Registration'],
+      insurance: ['Professional Indemnity Insurance', 'Public Liability Insurance'],
+    },
+    service_categories: [
+      'Trade Licence Consultant', 'RJSC Consultant', 'Corporate Secretary',
+      'Business Registration Agent', 'Legal Documentation Consultant', 'Tax Registration Consultant',
+    ],
+    related_type: {
+      customer: 'business_registration_agreement',            // EXISTING — SSPC-BR-CSA-01
+      provider: 'business_registration_provider_agreement',   // new, added in Task 11
+    },
+    agreement_template: {
+      customer: 'Business Registration Customer Service Agreement',
+      provider: 'Master Service Delivery Provider Agreement',
+    },
+    ui: {
+      full_label: 'Business Registration Services',
+      project_types: ['Sole Proprietorship', 'Partnership', 'Private Limited Company',
+        'Public Limited Company', 'Trade Licence Only', 'Renewal', 'Amendment', 'Mixed Scope'],
+      categories: ['Trade Licence', 'Company Formation', 'RJSC', 'Tax Registration', 'Corporate Documentation'],
+      service_catalogue: {
+        'Trade Licence Documentation Support': ['New Trade Licence', 'Trade Licence Renewal',
+          'Trade Licence Amendment', 'Municipality Documentation', 'City Corporation Documentation',
+          'Local Authority Documentation', 'Business Address Documentation'],
+        'Business Registration Coordination': ['Sole Proprietorship Registration',
+          'Partnership Registration', 'Private Limited Company Registration',
+          'Public Limited Company Registration', 'RJSC Registration', 'Business Name Registration',
+          'Memorandum & Articles Coordination', 'Shareholder Documentation Coordination',
+          'Director Documentation Coordination', 'Company Secretarial Coordination'],
+      },
+      equipment: {                     // the core's site/equipment block, re-labelled
+        section_label: 'Business Details',
+        type_label: 'Business Type',
+        type_options: ['Sole Proprietorship', 'Partnership', 'Private Limited', 'Public Limited', 'Other'],
+        count_label: 'Number of Shareholders',
+        capacity_label: 'Authorised Capital',
+        capacity_placeholder: 'e.g. BDT 10,00,000',
+      },
+      // SOP Phase 4 — Document Collection (workbook Sheet 7). `per_party` rows are
+      // expanded into one row per shareholder/director by the Doc Manager reference.
+      client_docs: [
+        { key: 'nid', label: 'NID (owner / applicant)', group: 'Identity', category: 'identity', required: true },
+        { key: 'passport', label: 'Passport (if foreign national)', group: 'Identity', category: 'identity', required: false },
+        { key: 'passport_photo', label: 'Passport-size photographs', group: 'Identity', category: 'identity', required: true },
+        { key: 'utility_bill', label: 'Utility bill (business address)', group: 'Address', category: 'address', required: true },
+        { key: 'rental_agreement', label: 'Rental agreement (leased premises)', group: 'Address', category: 'address', required: false },
+        { key: 'ownership_docs', label: 'Property ownership documents (owned premises)', group: 'Address', category: 'address', required: false },
+        { key: 'trade_licence_existing', label: 'Existing trade licence (renewal / amendment)', group: 'Business', category: 'business', required: false },
+        { key: 'name_clearance_letter', label: 'Name clearance letter (if already obtained)', group: 'Business', category: 'business', required: false },
+        { key: 'shareholder_docs', label: 'Shareholder documents', group: 'Parties', category: 'parties', required: true, per_party: 'shareholder' },
+        { key: 'director_docs', label: 'Director documents', group: 'Parties', category: 'parties', required: true, per_party: 'director' },
+      ],
     },
   },
 };

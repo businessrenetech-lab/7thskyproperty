@@ -76,6 +76,7 @@ module.exports = [
   ['/api/business-registration-enquiries', './businessRegistrationEnquiry.routes'],
   ['/api/business-registration-invoices', './businessRegistrationInvoice.routes'],
   ['/api/business-registration-reports', './businessRegistrationReports.routes'],
+  ['/api/br-line', './businessRegistrationLine.routes'],
   ['/api/business-ndas', './businessNda.routes'],
   ['/api/rptm', './rptm.routes'],
   // Water Tank module — these were only mounted in server.js, so the Hostinger
@@ -134,6 +135,11 @@ module.exports = [
   ['/api/buyer-mandates', './buyerMandate.routes'],
   ['/api/sales/inbox', './salesInbox.routes'], // before /api/sales so the prefix wins
   ['/api/sales/introductions', './salesIntroduction.routes'], // before /api/sales so the prefix wins
+  ['/api/rent-protections', './rentProtection.routes'], // non-circumvention for the rent consoles
+  ['/api/business-rent', './businessRentDashboards.routes'],
+  ['/api/rural-sourcing', './ruralSourcing.routes'], // tenant sourcing over registers 158/159/160
+  ['/api/rural-rent', './ruralRentDashboards.routes'],
+  ['/api/rural-sale', './ruralSaleDashboards.routes'],
   ['/api/sales/calendar', './salesCalendar.routes'], // before /api/sales so the prefix wins
   ['/api/sales', './sales.routes'],
   ['/api/sales-payments', './salesPayment.routes'],

@@ -37,6 +37,8 @@ const FIELDS = [
   'furnishing', 'features', 'description', 'featured_image_url', 'video_tour_url', 'drone_video_url', 'floor_plan_url',
   'virtual_tour_url', 'owner_contact_id', 'tenant_contact_id', 'listing_agent_id', 'manager_id', 'is_published', 'is_featured',
   'seo_title', 'seo_description',
+  // Rural land record (0156) — a rural property is identified by these.
+  'upazila', 'union_name', 'village', 'mouza', 'khatiyan', 'dag', 'land_area_decimal', 'current_use',
   // Rental management (Property Master Register)
   'occupancy_status', 'utilities_active', 'market_rent_min', 'market_rent_max', 'approved_monthly_rent', 'rent_due_day',
   'management_fee_pct', 'lease_min_period_months', 'property_condition', 'access_contact', 'remarks',
@@ -118,6 +120,11 @@ exports.list = asyncHandler(async (req, res) => {
   if (req.query.status) where.status = req.query.status;
   if (req.query.owner_contact_id) where.owner_contact_id = req.query.owner_contact_id;
   if (req.query.tenant_contact_id) where.tenant_contact_id = req.query.tenant_contact_id;
+
+  // The rural console finds a property by its land record, not by address.
+  for (const f of ['district', 'upazila', 'union_name', 'village', 'mouza', 'khatiyan', 'dag']) {
+    if (req.query[f]) where[f] = req.query[f];
+  }
 
   // Tab filter
   const tabWhere = await tabFilter(req.query.tab, branchWhere);
@@ -805,6 +812,8 @@ const PROFILE_FIELDS = [
   'tax_responsibility_ack', 'owner_obligations_accepted', 'indemnity_accepted', 'management_commission',
   'onboarding_fee', 'maintenance_responsibility', 'assigned_officer_id', 'next_action', 'next_follow_up',
   'agreement_status', 'onboarding_status',
+  // Rural fee structure (0158) — SOP Rural Rental Management §7 Step 6.
+  'leasing_fee', 'marketing_budget', 'early_termination_fee', 'exclusive_until',
   // Agreement commercials + joint owner (0040)
   'repair_budget_max', 'termination_notice_days', 'security_money_amount', 'advance_rent_amount',
   'service_charge_amount', 'agreement_start_date',

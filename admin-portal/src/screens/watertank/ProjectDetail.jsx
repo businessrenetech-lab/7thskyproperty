@@ -8,8 +8,10 @@ import {
 import api from '../../services/api';
 import { useSvcNav,
   WtHead, Pill, dateFmt, dateTimeFmt, bdt, Loading, EmptyState,
-  DatePicker, parseJson, titleCase, toast, errText, svcEquip,
+  DatePicker, parseJson, titleCase, toast, errText, svcEquip, svcRegistrationRegister,
 } from './common';
+import PartiesPanel from './registration/PartiesPanel';
+import ActivitiesPanel from './registration/ActivitiesPanel';
 
 /*
  * The project file — SSPC-WTCM-SOP-01.
@@ -34,6 +36,11 @@ export default function ProjectDetail() {
   const [error, setError] = useState('');
   const [tab, setTab] = useState('Overview');
   const [busy, setBusy] = useState(false);
+  // Business Registration adds its own two registers (shareholders/directors and
+  // the authority activities) right after Lifecycle. Other lines are unchanged.
+  const tabs = svcRegistrationRegister()
+    ? [...TABS.slice(0, 2), 'Parties', 'Activities', ...TABS.slice(2)]
+    : TABS;
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -133,7 +140,7 @@ export default function ProjectDetail() {
       </div>
 
       <div className="wt-subtabs" style={{ marginTop: 16 }}>
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button key={t} className={`wt-subtab${tab === t ? ' on' : ''}`} onClick={() => setTab(t)}>
             {t}
             {t === 'Work Orders' && related.workOrders.length > 0 && <span className="wt-cnt">{related.workOrders.length}</span>}
@@ -145,6 +152,8 @@ export default function ProjectDetail() {
       <div style={{ marginTop: 16 }}>
         {tab === 'Overview' && <><Overview d={d} nav={nav} /><div style={{ marginTop: 16 }}><Timeline p={p} /></div></>}
         {tab === 'Lifecycle' && <Lifecycle stage={stage} stages={stages} busy={busy} onSet={setStage} project={p} />}
+        {tab === 'Parties' && <PartiesPanel projectId={p.id} />}
+        {tab === 'Activities' && <ActivitiesPanel projectId={p.id} projectCode={p.code} />}
         {tab === 'Work Orders' && <WorkOrders rows={related.workOrders} nav={nav} />}
         {tab === 'Billing' && <Billing d={d} reload={load} />}
         {tab === 'Costing' && <Costing d={d} reload={load} />}

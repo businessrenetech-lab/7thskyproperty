@@ -25,7 +25,8 @@ import {
   Button, Spinner, Badge, StatusBadge, Drawer, Field, Input, Select, Textarea
 } from '../../ui/kit';
 import NewPartyKycDrawer from './NewPartyKycDrawer';
-import { useSalesCategory } from './paths';
+import { useSalesCategory, useSalesHome } from './paths';
+import { consoleBaseForPath, isSalesConsoleBase } from './categoryLock.mjs';
 
 const money = (v) => '৳' + Number(v || 0).toLocaleString('en-BD');
 const dateFmt = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
@@ -54,6 +55,8 @@ const getInitials = (name) => {
 
 export default function SalesContacts({ scope }) {
   const locked = useSalesCategory();
+  // Sale destinations live on the current console, not residential.
+  const salesHome = useSalesHome();
   const navigate = useNavigate();
   const pmScope = usePmScope();
   const catQ = `&category=${pmScope.category}`;
@@ -1305,7 +1308,7 @@ export default function SalesContacts({ scope }) {
   // ── Navigation to Agreements with Rich Prefill ────────────────────────────
   const goToAgreement = (role, contactId, name, phone, email, extra = {}) => {
     const isSeller = role === 'seller' || role === 'vendor';
-    const targetPath = isSeller ? '/residential/agreements/sale' : '/residential/agreements/purchase';
+    const targetPath = isSeller ? `${salesHome}/agreements/sale` : `${salesHome}/agreements/purchase`;
 
     navigate(targetPath, {
       state: {
@@ -1466,8 +1469,16 @@ export default function SalesContacts({ scope }) {
   };
 
   // ── Open Client Dashboard ──────────────────────────────────────────────────
-  // In the buy console the client dashboard opens inside the buyer section.
-  const clientsBase = scope === 'buy' ? '/residential/buyer/clients' : '/residential/contacts/clients';
+  // Stay in the console the user is standing in. This was hard-coded to
+  // /residential/..., so clicking a lead in Commercial (or any other console)
+  // dropped the user into the Residential console showing residential clients.
+  // In a buy console the dashboard opens inside that console's buyer section.
+  const consoleBase = consoleBaseForPath(location.pathname);
+  const clientsBase = consoleBase
+    ? (scope === 'buy' && isSalesConsoleBase(consoleBase)
+      ? `${consoleBase}/buyer/clients`
+      : `${consoleBase}/contacts/clients`)
+    : '/clients';
   const openClientDashboard = (clientId, contactId) => {
     if (clientId) {
       navigate(`${clientsBase}?client=${clientId}`);
@@ -1661,7 +1672,7 @@ export default function SalesContacts({ scope }) {
               <button
                 type="button"
                 className="pm-btn"
-                onClick={() => navigate('/residential/marketing')}
+                onClick={() => navigate(`${salesHome}/marketing`)}
                 style={{ borderColor: '#003768', color: '#003768', fontWeight: 700, background: '#f0f9ff' }}
                 title="Open Residential Marketing & Campaigns Hub"
               >
@@ -2048,21 +2059,21 @@ export default function SalesContacts({ scope }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button
                       type="button"
-                      onClick={() => navigate('/residential/marketing', { state: { channel: 'email', target_type: 'selected_contacts', contact_ids: selectedContactIds, initialTab: 'broadcast' } })}
+                      onClick={() => navigate(`${salesHome}/marketing`, { state: { channel: 'email', target_type: 'selected_contacts', contact_ids: selectedContactIds, initialTab: 'broadcast' } })}
                       style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
                     >
                       <Mail size={13} /> Email Campaign
                     </button>
                     <button
                       type="button"
-                      onClick={() => navigate('/residential/marketing', { state: { channel: 'sms', target_type: 'selected_contacts', contact_ids: selectedContactIds, initialTab: 'broadcast' } })}
+                      onClick={() => navigate(`${salesHome}/marketing`, { state: { channel: 'sms', target_type: 'selected_contacts', contact_ids: selectedContactIds, initialTab: 'broadcast' } })}
                       style={{ background: '#d97706', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
                     >
                       <MessageSquare size={13} /> Bulk SMS
                     </button>
                     <button
                       type="button"
-                      onClick={() => navigate('/residential/marketing', { state: { channel: 'whatsapp', target_type: 'selected_contacts', contact_ids: selectedContactIds, initialTab: 'broadcast' } })}
+                      onClick={() => navigate(`${salesHome}/marketing`, { state: { channel: 'whatsapp', target_type: 'selected_contacts', contact_ids: selectedContactIds, initialTab: 'broadcast' } })}
                       style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
                     >
                       <Phone size={13} /> WhatsApp Broadcast

@@ -5,6 +5,11 @@ const Property = require('../models/Property');
 const Contact = require('../models/Contact');
 const { generateCode } = require('../utils/codeGenerator');
 const { asyncHandler, branchScope, resolveBranchId, getPagination, pick } = require('../utils/controllerHelpers');
+const { pmCategory } = require('../utils/pmCategory');
+const { checkLeaseStructure } = require('../services/businessLeaseStructure');
+const TenancyDeposit = require('../models/TenancyDeposit');
+const { DEPOSIT_TYPES, advanceState, depositSummary } = require('../services/advanceSchedule');
+const { canHandover } = require('../services/handoverGate');
 const { ensureFoliosForTenancy, ensureTenantFolio, postFolioTransaction } = require('../services/folio.service');
 const AccountCategory = require('../models/AccountCategory');
 const Agreement = require('../models/Agreement');
@@ -14,10 +19,33 @@ const SignatureField = require('../models/SignatureField');
 const PartyRoleProfile = require('../models/PartyRoleProfile');
 
 const FIELDS = ['property_id', 'owner_contact_id', 'tenant_contact_id', 'lease_start', 'move_in_date', 'lease_end',
-  'move_out_date', 'security_deposit', 'monthly_rent', 'service_charge', 'rent_due_day', 'payment_frequency', 'status', 'lease_status', 'notes'];
+  'move_out_date', 'security_deposit', 'monthly_rent', 'service_charge', 'rent_due_day', 'payment_frequency', 'status', 'lease_status', 'notes',
+  // Business lease structure (0151) — SOP Rental §9 / Tenancy §9.
+  'advance_rent', 'lease_term_months', 'extension_option', 'renewal_increment_pct', 'advance_months', 'advance_received',
+  // Commission (0154) — SOP Rental §15. handover_* are set by the handover
+  // endpoint alone, never by a plain update.
+  'commission_amount', 'commission_paid_amount', 'commission_invoice_id'];
 const propInc = { model: Property, attributes: ['id', 'property_code', 'title', 'address', 'area', 'district', 'category'] };
 const ownerInc = { model: Contact, as: 'owner', attributes: ['id', 'full_name', 'primary_phone', 'email'] };
 const tenantInc = { model: Contact, as: 'tenant', attributes: ['id', 'full_name', 'primary_phone', 'email'] };
+
+/**
+ * Records any departure from the SOP business lease structure on the tenancy.
+ * Warnings never block the save — the SOP permits a departure with management
+ * approval, and refusing it here would stop work the manager already approved.
+ * Supplying an override reason records who approved it.
+ */
+function applyLeaseStructure(data, req) {
+  const touched = ['lease_term_months', 'advance_months', 'renewal_increment_pct', 'extension_option']
+    .some((k) => data[k] !== undefined);
+  if (!touched) return;
+  const { warnings } = checkLeaseStructure(data);
+  data.structure_warnings = warnings;
+  if (warnings.length && req.body.structure_override_reason) {
+    data.structure_override_by = req.user?.id || null;
+    data.structure_override_reason = req.body.structure_override_reason;
+  }
+}
 
 exports.list = asyncHandler(async (req, res) => {
   const { limit, offset, page } = getPagination(req);
@@ -54,6 +82,7 @@ exports.getOne = asyncHandler(async (req, res) => {
 
 exports.create = asyncHandler(async (req, res) => {
   const data = pick(req.body, FIELDS);
+  applyLeaseStructure(data, req);
   data.branch_id = resolveBranchId(req, req.body.branch_id);
   data.created_by = req.user?.id || null;
   data.tenancy_code = await generateCode(Tenancy, 'tenancy_code', 'SSPC-TN-');
@@ -82,8 +111,72 @@ exports.create = asyncHandler(async (req, res) => {
 exports.update = asyncHandler(async (req, res) => {
   const t = await Tenancy.findOne({ where: { id: req.params.id, ...branchScope(req) } });
   if (!t) return res.status(404).json({ error: 'Tenancy not found.' });
-  await t.update(pick(req.body, FIELDS));
+  const patch = pick(req.body, FIELDS);
+  applyLeaseStructure(patch, req);
+  await t.update(patch);
   res.json({ data: t, message: 'Tenancy updated.' });
+});
+
+// ─── Deposits held against a tenancy, by type (SOP Rental §9) ───────────────
+// A single security_deposit column cannot express four deposits that are each
+// settled separately at exit.
+exports.listDeposits = asyncHandler(async (req, res) => {
+  const t = await Tenancy.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!t) return res.status(404).json({ error: 'Tenancy not found.' });
+  const rows = await TenancyDeposit.findAll({ where: { tenancy_id: t.id }, order: [['id', 'ASC']] });
+  const plain = rows.map((r) => r.toJSON());
+  res.json({
+    data: plain,
+    summary: depositSummary(plain),
+    types: DEPOSIT_TYPES,
+    advance: advanceState(t.toJSON(), []),
+  });
+});
+
+exports.addDeposit = asyncHandler(async (req, res) => {
+  const t = await Tenancy.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!t) return res.status(404).json({ error: 'Tenancy not found.' });
+  const data = pick(req.body, ['deposit_type', 'amount', 'received_amount', 'received_on', 'settled_amount', 'settled_on', 'notes']);
+  if (!data.deposit_type) return res.status(400).json({ error: 'deposit_type is required.' });
+  const row = await TenancyDeposit.create({
+    ...data,
+    tenancy_id: t.id,
+    branch_id: resolveBranchId(req, t.branch_id),
+    created_by: req.user?.id || null,
+  });
+  res.status(201).json({ data: row, message: 'Deposit recorded.' });
+});
+
+exports.updateDeposit = asyncHandler(async (req, res) => {
+  const t = await Tenancy.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!t) return res.status(404).json({ error: 'Tenancy not found.' });
+  const row = await TenancyDeposit.findOne({ where: { id: req.params.depositId, tenancy_id: t.id } });
+  if (!row) return res.status(404).json({ error: 'Deposit not found on this tenancy.' });
+  await row.update(pick(req.body, ['deposit_type', 'amount', 'received_amount', 'received_on', 'settled_amount', 'settled_on', 'notes']));
+  res.json({ data: row, message: 'Deposit updated.' });
+});
+
+// ─── Complete the operational handover (SOP Rental §15) ─────────────────────
+// Occupancy follows payment: an unpaid commission blocks the handover. A lease
+// that was never charged one is not gated, and a manager override is recorded.
+exports.handover = asyncHandler(async (req, res) => {
+  const t = await Tenancy.findOne({ where: { id: req.params.id, ...branchScope(req) } });
+  if (!t) return res.status(404).json({ error: 'Tenancy not found.' });
+  if (t.handover_completed_at) return res.status(400).json({ error: 'Handover is already complete.' });
+
+  const override = Boolean(req.body.override);
+  const { allowed, reason } = canHandover(t.toJSON(), { override });
+  if (!allowed) return res.status(400).json({ error: reason });
+  if (override && reason && !req.body.override_reason) {
+    return res.status(400).json({ error: 'An override must state why.' });
+  }
+
+  await t.update({
+    handover_completed_at: new Date(),
+    handover_override_by: reason ? (req.user?.id || null) : null,
+    handover_override_reason: reason ? req.body.override_reason : null,
+  });
+  res.json({ data: t, message: reason || 'Handover recorded.' });
 });
 
 exports.startAgreement = asyncHandler(async (req, res) => {
@@ -281,12 +374,17 @@ exports.bulkRaiseInvoices = asyncHandler(async (req, res) => {
 
 exports.globalInvoices = asyncHandler(async (req, res) => {
   const now = new Date();
-  const period = req.body.period_label || req.query.period_label || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const previewOnly = req.method === 'GET' || req.body.preview === true;
+  // req.body is undefined on a GET, which used to throw a 500 here.
+  const body = req.body || {};
+  const period = body.period_label || req.query.period_label || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const previewOnly = req.method === 'GET' || body.preview === true;
   const where = { status: 'active', ...branchScope(req) };
-  if (req.body.property_id || req.query.property_id) where.property_id = req.body.property_id || req.query.property_id;
+  if (body.property_id || req.query.property_id) where.property_id = body.property_id || req.query.property_id;
 
-  const tenancies = await Tenancy.findAll({ where, include: [propInc, ownerInc, tenantInc], order: [['created_at', 'DESC']] });
+  // Global invoicing runs per console, not across all of them.
+  const giCat = pmCategory(req.query.property_category || body.property_category);
+  const giProp = giCat ? { ...propInc, where: { category: giCat }, required: true } : propInc;
+  const tenancies = await Tenancy.findAll({ where, include: [giProp, ownerInc, tenantInc], order: [['created_at', 'DESC']] });
   const preview = [];
   for (const t of tenancies) {
     const existing = await RentalLedger.findOne({ where: { property_id: t.property_id, period_label: period } });
@@ -310,7 +408,7 @@ exports.globalInvoices = asyncHandler(async (req, res) => {
     return res.json({ period_label: period, data: preview, ready: preview.filter((r) => r.status === 'ready').length });
   }
 
-  req.body.period_label = period;
+  body.period_label = period;
   return exports.bulkRaiseInvoices(req, res);
 });
 
@@ -330,7 +428,10 @@ exports.collectRentData = asyncHandler(async (req, res) => {
   const where = { ...branchScope(req), status: 'active' };
   if (req.query.owner_id) where.owner_contact_id = Number(req.query.owner_id);
   if (req.query.property_id) where.property_id = Number(req.query.property_id);
-  const tenancies = await Tenancy.findAll({ where, include: [propInc, ownerInc, tenantInc], order: [['id', 'ASC']] });
+  // Bulk rent collection runs per console, not across all of them.
+  const crCat = pmCategory(req.query.property_category);
+  const crProp = crCat ? { ...propInc, where: { category: crCat }, required: true } : propInc;
+  const tenancies = await Tenancy.findAll({ where, include: [crProp, ownerInc, tenantInc], order: [['id', 'ASC']] });
 
   const q = String(req.query.q || '').trim().toLowerCase();
   const statusFilter = String(req.query.status || '').toLowerCase(); // due | partial | paid | not_raised
@@ -491,6 +592,12 @@ exports.overdueReminders = asyncHandler(async (req, res) => {
     ? await Tenancy.findAll({ where: { id: { [Op.in]: tenancyIds } }, include: [propInc, ownerInc, tenantInc] })
     : [];
   const byId = new Map(tenancies.map((t) => [t.id, t.toJSON()]));
+
+  // Scope to the console: a reminder belongs to the console its property belongs to.
+  const orCat = pmCategory(req.query.property_category);
+  if (orCat) {
+    overdue = overdue.filter((r) => String(byId.get(r.tenancy_id)?.Property?.category || '') === orCat);
+  }
 
   // Last arrears reminder per property (subject marker), one grouped query.
   let lastByProp = {};

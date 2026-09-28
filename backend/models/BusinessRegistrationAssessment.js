@@ -5,7 +5,8 @@ const sequelize = require('../config/db.config');
 const BusinessRegistrationAssessment = sequelize.define('BusinessRegistrationAssessment', {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
   branch_id: { type: DataTypes.INTEGER, allowNull: false },
-  project_id: { type: DataTypes.INTEGER, allowNull: false },
+  project_id: { type: DataTypes.INTEGER, allowNull: true },
+  wt_project_id: DataTypes.INTEGER, // shared service-line project (wt_projects) — 0147
   business_objectives: DataTypes.TEXT,
   ownership_structure: DataTypes.STRING(160),
   proposed_activities: DataTypes.TEXT,

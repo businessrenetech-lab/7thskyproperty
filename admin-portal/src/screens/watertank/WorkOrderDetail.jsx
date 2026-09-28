@@ -3,9 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Check, X, RefreshCw, Pencil, Truck, CalendarClock, CheckCircle2,
   ShieldCheck, Receipt, FileSignature, FileText, MessageSquare, Ban,
-  Users, Wallet, ClipboardCheck, ArrowRight, Star, AlertTriangle,
+  Users, Wallet, ClipboardCheck, ArrowRight, Star, AlertTriangle, Camera,
 } from 'lucide-react';
 import api from '../../services/api';
+import JobPhotos from './JobPhotos';
 import { useSvcNav,
   WtHead, Pill, Loading, EmptyState, WtDrawer, DatePicker, RecordComments,
   dateFmt, dateTimeFmt, bdt, toast, errText, svcProfile,
@@ -538,6 +539,16 @@ export default function WorkOrderDetail() {
                 </tbody>
               </table>
             )}
+          </Section>
+
+          {/*
+            The provider's own before/after photographs. The data has always been
+            in this payload; only the tickbox below was ever rendered, so staff
+            verified completion without being able to look at the evidence.
+          */}
+          <Section icon={Camera} title="Site photos from the provider"
+            right={<span className="sop">Sec. 8 Step 10</span>}>
+            <JobPhotos wo={w} />
           </Section>
 
           <Section icon={ShieldCheck} title="Completion Verification"

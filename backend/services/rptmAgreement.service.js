@@ -71,6 +71,7 @@ const CLAUSES = [
 // Residential vs commercial tenancy management share this renderer, differing by
 // a content pack. The commercial pack (tenant-side) lives in its own file.
 const { COMMERCIAL_TENANCY_PACK } = require('./cptmAgreementPack');
+const { RURAL_TENANCY_PACK } = require('./rptmRuralAgreementPack');
 const RESIDENTIAL_PACK = {
   doc_no: 'SSPC-RPTMS-01',
   title: 'Residential Property Tenancy Management Service Agreement',
@@ -90,7 +91,7 @@ const RESIDENTIAL_PACK = {
   service_groups: SERVICE_GROUPS,
   checklist_groups: CHECKLIST_GROUPS,
 };
-const PACK_BY_CATEGORY = { residential: RESIDENTIAL_PACK, commercial: COMMERCIAL_TENANCY_PACK };
+const PACK_BY_CATEGORY = { residential: RESIDENTIAL_PACK, commercial: COMMERCIAL_TENANCY_PACK, rural: RURAL_TENANCY_PACK };
 const packFor = (category) => PACK_BY_CATEGORY[String(category || 'residential').toLowerCase()] || RESIDENTIAL_PACK;
 
 async function getRptmCatalog(branchId, vertical = 'tenancy_mgmt') {
@@ -658,10 +659,11 @@ function buildTenancyMgmtAgreement(data = {}, pack = RESIDENTIAL_PACK) {
 
 const buildResidentialTMAgreement = (data = {}) => buildTenancyMgmtAgreement(data, RESIDENTIAL_PACK);
 const buildCommercialTMAgreement = (data = {}) => buildTenancyMgmtAgreement(data, COMMERCIAL_TENANCY_PACK);
+const buildRuralTMAgreement = (data = {}) => buildTenancyMgmtAgreement(data, RURAL_TENANCY_PACK);
 
 module.exports = {
   getRptmCatalog, computePricing,
-  buildTenancyMgmtAgreement, buildResidentialTMAgreement, buildCommercialTMAgreement,
+  buildTenancyMgmtAgreement, buildResidentialTMAgreement, buildCommercialTMAgreement, buildRuralTMAgreement,
   packFor, RESIDENTIAL_PACK, COMMERCIAL_TENANCY_PACK,
   SERVICE_GROUPS, CHECKLIST_GROUPS,
 };

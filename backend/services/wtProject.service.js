@@ -21,6 +21,7 @@ const M = require('../models/waterTankOps');
 const P = require('../models/waterTankProviders');
 const Property = require('../models/Property');
 const { generateCode } = require('../utils/codeGenerator');
+const { codePrefix: codePrefixFor } = require('../config/serviceLines');
 const customerSvc = require('./wtCustomerAgreement.service');
 
 const num = (v) => Number(v || 0);
@@ -143,12 +144,38 @@ const RIDS_CLOSURE = [
   { key: 'file_archived', label: 'Project file archived', sop: 'Sec. 12' },
 ];
 
+/* Business Registration — the nine phases of SOP Business Registration Client V0.1.
+ * Document-and-authority work: no site assessment, no AMC. The gates are the SOP's
+ * own: nothing is delivered before the agreement and deposit, and nothing closes
+ * before the final invoice is paid. */
+const BRG_STAGES = [
+  { key: 'lead_management', label: 'Lead Management', sop: 'Phase 1 Steps 1-3', phase: 'Phase 1 — Lead Management', pct: 8 },
+  { key: 'consultation', label: 'Consultation & Structure Advice', sop: 'Phase 2 Steps 4-6', phase: 'Phase 2 — Consultation', pct: 18 },
+  { key: 'commercial_approval', label: 'Quotation, Agreement & Deposit', sop: 'Phase 3 Steps 7-9', phase: 'Phase 3 — Commercial Approval', pct: 30, gate: 'quotation' },
+  { key: 'document_collection', label: 'Document Collection & Verification', sop: 'Phase 4 Steps 10-12', phase: 'Phase 4 — Document Collection', pct: 42, gate: 'agreement' },
+  { key: 'provider_assignment', label: 'Provider Assignment', sop: 'Phase 5 Steps 13-15', phase: 'Phase 5 — Provider Assignment', pct: 54, gate: 'agreement' },
+  { key: 'service_delivery', label: 'Registration & Government Liaison', sop: 'Phase 6 Steps 16-18', phase: 'Phase 6 — Service Delivery', pct: 70, gate: 'provider' },
+  { key: 'quality_assurance', label: 'Quality Assurance', sop: 'Phase 7 Steps 19-21', phase: 'Phase 7 — Quality Assurance', pct: 82 },
+  { key: 'client_reporting', label: 'Client Reporting & Handover', sop: 'Phase 8 Steps 22-23', phase: 'Phase 8 — Client Reporting', pct: 92 },
+  { key: 'project_completion', label: 'Final Invoice, Payment & Closure', sop: 'Phase 9 Steps 24-27', phase: 'Phase 9 — Project Completion', pct: 100 },
+];
+
+/* Business Registration closure — SOP Phase 9 Steps 24-27. */
+const BRG_CLOSURE = [
+  { key: 'registration_completed', label: 'Registration completed and certificates obtained', sop: 'Phase 8 Step 23' },
+  { key: 'deliverables_issued', label: 'Final documents delivered to the client', sop: 'Phase 8 Step 23' },
+  { key: 'final_invoice', label: 'Final invoice issued', sop: 'Phase 9 Step 24' },
+  { key: 'final_payment', label: 'Final payment received', sop: 'Phase 9 Step 25' },
+  { key: 'client_feedback', label: 'Client feedback collected', sop: 'Phase 9 Step 26' },
+  { key: 'records_archived', label: 'Project records archived', sop: 'Phase 9 Step 27' },
+];
+
 // Per-line stage machine + closure. Default is the Water Tank list, so every
 // existing line is unchanged; Interior Design gets its own SOP phases/closure.
 // Fitness Room shares the identical interior SOP workflow, so it reuses the same
 // project stages and closure checklist as Residential Interior Design.
-const STAGES_BY_LINE = { residential_interior_design: RIDS_STAGES, fitness_room_interior_design: RIDS_STAGES, commercial_interior_design: RIDS_STAGES, custom_design_fitout: RIDS_STAGES, furniture_styling_consultation: RIDS_STAGES, prayer_room_interior_design: RIDS_STAGES, space_planning_renovation: RIDS_STAGES };
-const CLOSURE_BY_LINE = { residential_interior_design: RIDS_CLOSURE, fitness_room_interior_design: RIDS_CLOSURE, commercial_interior_design: RIDS_CLOSURE, custom_design_fitout: RIDS_CLOSURE, furniture_styling_consultation: RIDS_CLOSURE, prayer_room_interior_design: RIDS_CLOSURE, space_planning_renovation: RIDS_CLOSURE };
+const STAGES_BY_LINE = { business_registration: BRG_STAGES, residential_interior_design: RIDS_STAGES, fitness_room_interior_design: RIDS_STAGES, commercial_interior_design: RIDS_STAGES, custom_design_fitout: RIDS_STAGES, furniture_styling_consultation: RIDS_STAGES, prayer_room_interior_design: RIDS_STAGES, space_planning_renovation: RIDS_STAGES };
+const CLOSURE_BY_LINE = { business_registration: BRG_CLOSURE, residential_interior_design: RIDS_CLOSURE, fitness_room_interior_design: RIDS_CLOSURE, commercial_interior_design: RIDS_CLOSURE, custom_design_fitout: RIDS_CLOSURE, furniture_styling_consultation: RIDS_CLOSURE, prayer_room_interior_design: RIDS_CLOSURE, space_planning_renovation: RIDS_CLOSURE };
 const stagesFor = (serviceLine) => STAGES_BY_LINE[serviceLine] || STAGES;
 const closureFor = (serviceLine) => CLOSURE_BY_LINE[serviceLine] || CLOSURE_CHECKLIST;
 
@@ -161,16 +188,22 @@ const closureFor = (serviceLine) => CLOSURE_BY_LINE[serviceLine] || CLOSURE_CHEC
  * waterTankClients.controller.js registerProject() so a project opened from the
  * client file and one opened from the wizard can never collide on a number.
  */
-async function nextProjectCode(branchId, transaction) {
+async function nextProjectCode(branchId, transaction, serviceLine = 'water_tank') {
+  // The prefix comes from the service line's manifest, so a project opened from
+  // another console is coded for that console (water_tank still yields WTCM-P).
+  const prefix = codePrefixFor(serviceLine, 'project') || 'WTCM-P';
+  const lower = prefix.toLowerCase();
   const rows = await M.WtProject.findAll({
     where: { branch_id: branchId }, attributes: ['code'], raw: true, transaction,
   });
   let max = 0;
   rows.forEach((r) => {
-    const n = parseInt(String(r.code || '').replace(/^WTCM-P/i, ''), 10);
+    const code = String(r.code || '');
+    if (!code.toLowerCase().startsWith(lower)) return;
+    const n = parseInt(code.slice(prefix.length), 10);
     if (!Number.isNaN(n) && n > max) max = n;
   });
-  return `WTCM-P${String(max + 1).padStart(4, '0')}`;
+  return `${prefix}${String(max + 1).padStart(4, '0')}`;
 }
 
 async function nextSeqCode(model, prefix, branchId, { pad = 4, start = 1, transaction } = {}) {
@@ -192,7 +225,7 @@ async function nextSeqCode(model, prefix, branchId, { pad = 4, start = 1, transa
  * existing one matched on name+mobile (the shared contact directory feeds names
  * in from elsewhere, so a duplicate is easy to create by accident), or a new one.
  */
-async function resolveClient(p, { branchId }, transaction) {
+async function resolveClient(p, { branchId, serviceLine = 'water_tank' }, transaction) {
   const cIn = p.client || {};
   let client = null;
   if ((cIn.mode === 'existing' || cIn.id || cIn.code) && (cIn.id || cIn.code)) {
@@ -204,14 +237,17 @@ async function resolveClient(p, { branchId }, transaction) {
   if (!client) {
     if (!cIn.name) { const e = new Error('A client name is required.'); e.status = 400; throw e; }
     client = await M.WtClient.findOne({
-      where: { branch_id: branchId, name: cIn.name, ...(cIn.phone ? { mobile: cIn.phone } : {}) },
+      // Scoped by line: a same-named Water Tank client must not be silently
+      // adopted by a registration project (and vice versa).
+      where: { branch_id: branchId, service_line: serviceLine, name: cIn.name, ...(cIn.phone ? { mobile: cIn.phone } : {}) },
       transaction,
     });
   }
   if (!client) {
     client = await M.WtClient.create({
       branch_id: branchId,
-      code: await nextSeqCode(M.WtClient, 'WTCM-C', branchId, { transaction }),
+      service_line: serviceLine,
+      code: await nextSeqCode(M.WtClient, codePrefixFor(serviceLine, 'client') || 'WTCM-C', branchId, { transaction }),
       name: cIn.name,
       client_type: cIn.client_type || 'Residential',
       mobile: cIn.phone || null, email: cIn.email || null,
@@ -376,21 +412,28 @@ async function updateProject(project, payload, ctx) {
 async function createProject(payload, ctx) {
   const { branchId, actor } = ctx;
   const p = payload || {};
+  // The project row copies site details from the submitted property block; this is
+  // the same shape resolveProperty() takes. Without it the fields below throw
+  // ReferenceError: prIn is not defined.
+  const prIn = p.property || {};
+  // The console that opened the project owns it. Without this, every line's wizard
+  // wrote a water_tank project with a WTCM-P code.
+  const serviceLine = ctx.serviceLine || p.service_line || 'water_tank';
 
   return sequelize.transaction(async (transaction) => {
     // Client and site resolution is shared with updateProject, so editing a
     // project follows exactly the same rules as creating one.
-    const client = await resolveClient(p, { branchId }, transaction);
+    const client = await resolveClient(p, { branchId, serviceLine }, transaction);
     const property = await resolveProperty(p.property, { branchId, userId: ctx.userId }, transaction);
 
     // ── 3. the project ───────────────────────────────────────────────────
-    const code = await nextProjectCode(branchId, transaction);
+    const code = await nextProjectCode(branchId, transaction, serviceLine);
     const services = asArray(p.services);
     const contractValue = p.contract_value != null
       ? num(p.contract_value)
       : services.reduce((s, l) => s + num(l.price) * (Number(l.qty) || 1), 0);
 
-    const lineStages = stagesFor(p.service_line);
+    const lineStages = stagesFor(serviceLine);
     const stage = normaliseStage(p.stage || lineStages[0].label, lineStages);
     const timeline = [{
       title: 'Project opened',
@@ -400,6 +443,7 @@ async function createProject(payload, ctx) {
 
     const project = await M.WtProject.create({
       branch_id: branchId,
+      service_line: serviceLine,
       code,
       name: p.name || `${client.name} — ${p.project_type || 'Water Tank Service'}`,
       status: 'Open',
@@ -482,7 +526,8 @@ async function createProject(payload, ctx) {
     if (!request) {
       request = await M.WtServiceRequest.create({
         branch_id: branchId,
-        code: await nextSeqCode(M.WtServiceRequest, 'SR-', branchId, { start: 1001, transaction }),
+        service_line: serviceLine,
+        code: await nextSeqCode(M.WtServiceRequest, codePrefixFor(serviceLine, 'request') || 'SR-', branchId, { start: 1001, transaction }),
         request_date: today(),
         client_name: client.name, client_code: client.code,
         phone: client.mobile, email: client.email,
@@ -515,7 +560,8 @@ async function createProject(payload, ctx) {
     } else if (p.needs_assessment) {
       assessment = await M.WtSiteAssessment.create({
         branch_id: branchId,
-        code: await nextSeqCode(M.WtSiteAssessment, 'SA-', branchId, { start: 401, transaction }),
+        service_line: serviceLine,
+        code: await nextSeqCode(M.WtSiteAssessment, codePrefixFor(serviceLine, 'assessment') || 'SA-', branchId, { start: 401, transaction }),
         project_id: project.code,
         client_name: client.name,
         provider: p.provider_name || null,

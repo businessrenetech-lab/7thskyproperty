@@ -38,10 +38,23 @@ async function findClient(req, { client_id, client_code }) {
   return M.WtClient.findOne({ where });
 }
 
-/** GET /reference — the required-document checklist for this line. */
+/** GET /reference — the required-document checklist for this line.
+ *  `?project_id=` expands per-party specs (registration: one row per shareholder
+ *  and director). Specs without `per_party` pass through untouched, so every other
+ *  service line is unaffected. */
 exports.reference = asyncHandler(async (req, res) => {
   if (!ensureDocManager(req, res)) return;
-  const specs = clientDocSpecs(req);
+  const specs = [];
+  for (const s of clientDocSpecs(req)) {
+    if (!s.per_party || !req.query.project_id) { specs.push(s); continue; }
+    const BusinessRegistrationParty = require('../models/BusinessRegistrationParty');
+    const parties = await BusinessRegistrationParty.findAll({
+      where: { wt_project_id: req.query.project_id, party_role: s.per_party, ...branchScope(req) },
+      order: [['created_at', 'ASC']],
+    });
+    if (!parties.length) { specs.push(s); continue; }
+    parties.forEach((p) => specs.push({ ...s, key: `${s.key}_${p.id}`, label: `${s.label} — ${p.name}`, party_id: p.id }));
+  }
   const groups = [];
   specs.forEach((s) => {
     let g = groups.find((x) => x.group === s.group);

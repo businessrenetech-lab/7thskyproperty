@@ -15,7 +15,7 @@ import { Spinner } from '../../ui/kit';
 // Every non-default console base, matched against the URL. Water Tank is the
 // default. Add a service line by giving it a SERVICE_UI entry (below) and, if its
 // base isn't one of these, listing it here — keeping one N-way source of truth.
-const SVC_BASES = ['/air-conditioning', '/land-property-assessment', '/loan-financial-support', '/property-documentation-verification', '/property-will-succession', '/removal-relocation', '/property-care-concierge', '/residential-interior-design', '/fitness-room-interior-design', '/commercial-interior-design', '/custom-design-fit-out', '/furniture-styling-consultation', '/prayer-room-interior-design', '/space-planning-renovation'];
+const SVC_BASES = ['/air-conditioning', '/land-property-assessment', '/loan-financial-support', '/property-documentation-verification', '/property-will-succession', '/removal-relocation', '/property-care-concierge', '/residential-interior-design', '/fitness-room-interior-design', '/commercial-interior-design', '/custom-design-fit-out', '/furniture-styling-consultation', '/prayer-room-interior-design', '/space-planning-renovation', '/business-registration'];
 export const svcBase = () => {
   try {
     const p = window.location.pathname || '';
@@ -692,6 +692,42 @@ export const SERVICE_UI = {
       direct_cost_examples: 'Materials, furniture & modular, partitions, joinery, cabinetry, transport, day labour and permits',
     },
   },
+  '/business-registration': {
+    label: 'Business Registration',
+    full_label: 'Business Registration Services',
+    short: 'Registration',
+    doc_code: 'BRG',                 // SSPC-BRG-… document numbers
+    doc_manager: true,               // Phase 4 — NID, passport, utility bill, party documents
+    registration_register: true,     // line module: parties + activities
+    no_site_visit: true,             // document-and-authority work; nothing is inspected on site
+    wo_consumables_label: 'Government Fees & Filings',
+    accent: '#0d9488', accent_ink: '#115e59', accent_soft: '#ccfbf1',
+    equipment: {
+      section_label: 'Business Details',
+      type_label: 'Business Type',
+      type_options: ['Sole Proprietorship', 'Partnership', 'Private Limited', 'Public Limited', 'Other'],
+      count_label: 'Number of Shareholders',
+      capacity_label: 'Authorised Capital',
+      capacity_placeholder: 'e.g. BDT 10,00,000',
+      fields: [
+        { key: 'proposed_name', ph: 'Proposed business name' },
+        { key: 'nature', ph: 'Nature of business' },
+        { key: 'directors', ph: 'Number of directors' },
+      ],
+    },
+    report_types: ['Consultation', 'Name Clearance', 'Trade Licence', 'RJSC', 'Tax Registration', 'Completion'],
+    report_placeholder: 'e.g. Name clearance obtained from RJSC; trade licence application lodged with DNCC.',
+    registers: {
+      incident_types: ['Name Rejection', 'Missing Documentation', 'Director Verification Delay',
+        'Government Delay', 'Shareholder Dispute', 'Other'],
+      warranty_hint: 'e.g. Re-filing after rejection, correction of registration details.',
+      location_placeholder: 'RJSC, City Corporation, NBR…',
+      incident_blurb: 'Name rejection, missing documents, verification or government delay',
+      warranty_scope: 'completed registration and documentation work',
+      incident_log: 'name rejections, missing documents and government delays',
+      direct_cost_examples: 'Government fees, RJSC filing fees, stamps, notary and courier',
+    },
+  },
 };
 /** The active console's UI profile (label, full_label, equipment field labels). */
 export const svcProfile = () => SERVICE_UI[svcBase()] || SERVICE_UI['/water-tank'];
@@ -716,6 +752,7 @@ const LINE_TO_BASE = {
   prayer_room_interior_design: '/prayer-room-interior-design',
   space_planning_renovation: '/space-planning-renovation',
   water_tank: '/water-tank',
+  business_registration: '/business-registration',
 };
 export const profileForLine = (serviceLine) =>
   SERVICE_UI[LINE_TO_BASE[String(serviceLine || '')] || '/water-tank'] || SERVICE_UI['/water-tank'];
@@ -731,6 +768,8 @@ export const svcDocManager = () => !!svcProfile().doc_manager;
 export const svcLoanTracker = () => !!svcProfile().loan_tracker;
 /** Whether the active console has the Verification Register (Property Documentation & Verification). */
 export const svcVerificationRegister = () => !!svcProfile().verification_register;
+/** Whether the active console has the Registration register (parties + activities). */
+export const svcRegistrationRegister = () => !!svcProfile().registration_register;
 /** Whether the active console has the Beneficiary Register (Property Will & Succession). */
 export const svcBeneficiaryRegister = () => !!svcProfile().beneficiary_register;
 /** Whether the active console has internal Team & Fleet (Removal & Relocation). */
