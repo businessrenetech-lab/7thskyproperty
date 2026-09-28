@@ -1,149 +1,183 @@
-# Deploying to Hostinger — Seventh Sky Properties
+# Deploying — Seventh Sky Property Care
 
-Target: **Hostinger Business plan** (shared hosting with "Setup Node.js App",
-powered by Passenger). Demo domain:
-`https://darkgoldenrod-butterfly-615812.hostingersite.com`
+Live site: **https://www.seventhskypropertycare.com**
 
-There are three ways to run this, easiest first:
+**Deploy = push to the `production` branch.** Hostinger's Git integration is
+wired to `businessrenetech-lab/7thskyproperty` branch `production`; every push
+triggers install → build → restart. There is nothing to upload by hand.
 
-- **Option 1 — Single Node app (recommended, matches Git deploy).** One process
-  (`production-server.js`) serves the website, the API, the admin, and uploads on
-  the one port Hostinger assigns. No subdomains, no code changes.
-- **Option 2 — Subdomain split.** Website and API as two separate Node apps.
-- **Option 3 — VPS + Nginx.** The cleanest for a multi-service Node stack.
-
----
-
-## Fixing the build error you hit
-
-Hostinger's Git deploy ran `npm install` at the repo root, which failed because
-the old root `postinstall` referenced portals that don't exist here
-(`student-portal`, `teacher-portal`). **Fixed:** the root `postinstall` now runs
-`scripts/postinstall.js`, which installs only the three real subprojects
-(`backend`, `admin-portal`, `website`) and **skips anything missing** instead of
-crashing. Re-deploy and the install step will pass.
-
----
-
-## Option 1 — Single Node app (recommended)
-
-`production-server.js` is a monolith: it boots the Next.js website, mounts the
-API from `backend/routes/manifest.js`, serves the admin SPA at `/admin`, and
-serves `/uploads` (private docs stay JWT-gated) — all on Hostinger's port.
-This preserves the app's single-origin design, so **nothing needs rewiring**.
-
-### 1. MySQL database
-hPanel → **Databases → MySQL** → create DB + user. Note DB name, user, password,
-host (`localhost`), port `3306`.
-
-### 2. Upload the repo
-Git deploy, or SSH/SFTP the whole repo to the app root
-(e.g. `/home/uXXXXXXX/domains/<domain>/public_html`). Exclude `node_modules`,
-`.env`, and `website/.next` (built on the server in step 4). `admin-portal/dist`
-is committed, so it ships with the repo.
-
-### 3. Backend env
-Create `backend/.env` from `backend/.env.hostinger.example` and fill in the DB
-credentials, `JWT_SECRET`, `ENCRYPTION_KEY`, `CORS_ORIGINS`, and `NODE_ENV=production`.
-**Do not set PORT** — Hostinger/Passenger injects it (the server reads
-`process.env.PORT`).
-
-### 4. Install + build (SSH or the Node app terminal)
 ```bash
-npm install              # root deps + postinstall installs backend/admin/website
-npm run build:all        # builds admin-portal/dist and website/.next
-cd backend && npx sequelize-cli db:migrate && cd ..   # create the schema
-# fresh DB only: seed a super-admin
-cd backend && npx sequelize-cli db:seed:all && cd ..
+git checkout production
+git merge <your-branch>
+npm run build:all          # commit the rebuilt dist — see "Why dist is committed"
+git push origin production
 ```
-
-### 5. Create the Node.js app (hPanel → Advanced → Setup Node.js App)
-- Node version **20**, mode **Production**.
-- Application root: the repo root you uploaded.
-- Application URL: the main domain.
-- **Startup file: `production-server.js`**.
-- Click **Run NPM Install**, then **Restart**.
-
-### 6. Verify
-- `https://<domain>/api/health` → `{"status":"ok"}`
-- `https://<domain>/admin` → admin login (sign in with the seeded admin)
-- `https://<domain>/` → the public website
-- Upload a KYC/proof file, confirm `/uploads` serves it (with a token)
-- hPanel → SSL → install free Let's Encrypt on the domain
-
-> **Note on the public website:** the site under `/` is the legacy
-> Language-Academy Next.js site; a few of its `/api/public/*` endpoints depend on
-> models that were removed when this repo became Seventh Sky, so those pages may
-> show empty data. The **Seventh Sky admin/sales platform at `/admin` is fully
-> functional** (59/68 API routes mount; the 9 that skip are dead legacy routes).
-> Replace `website/` with your Seventh Sky public site when ready — the monolith
-> serves whatever Next build is in `website/.next`.
 
 ---
 
-## Option 2 — Subdomain split (website + API as separate Node apps)
+## 1. What actually runs
 
-Use this if you prefer the website and API isolated. Topology:
+One Node process, `production-server.js`, serves everything on the single port
+Hostinger assigns:
 
-```
-<domain>       → Node App #1 = Next.js website (startup: website/app.js)
-api.<domain>   → Node App #2 = Express API (startup: backend/server.js)
-                              + serves admin at /admin + /uploads
-```
+| Path | Served from | Notes |
+|------|-------------|-------|
+| `/` | `website-mock/dist` | The public marketing site. Static Vite + React-Router SPA, with an SPA fallback. |
+| `/admin` | `admin-portal/dist` | The staff app. Static Vite SPA, SPA fallback. |
+| `/api/*` | `backend/routes/manifest.js` | Mounted resiliently — a broken route logs `skipped:` instead of killing boot. |
+| `/uploads/*` | `backend/uploads` | Public folders are open; everything else is JWT-gated (header **or** `?token=`). |
 
-Enabling pieces already in the repo:
-- `backend/server.js` serves the admin SPA at `/admin` when `ADMIN_DIST` is set.
-- `website/next.config.mjs` proxies the site's `/api` and `/uploads` to
-  `NEXT_PUBLIC_API_ORIGIN` in production.
-- `website/app.js` is the Passenger entry for Next.js.
+### The public site is `website-mock`, NOT `website`
 
-Steps:
-1. Create the `api` subdomain (hPanel → Subdomains).
-2. **API app** (`api.<domain>`, startup `server.js`): upload `backend/` + the
-   built `admin-portal/dist` as `admin-dist/`; set env from
-   `backend/.env.hostinger.example` (incl. `ADMIN_DIST=…/admin-dist`); Run NPM
-   Install; `npx sequelize-cli db:migrate`; restart.
-   → `https://api.<domain>/admin` is the staff app, `…/api/health` the API.
-3. **Website app** (`<domain>`, startup `app.js`): upload `website/` incl.
-   `.next`; set env from `website/.env.hostinger.example`
-   (`NEXT_PUBLIC_API_ORIGIN` + `INTERNAL_API_URL` = `https://api.<domain>`);
-   Run NPM Install; restart.
+`website/` is the legacy Language Academy Next.js app. It is **not built and not
+served**. Its pages still carry `languageacademy.com.bd` canonicals and PTE blog
+content. Leave it alone.
+
+> **Trap:** `production-server.js` and the root `package.json` differ between
+> branches. Feature branches still carry the old copies that boot `website/` via
+> Next. **Only the `production` branch is authoritative.** To check what really
+> ships, read it there:
+> ```bash
+> git show production:production-server.js | grep website-mock
+> git show production:package.json
+> ```
+> Reading either file on a feature branch gives the wrong answer.
 
 ---
 
-## Option 3 — Hostinger VPS (cleanest for this stack)
+## 2. Build configuration (hPanel → Node.js app)
 
-A KVM VPS matches the single-origin design with **no code changes**:
+| Setting | Value |
+|---------|-------|
+| Node version | **20** |
+| Application mode | Production |
+| Entry / startup file | `production-server.js` |
+| Build script | `build:all` |
+| Application root | repo root |
+
+```jsonc
+"build:admin":   "cd admin-portal && npm install --include=dev && npx vite build",
+"build:website": "cd website-mock  && npm install --include=dev && npx vite build",
+"build:all":     "npm run build:admin && npm run build:website"
+```
+
+### Three rules that must not be broken
+
+1. **`--include=dev` everywhere.** `NODE_ENV=production` is set on the host, so
+   npm skips devDependencies — and vite, tailwindcss and postcss all live there.
+   Drop the flag and the build dies with `Cannot find module 'tailwindcss'`.
+2. **Root `package.json` must not list `react`, `react-dom` or `next`.** A second
+   React copy at the root breaks the sub-app builds. Root deps stay lean:
+   compression, cookie-parser, cors, dotenv, express, jsonwebtoken.
+3. **Never hardcode `PORT`.** Passenger injects it; `production-server.js` reads
+   `process.env.PORT` and captures it *before* dotenv can override it.
+
+`scripts/postinstall.js` installs `backend`, `admin-portal` and `website-mock`,
+skipping anything missing rather than failing the deploy.
+
+### Why `dist` is committed
+
+Both `admin-portal/dist` and `website-mock/dist` are in git. The site therefore
+serves correctly even if the host build step fails. **This means a source change
+is not live until you rebuild and commit the bundle.** Run `npm run build:all`
+before pushing, or you will deploy old assets and see no change.
+
+---
+
+## 3. Configuration — three places, and which wins
+
+Know which one you are editing; this is the most common source of confusion.
+
+### a) `SystemSetting` table (the database) — **shared with production**
+
+The local `.env` points at the same MySQL instance production uses. Writing a
+setting here changes production **immediately, with no deploy.**
+
+`communication.service.js` reads settings in this order:
+**`SystemSetting` → `process.env` fallback.** So a row here overrides the host
+env var. Mail, branding, SEO, tracking IDs and `COMPANY_WEBSITE` all live here,
+editable from the admin UI under Settings.
+
+### b) hPanel env vars (the Node app's Environment section)
+
+`DB_*`, `JWT_SECRET`, `NODE_ENV`, `TZ`, `PORT`. The env API is **full-replace and
+returns masked values** — to change one variable you must resend all of them, so
+prefer editing in the hPanel UI.
+
+### c) `backend/.env` — **local only**
+
+Gitignored, never on the host. `production-server.js` loads it if present;
+dotenv does not override variables that already exist, so hPanel always wins.
+`backend/.env.hostinger.example` is the reference for what production expects.
+
+### Base URLs
+
+Most derive from the incoming request host, so they follow the domain with no
+configuration. **Two do not:** `APP_BASE_URL` and `WEBSITE_BASE_URL` fall back to
+`http://localhost:3005`. Left unset on the host they put localhost links into
+outgoing email. Set both to `https://www.seventhskypropertycare.com`.
+
+`CORS_ORIGINS`, when set, **replaces** the defaults in
+`backend/config/cors.config.js` rather than adding to them.
+
+---
+
+## 4. Email
+
+Sends through Hostinger SMTP, `smtp.hostinger.com:465` (587 also works).
+Three accounts route by purpose — `info` (default), `hr`, `support` — each with
+its own `SMTP_*_USER` / `SMTP_*_PASS` pair in `SystemSetting`.
+
+Because these live in the shared database, **changing a mailbox takes effect on
+production instantly — no deploy.** Verify before switching:
+
 ```bash
-sudo apt update && sudo apt install -y nginx mysql-server
-npm i -g pm2
-npm install && npm run build:all
-cd backend && npx sequelize-cli db:migrate && cd ..
-pm2 start production-server.js --name seventhsky --update-env   # PORT via env
-pm2 save && pm2 startup
+cd backend && node -e "require('dotenv').config();const n=require('nodemailer');
+n.createTransport({host:'smtp.hostinger.com',port:465,secure:true,
+auth:{user:'info@seventhskypropertycare.com',pass:process.argv[1]}})
+.verify().then(()=>console.log('OK')).catch(e=>console.log('FAIL',e.message))" '<password>'
 ```
-Nginx: proxy your domain to the app's port; add SSL with `certbot --nginx`.
-(You can also run `backend/server.js` and `website/app.js` as separate PM2
-processes behind Nginx if you prefer — see Option 2 topology.)
+
+> **Known weakness:** SMTP passwords are stored as plain text with `is_secret`
+> set, which only masks them in the UI. `utils/encryption.js` derives its key
+> from `ENCRYPTION_KEY || JWT_SECRET`; `ENCRYPTION_KEY` is unset, and if the
+> host's `JWT_SECRET` ever differs, `decrypt()` silently returns the ciphertext
+> and mail fails auth with a garbage password. Encrypting these safely requires
+> setting a matching `ENCRYPTION_KEY` locally and in hPanel first.
 
 ---
 
-## Updating after a code change
+## 5. Database
+
+Migrations own the schema — the server never calls `sequelize.sync()`.
+
 ```bash
-git pull                    # or re-upload changed files
-npm install                 # if deps changed
-npm run build:all           # rebuild website + admin
-cd backend && npx sequelize-cli db:migrate && cd ..   # if schema changed
+cd backend && npx sequelize-cli db:migrate      # run from backend/, .env resolves to cwd
+npm run db:migrate:status                       # what is applied
 ```
-Then **Restart** the Node app in hPanel.
+
+**The local database is the production database.** A migration run locally
+applies to production instantly, so migrations must be additive and guarded with
+`describeTable`, and test fixtures must never be left behind.
 
 ---
 
-## Files that make deployment work
-- `production-server.js` — single-process monolith (Option 1 startup)
-- `backend/routes/manifest.js` — shared API route list (backend + monolith)
-- `scripts/postinstall.js` — resilient workspace installer (fixes the build error)
-- `backend/server.js` — serves admin at `/admin` via `ADMIN_DIST` (Option 2)
-- `website/app.js` — Passenger/Next.js entry (Option 2)
-- `website/next.config.mjs` — prod `/api` + `/uploads` proxy (Option 2)
-- `backend/.env.hostinger.example`, `website/.env.hostinger.example` — env templates
+## 6. After deploying, check
+
+- `https://www.seventhskypropertycare.com/api/health` → `{"status":"ok"}`
+- `/` loads the marketing site
+- `/admin` loads the staff app and signs in
+- A private upload still requires a token
+- hPanel → build log: `mounted:` lines for the API routes, no `skipped:` you did
+  not expect
+
+---
+
+## 7. Open items
+
+- **Default admin credentials are public** — `admin@seventhskyproperty.com` ships
+  in the repo and in the built bundle. Change the password in the live database.
+- **A dedicated production database.** The app currently runs against
+  `u712081339_test1`, shared with local development.
+- **Signed-PDF generation is degraded.** Puppeteer needs Node ≥22 plus a Chrome
+  binary; the host is Node 20 shared hosting.
