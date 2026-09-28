@@ -21,9 +21,28 @@ const rowsOf = (b) => {
   return Array.isArray(b) ? b : null;
 };
 /** A stable fingerprint of a payload: row count + ids, or its JSON size. */
+/*
+ * A signature that actually identifies the rows.
+ *
+ * This used to be `x.id ?? x.code ?? ''`, which produced "n=12|,,,,,,,,,,," for
+ * any endpoint whose rows are not keyed by id or code — /api/sales/inbox keys its
+ * rows by `key` — so two COMPLETELY DIFFERENT twelve-row lists compared equal and
+ * the leak check silently passed on identity alone. It now falls through the
+ * identity fields this API actually uses, and only then to the row's own content.
+ */
+const rowId = (x) => {
+  if (!x || typeof x !== 'object') return String(x ?? '');
+  for (const k of ['id', 'code', 'key', 'property_code', 'invoice_code', 'deal_code', 'enquiry_code']) {
+    if (x[k] != null && x[k] !== '') return String(x[k]);
+  }
+  // Nothing identifying: fall back to the row's own values so different content
+  // cannot masquerade as the same list.
+  return JSON.stringify(x).slice(0, 60);
+};
+
 const sig = (b) => {
   const r = rowsOf(b);
-  if (r) return `n=${r.length}|${r.map((x) => x.id ?? x.code ?? '').slice(0, 12).join(',')}`;
+  if (r) return `n=${r.length}|${r.map(rowId).slice(0, 12).join(',')}`;
   return `json:${JSON.stringify(b).length}`;
 };
 const count = (s) => Number((s.match(/^n=(\d+)/) || [, -1])[1]);
