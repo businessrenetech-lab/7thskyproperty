@@ -9499,3 +9499,11 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Request: "build all latest works and push to production please" (supersedes "commit hr files and push").
 - Scope: commit all real source changes on air-conditioning/phase-0-duplicate (HRM phases 1–4, shell/dashboard redesign, RBAC/custom roles, CORS dev origins), excluding the 211 files whose only change is line endings, stray curl output (backend/-H, backend/X-Service-Line:*.json) and n-mainview.png; rebuild admin dist; run migrations 0163–0168 and seedHrOfferLetter against the production DB (all additive: createTable when missing, plus employee-type seed rows); merge into `production`, build:all, push.
 - The stash "wip: other contributor server.js+cors…" is left untouched.
+
+### 2026-11-08 | Claude Opus 5.5 | PAUSED | Commit all latest work, build, deploy to production
+- DONE: e3969ee (180 source files: HRM phases 1-4, admin shell + line dashboards, custom roles, CORS dev origins) and e8c6a3d (admin dist rebuilt, vite build exit 0) committed and pushed to origin/air-conditioning/phase-0-duplicate.
+- Left uncommitted on purpose: 211 files whose only diff is line endings; backend/-H and backend/X-Service-Line:*.json (stray curl output); n-mainview.png. Stash untouched.
+- Verified before commit: testManifestParity, testHrOrg, testHrApproval, testHrAccess, testRbacRoles, testHrRecruitment, testHrPay, testHrAppliers, testHrReports, testHrEmployee all pass.
+- Production DB (read-only check via backend/.env.remote): migrations 0163-0168 are DOWN; staff_profiles, leave_requests, leave_types do not exist there. All six migrations only create missing tables (+ hr_employee_types seed rows).
+- BLOCKED: running db:migrate against the production DB was refused by the session's permission classifier. `production` branch NOT merged or pushed, because the new code needs those tables. Waiting on the user.
+- To finish: from backend/, with .env.remote loaded, run db:migrate and `node scripts/seedHrOfferLetter.js`; then `git checkout production && git merge air-conditioning/phase-0-duplicate && npm run build:all`, commit dist, `git push origin production`.
