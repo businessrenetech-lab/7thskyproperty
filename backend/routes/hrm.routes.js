@@ -1,146 +1,71 @@
+/**
+ * /api/hrm: attendance, office calendar, leave, shifts and schedules (ported from Hadi Real Estate).
+ *
+ *   /me/*   self-service for any signed-in staff member (client roles refused): check in / out, own
+ *           attendance, apply for / cancel leave, own balance and application letter.
+ *   others  the HR screens. GET needs the HR action time.view_all, every change time.manage (services/hrAccess:
+ *           the CEO-editable HR access settings).
+ */
 const express = require('express');
-const router = express.Router();
 const hrm = require('../controllers/hrm.controller');
-const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
+const { authMiddleware } = require('../middleware/auth.middleware');
 const { branchMiddleware } = require('../middleware/branch.middleware');
-const multer = require('multer');
-const path = require('path');
+const roles = require('../utils/hrRoles');
+const { hrRole } = require('../services/hrAccess.service');
+const { onRosterOnly } = require('../services/hrRoster');
 
-// File upload for documents
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads')),
-  filename: (req, file, cb) => cb(null, `doc_${Date.now()}_${file.originalname}`),
-});
-const upload = multer({ storage });
+const router = express.Router();
+router.use(authMiddleware, branchMiddleware);
 
-const getDhakaDate = () => {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Dhaka', year: 'numeric', month: '2-digit', day: '2-digit'
-  }).formatToParts(new Date());
-  const year = parts.find((part) => part.type === 'year').value;
-  const month = parts.find((part) => part.type === 'month').value;
-  const day = parts.find((part) => part.type === 'day').value;
-  return `${year}-${month}-${day}`;
-};
+const staffOnly = (req, res, next) => (roles.isStaff(req.user) ? next() : res.status(403).json({ error: 'Staff only' }));
+const me = express.Router();
+me.use(staffOnly, onRosterOnly);   // M2 §18: only people in the Employee Master
+me.post('/attendance/check-in', hrm.checkIn);
+me.post('/attendance/check-out', hrm.checkOut);
+me.get('/attendance', hrm.getMyStaffAttendance);
+me.get('/leave-types', hrm.myLeaveTypes);
+me.get('/leaves', hrm.getMyLeaves);
+me.post('/leaves', hrm.applyMyLeave);
+me.get('/leave-balance', hrm.myLeaveBalance);
+me.get('/leave-days', hrm.myLeaveDays);
+me.post('/leaves/:id/cancel', hrm.cancelMyLeave);
+me.get('/leaves/:id/print', hrm.printMyLeave);
+me.get('/schedule', hrm.mySchedule);
+router.use('/me', me);
 
-const getDhakaTime = () => new Date().toLocaleTimeString('en-GB', {
-  hour12: false,
-  timeZone: 'Asia/Dhaka',
-});
+const hrRead = hrRole('time.view_all');
+const hrWrite = hrRole('time.manage');
+router.use((req, res, next) => (req.method === 'GET' ? hrRead : hrWrite)(req, res, next));
 
-router.use(authMiddleware);
+router.get('/dashboard/stats', hrm.getDashboardStats);
+router.get('/staff', hrm.getStaff);
 
-// ─── Self-service Check-In (any authenticated user) ─────────
-router.post('/attendance/self-checkin', branchMiddleware, async (req, res) => {
-  try {
-    const { latitude, longitude, action } = req.body;
-    if (['student', 'guardian'].includes(req.user.role)) {
-      return res.status(403).json({ error: 'Only staff users can check in or out.' });
-    }
-
-    const today = getDhakaDate();
-    const now = getDhakaTime();
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
-
-    // Check if already checked in today
-    const existing = await require('../models/StaffAttendance').findOne({
-      where: { user_id: req.user.id, date: today }
-    });
-
-    if (action === 'in' && existing?.check_in) {
-      return res.status(400).json({ error: existing.check_out ? 'Already checked in and out for today.' : 'Already checked in today.' });
-    }
-
-    if (action === 'out') {
-      if (!existing?.check_in) return res.status(400).json({ error: 'Check in first before checking out.' });
-      if (existing.check_out) return res.status(400).json({ error: 'Already checked out for today.' });
-      await existing.update({ check_out: now, ip_address: ip, branch_id: req.branchId });
-      return res.json({ message: 'Checked out successfully!', type: 'checkout', record: existing });
-    }
-
-    if (existing && existing.check_in && !existing.check_out) {
-      // Already checked in — this is a check-out
-      await existing.update({ check_out: now, ip_address: ip, branch_id: req.branchId });
-      return res.json({ message: 'Checked out successfully!', type: 'checkout', record: existing });
-    }
-
-    if (existing && existing.check_out) {
-      return res.status(400).json({ error: 'Already checked in and out for today.' });
-    }
-
-    // New check-in
-    const record = await require('../models/StaffAttendance').create({
-      user_id: req.user.id,
-      branch_id: req.branchId,
-      date: today,
-      status: 'present',
-      check_in: now,
-      method: 'mobile',
-      ip_address: ip,
-      latitude: latitude || null,
-      longitude: longitude || null,
-    });
-
-    res.json({ message: 'Checked in successfully!', type: 'checkin', record });
-  } catch (error) {
-    console.error('Self check-in error:', error);
-    res.status(500).json({ error: 'Check-in failed. Please try again.' });
-  }
-});
-
-router.use(roleMiddleware(['super_admin', 'branch_admin', 'hr']));
-router.use(branchMiddleware);
 router.post('/attendance/mark', hrm.markStaffAttendance);
 router.get('/attendance', hrm.getStaffAttendance);
 router.get('/attendance/summary', hrm.getStaffAttendanceSummary);
-router.get('/attendance/my', hrm.getMyStaffAttendance);
+router.get('/attendance/summary/print', hrm.printStaffAttendanceSummary);
+router.get('/attendance/calendar', hrm.getCalendar);
+router.put('/attendance/calendar/weekly-off', hrm.setWeeklyOff);
+router.post('/attendance/calendar/holidays', hrm.addHoliday);
+router.delete('/attendance/calendar/holidays/:id', hrm.deleteHoliday);
 
-// ─── Leave Management ────────────────────────────────────────
 router.get('/leave-types', hrm.getLeaveTypes);
 router.post('/leave-types', hrm.createLeaveType);
+router.patch('/leave-types/:id', hrm.updateLeaveType);
 router.get('/leaves', hrm.getLeaveRequests);
 router.post('/leaves', hrm.createLeaveRequest);
 router.patch('/leaves/:id/approve', hrm.approveLeave);
 router.patch('/leaves/:id/reject', hrm.rejectLeave);
-router.get('/leaves/my', hrm.getMyLeaves);
 router.get('/leaves/balance', hrm.getLeaveBalance);
+router.get('/leaves/balances', hrm.getLeaveBalances);
+router.get('/leaves/days', hrm.getLeaveDays);
+router.get('/leaves/:id/print', hrm.printLeave);
 
-// ─── Recruitment ─────────────────────────────────────────────
-router.get('/jobs', hrm.getJobPostings);
-router.post('/jobs', hrm.createJobPosting);
-router.patch('/jobs/:id', hrm.updateJobPosting);
-router.delete('/jobs/:id', hrm.deleteJobPosting);
-router.get('/applicants', hrm.getApplicants);
-router.post('/applicants', hrm.createApplicant);
-router.patch('/applicants/:id', hrm.updateApplicant);
-router.post('/applicants/:id/hire', hrm.hireApplicant);
-
-// ─── Documents ───────────────────────────────────────────────
-router.get('/documents', hrm.getDocuments);
-router.post('/documents', upload.single('file'), hrm.createDocument);
-router.delete('/documents/:id', hrm.deleteDocument);
-router.get('/documents/expiring', hrm.getExpiringDocuments);
-
-// ─── Performance Reviews ────────────────────────────────────
-router.get('/reviews', hrm.getReviews);
-router.post('/reviews', hrm.createReview);
-router.patch('/reviews/:id', hrm.updateReview);
-router.get('/reviews/my', hrm.getMyReviews);
-
-// ─── Shifts & Schedules ─────────────────────────────────────
 router.get('/shifts', hrm.getShifts);
 router.post('/shifts', hrm.createShift);
 router.patch('/shifts/:id', hrm.updateShift);
 router.get('/schedules', hrm.getSchedules);
 router.post('/schedules', hrm.createSchedule);
 router.delete('/schedules/:id', hrm.deleteSchedule);
-
-// ─── Org Chart ───────────────────────────────────────────────
-router.get('/org-chart', hrm.getOrgChart);
-
-// ─── Dashboard ───────────────────────────────────────────────
-router.get('/dashboard/stats', hrm.getDashboardStats);
-router.get('/dashboard/birthdays', hrm.getBirthdays);
-router.get('/dashboard/anniversaries', hrm.getAnniversaries);
 
 module.exports = router;

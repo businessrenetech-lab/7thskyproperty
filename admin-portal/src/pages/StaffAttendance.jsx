@@ -1,8 +1,25 @@
 import React, { useState, useEffect } from 'react';
+import CardTable from '../components/ui/CardTable';
 import { CheckCircle, XCircle, Clock, Calendar, Users, Loader2, Save, Download } from 'lucide-react';
 import api from '../services/api';
 import '../styles/GlobalStyles.css';
 import { useToast } from '../context/ToastContext';
+import OfficeCalendar, { closedInMonth } from '../components/attendance/OfficeCalendar';
+
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
+// The branded monthly sheet (A4 landscape, every day of the month), rendered by the server; the browser saves it as PDF.
+const summaryPrintUrl = (month, year) => {
+  let branch = '';
+  try { branch = localStorage.getItem('selectedBranch') || ''; } catch { /* no storage */ }
+  const q = new URLSearchParams({ month: String(month), year: String(year), print: '1' });
+  if (branch) q.set('branchId', branch);
+  return `${API_BASE}/hrm/attendance/summary/print?${q}`;
+};
+const DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const CODE = {
+  present: ['P', 'var(--success)'], late: ['L', 'var(--warning)'], half_day: ['H', '#FFB347'],
+  absent: ['A', 'var(--danger)'], on_leave: ['V', '#9B6DFF'],
+};
 
 const StaffAttendancePage = () => {
   const toast = useToast();
@@ -11,7 +28,9 @@ const StaffAttendancePage = () => {
   const [attendance, setAttendance] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [view, setView] = useState('mark'); // 'mark' | 'summary'
+  const [view, setView] = useState('mark'); // 'mark' | 'summary' | 'calendar'
+  const [closedToday, setClosedToday] = useState(null); // Daily Mark: the office is closed that day
+  const [cal, setCal] = useState(null); // office calendar of the summary's year
   const [summary, setSummary] = useState([]);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
@@ -27,6 +46,7 @@ const StaffAttendancePage = () => {
       const staffData = response.data.staff;
       console.log('STAFF DATA FETCHED:', staffData);
       setStaff(staffData);
+      setClosedToday(response.data.closed || null);
       
       const initial = {};
       staffData.forEach(member => { 
@@ -53,8 +73,12 @@ const StaffAttendancePage = () => {
   const fetchSummary = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/hrm/attendance/summary?month=${month}&year=${year}`);
+      const [res, c] = await Promise.all([
+        api.get(`/hrm/attendance/summary?month=${month}&year=${year}`),
+        api.get('/hrm/attendance/calendar', { params: { year } }).catch(() => null),
+      ]);
       setSummary(res.data);
+      setCal(c ? c.data : null);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
@@ -76,12 +100,13 @@ const StaffAttendancePage = () => {
   };
 
   const exportPDF = async () => {
+    if (view === 'summary') { window.open(summaryPrintUrl(month, year), '_blank', 'noopener'); return; }
     try {
       const html2pdf = (await import('html2pdf.js')).default;
       const element = document.getElementById('report-container');
       const opt = {
         margin: 0.5,
-        filename: view === 'mark' ? `Attendance_Sheet_${date}.pdf` : `Attendance_Summary_${month}_${year}.pdf`,
+        filename: `Attendance_Sheet_${date}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
         jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
@@ -91,6 +116,9 @@ const StaffAttendancePage = () => {
       toast.error(`Failed to export PDF! ${err.message}`);
     }
   };
+
+  const closedDays = closedInMonth(cal, year, month);
+  const days = Array.from({ length: new Date(year, month, 0).getDate() }, (_, i) => ({ d: i + 1, dow: new Date(year, month - 1, i + 1).getDay(), closed: closedDays.get(i + 1) || null }));
 
   const statusConfig = {
     present: { icon: <CheckCircle size={22} />, color: 'var(--success)', label: 'Present' },
@@ -108,11 +136,13 @@ const StaffAttendancePage = () => {
           <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Daily check-in tracking & attendance sheets</p>
         </div>
         <div style={{ display: 'flex', gap: '0.8rem' }}>
-          <button className="btn-secondary" onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Download size={16} /> Export PDF
-          </button>
+          {view !== 'calendar' && (
+            <button className="btn-secondary" onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Download size={16} /> Export PDF
+            </button>
+          )}
           <div style={{ display: 'flex', gap: '2px', padding: '3px', borderRadius: '8px', background: 'var(--glass)', border: '1px solid var(--border)' }}>
-            {[{ key: 'mark', label: 'Daily Mark' }, { key: 'summary', label: 'Monthly Summary' }].map(t => (
+            {[{ key: 'mark', label: 'Daily Mark' }, { key: 'summary', label: 'Monthly Summary' }, { key: 'calendar', label: 'Office calendar' }].map(t => (
               <div key={t.key} onClick={() => setView(t.key)} style={{
                 padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer',
                 background: view === t.key ? 'rgba(255,255,255,0.06)' : 'transparent',
@@ -123,6 +153,7 @@ const StaffAttendancePage = () => {
         </div>
       </div>
 
+      {view === 'calendar' ? <OfficeCalendar /> : (
       <div id="report-container">
         {view === 'mark' ? (
           <>
@@ -132,12 +163,17 @@ const StaffAttendancePage = () => {
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Attendance
               </button>
             </div>
+            {closedToday && (
+              <div data-testid="closed-day" style={{ marginBottom: '1rem', padding: '0.75rem 1rem', borderRadius: 8, border: '1px solid rgba(255,179,71,0.4)', background: 'rgba(255,179,71,0.1)', fontSize: '0.85rem' }}>
+                <strong>Office closed: {closedToday.name}</strong>{closedToday.kind === 'weekly' ? ' (weekly day off)' : ''}. Attendance is not counted today. Mark only staff who came in to work.
+              </div>
+            )}
 
             {loading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}><Loader2 size={40} className="animate-spin" color="var(--primary)" /></div>
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}><Loader2 size={40} className="animate-spin" color="var(--primary-text)" /></div>
             ) : (
               <div className="glass-morphism" style={{ padding: 0, overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <CardTable><table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>
                       <th style={{ padding: '1rem', textAlign: 'left' }}>Staff Name</th>
@@ -161,7 +197,7 @@ const StaffAttendancePage = () => {
                               {member.name?.[0]}
                             </div>
                             <div>
-                              <p style={{ fontWeight: '700', fontSize: '0.9rem' }}>{member.name}</p>
+                              <p style={{ fontWeight: '700', fontSize: '0.9rem' }}>{member.name}{member.StaffProfile?.employee_id && <span style={{ marginLeft: 6, fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 600 }}>{member.StaffProfile.employee_id}</span>}</p>
                               <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>{member.StaffProfile?.designation || member.role}</p>
                             </div>
                           </div>
@@ -169,7 +205,6 @@ const StaffAttendancePage = () => {
                         <td style={{ padding: '1rem', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
                           <p>Ph: {member.StaffProfile?.phone || 'N/A'}</p>
                           <p>Joined: {member.StaffProfile?.joining_date || 'N/A'}</p>
-                          <p>Salary: ৳ {Number(member.StaffProfile?.base_salary || 0).toLocaleString()}</p>
                         </td>
                         {Object.entries(statusConfig).map(([key, cfg]) => (
                           <td key={key} style={{ textAlign: 'center', padding: '0.5rem' }}>
@@ -200,7 +235,7 @@ const StaffAttendancePage = () => {
                                 href={`https://www.google.com/maps/search/?api=1&query=${attendance[member.id].latitude},${attendance[member.id].longitude}`} 
                                 target="_blank" 
                                 rel="noreferrer"
-                                style={{ color: 'var(--primary)', textDecoration: 'underline', fontSize: '0.65rem' }}
+                                style={{ color: 'var(--primary-text)', textDecoration: 'underline', fontSize: '0.65rem' }}
                               >
                                 View Map
                               </a>
@@ -244,7 +279,7 @@ const StaffAttendancePage = () => {
                       </tr>
                     )}
                   </tbody>
-                </table>
+                </table></CardTable>
               </div>
             )}
           </>
@@ -255,56 +290,60 @@ const StaffAttendancePage = () => {
                 {[...Array(12)].map((_, i) => <option key={i+1} value={i+1}>{new Date(0, i).toLocaleString('default', { month: 'long' })}</option>)}
               </select>
               <select value={year} onChange={e => setYear(parseInt(e.target.value))} className="glass-input" style={{ width: 'auto' }}>
-                {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
+                {Array.from({ length: new Date().getFullYear() - 2023 }, (_, i) => 2024 + i).map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
             {loading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}><Loader2 size={40} className="animate-spin" color="var(--primary)" /></div>
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}><Loader2 size={40} className="animate-spin" color="var(--primary-text)" /></div>
             ) : (
               <div className="glass-morphism" style={{ padding: 0, overflow: 'hidden', overflowX: 'auto' }}>
                 <table style={{ minWidth: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border)', fontSize: '0.7rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '1rem', textAlign: 'left', position: 'sticky', left: 0, background: 'var(--bg)', zIndex: 1, minWidth: '150px' }}>Staff</th>
-                      {Array.from({ length: new Date(year, month, 0).getDate() }, (_, i) => (
-                        <th key={i} style={{ padding: '0.5rem', textAlign: 'center', minWidth: '35px' }}>{i + 1}</th>
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'left', position: 'sticky', left: 0, background: 'var(--bg)', zIndex: 1, minWidth: '170px' }}>Staff</th>
+                      {days.map(d => (
+                        <th key={d.d} style={{ padding: '0.4rem 0', textAlign: 'center', minWidth: '30px', background: d.closed ? 'rgba(255,179,71,0.12)' : undefined }} title={d.closed || undefined}>
+                          {d.d}<span style={{ display: 'block', fontSize: '0.6rem', opacity: 0.7 }}>{d.closed && !['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].includes(d.closed) ? 'Hol' : DOW[d.dow]}</span>
+                        </th>
                       ))}
-                      <th style={{ padding: '1rem', textAlign: 'center', minWidth: '80px' }}>Total P</th>
+                      {[['P', 'Present'], ['L', 'Late'], ['H', 'Half day'], ['A', 'Absent'], ['V', 'On leave'], ['Worked', 'P + L + ½ H'], ['Not marked', 'Days with no record']].map(([k, t]) => (
+                        <th key={k} title={t} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', minWidth: '44px' }}>{k}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {summary.map((row, i) => (
-                      <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '1rem', fontWeight: '600', fontSize: '0.8rem', position: 'sticky', left: 0, background: 'var(--bg)', zIndex: 1 }}>{row.user?.name}</td>
-                        {Array.from({ length: new Date(year, month, 0).getDate() }, (_, day_idx) => {
-                          const day = day_idx + 1;
-                          const entry = row.entries && row.entries[day];
-                          let code = '-';
-                          let color = 'var(--text-dim)';
-                          if (entry) {
-                            if (entry.status === 'present') { code = 'P'; color = 'var(--success)'; }
-                            if (entry.status === 'absent') { code = 'A'; color = 'var(--danger)'; }
-                            if (entry.status === 'late') { code = 'L'; color = 'var(--warning)'; }
-                            if (entry.status === 'half_day') { code = 'H'; color = '#FFB347'; }
-                            if (entry.status === 'on_leave') { code = 'V'; color = '#9B6DFF'; }
-                          }
-                          
+                    {summary.map((row) => (
+                      <tr key={row.user?.id} style={{ borderBottom: '1px solid var(--border)', opacity: row.former ? 0.7 : 1 }}>
+                        <td style={{ padding: '0.6rem 1rem', fontWeight: '600', fontSize: '0.8rem', position: 'sticky', left: 0, background: 'var(--bg)', zIndex: 1 }}>
+                          {row.user?.name}
+                          <span style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-dim)', fontWeight: 400 }}>
+                            {[row.employee_id, row.designation].filter(Boolean).join(' · ')}
+                            {row.former && <span style={{ color: 'var(--danger)', marginLeft: 4 }}>Left {row.exit_date}</span>}
+                          </span>
+                        </td>
+                        {days.map((d, k) => {
+                          const cell = row.cells?.[k];
+                          const entry = row.entries?.[d.d];
+                          const [code, color] = CODE[cell] || (cell === 'none' ? ['·', 'var(--text-dim)'] : ['', 'var(--text-dim)']);
                           return (
-                            <td key={day} style={{ textAlign: 'center', fontWeight: 'bold', color: color, fontSize: '0.75rem', position: 'relative' }}>
-                              <span title={entry?.notes ? `Note: ${entry.notes}` : ''} style={{ cursor: entry?.notes ? 'help' : 'default', borderBottom: entry?.notes ? '1px dotted var(--primary)' : 'none' }}>
-                                {code}
-                                {entry?.notes && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '0.6rem', color: 'var(--primary)' }}>*</span>}
-                              </span>
-                            </td>
+                            <td key={d.d} title={entry?.notes ? `Note: ${entry.notes}` : undefined} style={{
+                              textAlign: 'center', fontWeight: 'bold', color, fontSize: '0.75rem',
+                              background: cell === 'out' ? 'rgba(255,255,255,0.03)' : d.closed || cell === 'closed' ? 'rgba(255,179,71,0.08)' : undefined,
+                              textDecoration: entry?.notes ? 'underline dotted' : 'none', cursor: entry?.notes ? 'help' : 'default',
+                            }}>{code}</td>
                           );
                         })}
-                        <td style={{ textAlign: 'center', fontWeight: '700', fontSize: '0.85rem' }}>{row.present}</td>
+                        {[row.present, row.late, row.half_day, row.absent, row.on_leave].map((n, k) => (
+                          <td key={k} style={{ textAlign: 'center', fontSize: '0.8rem' }}>{n}</td>
+                        ))}
+                        <td style={{ textAlign: 'center', fontWeight: '700', fontSize: '0.85rem', color: 'var(--success)' }}>{row.worked}</td>
+                        <td style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-dim)' }}>{row.not_marked || ''}</td>
                       </tr>
                     ))}
                     {summary.length === 0 && (
                       <tr style={{ borderBottom: 'none' }}>
-                        <td colSpan={new Date(year, month, 0).getDate() + 2} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-dim)' }}>
-                          No attendance data found for this month.
+                        <td colSpan={days.length + 8} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-dim)' }}>
+                          No staff for this month.
                         </td>
                       </tr>
                     )}
@@ -315,6 +354,7 @@ const StaffAttendancePage = () => {
           </>
         )}
       </div>
+      )}
     </div>
   );
 };

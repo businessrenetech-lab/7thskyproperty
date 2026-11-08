@@ -1,0 +1,41 @@
+/* HR recruitment screens (screens/hr/recruitment). Builds on hrm.css; follows the approved "Recruitment pipeline",
+   "Vacancy request" and "Talent pool" frames. */
+.rec-board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(148px, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 6px; }
+.rec-col { background: #F1F5F9; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 320px; min-width: 0; }
+.rec-col header { display: flex; justify-content: space-between; align-items: baseline; padding: 2px 2px 4px; }
+.rec-col header b { font-size: 13.5px; font-weight: 600; }
+.rec-col header small { display: block; font-size: 11.5px; color: var(--mute); }
+.rec-col header .n { font-size: 12.5px; color: var(--mute); font-variant-numeric: tabular-nums; }
+.rec-card { display: block; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px; text-decoration: none; color: inherit; }
+.rec-card:hover, .rec-card:focus-visible { border-color: var(--hr); outline: none; }
+.rec-card .who { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.rec-card .who b { display: block; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-card .who small { display: block; font-size: 11.5px; color: var(--mute); }
+.rec-card .row { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 12px; color: var(--mute); gap: 6px; }
+.rec-card .score { font-weight: 700; font-size: 12px; padding: 1px 7px; border-radius: 6px; background: #F1F5F9; color: var(--ink2); font-variant-numeric: tabular-nums; }
+.rec-card .score.hi { background: var(--green-bg); color: var(--green); }
+.rec-card .flag { margin-top: 8px; }
+.rec-av { width: 28px; height: 28px; border-radius: 50%; flex: none; display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 700; }
+.rec-strip { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.rec-strip > span { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 6px 10px; font-size: 12.5px; color: var(--ink2); }
+.rec-strip select { border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; font: inherit; font-size: 13px; background: #fff; min-width: 240px; max-width: 100%; }
+.rec-prio { display: flex; gap: 8px; flex-wrap: wrap; }
+.rec-prio button { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 6px 14px; font: inherit; font-size: 13px; cursor: pointer; }
+.rec-prio button[aria-pressed='true'] { border-color: var(--hr); background: var(--hr-tint); color: var(--hr-ink); font-weight: 600; }
+.rec-channels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 700px) { .rec-channels { grid-template-columns: 1fr 1fr; } }
+.rec-channels label { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.rec-channels input, .rec-checks input[type='checkbox'] { width: 16px; height: 16px; accent-color: var(--hr); }
+.rec-result { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; display: grid; gap: 6px; }
+.rec-result pre { margin: 0; white-space: pre-wrap; font: inherit; font-size: 12.5px; color: var(--ink2); background: #F8FAFC; border-radius: 8px; padding: 8px; }
+.rec-timeline { list-style: none; margin: 0; padding: 0 16px 16px; }
+.rec-timeline li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 8px 0; border-top: 1px solid var(--line2); font-size: 13px; }
+.rec-timeline li:first-child { border-top: 0; }
+.rec-timeline small { color: var(--mute); font-size: 12px; }
+.rec-timeline .note { grid-column: 1 / -1; color: var(--ink2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.rec-moves { display: flex; gap: 8px; flex-wrap: wrap; }
+.rec-letter { border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px; max-height: 420px; overflow: auto; font-size: 13px; }
+.rec-score-grid { display: grid; grid-template-columns: minmax(0, 1fr) 90px 60px; gap: 8px 12px; align-items: center; font-size: 13px; }
+.rec-score-grid select, .rec-score-grid input { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: 13px; width: 100%; }
+.rec-checks td { vertical-align: middle; }
+.hrm .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

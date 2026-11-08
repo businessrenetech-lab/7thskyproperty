@@ -1,17 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Search, ChevronDown } from 'lucide-react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { ArrowLeft, Search, ChevronDown } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { mayOpen, rolesOn } from '../config/access';
 import { ToastHost } from '../screens/watertank/common';
 import CommandPalette from '../screens/watertank/CommandPalette';
+import { ShellFrame, MainNav, useShell, pageFor } from './Shell';
 import '../styles/wt-scope.css';
 
 /*
  * ServiceConsole — the shell every service line opens in.
  *
- * A service console is a SEPARATED window: its own sidebar, its own theme, its
- * own URL space, rendered outside the global admin Layout rather than inside it.
+ * A service console has its own menu, accent and URL space, inside the same
+ * navy sidebar and top bar as the rest of the admin (ui/Shell.jsx). The sidebar
+ * shows the console's own menu; "Main menu" swaps in the admin menu in place,
+ * and "Back to <console>" swaps it back, without leaving the page.
  * Water Tank proved the shape; this is that shell with its five hard-coded seams
  * — nav, brand, endpoints, storage key, content class — turned into a config, so
  * the next vertical costs a config object rather than a copied file.
@@ -46,10 +50,6 @@ const readCollapsed = (key) => {
   catch { return new Set(); }
 };
 
-/** Initials for the footer avatar — two letters, from whatever name we have. */
-const initials = (name) => String(name || '')
-  .split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'SS';
-
 export default function ServiceConsole({ config }) {
   const {
     brand,                       // { name, sub, icon: Icon, accent }
@@ -57,12 +57,13 @@ export default function ServiceConsole({ config }) {
     storageKey,
     api: endpoints = {},         // { capabilities?, workQueue? } — both optional
     contentClass,                // e.g. 'pm-scope' for screens in the other design system
-    exitTo = '/dashboard',
-    exitLabel = 'Back to Seventh Sky Admin',
   } = config;
 
-  const nav = useNavigate();
   const loc = useLocation();
+  const shell = useShell();
+  const { collapsed: rail, tipProps } = shell;
+  const [view, setView] = useState('console');   // 'console' | 'main'
+  useEffect(() => setView('console'), [loc.pathname]);
   const { user } = useAuth();
   const [palette, setPalette] = useState(false);
   const [collapsed, setCollapsed] = useState(() => readCollapsed(storageKey));
@@ -114,8 +115,11 @@ export default function ServiceConsole({ config }) {
    * reach the console. Both checks fail open while the answer is unknown.
    */
   const allowed = (item) => {
-    if (item.needs && can && !can[item.needs]) return false;
-    if (item.roles && user?.role && !item.roles.includes(user.role)) return false;
+    // `needs` is one capability or a list, any of which is enough.
+    if (item.needs && can && ![].concat(item.needs).some((k) => can[k])) return false;
+    if (item.roles && user?.role && !rolesOn(user, item.to).some((r) => item.roles.includes(r))) return false;
+    // A custom role sees only the areas it was given (config/access.js).
+    if (!mayOpen(user, item.to)) return false;
     return true;
   };
 
@@ -130,7 +134,7 @@ export default function ServiceConsole({ config }) {
     const b = badges[to];
     if (!b?.count) return null;
     return (
-      <span className={`wt-badge ${b.severity}`}
+      <span className={`ss-count ${b.severity === 'late' ? 'is-late' : ''}`}
         title={(b.queues || []).map((q) => `${q.count} ${q.label.toLowerCase()}`).join('\n')}>
         {b.count > 99 ? '99+' : b.count}
       </span>
@@ -152,107 +156,109 @@ export default function ServiceConsole({ config }) {
     '--wt-accent-tint-2': brand.accentTint2 || `${brand.accent}24`,
   } : undefined;
 
-  return (
-    <div className="wt-scope" style={theme}>
-      <div className="wt-shell">
-        <aside className="wt-side">
-          <div className="wt-brand">
-            <div className="wt-brand-row">
-              <span className="wt-brand-mark"><BrandIcon size={20} /></span>
-              <span className="wt-brand-name">{brand.name}</span>
-            </div>
-            <span className="wt-brand-sub">{brand.sub}</span>
-          </div>
+  /*
+   * Compared on the PATH alone. A nav item may carry a query string — Property
+   * Management links several shared screens filtered by one
+   * (`/property-management/work-orders?vertical=rental`) — and `pathname` never
+   * contains a `?`, so comparing the raw `to` would quietly miss the current page.
+   */
+  const matches = (i) => {
+    const path = i.to.split('?')[0];
+    return i.end ? loc.pathname === path : loc.pathname.startsWith(path);
+  };
+  // Where the console sits in the main menu, for the breadcrumb and the console card.
+  const place = pageFor(loc.pathname);
+  const current = flat.filter(allowed).filter(matches).sort((a, b) => b.to.length - a.to.length)[0];
+  const title = current?.label || brand.sub;
+  const crumbs = place
+    ? [place.section, place.group, place.label].filter((c) => c && c !== title)
+    : [brand.sub].filter((c) => c !== title);
 
-          <button className="wt-sidesearch" onClick={() => setPalette(true)}>
-            <Search size={14} /> Search everything
-            <kbd>{isMac ? '⌘' : 'Ctrl'} K</kbd>
-          </button>
+  const consoleNav = navGroups.map((g) => {
+    // Destinations this role cannot use are dropped first, so counts and the
+    // "is this group empty" test are computed on what is shown.
+    const items = g.items.filter(allowed);
+    if (!items.length) return null;
 
-          <nav className="wt-nav">
-            {navGroups.map((g) => {
-              // Destinations this role cannot use are dropped first, so counts
-              // and the "is this group empty" test are computed on what is shown.
-              const items = g.items.filter(allowed);
-              if (!items.length) return null;
+    const shut = collapsed.has(g.key);
+    // A collapsed group must not hide work, so its total moves up to the header,
+    // and the group opens if the current page is inside. The icon-only sidebar
+    // shows every group, since its headers are just dividers there.
+    const groupTotal = items.reduce((s, i) => s + (badges[i.to]?.count || 0), 0);
+    const groupLate = items.some((i) => badges[i.to]?.severity === 'late');
+    const open = rail || !shut || items.some(matches);
 
-              const shut = collapsed.has(g.key);
-              // A collapsed group must not hide work, so its total moves up to
-              // the header — and the group opens if the current page is inside.
-              /*
-               * Compared on the PATH alone. A nav item may carry a query string
-               * — Property Management links several shared screens filtered by
-               * one (`/property-management/work-orders?vertical=rental`) — and
-               * `pathname` never contains a `?`, so comparing the raw `to` would
-               * quietly fail to open the group holding the current page.
-               */
-              const inHere = items.some((i) => {
-                const path = i.to.split('?')[0];
-                return i.end ? loc.pathname === path : loc.pathname.startsWith(path);
-              });
-              const groupTotal = items.reduce((s, i) => s + (badges[i.to]?.count || 0), 0);
-              const groupLate = items.some((i) => badges[i.to]?.severity === 'late');
-              const open = !shut || inHere;
-
-              return (
-                <div className="wt-nav-group" key={g.key}>
-                  <button className="wt-nav-grouphead" onClick={() => toggle(g.key)}
-                    aria-expanded={open} title={open ? `Collapse ${g.label}` : `Expand ${g.label}`}>
-                    {g.label}
-                    {!open && groupTotal > 0 && (
-                      <span className={`wt-badge ${groupLate ? 'late' : 'due'}`} style={{ marginLeft: 8 }}>
-                        {groupTotal > 99 ? '99+' : groupTotal}
-                      </span>
-                    )}
-                    <ChevronDown size={13} className={`chev${open ? '' : ' shut'}`} />
-                  </button>
-
-                  {open && items.map((n) => (
-                    <NavLink key={n.to} to={n.to} end={n.end}
-                      className={({ isActive }) => 'wt-nav-item' + (isActive ? ' on' : '')}>
-                      <n.icon /> <span style={{ flex: '1 0 0', minWidth: 0 }}>{n.label}</span>
-                      <Badge to={n.to} />
-                    </NavLink>
-                  ))}
-                </div>
-              );
-            })}
-          </nav>
-
-          <div>
-            {/*
-              * The signed-in user, not a hard-coded name. The Water Tank console
-              * shipped with "Dhaka Ops Center / admin@seventhsky.com" literal in
-              * the JSX — every operator saw somebody else's name in the corner.
-              */}
-            <div className="wt-userfoot">
-              <span className="wt-avatar">{initials(user?.name || user?.email)}</span>
-              <div style={{ flex: '1 0 0', minWidth: 0 }}>
-                <div className="nm">{user?.name || 'Seventh Sky'}</div>
-                <div className="em">{user?.email || ''}</div>
-              </div>
-            </div>
-            <button className="wt-exit" onClick={() => nav(exitTo)}>
-              <LogOut size={13} /> {exitLabel}
-            </button>
-          </div>
-        </aside>
-
-        {/*
-          * `contentClass` lets a console host screens written in another design
-          * system. Short Term Stay's sixteen screens carry 284 `pm-*` class
-          * references and would need restyling otherwise — the chrome is this
-          * console's, the content stays as it was written.
-          */}
-        <main className={`wt-main${contentClass ? ` ${contentClass}` : ''}`}>
-          <Outlet />
-        </main>
+    return (
+      <div key={g.key}>
+        <button type="button" className="ss-section ss-section-btn" onClick={() => toggle(g.key)}
+          aria-expanded={open} title={open ? `Collapse ${g.label}` : `Expand ${g.label}`}>
+          {g.label}
+          {!open && groupTotal > 0 && (
+            <span className={`ss-count ${groupLate ? 'is-late' : ''}`}>{groupTotal > 99 ? '99+' : groupTotal}</span>
+          )}
+          <ChevronDown size={13} className="ss-chevron" />
+        </button>
+        {open && items.map((n) => (
+          <NavLink key={n.to} to={n.to} end={n.end} {...tipProps(n.label)}
+            className={({ isActive }) => `ss-item ${isActive ? 'is-current' : ''}`}>
+            <n.icon size={18} /> <span className="ss-label">{n.label}</span>
+            <Badge to={n.to} />
+          </NavLink>
+        ))}
       </div>
+    );
+  });
+
+  const top = view === 'console' ? (
+    <div className="ss-console-top">
+      <button type="button" className="ss-back" onClick={() => setView('main')} {...tipProps('Main menu')}>
+        <ArrowLeft size={16} /> <span className="ss-label">Main menu</span>
+      </button>
+      <div className="ss-console" {...tipProps(brand.sub)} tabIndex={rail ? 0 : undefined}>
+        <span className="ss-console-mark" style={{ background: brand.accent || 'var(--ss-sky)' }}><BrandIcon size={17} /></span>
+        <div className="ss-console-text">
+          <strong>{brand.sub}</strong>
+          {place && <span>{place.group || place.section}</span>}
+        </div>
+      </div>
+      <button type="button" className="ss-search-btn" onClick={() => setPalette(true)} {...tipProps('Search everything')}>
+        <Search size={16} /> <span className="ss-label">Search everything</span>
+        <kbd className="ss-kbd">{isMac ? '⌘K' : 'Ctrl K'}</kbd>
+      </button>
+    </div>
+  ) : (
+    <div className="ss-console-top">
+      <button type="button" className="ss-back" onClick={() => setView('console')} {...tipProps(`Back to ${brand.sub}`)}>
+        <ArrowLeft size={16} /> <span className="ss-label">Back to {brand.sub}</span>
+      </button>
+    </div>
+  );
+
+  return (
+    <>
+      {/*
+        * `contentClass` lets a console host screens written in another design
+        * system. Short Term Stay's sixteen screens carry 284 `pm-*` class
+        * references and would need restyling otherwise — the chrome is the
+        * shell's, the content stays as it was written.
+        */}
+      <ShellFrame shell={shell} title={title} crumbs={crumbs} top={top}
+        nav={view === 'console' ? consoleNav : <MainNav shell={shell} />}
+        mainClass={`wt-scope wt-main${contentClass ? ` ${contentClass}` : ''}`} mainStyle={theme}>
+        {mayOpen(user, loc.pathname) ? <Outlet /> : (
+          <div className="ss-noaccess" role="alert" style={{ padding: 48, textAlign: 'center' }}>
+            <h2 style={{ margin: '0 0 8px' }}>Your role does not include this area</h2>
+            <p style={{ margin: 0, color: 'var(--muted, #64748b)' }}>Ask an administrator to add it to your role in Users and roles.</p>
+          </div>
+        )}
+      </ShellFrame>
 
       {/* The palette searches the same filtered list, so it cannot offer a
           destination the sidebar has hidden. */}
-      <CommandPalette open={palette} onClose={() => setPalette(false)} nav={flat.filter(allowed)} />
-      <ToastHost />
-    </div>
+      <div className="wt-scope" style={theme}>
+        <CommandPalette open={palette} onClose={() => setPalette(false)} nav={flat.filter(allowed)} />
+        <ToastHost />
+      </div>
+    </>
   );
 }

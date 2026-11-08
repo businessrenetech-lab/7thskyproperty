@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Plus, Loader2, Trash2 } from 'lucide-react';
 import api from '../services/api';
-import Modal from '../components/Modal';
+import Modal from '../components/hr/HrModal';
 import '../styles/GlobalStyles.css';
 import { useToast } from '../context/ToastContext';
 
@@ -38,7 +38,7 @@ const ShiftPlanner = () => {
     try {
       const [shiftRes, staffRes, schedRes] = await Promise.all([
         api.get('/hrm/shifts'),
-        api.get('/payroll/staff'),
+        api.get('/hrm/staff'),
         api.get(`/hrm/schedules?start_date=${weekDates[0]}&end_date=${weekDates[6]}`),
       ]);
       setShifts(shiftRes.data);
@@ -71,7 +71,7 @@ const ShiftPlanner = () => {
   const prevWeek = () => { const d = new Date(weekStart); d.setDate(d.getDate() - 7); setWeekStart(d.toISOString().split('T')[0]); };
   const nextWeek = () => { const d = new Date(weekStart); d.setDate(d.getDate() + 7); setWeekStart(d.toISOString().split('T')[0]); };
 
-  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}><Loader2 size={48} className="animate-spin" color="var(--primary)" /></div>;
+  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}><Loader2 size={48} className="animate-spin" color="var(--primary-text)" /></div>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>

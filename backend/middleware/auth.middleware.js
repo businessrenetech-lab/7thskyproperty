@@ -2,11 +2,14 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Branch = require('../models/Branch');
 const { getTableColumns, hasColumn, pickExisting } = require('../utils/schemaSafe');
+const { isBuiltInRole, customRoleOf, customRoleAllows } = require('../services/roleRank.service');
 
 const getUserAttributes = async () => {
   const columns = await getTableColumns('users');
   const attributes = ['id', 'name', 'email', 'role', 'branch_id'];
   if (hasColumn(columns, 'status')) attributes.push('status');
+  // /auth/me must carry it too, or a reload skips the forced password change.
+  if (hasColumn(columns, 'must_change_password')) attributes.push('must_change_password');
   return attributes;
 };
 
@@ -56,6 +59,9 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
+    // A role the code does not know is a custom role: read what it was given (roleRank.service).
+    if (!isBuiltInRole(user.role)) user.customRole = await customRoleOf(user.role);
+
     req.user = user;
     req.branchId = user.branch_id;
     next();
@@ -64,13 +70,16 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
+/*
+ * A custom role passes when, in the area this route belongs to, one of its levels counts as a role on the
+ * list (config/accessAreas.js). It never passes a route in no area (accounts, roles, settings, branches).
+ */
 const roleMiddleware = (roles) => {
   const allowedRoles = Array.isArray(roles) ? roles : [roles];
   return (req, res, next) => {
-    if (!req.user || !allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-    next();
+    if (req.user && allowedRoles.includes(req.user.role)) return next();
+    if (req.user?.customRole && customRoleAllows(req.user.customRole, allowedRoles, req)) return next();
+    return res.status(403).json({ error: 'Access denied' });
   };
 };
 

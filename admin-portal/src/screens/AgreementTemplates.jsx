@@ -90,7 +90,7 @@ function ReviewDrawer({ tpl, onClose, onSaved }) {
       <div className="pm-scope">
         <div className="form-grid">
           <Field label="Template name" required><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
-          <Field label="Category"><Select value={category} onChange={(e) => setCategory(e.target.value)}><option value="customer_service">Customer service</option><option value="provider_master">Provider master</option><option value="tenancy">Tenancy</option><option value="other">Other</option></Select></Field>
+          <Field label="Category"><Select value={category} onChange={(e) => setCategory(e.target.value)}><option value="customer_service">Customer service</option><option value="provider_master">Provider master</option><option value="tenancy">Tenancy</option><option value="hr_offer">HR offer letter</option><option value="other">Other</option></Select></Field>
         </div>
         <Field label="Vertical (optional)"><Input value={vertical} onChange={(e) => setVertical(e.target.value)} placeholder="water_tank" /></Field>
 

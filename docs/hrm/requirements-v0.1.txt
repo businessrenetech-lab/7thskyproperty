@@ -1,0 +1,1095 @@
+
+
+
+
+SEVENTH SKY CRM – HRM SYSTEM
+
+
+
+
+
+
+
+
+Version: 0.1 Prepared For: RENETECH Prepared By: Seventh Sky Property Care
+
+
+
+
+
+
+Table of Contents
+SEVENTH SKY CRM – HRM SYSTEM	1
+SEVENTH SKY CRM – HRM SYSTEM	4
+MODULE 1: ORGANISATION STRUCTURE	4
+Functional Requirements Specification – Step 1	4
+1. Purpose	4
+2. Business Requirement	5
+3. Required Organisation Hierarchy	5
+4. Required Features	6
+4.1 Company Profile	6
+4.2 Division Management	6
+4.3 Department Management	7
+4.4 Position Management	7
+4.5 Reporting Line	8
+5. Organisation Chart	8
+6. Approval Workflow	8
+7. Access Control	9
+8. Reports Required	9
+9. Automation Requirements	10
+10. CRM Integration	10
+11. Sample Division Structure	10
+12. Dashboard Widgets	11
+13. Key System Rule	11
+MODULE 2: EMPLOYEE MASTER DATABASE	12
+Functional Requirements Specification – Step 2	12
+1. Purpose	12
+2. Employee Types	13
+3. Employee Profile Sections	13
+3.1 Basic Information	13
+3.2 Contact Information	14
+3.3 Employment Information	14
+3.4 Payroll Information	15
+3.5 Document Section	16
+4. Employee ID Rules	16
+5. Employee Lifecycle Status	17
+6. Employee History	17
+7. Search & Filters	18
+8. Required System Actions	18
+9. Approval Workflow	19
+HR Manager Approval Required	19
+CEO Approval Required	19
+Finance Approval Required	19
+10. Data Privacy & Access Control	19
+11. Automation Requirements	20
+12. Employee Self-Service Portal	21
+13. Manager View	21
+14. Reports Required	21
+15. Dashboard Widgets	22
+16. Integration Requirements	22
+17. Example Employee Record	23
+18. Key System Rule	23
+MODULE 3 – RECRUITMENT & APPLICANT TRACKING SYSTEM (ATS)	24
+Functional Requirements Specification – Step 3	24
+1. PURPOSE	24
+2. RECRUITMENT WORKFLOW	25
+3. WORKFORCE PLANNING	27
+5. APPROVAL WORKFLOW	28
+6. JOB DESCRIPTION LIBRARY	28
+7. JOB ADVERTISEMENT	29
+8. ONLINE APPLICATION FORM	29
+9. CANDIDATE DATABASE	31
+10. APPLICANT TRACKING STATUS	31
+11. CV SCREENING	32
+12. INTERVIEW MANAGEMENT	32
+13. INTERVIEW EVALUATION	33
+14. PRE-EMPLOYMENT CHECKS	34
+15. OFFER MANAGEMENT	34
+16. TALENT POOL	35
+17. AUTOMATION REQUIREMENTS	35
+18. RECRUITMENT REPORTS	35
+19. HR RECRUITMENT DASHBOARD	36
+20. AI FEATURES (HIGHLY RECOMMENDED)	36
+21. KEY SYSTEM RULE	37
+
+
+
+
+
+
+SEVENTH SKY CRM – HRM SYSTEM
+
+MODULE 1: ORGANISATION STRUCTURE
+Functional Requirements Specification – Step 1
+
+1. Purpose
+The Organisation Structure module will allow Seventh Sky to create, manage and update the full company structure inside the CRM.
+This module must support:
+	•	Seventh Sky Pty Ltd - with
+	•	Multiple divisions – Here for Seventh Sky Property Care
+	•	Multiple departments
+	•	Multiple branches
+	•	Multiple teams
+	•	Job positions
+	•	Reporting lines
+	•	Managers and supervisors
+	•	Cost centres
+	•	Future business expansion
+
+2. Business Requirement
+Seventh Sky Property Care will operate multiple service divisions, including:
+	•	Residential
+	•	Commercial
+	•	Rural 
+	•	Business 
+	•	Interior Design 
+	•	Property Care & Concierge 
+	•	Leasing & Tenancy Management 
+	•	Removal & Relocation Services
+	•	Property Documentation Support 
+	•	Solar & Energy Solutions 
+	•	Air Conditioning Solutions
+	•	Water Tank Cleaning & Maintenance Services 
+	•	Finance
+	•	HR
+	•	Marketing
+	•	IT
+	•	Administration
+The HRM system must allow Seventh Sky management to add, edit, deactivate or restructure departments without developer support.
+
+3. Required Organisation Hierarchy
+The CRM should support the following structure:
+Seventh Sky Private Ltd → Division → Department → Team → Position → Employee
+Example:
+Seventh Sky Private Ltd → Property Care Division → Removal & Relocation Department → Operations Team → Relocation Coordinator → Employee Name
+
+4. Required Features
+4.1 Company Profile
+The system must allow management to create and manage:
+	•	Company name
+	•	Trading name
+	•	Registration number
+	•	TIN
+	•	BIN
+	•	Address
+	•	Contact details
+	•	Logo
+	•	Business divisions
+	•	Branches
+	•	Company policies
+
+4.2 Division Management
+The system must allow creation of divisions such as:
+	•	Seventh Sky Property Care  (www.seventhskypropertycare.com)
+	•	Seventh Sky Global Education & Migration (www. seventhskyeducationandmigration.com)
+	•	Seventh Sky Training & Workforce Solutions (seventhskyworkforcesolutions.com)
+	•	Seventh Sky Café & Lounge (seventhskycafe.com)
+Each division should include:
+	•	Division name
+	•	Division head
+	•	Division code
+	•	Business function
+	•	Active/inactive status
+
+4.3 Department Management
+Each division may contain multiple departments.
+	•	Residential
+	•	Commercial
+	•	Rural 
+	•	Business 
+	•	Interior Design 
+
+Department fields:
+	•	Department name
+	•	Department code
+	•	Division
+	•	Department manager
+	•	Location
+	•	Cost centre
+	•	Active/inactive status
+
+4.4 Position Management
+The system must allow HR to create job positions.
+Position fields:
+	•	Position title
+	•	Position code
+	•	Department
+	•	Reports to
+	•	Employment type
+	•	Salary grade
+	•	Job description
+	•	Required qualifications
+	•	Required experience
+	•	Required skills
+	•	Approval authority
+	•	Active/inactive status
+
+4.5 Reporting Line
+The system must show:
+	•	Direct supervisor
+	•	Department manager
+	•	Division head
+	•	CEO
+Each employee profile must display who the employee reports to.
+Managers must be able to view employees reporting to them.
+
+5. Organisation Chart
+The CRM must generate a visual organisation chart showing:
+	•	Company
+	•	Divisions
+	•	Departments
+	•	Managers
+	•	Positions
+	•	Employees
+The organisation chart should be filterable by:
+	•	Division
+	•	Department
+	•	Branch
+	•	Position
+	•	Manager
+	•	Employment status
+
+6. Approval Workflow
+Changes to organisation structure should follow approval steps:
+Request created by HR ↓ Reviewed by HR Manager ↓ Approved by CEO ↓ System updated ↓ Change recorded in history log
+Examples requiring approval:
+	•	New department
+	•	New position
+	•	Position deletion
+	•	Reporting line change
+	•	Salary grade change
+	•	Department restructure
+
+7. Access Control
+Suggested access permissions:
+Role
+Access
+CEO
+Full access
+HR Manager
+Create/edit organisation structure
+Department Manager
+View own department
+Finance Manager
+View cost centre and salary grade
+Employee
+View basic organisation chart only
+
+8. Reports Required
+The system should generate:
+	•	Organisation Structure Report
+	•	Department List
+	•	Position List
+	•	Reporting Line Report
+	•	Vacancy by Department
+	•	Headcount by Division
+	•	Headcount by Department
+	•	Active/Inactive Position Report
+	•	Cost Centre Report
+
+9. Automation Requirements
+The system should automatically:
+	•	Assign department code
+	•	Assign position code
+	•	Update employee reporting line
+	•	Notify affected managers when structure changes
+	•	Record structure change history
+	•	Alert HR if a position has no assigned supervisor
+	•	Alert HR if a department has no manager
+
+10. CRM Integration
+This module must connect with:
+	•	Employee Master Database
+	•	Recruitment
+	•	Onboarding
+	•	Attendance
+	•	Leave
+	•	Payroll Preparation
+	•	Performance Management
+	•	Training
+	•	Reports & Dashboard
+No employee should be created without being linked to:
+	•	Company
+	•	Division
+	•	Department
+	•	Position
+	•	Supervisor
+
+11. Sample Division Structure
+Division
+Department
+Example Position
+Property Care
+Removal Services
+Relocation Coordinator
+Property Care
+Water Tank Services
+Service Coordinator
+Property Care
+Interior Design
+Interior Designer
+Property Care
+Legal & Documentation
+Documentation Coordinator
+Property Care
+Solar Solutions
+Solar Project Coordinator
+Property Care
+HR
+HR Officer
+Property Care
+Finance
+Accounts Officer
+Property Care
+Marketing
+Digital Marketing Officer
+
+12. Dashboard Widgets
+The HR dashboard should show:
+	•	Total divisions
+	•	Total departments
+	•	Total active positions
+	•	Vacant positions
+	•	Departments without manager
+	•	Positions without job description
+	•	New positions created this month
+	•	Inactive departments
+	•	Headcount by department
+
+13. Key System Rule
+RENETECH must design this module in a way that Seventh Sky can change, expand or restructure the company internally without needing developer support.
+The system must be scalable enough to support at least:
+	•	10 Trading business under Seventh Sky Property Care
+	•	50 divisions
+	•	100 departments
+	•	1,000 positions
+	•	5,000 employees
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+MODULE 2: EMPLOYEE MASTER DATABASE
+Functional Requirements Specification – Step 2
+
+1. Purpose
+The Employee Master Database will be the central record for every person working with Seventh Sky.
+This module must store complete employee information and connect with all other HRM modules, including:
+	•	Recruitment
+	•	Onboarding
+	•	Attendance
+	•	Leave
+	•	Payroll Preparation
+	•	Performance
+	•	Training
+	•	Compliance
+	•	Documents
+	•	Reports
+No employee should be active in the CRM unless their Employee Master Record is created.
+
+2. Employee Types
+The system must support different worker types, including:
+	•	Full-time employee
+	•	Part-time employee
+	•	Casual employee
+	•	Contract employee
+	•	Intern
+	•	Consultant
+	•	Remote worker
+	•	Field staff
+	•	Probationary employee
+	•	Third-party assigned worker
+	•	Temporary worker
+Each employee type may have different rules for attendance, pay, benefits, leave and document requirements.
+
+3. Employee Profile Sections
+Each employee profile should include the following sections.
+
+3.1 Basic Information
+Required fields:
+	•	Employee ID
+	•	Full Name
+	•	Preferred Name
+	•	Photograph
+	•	Gender
+	•	Date of Birth
+	•	National ID Number
+	•	Passport Number
+	•	Tax Identification Number
+	•	Blood Group
+	•	Marital Status
+	•	Religion (optional if legally appropriate)
+	•	Nationality
+	•	Personal Mobile
+	•	Personal Email
+
+3.2 Contact Information
+Fields:
+	•	Present Address
+	•	Permanent Address
+	•	City
+	•	District
+	•	Postal Code
+	•	Country
+	•	Emergency Contact Name
+	•	Emergency Contact Relationship
+	•	Emergency Contact Phone
+	•	Emergency Contact Address
+
+3.3 Employment Information
+Fields:
+	•	Company
+	•	Division
+	•	Department
+	•	Team
+	•	Position
+	•	Employee Type
+	•	Employment Status
+	•	Joining Date
+	•	Probation End Date
+	•	Confirmation Date
+	•	Supervisor
+	•	Department Manager
+	•	Work Location
+	•	Cost Centre
+	•	Salary Grade
+	•	Work Schedule
+	•	Notice Period
+	•	Contract End Date
+Employment status options:
+	•	Applicant
+	•	Offer Accepted
+	•	Onboarding
+	•	Active
+	•	Probation
+	•	Confirmed
+	•	Suspended
+	•	Resigned
+	•	Terminated
+	•	Retired
+	•	Deceased
+	•	Inactive
+
+3.4 Payroll Information
+Fields:
+	•	Basic Salary
+	•	Allowances
+	•	Commission Eligibility
+	•	Bonus Eligibility
+	•	Overtime Eligibility
+	•	Bank Name
+	•	Bank Account Number
+	•	Mobile Banking Number
+	•	Tax Status
+	•	Provident Fund Eligibility
+	•	Loan / Advance Balance
+	•	Deduction Rules
+Payroll details should only be visible to authorised HR and Finance users.
+
+3.5 Document Section
+The system must allow uploading and storing:
+	•	CV
+	•	National ID
+	•	Passport
+	•	Photo
+	•	Offer Letter
+	•	Employment Agreement
+	•	Appointment Letter
+	•	Educational Certificates
+	•	Professional Certificates
+	•	Police Clearance
+	•	Medical Certificate
+	•	Tax Documents
+	•	Bank Details
+	•	Emergency Contact Form
+	•	Policy Acknowledgement
+	•	Training Certificates
+	•	Licence Copies
+	•	Warning Letters
+	•	Performance Reviews
+	•	Resignation Letter
+	•	Exit Documents
+Each document should have:
+	•	Document type
+	•	Upload date
+	•	Expiry date if applicable
+	•	Verification status
+	•	Verified by
+	•	Notes
+
+4. Employee ID Rules
+The system should automatically generate employee IDs.
+Suggested format:
+SSPC-EMP-0001
+Employee ID must remain permanent even if the employee transfers department.
+
+5. Employee Lifecycle Status
+The system must track employee lifecycle stages:
+Candidate
+↓
+Offer Accepted
+↓
+Onboarding
+↓
+Probation
+↓
+Active Employee
+↓
+Confirmed Employee
+↓
+Promotion / Transfer
+↓
+Resignation / Termination
+↓
+Offboarding
+↓
+Inactive Archive
+
+6. Employee History
+The system must maintain history of:
+	•	Position changes
+	•	Salary changes
+	•	Department transfers
+	•	Supervisor changes
+	•	Employment type changes
+	•	Contract renewals
+	•	Promotions
+	•	Warnings
+	•	Training
+	•	Performance reviews
+	•	Leave history
+	•	Attendance history
+No old record should be deleted. Changes must be stored in history log.
+
+7. Search & Filters
+Users should be able to search employees by:
+	•	Employee ID
+	•	Name
+	•	Department
+	•	Position
+	•	Supervisor
+	•	Employment status
+	•	Employee type
+	•	Location
+	•	Joining date
+	•	Contract expiry date
+	•	Document expiry date
+	•	Skill
+	•	Licence
+	•	Salary grade
+
+8. Required System Actions
+The system should allow authorised users to:
+	•	Create employee profile
+	•	Edit employee details
+	•	Upload documents
+	•	Verify documents
+	•	Assign department
+	•	Assign position
+	•	Assign supervisor
+	•	Change employment status
+	•	Record salary details
+	•	Add notes
+	•	View employee history
+	•	Export employee record
+	•	Deactivate employee
+	•	Archive employee
+
+9. Approval Workflow
+Certain changes should require approval.
+HR Manager Approval Required
+	•	New employee creation
+	•	Employment status change
+	•	Department transfer
+	•	Position change
+	•	Supervisor change
+CEO Approval Required
+	•	Salary change
+	•	Promotion
+	•	Termination
+	•	Senior role appointment
+	•	Sensitive profile changes
+Finance Approval Required
+	•	Bank account change
+	•	Salary structure update
+	•	Allowance update
+	•	Deduction update
+
+10. Data Privacy & Access Control
+Employee records must be protected.
+Suggested permissions:
+Role
+Access Level
+CEO
+Full access
+HR Manager
+Full employee access
+Finance Manager
+Payroll and bank details only
+Department Manager
+Team profile, attendance, leave and performance only
+Team Leader
+Limited team details
+Employee
+Own profile only
+IT Admin
+Technical access, no salary visibility
+Sensitive fields should be restricted, including:
+	•	Salary
+	•	Bank account
+	•	Medical documents
+	•	National ID
+	•	Disciplinary records
+	•	Personal family information
+
+11. Automation Requirements
+The system should automatically:
+	•	Generate employee ID
+	•	Create onboarding checklist
+	•	Create probation review reminder
+	•	Create document expiry reminders
+	•	Notify manager of new employee
+	•	Notify Finance of payroll setup
+	•	Notify IT to create email/CRM login
+	•	Alert HR for missing documents
+	•	Alert HR before contract expiry
+	•	Alert HR before probation end
+	•	Update dashboard headcount
+	•	Update department employee count
+
+12. Employee Self-Service Portal
+Employees should be able to:
+	•	View their profile
+	•	Update address
+	•	Update emergency contact
+	•	Upload documents
+	•	Apply for leave
+	•	View attendance
+	•	View roster
+	•	View training history
+	•	View policy documents
+	•	Submit requests
+	•	Download approved letters where available
+Sensitive changes should require HR approval.
+
+13. Manager View
+Managers should be able to see:
+	•	Team list
+	•	Employee status
+	•	Attendance summary
+	•	Leave balance
+	•	Training status
+	•	Performance review date
+	•	Probation status
+	•	Contract expiry
+	•	Pending approvals
+Managers should not see salary or confidential HR records unless authorised.
+
+14. Reports Required
+The system should generate:
+	•	Employee Master Report
+	•	Active Employee List
+	•	Inactive Employee List
+	•	Probation Employee Report
+	•	New Joiner Report
+	•	Department Headcount Report
+	•	Employee Type Report
+	•	Contract Expiry Report
+	•	Missing Document Report
+	•	Document Expiry Report
+	•	Salary Grade Report
+	•	Employee Transfer Report
+	•	Employee History Report
+	•	Emergency Contact Report
+
+15. Dashboard Widgets
+HR dashboard should show:
+	•	Total employees
+	•	Active employees
+	•	Employees on probation
+	•	New joiners this month
+	•	Employees by department
+	•	Employees by type
+	•	Missing documents
+	•	Expiring documents
+	•	Contract expiry alerts
+	•	Probation review due
+	•	Gender ratio
+	•	Average tenure
+	•	Turnover trend
+
+16. Integration Requirements
+Employee Master Database must integrate with:
+	•	Organisation Structure
+	•	Recruitment
+	•	Onboarding
+	•	Attendance
+	•	Leave
+	•	Payroll Preparation
+	•	Performance Review
+	•	Training
+	•	Compliance
+	•	Benefits
+	•	Engagement
+	•	Disciplinary Management
+	•	Offboarding
+	•	Reports
+
+17. Example Employee Record
+Field
+Example
+Employee ID
+SSPC-EMP-0001
+Name
+Ayesha Rahman
+Department
+Property Care
+Position
+Client Relationship Officer
+Supervisor
+Operations Manager
+Employment Type
+Full-time
+Status
+Active
+Joining Date
+01 Nov 2026
+Work Location
+Cumilla Office
+Salary Grade
+Grade 3
+Probation End Date
+31 Jan 2027
+
+18. Key System Rule
+The Employee Master Database must be the central source of truth for all employee data.
+No employee should appear in attendance, payroll, leave, training or performance modules unless they exist in the Employee Master Database.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+MODULE 3 – RECRUITMENT & APPLICANT TRACKING SYSTEM (ATS)
+Functional Requirements Specification – Step 3
+
+1. PURPOSE
+The Recruitment & Applicant Tracking System (ATS) shall enable Seventh Sky to manage the complete employee recruitment lifecycle from workforce planning through to onboarding.
+The module shall:
+	•	Reduce recruitment time. 
+	•	Standardise recruitment procedures. 
+	•	Improve candidate quality. 
+	•	Maintain recruitment compliance. 
+	•	Build a talent pool. 
+	•	Automate recruitment workflows. 
+	•	Provide recruitment analytics. 
+This module must integrate seamlessly with:
+	•	Organisation Structure 
+	•	Employee Master Database 
+	•	Onboarding 
+	•	HR Dashboard 
+	•	Performance Management 
+	•	Payroll Preparation 
+
+2. RECRUITMENT WORKFLOW
+The CRM shall support the following recruitment workflow:
+Workforce Planning  ↓  Vacancy Request  ↓  Management Approval  ↓  Job Advertisement  ↓  Applications Received  ↓  CV Screening  ↓  Shortlisting  ↓  Interview  ↓  Assessment  ↓  Reference Check  ↓  Final Approval  ↓  Offer Letter  ↓  Offer Acceptance  ↓  Pre-employment Documents  ↓  Onboarding  ↓  Employee Master Database
+Every stage must be visible on a recruitment dashboard.
+
+3. WORKFORCE PLANNING
+Before creating a vacancy, managers should submit a Workforce Request.
+Required information:
+	•	Department 
+	•	Position 
+	•	Reason for recruitment 
+	•	New Position / Replacement 
+	•	Number of vacancies 
+	•	Proposed salary range 
+	•	Employment type 
+	•	Expected joining date 
+	•	Budget availability 
+	•	Approving Manager 
+
+4. VACANCY REQUEST
+Required fields
+	•	Vacancy ID 
+	•	Department 
+	•	Position 
+	•	Reports To 
+	•	Employment Type 
+	•	Salary Grade 
+	•	Location 
+	•	Number of Positions 
+	•	Closing Date 
+	•	Recruitment Priority 
+Priority options:
+	•	Critical 
+	•	High 
+	•	Normal 
+	•	Future 
+
+5. APPROVAL WORKFLOW
+The recruitment request shall follow this workflow.
+Department Manager
+↓
+HR Manager
+↓
+Finance Verification
+↓
+CEO Approval
+↓
+Vacancy Published
+The CRM should automatically record:
+	•	Date 
+	•	Time 
+	•	Approver 
+	•	Comments 
+
+6. JOB DESCRIPTION LIBRARY
+The CRM shall include a Job Description Library.
+Each position should store:
+	•	Position title 
+	•	Department 
+	•	Reports To 
+	•	Job Summary 
+	•	Duties 
+	•	Responsibilities 
+	•	Qualifications 
+	•	Experience 
+	•	Technical Skills 
+	•	Soft Skills 
+	•	Working Hours 
+	•	Salary Grade 
+	•	KPIs 
+	•	Career Path 
+The system should allow cloning and editing existing job descriptions.
+
+7. JOB ADVERTISEMENT
+The CRM should publish vacancies to:
+	•	Seventh Sky Website 
+	•	Careers Portal 
+	•	LinkedIn 
+	•	Facebook 
+	•	Bdjobs 
+	•	Email Campaigns 
+	•	Internal Vacancy Board 
+The same vacancy should be published to multiple channels with one click.
+
+8. ONLINE APPLICATION FORM
+Candidates should complete an online application form.
+Required fields:
+Personal Details
+	•	Full Name 
+	•	Date of Birth 
+	•	Mobile 
+	•	Email 
+	•	Address 
+
+Education
+	•	Highest Qualification 
+	•	Institution 
+	•	Graduation Year 
+
+Employment
+	•	Current Employer 
+	•	Current Position 
+	•	Years of Experience 
+	•	Expected Salary 
+	•	Notice Period 
+
+Documents
+Upload:
+	•	CV 
+	•	Photograph 
+	•	National ID 
+	•	Certificates 
+	•	Cover Letter 
+	•	Portfolio 
+	•	Professional Licences 
+
+9. CANDIDATE DATABASE
+Every applicant shall have a Candidate Profile.
+Fields:
+	•	Candidate ID 
+	•	Application Date 
+	•	Position Applied 
+	•	Status 
+	•	CV 
+	•	Interview Notes 
+	•	Assessment Results 
+	•	Reference Checks 
+	•	Offer Status 
+Candidates who are unsuccessful should remain searchable for future vacancies.
+
+10. APPLICANT TRACKING STATUS
+The CRM shall support the following status options:
+	•	Application Received 
+	•	Under Review 
+	•	Shortlisted 
+	•	Interview Scheduled 
+	•	Interview Completed 
+	•	Assessment Pending 
+	•	Assessment Completed 
+	•	Reference Check 
+	•	Offer Pending 
+	•	Offer Sent 
+	•	Offer Accepted 
+	•	Offer Declined 
+	•	Not Selected 
+	•	Talent Pool 
+Each status change should automatically record:
+	•	User 
+	•	Date 
+	•	Time 
+
+11. CV SCREENING
+HR should be able to evaluate applicants using weighted criteria.
+Example scorecard:
+Criteria
+Weight
+Education
+15%
+Relevant Experience
+30%
+Technical Skills
+20%
+Communication Skills
+15%
+Cultural Fit
+10%
+Certifications
+10%
+The CRM should calculate an overall recruitment score automatically.
+
+12. INTERVIEW MANAGEMENT
+The CRM shall schedule:
+	•	Phone Interview 
+	•	Online Interview 
+	•	Face-to-Face Interview 
+	•	Panel Interview 
+	•	Final Interview 
+Interview information:
+	•	Date 
+	•	Time 
+	•	Location 
+	•	Interview Panel 
+	•	Meeting Link 
+	•	Interview Notes 
+	•	Candidate Rating 
+Automatic email reminders should be sent to both interviewers and candidates.
+
+13. INTERVIEW EVALUATION
+Interviewers should score candidates against standard competencies.
+Suggested competencies:
+	•	Communication 
+	•	Technical Knowledge 
+	•	Problem Solving 
+	•	Customer Service 
+	•	Teamwork 
+	•	Leadership Potential 
+	•	Professionalism 
+	•	Motivation 
+	•	Cultural Fit 
+Overall recommendation:
+	•	Highly Recommended 
+	•	Recommended 
+	•	Consider 
+	•	Not Recommended 
+
+14. PRE-EMPLOYMENT CHECKS
+The CRM shall track completion of:
+	•	Reference Checks 
+	•	Identity Verification 
+	•	Qualification Verification 
+	•	Professional Licence Verification 
+	•	Police Clearance (if required) 
+	•	Medical Assessment (if required) 
+	•	Right to Work Verification 
+HR cannot progress a candidate until mandatory checks are completed.
+
+15. OFFER MANAGEMENT
+Offer generation should be automated.
+Offer details:
+	•	Position 
+	•	Salary 
+	•	Employment Type 
+	•	Probation Period 
+	•	Start Date 
+	•	Supervisor 
+	•	Work Location 
+Offer Letter should be generated from an approved template.
+Candidates should be able to accept electronically.
+
+16. TALENT POOL
+Unsuccessful but suitable candidates should remain in a searchable Talent Pool.
+Filter by:
+	•	Skills 
+	•	Position 
+	•	Experience 
+	•	Education 
+	•	Location 
+	•	Availability 
+This reduces future recruitment costs.
+
+17. AUTOMATION REQUIREMENTS
+The CRM should automatically:
+	•	Generate Vacancy ID 
+	•	Generate Candidate ID 
+	•	Send acknowledgement email 
+	•	Schedule reminders 
+	•	Notify interview panel 
+	•	Generate offer letter 
+	•	Transfer successful candidates to Onboarding 
+	•	Archive unsuccessful candidates 
+	•	Update recruitment dashboard 
+
+18. RECRUITMENT REPORTS
+The CRM should generate:
+	•	Recruitment Pipeline Report 
+	•	Vacancies by Department 
+	•	Time to Hire 
+	•	Cost per Hire 
+	•	Source of Candidates 
+	•	Interview Success Rate 
+	•	Offer Acceptance Rate 
+	•	Recruitment Status Report 
+	•	Talent Pool Report 
+	•	Vacancy Age Report 
+
+19. HR RECRUITMENT DASHBOARD
+Display:
+	•	Open Vacancies 
+	•	Applications Received 
+	•	Candidates Shortlisted 
+	•	Interviews Scheduled 
+	•	Offers Pending 
+	•	Offers Accepted 
+	•	Vacancies Filled 
+	•	Average Time to Hire 
+	•	Recruitment Cost 
+	•	Candidate Sources 
+	•	Talent Pool Size 
+
+20. AI FEATURES (HIGHLY RECOMMENDED)
+RENETECH should build AI-assisted recruitment tools, including:
+	•	CV parsing and automatic data extraction. 
+	•	Candidate ranking based on job requirements. 
+	•	Suggested interview questions. 
+	•	Skills gap analysis. 
+	•	Duplicate applicant detection. 
+	•	AI-generated shortlist recommendations. 
+	•	Predicted suitability score. 
+	•	Automated email drafting for candidate communications. 
+All AI recommendations should be reviewable by HR before action is taken.
+
+21. KEY SYSTEM RULE
+No candidate shall be transferred to the Employee Master Database until:
+	•	The offer has been accepted. 
+	•	Mandatory pre-employment checks have been completed. 
+	•	Required approvals have been obtained. 
+	•	HR confirms onboarding. 
+This ensures that only approved employees become active in the Seventh Sky HRM system.
+

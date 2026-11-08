@@ -31,6 +31,7 @@ router.get('/me', authMiddleware, authController.getMe);
 router.get('/staff', authMiddleware, roleMiddleware(['super_admin', 'branch_admin']), authController.getStaff);
 router.patch('/role', authMiddleware, roleMiddleware(['super_admin', 'branch_admin']), authController.updateRole);
 router.patch('/staff-password', authMiddleware, roleMiddleware(['super_admin', 'branch_admin']), authController.setStaffPassword);
+router.patch('/staff-status', authMiddleware, roleMiddleware(['super_admin', 'branch_admin']), authController.setStaffStatus);
 
 // Password self-service, rate limited by purpose rather than with one number.
 //

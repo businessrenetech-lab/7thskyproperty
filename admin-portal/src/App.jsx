@@ -7,6 +7,7 @@ import RequireAuth from './ui/RequireAuth';
 import PortalLayout, { portalPath } from './ui/PortalLayout';
 import Login from './screens/Login';
 import Dashboard from './screens/Dashboard';
+import MyAccount from './screens/MyAccount';
 import Contacts from './screens/Contacts';
 import PartyRoleProfiles from './screens/PartyRoleProfiles';
 import Clients from './screens/Clients';
@@ -57,6 +58,8 @@ import OwnerApprove from './screens/OwnerApprove';
 import RoleRegistration from './screens/RoleRegistration';
 import TenantApply from './screens/TenantApply';
 import EmployerReference from './screens/EmployerReference';
+import Careers from './screens/public/Careers';
+import OfferAccept from './screens/public/OfferAccept';
 import Services from './screens/Services';
 import ServiceCatalog from './screens/ServiceCatalog';
 import ServiceLineDashboard from './screens/services/ServiceLineDashboard';
@@ -81,6 +84,11 @@ import PropertyAssets from './screens/watertank/PropertyAssets';
 import Concierge from './screens/watertank/Concierge';
 import Utilities from './screens/watertank/Utilities';
 import WaterTankDashboard from './screens/watertank/Dashboard';
+import JobsDashboard from './screens/dashboards/JobsDashboard';
+import SystemSettings from './screens/SystemSettings';
+import RentalsDashboard from './screens/dashboards/RentalsDashboard';
+import SalesDashboard from './screens/dashboards/SalesDashboard';
+import ShortStayDashboard from './screens/dashboards/ShortStayDashboard';
 import WaterTankProviders from './screens/watertank/providers/ProviderDirectory';
 import WaterTankProviderDetail from './screens/watertank/providers/ProviderDetail';
 import WaterTankProviderOnboarding from './screens/watertank/providers/ProviderOnboarding';
@@ -143,6 +151,39 @@ import CareQuotations from './screens/CareQuotations';
 import CareAmc from './screens/CareAmc';
 import ShortStayHub from './screens/ShortStayHub';
 import ShortStayConsole from './screens/shortstay/ShortStayConsole';
+import HrConsole from './screens/hr/HrConsole';
+import StaffAttendance from './pages/StaffAttendance';
+import LeaveManagement from './pages/LeaveManagement';
+import ShiftPlanner from './pages/ShiftPlanner';
+import BiometricManagement from './pages/BiometricManagement';
+import MyAttendance from './screens/hr/MyAttendance';
+import MyLeave from './screens/hr/MyLeave';
+import HrDashboard from './screens/hr/HrDashboard';
+import HrOrganisation from './screens/hr/Organisation';
+import HrOrgChart from './screens/hr/OrgChart';
+import HrCompany from './screens/hr/Company';
+import HrPositions from './screens/hr/Positions';
+import HrApprovals from './screens/hr/Approvals';
+import HrReports from './screens/hr/HrReports';
+import HrRolesAccess from './screens/hr/RolesAccess';
+import UsersRoles from './screens/admin/UsersRoles';
+import HrEmployees from './screens/hr/Employees';
+import HrEmployeeProfile from './screens/hr/EmployeeProfile';
+import HrEmployeeNew from './screens/hr/EmployeeNew';
+import HrMyTeam from './screens/hr/MyTeam';
+import HrOnboarding from './screens/hr/Onboarding';
+import RecRequests from './screens/hr/recruitment/Requests';
+import RecJobDescriptions from './screens/hr/recruitment/JobDescriptions';
+import RecVacancies from './screens/hr/recruitment/Vacancies';
+import RecPipeline from './screens/hr/recruitment/Pipeline';
+import RecCandidate from './screens/hr/recruitment/Candidate';
+import RecTalentPool from './screens/hr/recruitment/TalentPool';
+import HrPayroll from './screens/hr/pay/Payroll';
+import HrPayAdjustments from './screens/hr/pay/Adjustments';
+import { Payslip as HrPayslip, MyPayslips as HrMyPayslips } from './screens/hr/pay/Payslip';
+import HrPerformance, { MyReviews as HrMyReviews } from './screens/hr/Performance';
+import HrExits from './screens/hr/Exits';
+import { MyProfile as HrMyProfile, MyDocuments as HrMyDocuments, MyRequests as HrMyRequests, Policies as HrPolicies, MyRoster as HrMyRoster, MyLetters as HrMyLetters } from './screens/hr/me/SelfService';
 import PropertyMgmtConsole from './screens/PropertyMgmtConsole';
 import CommercialRentConsole from './screens/CommercialRentConsole';
 import ResidentialConsole from './screens/ResidentialConsole';
@@ -268,6 +309,10 @@ export default function App() {
             <Route path="/register/:token" element={<RoleRegistration />} />
             <Route path="/apply/:token" element={<TenantApply />} />
             <Route path="/reference/:token" element={<EmployerReference />} />
+            {/* HR recruitment, public: careers page and the candidate's offer (no login) */}
+            <Route path="/careers" element={<Careers />} />
+            <Route path="/careers/:slug" element={<Careers />} />
+            <Route path="/offer/:token" element={<OfferAccept />} />
             <Route path="/provider-register/:token" element={<ProviderRegister />} />
             <Route path="/water-tank-provider-onboard/:token" element={<WaterTankProviderOnboard />} />
             <Route path="/air-condition-provider-onboard/:token" element={<WaterTankProviderOnboard />} />
@@ -307,6 +352,7 @@ export default function App() {
             {/* Admin CRM (staff only) */}
             <Route element={<RequireAuth><AdminGate><Layout /></AdminGate></RequireAuth>}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/account" element={<MyAccount />} />
               {/* Residential moved to its own console — see the route block
                   below. Commercial and Rural still render these same three
                   components here, with a different `category` prop. */}
@@ -374,8 +420,8 @@ export default function App() {
               <Route path="/account-categories" element={<AccountCategories />} />
               <Route path="/payments" element={<Payments />} />
               <Route path="/reports" element={PH('Reports', 'Operational and financial reports.')} />
-              <Route path="/users" element={PH('Users & Roles', 'User management and RBAC matrix.')} />
-              <Route path="/settings" element={PH('Settings', 'System configuration.')} />
+              <Route path="/users" element={<UsersRoles />} />
+              <Route path="/settings" element={<SystemSettings />} />
               <Route path="/website-management" element={<WebsiteManagement />} />
               <Route path="/website-content" element={<WebsiteContent />} />
               <Route path="/website" element={<Navigate to="/website-management" replace />} />
@@ -388,7 +434,8 @@ export default function App() {
                 outside the global admin Layout. This is the reusable pattern for
                 every other service line. */}
             <Route element={<RequireAuth><AdminGate><WaterTankConsole /></AdminGate></RequireAuth>}>
-              <Route path="/water-tank" element={<WaterTankDashboard />} />
+              <Route path="/water-tank" element={<JobsDashboard />} />
+              <Route path="/water-tank/workspace" element={<WaterTankDashboard />} />
               <Route path="/water-tank/contacts" element={<SalesContacts scope="water-tank" />} />
               <Route path="/water-tank/clients" element={<WTClients />} />
               <Route path="/water-tank/clients/new" element={<WTClientCreate />} />
@@ -462,7 +509,8 @@ export default function App() {
             </Route>
             {/* ── Air Conditioning console — same screens as Water Tank, scoped to AC ── */}
             <Route element={<RequireAuth><AdminGate><AirConditioningConsole /></AdminGate></RequireAuth>}>
-              <Route path="/air-conditioning" element={<WaterTankDashboard />} />
+              <Route path="/air-conditioning" element={<JobsDashboard />} />
+              <Route path="/air-conditioning/workspace" element={<WaterTankDashboard />} />
               <Route path="/air-conditioning/contacts" element={<SalesContacts scope="air-conditioning" />} />
               <Route path="/air-conditioning/clients" element={<WTClients />} />
               <Route path="/air-conditioning/clients/new" element={<WTClientCreate />} />
@@ -524,7 +572,8 @@ export default function App() {
             {/* Interior Service Solutions — shared engine, scoped by the header.
                 Its OWN console shell (no provider / no AMC nav); adds Variations. */}
             <Route element={<RequireAuth><AdminGate><InteriorServiceConsole /></AdminGate></RequireAuth>}>
-              <Route path="/residential-interior-design" element={<WaterTankDashboard />} />
+              <Route path="/residential-interior-design" element={<JobsDashboard />} />
+              <Route path="/residential-interior-design/workspace" element={<WaterTankDashboard />} />
               <Route path="/residential-interior-design/contacts" element={<SalesContacts scope="interior" />} />
               <Route path="/residential-interior-design/clients" element={<WTClients />} />
               <Route path="/residential-interior-design/clients/new" element={<WTClientCreate />} />
@@ -577,7 +626,8 @@ export default function App() {
                 SOP as Residential, scoped to fitness_room_interior_design.
                 Sibling under the Interior Design Solutions parent. ── */}
             <Route element={<RequireAuth><AdminGate><FitnessRoomInteriorConsole /></AdminGate></RequireAuth>}>
-              <Route path="/fitness-room-interior-design" element={<WaterTankDashboard />} />
+              <Route path="/fitness-room-interior-design" element={<JobsDashboard />} />
+              <Route path="/fitness-room-interior-design/workspace" element={<WaterTankDashboard />} />
               <Route path="/fitness-room-interior-design/contacts" element={<SalesContacts scope="interior" />} />
               <Route path="/fitness-room-interior-design/clients" element={<WTClients />} />
               <Route path="/fitness-room-interior-design/clients/new" element={<WTClientCreate />} />
@@ -630,7 +680,8 @@ export default function App() {
                 SOP, scoped to commercial_interior_design. Sibling under the
                 Interior Design Solutions parent. ── */}
             <Route element={<RequireAuth><AdminGate><CommercialInteriorConsole /></AdminGate></RequireAuth>}>
-              <Route path="/commercial-interior-design" element={<WaterTankDashboard />} />
+              <Route path="/commercial-interior-design" element={<JobsDashboard />} />
+              <Route path="/commercial-interior-design/workspace" element={<WaterTankDashboard />} />
               <Route path="/commercial-interior-design/contacts" element={<SalesContacts scope="interior" />} />
               <Route path="/commercial-interior-design/clients" element={<WTClients />} />
               <Route path="/commercial-interior-design/clients/new" element={<WTClientCreate />} />
@@ -683,7 +734,8 @@ export default function App() {
                 scoped to custom_design_fitout. Sibling under the Interior
                 Design Solutions parent. ── */}
             <Route element={<RequireAuth><AdminGate><CustomFitoutConsole /></AdminGate></RequireAuth>}>
-              <Route path="/custom-design-fit-out" element={<WaterTankDashboard />} />
+              <Route path="/custom-design-fit-out" element={<JobsDashboard />} />
+              <Route path="/custom-design-fit-out/workspace" element={<WaterTankDashboard />} />
               <Route path="/custom-design-fit-out/contacts" element={<SalesContacts scope="interior" />} />
               <Route path="/custom-design-fit-out/clients" element={<WTClients />} />
               <Route path="/custom-design-fit-out/clients/new" element={<WTClientCreate />} />
@@ -736,7 +788,8 @@ export default function App() {
                 & SOP, scoped to furniture_styling_consultation. Sibling under
                 the Interior Design Solutions parent. ── */}
             <Route element={<RequireAuth><AdminGate><FurnitureStylingConsole /></AdminGate></RequireAuth>}>
-              <Route path="/furniture-styling-consultation" element={<WaterTankDashboard />} />
+              <Route path="/furniture-styling-consultation" element={<JobsDashboard />} />
+              <Route path="/furniture-styling-consultation/workspace" element={<WaterTankDashboard />} />
               <Route path="/furniture-styling-consultation/contacts" element={<SalesContacts scope="interior" />} />
               <Route path="/furniture-styling-consultation/clients" element={<WTClients />} />
               <Route path="/furniture-styling-consultation/clients/new" element={<WTClientCreate />} />
@@ -789,7 +842,8 @@ export default function App() {
                 screens & SOP, scoped to prayer_room_interior_design. Sibling
                 under the Interior Design Solutions parent. ── */}
             <Route element={<RequireAuth><AdminGate><PrayerRoomInteriorConsole /></AdminGate></RequireAuth>}>
-              <Route path="/prayer-room-interior-design" element={<WaterTankDashboard />} />
+              <Route path="/prayer-room-interior-design" element={<JobsDashboard />} />
+              <Route path="/prayer-room-interior-design/workspace" element={<WaterTankDashboard />} />
               <Route path="/prayer-room-interior-design/contacts" element={<SalesContacts scope="interior" />} />
               <Route path="/prayer-room-interior-design/clients" element={<WTClients />} />
               <Route path="/prayer-room-interior-design/clients/new" element={<WTClientCreate />} />
@@ -842,7 +896,8 @@ export default function App() {
                 SOP, scoped to space_planning_renovation. Final sibling under
                 the Interior Design Solutions parent. ── */}
             <Route element={<RequireAuth><AdminGate><SpacePlanningConsole /></AdminGate></RequireAuth>}>
-              <Route path="/space-planning-renovation" element={<WaterTankDashboard />} />
+              <Route path="/space-planning-renovation" element={<JobsDashboard />} />
+              <Route path="/space-planning-renovation/workspace" element={<WaterTankDashboard />} />
               <Route path="/space-planning-renovation/contacts" element={<SalesContacts scope="interior" />} />
               <Route path="/space-planning-renovation/clients" element={<WTClients />} />
               <Route path="/space-planning-renovation/clients/new" element={<WTClientCreate />} />
@@ -895,7 +950,8 @@ export default function App() {
                 screens as Water Tank, scoped to land_property_assessment (first
                 sub-service of Property Doc Verification & Transfer Support) ── */}
             <Route element={<RequireAuth><AdminGate><LandPropertyAssessmentConsole /></AdminGate></RequireAuth>}>
-              <Route path="/land-property-assessment" element={<WaterTankDashboard />} />
+              <Route path="/land-property-assessment" element={<JobsDashboard />} />
+              <Route path="/land-property-assessment/workspace" element={<WaterTankDashboard />} />
               <Route path="/land-property-assessment/contacts" element={<SalesContacts scope="land-property-assessment" />} />
               <Route path="/land-property-assessment/clients" element={<WTClients />} />
               <Route path="/land-property-assessment/clients/new" element={<WTClientCreate />} />
@@ -959,7 +1015,8 @@ export default function App() {
                 scoped to loan_financial_support (2nd Doc-Verification sub-service);
                 adds the Doc Manager + Loan Application Tracker ── */}
             <Route element={<RequireAuth><AdminGate><LoanFinancialSupportConsole /></AdminGate></RequireAuth>}>
-              <Route path="/loan-financial-support" element={<WaterTankDashboard />} />
+              <Route path="/loan-financial-support" element={<JobsDashboard />} />
+              <Route path="/loan-financial-support/workspace" element={<WaterTankDashboard />} />
               <Route path="/loan-financial-support/contacts" element={<SalesContacts scope="loan-financial-support" />} />
               <Route path="/loan-financial-support/clients" element={<WTClients />} />
               <Route path="/loan-financial-support/clients/new" element={<WTClientCreate />} />
@@ -1024,7 +1081,8 @@ export default function App() {
                 Water Tank, scoped to property_documentation_verification (3rd
                 Doc-Verification sub-service); adds the Doc Manager + Verification Register ── */}
             <Route element={<RequireAuth><AdminGate><PropertyDocVerificationConsole /></AdminGate></RequireAuth>}>
-              <Route path="/property-documentation-verification" element={<WaterTankDashboard />} />
+              <Route path="/property-documentation-verification" element={<JobsDashboard />} />
+              <Route path="/property-documentation-verification/workspace" element={<WaterTankDashboard />} />
               <Route path="/property-documentation-verification/contacts" element={<SalesContacts scope="property-documentation-verification" />} />
               <Route path="/property-documentation-verification/clients" element={<WTClients />} />
               <Route path="/property-documentation-verification/clients/new" element={<WTClientCreate />} />
@@ -1089,7 +1147,8 @@ export default function App() {
                 scoped to property_will_succession (4th/final Doc-Verification
                 sub-service); adds the Doc Manager + Beneficiary Register ── */}
             <Route element={<RequireAuth><AdminGate><PropertyWillSuccessionConsole /></AdminGate></RequireAuth>}>
-              <Route path="/property-will-succession" element={<WaterTankDashboard />} />
+              <Route path="/property-will-succession" element={<JobsDashboard />} />
+              <Route path="/property-will-succession/workspace" element={<WaterTankDashboard />} />
               <Route path="/property-will-succession/contacts" element={<SalesContacts scope="property-will-succession" />} />
               <Route path="/property-will-succession/clients" element={<WTClients />} />
               <Route path="/property-will-succession/clients/new" element={<WTClientCreate />} />
@@ -1155,7 +1214,8 @@ export default function App() {
                 Fleet + Inventory instead of provider onboarding; work orders use the
                 Resource Allocation step (no provider master agreement). ── */}
             <Route element={<RequireAuth><AdminGate><RemovalRelocationConsole /></AdminGate></RequireAuth>}>
-              <Route path="/removal-relocation" element={<WaterTankDashboard />} />
+              <Route path="/removal-relocation" element={<JobsDashboard />} />
+              <Route path="/removal-relocation/workspace" element={<WaterTankDashboard />} />
               <Route path="/removal-relocation/contacts" element={<SalesContacts scope="removal-relocation" />} />
               <Route path="/removal-relocation/clients" element={<WTClients />} />
               <Route path="/removal-relocation/clients/new" element={<WTClientCreate />} />
@@ -1213,7 +1273,8 @@ export default function App() {
                 Property Assets, Concierge & Access and Utilities registers. Ongoing
                 care plans run through the shared AMC console. No provider agreement. ── */}
             <Route element={<RequireAuth><AdminGate><PropertyCareConciergeConsole /></AdminGate></RequireAuth>}>
-              <Route path="/property-care-concierge" element={<WaterTankDashboard />} />
+              <Route path="/property-care-concierge" element={<JobsDashboard />} />
+              <Route path="/property-care-concierge/workspace" element={<WaterTankDashboard />} />
               <Route path="/property-care-concierge/contacts" element={<SalesContacts scope="property-care-concierge" />} />
               <Route path="/property-care-concierge/clients" element={<WTClients />} />
               <Route path="/property-care-concierge/clients/new" element={<WTClientCreate />} />
@@ -1272,8 +1333,58 @@ export default function App() {
                 the same ServiceConsole shell. Its sixteen screens still render
                 through ShortStayHub, which owns the create/action drawers they
                 all use; the tab now comes from the path rather than ?tab=. */}
+            {/* Human Resources: the HRM organisation module (dashboard, structure, chart, company, positions,
+                approvals, reports, access), attendance, leave, shifts and biometric devices (ported from Hadi
+                Real Estate), and every staff member's own attendance and leave under My HR. */}
+            <Route element={<RequireAuth><AdminGate><HrConsole /></AdminGate></RequireAuth>}>
+              <Route path="/hr" element={<HrDashboard />} />
+              <Route path="/hr/approvals" element={<HrApprovals />} />
+              <Route path="/hr/company" element={<HrCompany />} />
+              <Route path="/hr/structure" element={<HrOrganisation />} />
+              <Route path="/hr/org-chart" element={<HrOrgChart />} />
+              <Route path="/hr/positions" element={<HrPositions />} />
+              <Route path="/hr/positions/:id" element={<HrPositions />} />
+              <Route path="/hr/employees" element={<HrEmployees />} />
+              <Route path="/hr/employees/new" element={<HrEmployeeNew />} />
+              <Route path="/hr/employees/:code" element={<HrEmployeeProfile />} />
+              <Route path="/hr/team" element={<HrMyTeam />} />
+              <Route path="/hr/onboarding" element={<HrOnboarding />} />
+              <Route path="/hr/recruitment" element={<Navigate to="/hr/recruitment/vacancies" replace />} />
+              <Route path="/hr/recruitment/requests" element={<RecRequests />} />
+              <Route path="/hr/recruitment/job-descriptions" element={<RecJobDescriptions />} />
+              <Route path="/hr/recruitment/vacancies" element={<RecVacancies />} />
+              <Route path="/hr/recruitment/vacancies/:code" element={<RecVacancies />} />
+              <Route path="/hr/recruitment/pipeline" element={<RecPipeline />} />
+              <Route path="/hr/recruitment/pipeline/:code" element={<RecPipeline />} />
+              <Route path="/hr/recruitment/candidates/:code" element={<RecCandidate />} />
+              <Route path="/hr/recruitment/talent-pool" element={<RecTalentPool />} />
+              <Route path="/hr/payroll" element={<HrPayroll />} />
+              <Route path="/hr/payroll/:id" element={<HrPayroll />} />
+              <Route path="/hr/payroll-adjustments" element={<HrPayAdjustments />} />
+              <Route path="/hr/payslips/:id" element={<HrPayslip />} />
+              <Route path="/hr/performance" element={<HrPerformance />} />
+              <Route path="/hr/exits" element={<HrExits />} />
+              <Route path="/hr/reports" element={<HrReports />} />
+              <Route path="/hr/access" element={<HrRolesAccess />} />
+              <Route path="/hr/attendance" element={<StaffAttendance />} />
+              <Route path="/hr/leave" element={<LeaveManagement />} />
+              <Route path="/hr/shifts" element={<ShiftPlanner />} />
+              <Route path="/hr/biometric" element={<BiometricManagement />} />
+              <Route path="/hr/me" element={<HrMyProfile />} />
+              <Route path="/hr/my-documents" element={<HrMyDocuments />} />
+              <Route path="/hr/my-requests" element={<HrMyRequests />} />
+              <Route path="/hr/policies" element={<HrPolicies />} />
+              <Route path="/hr/my-roster" element={<HrMyRoster />} />
+              <Route path="/hr/my-letters" element={<HrMyLetters />} />
+              <Route path="/hr/my-payslips" element={<HrMyPayslips />} />
+              <Route path="/hr/my-reviews" element={<HrMyReviews />} />
+              <Route path="/hr/my-attendance" element={<MyAttendance />} />
+              <Route path="/hr/my-leave" element={<MyLeave />} />
+            </Route>
+
             <Route element={<RequireAuth><AdminGate><ShortStayConsole /></AdminGate></RequireAuth>}>
-              <Route path="/short-stay" element={<ShortStayHub />} />
+              <Route path="/short-stay" element={<ShortStayDashboard />} />
+              <Route path="/short-stay/workspace" element={<ShortStayHub />} />
               <Route path="/short-stay/contacts" element={<SalesContacts scope="short-stay" />} />
               {/* Declared before /:tab so a property route is not read as a tab. */}
               <Route path="/short-stay/properties/new" element={<ShortStayPropertyOnboarding />} />
@@ -1293,7 +1404,8 @@ export default function App() {
                 keep reading their query string, so the rental filter is intact
                 and the components are untouched. */}
             <Route element={<RequireAuth><AdminGate><PropertyMgmtConsole /></AdminGate></RequireAuth>}>
-              <Route path="/property-management" element={<PropertyMgmtDashboard />} />
+              <Route path="/property-management" element={<RentalsDashboard />} />
+              <Route path="/property-management/workspace" element={<PropertyMgmtDashboard />} />
               <Route path="/property-management/rentals" element={<RentalProperties />} />
               <Route path="/property-management/rentals/new" element={<PropertyWizard />} />
               <Route path="/property-management/rentals/new/:id" element={<PropertyWizard />} />
@@ -1346,7 +1458,8 @@ export default function App() {
                 no nav item. */}
             <Route element={<RequireAuth><AdminGate><ResidentialConsole /></AdminGate></RequireAuth>}>
               <Route path="/residential" element={<Navigate to="/residential/sell" replace />} />
-              <Route path="/residential/sell" element={<PropertySellDashboard category="residential" title="Residential · Sell" desc="Seller service — listings, owners, agreements, commission and settlement." />} />
+              <Route path="/residential/sell" element={<SalesDashboard category="residential" />} />
+              <Route path="/residential/sell/workspace" element={<PropertySellDashboard category="residential" title="Residential · Sell" desc="Seller service — listings, owners, agreements, commission and settlement." />} />
               <Route path="/residential/properties" element={<SalesProperties category="residential" title="Residential · Properties" desc="Manage sales listings, lifecycle stages, vendor representations, and property files." />} />
               {/* The deep workspace behind a listing, and the listing wizard. */}
               <Route path="/residential/property/:id" element={<SalesPropertyFile />} />
@@ -1396,7 +1509,8 @@ export default function App() {
                 and enquiries only). Rent is a separate line (coming next). ── */}
             <Route element={<RequireAuth><AdminGate><CommercialConsole /></AdminGate></RequireAuth>}>
               <Route path="/commercial" element={<Navigate to="/commercial/sell" replace />} />
-              <Route path="/commercial/sell" element={<PropertySellDashboard category="commercial" title="Commercial · Sale" desc="Commercial seller service — listings, owners, agreements, commission and settlement." />} />
+              <Route path="/commercial/sell" element={<SalesDashboard category="commercial" />} />
+              <Route path="/commercial/sell/workspace" element={<PropertySellDashboard category="commercial" title="Commercial · Sale" desc="Commercial seller service — listings, owners, agreements, commission and settlement." />} />
               <Route path="/commercial/properties" element={<SalesProperties category="commercial" title="Commercial · Properties" desc="Manage commercial sale listings, lifecycle stages, vendor representations, and property files." />} />
               <Route path="/commercial/property/:id" element={<SalesPropertyFile />} />
               <Route path="/commercial/property/:id/settlement" element={<SettlementDesk />} />
@@ -1443,7 +1557,8 @@ export default function App() {
                 operates on commercial properties and keeps its links inside
                 /commercial/rent/*. Agreements + price schedules arrive next phase. */}
             <Route element={<RequireAuth><AdminGate><CommercialRentConsole /></AdminGate></RequireAuth>}>
-              <Route path="/commercial/rent" element={<PropertyMgmtDashboard />} />
+              <Route path="/commercial/rent" element={<RentalsDashboard />} />
+              <Route path="/commercial/rent/workspace" element={<PropertyMgmtDashboard />} />
               <Route path="/commercial/rent/rentals" element={<RentalProperties />} />
               <Route path="/commercial/rent/rentals/new" element={<PropertyWizard />} />
               <Route path="/commercial/rent/rentals/new/:id" element={<PropertyWizard />} />
@@ -1485,7 +1600,8 @@ export default function App() {
                 rebased onto /business/*. ── */}
             <Route element={<RequireAuth><AdminGate><BusinessSaleConsole /></AdminGate></RequireAuth>}>
               <Route path="/business" element={<Navigate to="/business/sell" replace />} />
-              <Route path="/business/sell" element={<PropertySellDashboard category="business" title="Business · Sale" desc="Business sale service — listings, sellers, agreements, commission and settlement." />} />
+              <Route path="/business/sell" element={<SalesDashboard category="business" />} />
+              <Route path="/business/sell/workspace" element={<PropertySellDashboard category="business" title="Business · Sale" desc="Business sale service — listings, sellers, agreements, commission and settlement." />} />
               <Route path="/business/properties" element={<SalesProperties category="business" title="Business · Businesses for Sale" desc="Businesses engaged for sale — lifecycle stages, seller representation and business files." />} />
               <Route path="/business/property/:id" element={<SalesPropertyFile />} />
               <Route path="/business/property/:id/settlement" element={<SettlementDesk />} />
@@ -1532,7 +1648,8 @@ export default function App() {
                 route used to render with whatever sidebar the user arrived from. ── */}
             <Route element={<RequireAuth><AdminGate><RuralSaleConsole /></AdminGate></RequireAuth>}>
               <Route path="/rural" element={<Navigate to="/rural/sell" replace />} />
-              <Route path="/rural/sell" element={<PropertySellDashboard category="rural" title="Rural · Sell" desc="Rural seller service — farms, lands, owners, agreements, commission and settlement." />} />
+              <Route path="/rural/sell" element={<SalesDashboard category="rural" />} />
+              <Route path="/rural/sell/workspace" element={<PropertySellDashboard category="rural" title="Rural · Sell" desc="Rural seller service — farms, lands, owners, agreements, commission and settlement." />} />
               <Route path="/rural/properties" element={<SalesProperties category="rural" title="Rural · Properties for Sale" desc="Rural property engaged for sale — land records, ownership, lifecycle stages and seller representation." />} />
               <Route path="/rural/property/:id" element={<SalesPropertyFile />} />
               <Route path="/rural/property/:id/settlement" element={<SettlementDesk />} />
@@ -1589,7 +1706,8 @@ export default function App() {
                 scoped to category 'business' + listing_type 'rent'. The BRM/BTM
                 agreement builders and the rent price schedule are its own. ── */}
             <Route element={<RequireAuth><AdminGate><BusinessRentConsole /></AdminGate></RequireAuth>}>
-              <Route path="/business-rent" element={<PropertyMgmtDashboard />} />
+              <Route path="/business-rent" element={<RentalsDashboard />} />
+              <Route path="/business-rent/workspace" element={<PropertyMgmtDashboard />} />
               <Route path="/business-rent/rentals" element={<RentalProperties />} />
               <Route path="/business-rent/rentals/new" element={<PropertyWizard />} />
               <Route path="/business-rent/rentals/new/:id" element={<PropertyWizard />} />
@@ -1635,7 +1753,8 @@ export default function App() {
                 shares the category). Land & Ownership, Tenant Sourcing, the dashboards
                 and the rural agreement builders arrive with their own tasks. ── */}
             <Route element={<RequireAuth><AdminGate><RuralRentConsole /></AdminGate></RequireAuth>}>
-              <Route path="/rural/rent" element={<PropertyMgmtDashboard />} />
+              <Route path="/rural/rent" element={<RentalsDashboard />} />
+              <Route path="/rural/rent/workspace" element={<PropertyMgmtDashboard />} />
               <Route path="/rural/rent/rentals" element={<RentalProperties />} />
               <Route path="/rural/rent/rentals/new" element={<PropertyWizard />} />
               <Route path="/rural/rent/rentals/new/:id" element={<PropertyWizard />} />
@@ -1713,7 +1832,8 @@ export default function App() {
                 Later phases add the 9-phase SOP project pipeline. ── */}
             <Route element={<RequireAuth><AdminGate><BusinessRegistrationConsole /></AdminGate></RequireAuth>}>
               {/* Business Registration — shared service-line screens (see SERVICE_MODULE_DUPLICATION.md) */}
-              <Route path="/business-registration" element={<WaterTankDashboard />} />
+              <Route path="/business-registration" element={<JobsDashboard />} />
+              <Route path="/business-registration/workspace" element={<WaterTankDashboard />} />
               <Route path="/business-registration/work-queue" element={<WTWorkQueue />} />
               <Route path="/business-registration/calendar" element={<WTCalendar />} />
               <Route path="/business-registration/contacts" element={<SalesContacts scope="business-registration" />} />

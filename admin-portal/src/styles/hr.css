@@ -1,0 +1,57 @@
+/* HR screens (attendance, leave, biometric, self-service). Scoped to .hr and the .hr-modal dialog. */
+
+.hr { display: flex; flex-direction: column; gap: 16px; }
+.hr-grid { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .hr-grid { grid-template-columns: 1fr; } }
+
+.hr-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.hr-card__title { margin: 0; font-size: 14px; font-weight: 600; color: #0F172A; }
+.hr-big { margin: 0; font-size: 20px; font-weight: 700; color: #0F172A; }
+.hr-hint { margin: 0; font-size: 12.5px; color: #64748B; display: block; }
+.hr-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+.hr-alert { padding: 10px 12px; border-radius: 8px; background: #FEF2F2; color: #B42318; font-size: 13px; border: 1px solid #FECACA; }
+
+.hr-dl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; }
+.hr-dl dt { font-size: 12px; color: #64748B; }
+.hr-dl dd { margin: 2px 0 0; font-size: 15px; font-weight: 600; color: #0F172A; }
+
+.hr-list { display: flex; flex-direction: column; }
+.hr-list__row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 10px 0; border-top: 1px solid #EEF2F6; }
+.hr-list__row:first-child { border-top: 0; }
+.hr-list__row strong { display: block; font-size: 13.5px; color: #0F172A; }
+
+.hr-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.hr-stat { border: 1px solid #E2E8F0; border-left: 3px solid var(--c, #2A78D6); border-radius: 8px; padding: 10px 12px; }
+.hr-stat b { display: block; font-size: 20px; color: #0F172A; }
+.hr-stat span { font-size: 12px; color: #64748B; }
+
+.hr-link { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 600; color: #1B4F8F; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: none; }
+.hr-link--danger { color: #B42318; }
+
+.hr-form { display: flex; flex-direction: column; gap: 12px; }
+.hr-form__2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 560px) { .hr-form__2 { grid-template-columns: 1fr; } }
+
+.hr-modal__backdrop { position: fixed; inset: 0; z-index: 3000; background: rgba(15, 23, 42, .45); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.hr-modal { width: 100%; max-height: 90vh; display: flex; flex-direction: column; background: #fff; color: #0F172A; border-radius: 12px; box-shadow: 0 20px 50px rgba(15, 23, 42, .25); }
+.hr-modal__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 16px 20px; border-bottom: 1px solid #E2E8F0; }
+.hr-modal__head h2 { margin: 0; font-size: 16px; font-weight: 700; color: #0F172A; }
+.hr-modal__head p { margin: 4px 0 0; font-size: 12.5px; color: #64748B; }
+.hr-modal__close { background: none; border: 0; padding: 4px; border-radius: 6px; color: #64748B; cursor: pointer; }
+.hr-modal__close:hover { background: #F1F5F9; }
+.hr-modal__body { padding: 16px 20px; overflow-y: auto; }
+.hr-modal__foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid #E2E8F0; }
+
+/* The ported Hadi screens use the legacy GlobalStyles variables (dark by default): light values here. */
+.hr-scope {
+  --bg-deep: #ffffff; --bg-card: #ffffff; --surface: #ffffff; --canvas: #F6F8FA; --bg: #ffffff;
+  --primary: #0EA5A4; --primary-text: #0B7C7B; --primary-glow: rgba(14, 165, 164, .12);
+  --accent: #0D1638; --success: #12805C; --warning: #B45309; --danger: #B42318;
+  --text-main: #0F172A; --text-dim: #64748B; --border: #E2E8F0; --glass: #ffffff;
+  --shadow-sm: none; --shadow-md: 0 1px 2px rgba(15, 23, 42, .04);
+  color: #0F172A;
+}
+.hr-scope .glass-morphism { background: #fff; border: 1px solid #E2E8F0; box-shadow: none; backdrop-filter: none; }
+.hr-scope input, .hr-scope select, .hr-scope textarea { color: #0F172A; background: #fff; border-color: #E2E8F0; color-scheme: light; }
+.hr-scope table thead th, .hr-scope table th { background: #F8FAFC; color: #64748B; }
+.hr-scope table tbody tr, .hr-scope table td { background: #fff; color: #0F172A; }
