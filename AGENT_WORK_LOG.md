@@ -9507,3 +9507,11 @@ used "the last line starting with `import`", which landed inside a multi-line
 - Production DB (read-only check via backend/.env.remote): migrations 0163-0168 are DOWN; staff_profiles, leave_requests, leave_types do not exist there. All six migrations only create missing tables (+ hr_employee_types seed rows).
 - BLOCKED: running db:migrate against the production DB was refused by the session's permission classifier. `production` branch NOT merged or pushed, because the new code needs those tables. Waiting on the user.
 - To finish: from backend/, with .env.remote loaded, run db:migrate and `node scripts/seedHrOfferLetter.js`; then `git checkout production && git merge air-conditioning/phase-0-duplicate && npm run build:all`, commit dist, `git push origin production`.
+
+### 2026-11-08 | Claude Opus 5.5 | COMPLETED | Commit all latest work, build, deploy to production
+- The user ran migrations 0163-0168 and seedHrOfferLetter against the production DB (all migrated; template #12 "HR — Offer of Employment" created).
+- `production` 257784b → 00cbf76: --no-ff merge of air-conditioning/phase-0-duplicate in a temporary worktree (removed afterwards); no conflicts. production-server.js still serves website-mock, build:all intact, manifest carries the /api/hr/* mounts.
+- `npm run build:all` exit 0; rebuilt admin and website-mock dist were byte-identical to the committed bundles, so no build commit. The lockfile changes npm made were not committed.
+- Pushed origin/production. Live after ~9 minutes: /admin serves index-CuVL_GYJ.js; /api/health 200; / 200; login OK; 200 from hr/access/me, hr/employees, hr/payroll/meta, hr/performance/meta, hr/exits/meta, hr/recruitment/meta, hr/recruitment/workforce-requests, hr/org/departments, hr/approvals, hrm/leave-types, dashboard/overview.
+- Still uncommitted locally on purpose: 211 files whose only change is line endings, stray curl output in backend/, n-mainview.png. Stash untouched.
+- Open: default admin password is still the public one on the live site; no `trust proxy`.
