@@ -106,6 +106,8 @@ function mount(urlPath, modulePath) {
 mount('/api/auth', './routes/auth.routes');
 mount('/api/rbac', './routes/rbac.routes');
 mount('/api/settings', './routes/settings.routes');
+mount('/api/appearance', './routes/appearance.routes');
+mount('/api/line-dashboards', './routes/lineDashboards.routes');
 mount('/api/notifications', './routes/notification.routes');
 mount('/api/saved-views', './routes/savedView.routes');
 mount('/api/message-templates', './routes/messageTemplate.routes');
@@ -126,6 +128,15 @@ mount('/api/payment', './routes/payment.routes');
 
 // HRM / Accounting (internal Seventh Sky operations — adapted in later phases)
 mount('/api/hrm', './routes/hrm.routes');
+mount('/api/hr/access', './routes/hrAccess.routes');
+mount('/api/hr/org', './routes/hrOrg.routes');
+mount('/api/hr/approvals', './routes/hrApproval.routes');
+mount('/api/hr/employees', './routes/hrEmployee.routes');
+mount('/api/hr/recruitment', './routes/hrRecruitment.routes');
+mount('/api/hr/payroll', './routes/hrPayroll.routes');
+mount('/api/hr/performance', './routes/hrPerformance.routes');
+mount('/api/hr/exits', './routes/hrExit.routes');
+mount('/api/hr', './routes/hrReports.routes');
 mount('/api/payroll', './routes/payroll.routes');
 mount('/api/assets', './routes/asset.routes');
 mount('/api/expenses', './routes/expense.routes');
@@ -217,6 +228,7 @@ mount('/api/wt-concierge', './routes/waterTankConcierge.routes');
 mount('/api/wt-utilities', './routes/waterTankUtilities.routes');
 mount('/api/public/doc-request', './routes/publicClientDocRequest.routes');
 mount('/api/public/short-stay', './routes/publicShortTermStay.routes');
+mount('/api/public/careers', './routes/publicCareers.routes');
 mount('/api/landlord', './routes/landlord.routes');
 mount('/api/tenant', './routes/tenant.routes');
 mount('/api/vacancy-notices', './routes/vacancyNotice.routes');
@@ -303,6 +315,14 @@ app.get('/', (req, res) => {
 const { errorHandler } = require('./middleware/errorHandler');
 app.use(errorHandler);
 
+process.on('unhandledRejection', (reason) => {
+  console.error('[UNHANDLED REJECTION]', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[UNCAUGHT EXCEPTION]', err);
+});
+
 // ─── STARTUP ─────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
@@ -341,6 +361,11 @@ const PORT = process.env.PORT || 5000;
           require('./services/leadSequence.scheduler').startLeadSequenceScheduler();
         } catch (err) {
           console.warn(`[LeadSequence] not started: ${err.message}`);
+        }
+        try {
+          require('./services/hrReminders.scheduler').startHrRemindersScheduler();
+        } catch (err) {
+          console.warn(`[HrReminders] not started: ${err.message}`);
         }
       }
     });

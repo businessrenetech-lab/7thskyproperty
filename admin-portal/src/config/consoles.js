@@ -6,6 +6,9 @@ import {
   Hotel, CalendarRange, MessageSquareQuote, BookOpen, UserCheck, DoorOpen,
   Home, Sparkles, Wrench, HandCoins, Landmark, BarChart3, TrendingUp,
   Ruler, FolderArchive, Boxes, Plug, Building2, Wallet, Megaphone, Trees,
+  IdCard, Fingerprint, CalendarClock, CalendarOff, Clock, FilePlus2, Columns3, Archive,
+  Stamp, Network, GitFork,
+  UsersRound, UserPlus, UserRound, FolderOpen, Mail, Star, LogOut, ReceiptText,
 } from 'lucide-react';
 
 /*
@@ -36,6 +39,7 @@ export const WATER_TANK_NAV = [
     label: 'Home',
     items: [
       { to: '/water-tank', label: 'Dashboard', icon: LayoutGrid, end: true },
+      { to: '/water-tank/workspace', label: 'Workspace', icon: ClipboardList },
       { to: '/water-tank/work-queue', label: 'My Work Queue', icon: Inbox },
       { to: '/water-tank/calendar', label: 'Calendar', icon: CalendarDays },
     ],
@@ -138,6 +142,7 @@ export const SHORT_STAY_NAV = [
     label: 'Overview',
     items: [
       { to: '/short-stay', label: 'Dashboard', icon: LayoutGrid, end: true },
+      { to: '/short-stay/workspace', label: 'Workspace', icon: ClipboardList },
       { to: '/short-stay/availability', label: 'Availability', icon: CalendarRange },
     ],
   },
@@ -182,6 +187,16 @@ export const SHORT_STAY_NAV = [
       { to: '/short-stay/payments', label: 'Payments', icon: Receipt, roles: FINANCE_ROLES },
       { to: '/short-stay/owner-disbursement', label: 'Owner disbursement', icon: HandCoins, roles: FINANCE_ROLES },
       { to: '/short-stay/owner-statements', label: 'Owner statements', icon: Landmark, roles: FINANCE_ROLES },
+    ],
+  },
+  {
+    key: 'pay',
+    label: 'Pay & performance',
+    items: [
+      { to: '/hr/payroll', label: 'Payroll', icon: Wallet, needs: ['pay.manage', 'pay.view', 'pay.pay'] },
+      { to: '/hr/payroll-adjustments', label: 'Bonuses & deductions', icon: HandCoins, needs: ['pay.manage', 'pay.view', 'pay.pay'] },
+      { to: '/hr/performance', label: 'Performance reviews', icon: Star, needs: ['perf.manage', 'emp.view_team'] },
+      { to: '/hr/exits', label: 'Exits', icon: LogOut, needs: ['off.manage', 'pay.manage', 'pay.pay'] },
     ],
   },
   {
@@ -247,6 +262,7 @@ export const PROPERTY_MGMT_NAV = [
     label: 'Home',
     items: [
       { to: '/property-management', label: 'Dashboard', icon: LayoutGrid, end: true },
+      { to: '/property-management/workspace', label: 'Workspace', icon: ClipboardList },
       { to: '/property-management/reports', label: 'Reports', icon: BarChart3 },
     ],
   },
@@ -437,6 +453,7 @@ export const RESIDENTIAL_NAV = [
     label: 'Home',
     items: [
       { to: '/residential/sell', label: 'Sell Dashboard', icon: LayoutGrid, end: true },
+      { to: '/residential/sell/workspace', label: 'Workspace', icon: ClipboardList },
       { to: '/residential/work-queue', label: 'My Work Queue', icon: Inbox },
       { to: '/residential/inbox', label: 'Sales Inbox', icon: Inbox },
       { to: '/residential/calendar', label: 'Calendar', icon: CalendarDays },
@@ -560,6 +577,7 @@ export const buyerConsole = {
 export const COMMERCIAL_NAV = [
   { key: 'com-home', label: 'Home', items: [
     { to: '/commercial/sell', label: 'Sale Dashboard', icon: LayoutGrid, end: true },
+    { to: '/commercial/sell/workspace', label: 'Workspace', icon: ClipboardList },
     { to: '/commercial/work-queue', label: 'My Work Queue', icon: Inbox },
     { to: '/commercial/inbox', label: 'Sales Inbox', icon: Inbox },
     { to: '/commercial/calendar', label: 'Calendar', icon: CalendarDays },
@@ -1157,6 +1175,7 @@ export const spacePlanningConsole = {
 export const BUSINESS_SALE_NAV = [
   { key: 'biz-home', label: 'Home', items: [
     { to: '/business/sell', label: 'Sale Dashboard', icon: LayoutGrid, end: true },
+    { to: '/business/sell/workspace', label: 'Workspace', icon: ClipboardList },
     { to: '/business/work-queue', label: 'My Work Queue', icon: Inbox },
     { to: '/business/inbox', label: 'Sales Inbox', icon: Inbox },
     { to: '/business/calendar', label: 'Calendar', icon: CalendarDays },
@@ -1412,6 +1431,7 @@ export const businessRegistrationConsole = {
 export const RURAL_SALE_NAV = [
   { key: 'rsale-home', label: 'Home', items: [
     { to: '/rural/sell', label: 'Sale Dashboard', icon: LayoutGrid, end: true },
+    { to: '/rural/sell/workspace', label: 'Workspace', icon: ClipboardList },
     { to: '/rural/work-queue', label: 'My Work Queue', icon: Inbox },
     { to: '/rural/inbox', label: 'Sales Inbox', icon: Inbox },
     { to: '/rural/calendar', label: 'Calendar', icon: CalendarDays },
@@ -1498,6 +1518,111 @@ export const ruralBuyerConsole = {
   navGroups: RURAL_BUYER_NAV,
 };
 
+/* ── Human Resources ───────────────────────────────────────────────────── */
+
+/*
+ * Attendance, leave, shifts and biometric devices (ported from Hadi Real Estate, 2026-10), plus every staff
+ * member's own attendance and leave. The HR screens are for HR roles (backend utils/hrRoles HRM_READ); "My HR"
+ * is for any staff member.
+ */
+// HR items use `needs`: the console asks /api/hr/access/me what this person may do, which reads the same
+// "Roles & access" settings the API enforces. Employee and recruitment groups join with their modules.
+export const HR_NAV = [
+  {
+    key: 'home',
+    label: 'Home',
+    items: [
+      { to: '/hr', label: 'Dashboard', icon: LayoutGrid, end: true, needs: ['org.edit', 'emp.view_any', 'approvals.inbox'] },
+      { to: '/hr/approvals', label: 'Approvals', icon: Stamp },
+    ],
+  },
+  {
+    key: 'organisation',
+    label: 'Organisation',
+    items: [
+      { to: '/hr/company', label: 'Company', icon: Building2, needs: ['org.edit', 'org.view_cost', 'emp.view_team'] },
+      { to: '/hr/structure', label: 'Structure', icon: Network, needs: ['org.edit', 'org.view_cost', 'emp.view_team'] },
+      { to: '/hr/org-chart', label: 'Org chart', icon: GitFork, needs: 'org.view_basic' },
+      { to: '/hr/positions', label: 'Positions', icon: Briefcase, needs: ['org.edit', 'org.view_cost', 'emp.view_team'] },
+    ],
+  },
+  {
+    key: 'people',
+    label: 'People',
+    items: [
+      { to: '/hr/employees', label: 'Employees', icon: Users, needs: 'emp.view_any' },
+      { to: '/hr/team', label: 'My team', icon: UsersRound, needs: 'emp.view_team' },
+      { to: '/hr/onboarding', label: 'Onboarding', icon: UserPlus, needs: 'emp.edit' },
+    ],
+  },
+  {
+    key: 'time',
+    label: 'Time & leave',
+    items: [
+      { to: '/hr/attendance', label: 'Attendance', icon: CalendarClock, needs: 'time.view_all' },
+      { to: '/hr/leave', label: 'Leave', icon: CalendarOff, needs: 'time.view_all' },
+      { to: '/hr/shifts', label: 'Shift planner', icon: Clock, needs: 'time.view_all' },
+      { to: '/hr/biometric', label: 'Biometric', icon: Fingerprint, needs: 'biometric.manage' },
+    ],
+  },
+  {
+    key: 'recruitment',
+    label: 'Recruitment',
+    items: [
+      { to: '/hr/recruitment/requests', label: 'Requests', icon: FilePlus2, needs: ['rec.manage', 'rec.request'] },
+      { to: '/hr/recruitment/job-descriptions', label: 'Job descriptions', icon: BookOpen, needs: ['rec.manage', 'rec.request'] },
+      { to: '/hr/recruitment/vacancies', label: 'Vacancies', icon: Megaphone, needs: ['rec.manage', 'rec.request'] },
+      { to: '/hr/recruitment/pipeline', label: 'Pipeline', icon: Columns3, needs: 'rec.manage' },
+      { to: '/hr/recruitment/talent-pool', label: 'Talent pool', icon: Archive, needs: 'rec.manage' },
+    ],
+  },
+  {
+    key: 'insights',
+    label: 'Insights',
+    items: [
+      { to: '/hr/reports', label: 'Reports', icon: BarChart3, needs: ['org.edit', 'emp.view_any', 'approvals.inbox'] },
+      { to: '/hr/access', label: 'Roles & access', icon: ShieldCheck, needs: 'approvals.inbox' },
+    ],
+  },
+  {
+    key: 'me',
+    label: 'My HR',
+    items: [
+      { to: '/hr/me', label: 'My profile', icon: UserRound, needs: 'emp.view_own' },
+      { to: '/hr/my-attendance', label: 'My attendance', icon: UserCheck },
+      { to: '/hr/my-leave', label: 'My leave', icon: CalendarDays },
+      { to: '/hr/my-roster', label: 'My roster', icon: CalendarRange },
+      { to: '/hr/my-documents', label: 'My documents', icon: FolderOpen, needs: 'emp.view_own' },
+      { to: '/hr/my-requests', label: 'My requests', icon: Inbox, needs: 'emp.view_own' },
+      { to: '/hr/my-payslips', label: 'My payslips', icon: ReceiptText, needs: 'emp.view_own' },
+      { to: '/hr/my-reviews', label: 'My reviews', icon: Star, needs: 'emp.view_own' },
+      { to: '/hr/my-letters', label: 'My letters', icon: Mail, needs: 'emp.view_own' },
+      { to: '/hr/policies', label: 'Policies', icon: BookOpen, needs: 'emp.view_own' },
+    ],
+  },
+];
+
+export const hrConsole = {
+  slug: 'hr',
+  storageKey: 'hr.nav.collapsed',
+  brand: {
+    name: 'Seventh Sky',
+    sub: 'Human Resources',
+    icon: IdCard,
+    accent: '#0EA5A4',
+    accentStrong: '#0B8584',
+    accentInk: '#0B7C7B',
+    accentTint: 'rgba(14,165,164,.12)',
+    accentTint2: '#CCF2F1',
+  },
+  navGroups: HR_NAV,
+  api: { capabilities: '/hr/access/me', workQueue: '/hr/approvals/badges' },
+  // The attendance / leave / biometric screens came from Hadi Real Estate in the legacy GlobalStyles classes;
+  // styles/hr.css gives them the light palette inside this scope.
+  contentClass: 'hr-scope',
+  exitTo: '/dashboard',
+};
+
 export const CONSOLES = {
   'water-tank': waterTankConsole,
   'air-conditioning': airConditioningConsole,
@@ -1522,4 +1647,5 @@ export const CONSOLES = {
   'business-rent': businessRentConsole,
   'business-registration': businessRegistrationConsole,
   rural: ruralSaleConsole,
+  hr: hrConsole,
 };

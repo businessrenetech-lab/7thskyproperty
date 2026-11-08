@@ -1,0 +1,55 @@
+/*
+ * buttons.css — one primary button colour across every screen style
+ * (theme kit .btn-primary, wt-scope .wt-btn.primary, pm-scope .pm-btn.primary).
+ * Only active while html.ss-btn-fixed is set (ui/appearance.js); in "accent"
+ * mode each console keeps its own colour.
+ */
+html.ss-btn-fixed .btn-primary,
+html.ss-btn-fixed .pm-scope .btn-primary,
+html.ss-btn-fixed .wt-btn.primary,
+html.ss-btn-fixed .pm-btn.primary {
+  background: var(--ss-primary);
+  border-color: var(--ss-primary);
+  color: var(--ss-primary-ink, #fff);
+  box-shadow: none;
+  filter: none;
+}
+html.ss-btn-fixed .btn-primary:hover,
+html.ss-btn-fixed .pm-scope .btn-primary:hover,
+html.ss-btn-fixed .wt-btn.primary:hover,
+html.ss-btn-fixed .pm-btn.primary:hover {
+  background: var(--ss-primary-strong);
+  border-color: var(--ss-primary-strong);
+  color: var(--ss-primary-ink, #fff);
+}
+html.ss-btn-fixed .ld-btn, html.ss-btn-fixed .ld-btn:hover { color: var(--ss-primary-ink, #fff); }
+/* Accent mode: the dashboards' own button follows the console. */
+html:not(.ss-btn-fixed) .ld-btn { background: var(--wt-accent, #0D1638); }
+html:not(.ss-btn-fixed) .ld-btn:hover { background: var(--wt-accent-strong, #1A2656); }
+
+/* Settings → Button colour (screens/SystemSettings.jsx) */
+.ap { max-width: 880px; }
+.ap-card { background: var(--surface, #fff); border: 1px solid var(--border, #E2E8F0); border-radius: 12px; padding: 18px 20px; margin-top: 16px; }
+.ap-card-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.ap-card-head h2 { margin: 0; font-size: 15px; font-weight: 650; }
+.ap-card-head p { margin: 3px 0 0; color: var(--text-muted, #64748B); font-size: 13px; }
+.ap-note { color: var(--text-muted, #64748B); font-size: 12.5px; }
+.ap-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-top: 16px; }
+.ap-choice { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--border, #E2E8F0); border-radius: 10px; cursor: pointer; background: #fff; }
+.ap-choice.is-on { border-color: #0D1638; box-shadow: 0 0 0 1px #0D1638; }
+.ap-choice.is-locked { cursor: default; opacity: .85; }
+.ap-choice input { position: absolute; opacity: 0; pointer-events: none; }
+.ap-choice:focus-within { outline: 2px solid #2A78D6; outline-offset: 2px; }
+.ap-swatch { width: 28px; height: 28px; border-radius: 8px; flex: none; border: 1px solid rgba(15, 23, 42, .08); }
+.ap-choice-text strong { display: block; font-size: 13.5px; }
+.ap-choice-text small { color: var(--text-muted, #64748B); font-size: 12px; }
+.ap-tick { margin-left: auto; color: #0D1638; }
+.ap-custom { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.ap-custom input[type='color'] { width: 40px; height: 34px; padding: 2px; border: 1px solid var(--border, #E2E8F0); border-radius: 8px; background: #fff; cursor: pointer; }
+.ap-custom .input { width: 120px; font-family: inherit; }
+.ap-err { color: #B91C1C; font-size: 12.5px; }
+.ap-preview { display: flex; align-items: center; gap: 10px; margin-top: 18px; padding: 14px; background: #F5F7FA; border-radius: 10px; flex-wrap: wrap; }
+.ap-preview-label { color: var(--text-muted, #64748B); font-size: 12px; margin-right: 6px; }
+.ap-demo { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 8px; padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 600; color: #fff; background: linear-gradient(90deg, #12B6F3, #9333EA, #10B981); cursor: default; }
+.ap-demo.is-ghost { background: #fff; color: #334155; border: 1px solid #E2E8F0; }
+.ap-actions { margin-top: 16px; display: flex; justify-content: flex-end; }

@@ -71,7 +71,7 @@ const BiometricManagement = () => {
     try {
       const [mapRes, staffRes] = await Promise.all([
         api.get('/biometric/mappings'),
-        api.get('/auth/staff'),
+        api.get('/hrm/staff'),
       ]);
       setMappings(Array.isArray(mapRes.data) ? mapRes.data : mapRes.data.mappings || []);
       const staffData = staffRes.data;
@@ -576,7 +576,7 @@ const BiometricManagement = () => {
      ═══════════════════════════════════════════════════════════════ */
   const LoadingState = () => (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem' }}>
-      <Loader2 size={32} className="animate-spin" color="var(--primary)" />
+      <Loader2 size={32} className="animate-spin" color="var(--primary-text)" />
     </div>
   );
 

@@ -40,6 +40,11 @@ const LeaveRequest = sequelize.define('LeaveRequest', {
   reason: {
     type: DataTypes.TEXT,
   },
+  // Weekend leave: the weekly day off the staff member worked, and what proves it (owner request 2026-10-14).
+  worked_date: { type: DataTypes.DATEONLY, allowNull: true },
+  proof_note: { type: DataTypes.TEXT, allowNull: true },
+  // Who covers the work while away (optional, printed on the application).
+  handover_note: { type: DataTypes.TEXT, allowNull: true },
   status: {
     type: DataTypes.ENUM('pending', 'approved', 'rejected', 'cancelled'),
     defaultValue: 'pending',

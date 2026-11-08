@@ -2,6 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db.config');
 const User = require('./User');
 const Branch = require('./Branch');
+const { readEducation, readExperience } = require('../utils/staffHistory');
 
 const StaffProfile = sequelize.define('StaffProfile', {
   id: {
@@ -53,11 +54,15 @@ const StaffProfile = sequelize.define('StaffProfile', {
   contact_details: {
     type: DataTypes.STRING,
   },
+  // Read through utils/staffHistory: always a list of row objects, whatever an older form stored (a JSON string,
+  // a list of strings, a plain string). Saved by the staff form as that list (see staffHistory.js for the shape).
   educational_background: {
     type: DataTypes.JSON,
+    get() { return readEducation(this.getDataValue('educational_background')); },
   },
   work_experience: {
     type: DataTypes.JSON,
+    get() { return readExperience(this.getDataValue('work_experience')); },
   },
   joining_date: {
     type: DataTypes.DATEONLY,
@@ -65,8 +70,15 @@ const StaffProfile = sequelize.define('StaffProfile', {
   phone: {
     type: DataTypes.STRING(50),
   },
+  // Emergency contact: the person's name, how they are related, and their phone (2026-10-09).
   emergency_contact: {
     type: DataTypes.STRING,
+  },
+  emergency_relation: {
+    type: DataTypes.STRING(60),
+  },
+  emergency_phone: {
+    type: DataTypes.STRING(20),
   },
   blood_group: {
     type: DataTypes.STRING(5),
@@ -94,7 +106,7 @@ const StaffProfile = sequelize.define('StaffProfile', {
     type: DataTypes.STRING,
   },
   employment_status: {
-    type: DataTypes.ENUM('active', 'on_leave', 'notice_period', 'resigned', 'terminated', 'inactive', 'suspended'),
+    type: DataTypes.ENUM('active', 'on_leave', 'notice_period', 'resigned', 'terminated', 'inactive', 'suspended', 'exited'),
     defaultValue: 'active',
   },
   exit_date: {
@@ -116,9 +128,16 @@ const StaffProfile = sequelize.define('StaffProfile', {
   final_settlement_notes: {
     type: DataTypes.TEXT,
   },
+  // The company's own employee number (owner request 2026-10-09), typed by HR, e.g. "HLD-0012". Optional; unique
+  // across the company (the named unique index allows any number of NULLs). See utils/employeeId.js.
+  employee_id: {
+    type: DataTypes.STRING(30),
+    allowNull: true,
+  },
 }, {
   tableName: 'staff_profiles',
   underscored: true,
+  indexes: [{ unique: true, fields: ['employee_id'], name: 'staff_profiles_employee_id' }],
 });
 
 StaffProfile.belongsTo(User, { foreignKey: 'user_id' });

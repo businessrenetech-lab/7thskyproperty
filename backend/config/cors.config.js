@@ -1,4 +1,13 @@
 const DEFAULT_ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  // admin-portal Vite dev server (admin-portal/vite.config.js server.port)
+  'http://localhost:30005',
+  'http://127.0.0.1:30005',
+  'http://localhost:3050',
+  'http://127.0.0.1:3050',
+  'http://localhost:50001',
+  'http://127.0.0.1:50001',
   'http://localhost:3005',
   'http://localhost:3001',
   'http://localhost:5173',

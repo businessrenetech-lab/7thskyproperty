@@ -1,142 +1,11 @@
-import React, { useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { ShellFrame, MainNav, PageFinder, useShell, pageFor } from './Shell';
 import { useAuth } from '../context/AuthContext';
-import {
-  LayoutDashboard, Home, Building2, KeyRound, Hotel, Layers, ChevronDown,
-  Users, UserCheck, Filter, HardHat, ScrollText, FileText, FileSignature,
-  Receipt, Wallet, BarChart3, Settings, ShieldCheck, LogOut, Bell, Menu, Briefcase, Wrench, ClipboardCheck, Trees, BookOpen, Tags, Globe,
-} from 'lucide-react';
-
-// Hierarchical nav. Items with `children` are collapsible groups.
-const NAV = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { section: 'CRM' },
-  /*
-   * Residential Sales is its own operations console now, so it appears here as
-   * a single destination. Commercial and Rural still use the shared screens and
-   * keep their grouped entries below.
-   */
-  { key: 'residential', label: 'Residential', icon: Home, children: [
-    { to: '/residential/sell', label: 'Sell' },
-    { to: '/residential/buyer-service', label: 'Buy' },
-  ] },
-  /*
-   * Property Management is its own operations console now, so it appears here as
-   * a single destination — as Water Tank Services and Short Term Stay do. Its
-   * twenty-seven screens live in that console's own sidebar rather than being
-   * repeated in this one.
-   */
-  { to: '/property-management', label: 'Property Management', icon: KeyRound },
-  /*
-   * Short Term Stay is its own operations console now, so it appears here as a
-   * single destination — exactly as Water Tank Services does under Services.
-   * Its sixteen screens live in that console's own sidebar rather than being
-   * repeated in this one.
-   */
-  { to: '/short-stay', label: 'Short Term Stay', icon: Hotel },
-  { key: 'commercial', label: 'Commercial', icon: Building2, children: [
-    { to: '/commercial/sell', label: 'Sale' },
-    { to: '/commercial/rent', label: 'Rent' },
-  ] },
-  { key: 'business', label: 'Business', icon: Briefcase, children: [
-    { to: '/business/buyer-service', label: 'Buy' },
-    { to: '/business/sell', label: 'Sale' },
-    { to: '/business-rent', label: 'Rent' },
-  ] },
-  { to: '/business-registration', label: 'Business Registration', icon: ScrollText },
-  /*
-   * Rural matches Commercial and Business: Sale and Rent, nothing else. Buy and
-   * Buyer Enquiries stay reachable from the Rural Sale dashboard's own quick
-   * links, and Compliance and Workflows live inside the Rent console's nav,
-   * scoped to rural.
-   */
-  { key: 'rural', label: 'Rural Properties', icon: Trees, children: [
-    { to: '/rural/sell', label: 'Sale' },
-    { to: '/rural/rent', label: 'Rent' },
-  ] },
-  { key: 'care', label: 'Services', icon: Layers, children: [
-    { group: true, label: 'Service Lines' },
-    { to: '/water-tank', label: 'Water Tank Services' },
-    { to: '/air-conditioning', label: 'Air Conditioning' },
-    { to: '/removal-relocation', label: 'Removal & Relocation' },
-    { to: '/services/lines/solar-energy', label: 'Solar & Energy' },
-    { to: '/property-care-concierge', label: 'Property Care & Concierge' },
-    // Property Doc Verification & Transfer Support — its own group. Each sub-service
-    // is a live console; the remaining two light up here once their documents arrive.
-    // Interior Design Solutions — its own group of client-facing sections.
-    // Residential is live; the other sections light up here as they are built.
-    { group: true, label: 'Interior Design Solutions' },
-    { to: '/residential-interior-design', label: 'Residential Interior Design' },
-    { to: '/fitness-room-interior-design', label: 'Fitness Room Interior Design' },
-    { to: '/commercial-interior-design', label: 'Commercial Interior Design' },
-    { to: '/custom-design-fit-out', label: 'Custom Design & Fit-Out' },
-    { to: '/furniture-styling-consultation', label: 'Furniture & Styling Consultation' },
-    { to: '/prayer-room-interior-design', label: 'Prayer Room Interior Design' },
-    { to: '/space-planning-renovation', label: 'Space Planning & Renovation' },
-    { group: true, label: 'Doc Verification & Transfer' },
-    { to: '/land-property-assessment', label: 'Land & Property Assessment' },
-    { to: '/loan-financial-support', label: 'Loan & Financial Support' },
-    { to: '/property-documentation-verification', label: 'Property Documentation & Verification' },
-    { to: '/property-will-succession', label: 'Property Will & Succession' },
-    { group: true, label: 'Shared operations' },
-    { to: '/property-care', label: 'Dashboard' },
-    { to: '/property-care/enquiries', label: 'Enquiries' },
-    { to: '/property-care/leads', label: 'Leads' },
-    { to: '/property-care/quotations', label: 'Quotations' },
-    { to: '/property-care/customers', label: 'Customer Lists' },
-    { to: '/services', label: 'Service Catalog' },
-    { to: '/providers', label: 'Service Providers' },
-    { to: '/property-care/work-orders', label: 'Work Orders & Service Tracking' },
-    { to: '/property-care/amc', label: 'AMC Contracts' },
-    { to: '/property-care/invoicing', label: 'Invoicing' },
-    // Payments & Disbursements and Warranty & Issues now live in the Water Tank
-    // console (/water-tank/payments, /water-tank/registers); the old
-    // /property-care/* URLs redirect there.
-  ] },
-  { to: '/consultations', label: 'Consultations', icon: ClipboardCheck },
-  { section: 'Operations' },
-  { to: '/projects', label: 'Projects', icon: Briefcase },
-  { to: '/work-orders', label: 'Work Orders', icon: Wrench },
-  { to: '/inspections', label: 'Inspections', icon: ClipboardCheck },
-  { section: 'Directory' },
-  { to: '/contacts', label: 'Contacts', icon: Users },
-  { to: '/role-onboarding', label: 'Role Onboarding', icon: UserCheck },
-  { to: '/clients', label: 'Clients', icon: UserCheck },
-  { to: '/leads', label: 'Leads', icon: Filter },
-  { section: 'Documents & Signing' },
-  { to: '/agreements', label: 'Agreements', icon: ScrollText },
-  /*
-   * The per-vertical agreement builders now live in their own consoles, beside
-   * the screens they are about — a property manager drafting a tenancy
-   * agreement should not have to leave Property Management to do it. They are
-   * still listed here because this section is where someone looks for "all our
-   * agreements", and the links point straight at their new homes rather than
-   * bouncing through a redirect.
-   */
-  { to: '/property-management/agreements', label: 'PM Agreements', icon: FileSignature },
-  { to: '/property-management/tenancy-agreements', label: 'TM Agreements', icon: FileSignature },
-  { to: '/short-stay/agreements', label: 'STS Agreements', icon: FileSignature },
-  { to: '/water-tank/agreements/customer', label: 'WT Customer Agreements', icon: FileSignature },
-  { to: '/water-tank/agreements/provider', label: 'WT Provider Agreements', icon: FileSignature },
-  { to: '/agreement-templates', label: 'Agreement Templates', icon: FileSignature },
-  { to: '/documents', label: 'Documents', icon: FileText },
-  { to: '/signing', label: 'eSign Envelopes', icon: FileSignature },
-  { section: 'Finance' },
-  { to: '/invoices', label: 'Tenant Invoices', icon: Receipt },
-  { to: '/landlord-bills', label: 'Landlord Bills', icon: Wrench },
-  { to: '/rental-receipts', label: 'Rental Receipts', icon: FileText },
-  { to: '/folios', label: 'Folios', icon: BookOpen },
-  { to: '/account-categories', label: 'Account Categories', icon: Tags },
-  { to: '/payments', label: 'Payments', icon: Wallet },
-  { to: '/reports', label: 'Reports', icon: BarChart3 },
-  { section: 'Administration' },
-  { to: '/website-management', label: 'Website Management', icon: Globe },
-  { to: '/website-content', label: 'Website Content', icon: Globe },
-  { to: '/users', label: 'Users & Roles', icon: ShieldCheck },
-  { to: '/settings', label: 'Settings', icon: Settings },
-];
+import { mayOpen } from '../config/access';
 
 const TITLES = {
+  '/account': 'My account',
   '/website-management': 'Website Management',
   '/website-content': 'Website Content',
   '/dashboard': 'Dashboard', '/residential/buy': 'Residential · Buy', '/residential/sell': 'Residential · Sell',
@@ -156,96 +25,41 @@ const TITLES = {
 };
 
 export default function Layout() {
-  const { user, logout } = useAuth();
   const loc = useLocation();
+  const { user } = useAuth();
   const nav = useNavigate();
-  const [open, setOpen] = useState(false);
-  // Which collapsible groups are expanded (auto-open the one matching the route)
-  const activeGroup = NAV.find((n) => n.children?.some((c) => loc.pathname.startsWith(c.to)))?.key;
-  const [expanded, setExpanded] = useState(() => (activeGroup ? { [activeGroup]: true } : {}));
-  const toggle = (k) => setExpanded((e) => ({ ...e, [k]: !e[k] }));
+  const shell = useShell();
+  const finderRef = useRef(null);
+  const { collapsed, setCollapse, setOpen } = shell;
 
-  const title = TITLES[loc.pathname] || 'Dashboard';
-  const initials = (user?.name || 'U').split(' ').map((s) => s[0]).slice(0, 2).join('').toUpperCase();
+  // Cmd/Ctrl+K opens the page finder from anywhere.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        if (collapsed) setCollapse(false);
+        setOpen(true);
+        setTimeout(() => finderRef.current?.focus(), 0);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [collapsed, setCollapse, setOpen]);
+
+  const page = pageFor(loc.pathname);
+  const title = TITLES[loc.pathname] || page?.label || 'Dashboard';
+  const crumbs = [page?.section, page?.group, page && page.label !== title ? page.label : null].filter(Boolean);
 
   return (
-    <div className="app-shell">
-      <aside className={`sidebar ${open ? 'open' : ''}`}>
-        <div className="sidebar-brand">
-          <div className="logo">7S</div>
-          <div><div className="name">Seventh Sky</div><div className="sub">Property Care</div></div>
+    <ShellFrame shell={shell} title={title} crumbs={crumbs}
+      top={<PageFinder inputRef={finderRef} onGo={(to) => nav(to)} />}
+      nav={<MainNav shell={shell} />}>
+      {mayOpen(user, loc.pathname) ? <Outlet /> : (
+        <div role="alert" style={{ padding: 48, textAlign: 'center' }}>
+          <h2 style={{ margin: '0 0 8px' }}>Your role does not include this area</h2>
+          <p style={{ margin: 0, color: 'var(--muted)' }}>Ask an administrator to add it to your role in Users and roles.</p>
         </div>
-        <nav className="nav">
-          {NAV.map((n, i) => {
-            if (n.section) return <div className="nav-section" key={'s' + i}>{n.section}</div>;
-            if (n.children) {
-              const isOpen = !!expanded[n.key];
-              return (
-                <div key={n.key}>
-                  <div
-                    className={`nav-item ${loc.pathname.startsWith('/' + n.key) || (n.to && loc.pathname === n.to) ? 'active' : ''}`}
-                    onClick={() => {
-                      if (!expanded[n.key]) toggle(n.key);
-                      if (n.to) nav(n.to);
-                    }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <n.icon size={18} /> {n.label}
-                    <ChevronDown size={15} style={{ marginLeft: 'auto', transition: 'transform .2s', transform: isOpen ? 'rotate(180deg)' : 'none' }} />
-                  </div>
-                  {isOpen && (
-                    <div style={{ marginLeft: 14, paddingLeft: 10, borderLeft: '1px solid var(--border)' }}>
-                      {n.children.filter((c) => !c.roles || c.roles.includes(user?.role)).map((c, ci) => c.group ? (
-                        <div key={`${n.key}-group-${ci}`} style={{
-                          margin: ci === 0 ? '4px 0 6px' : '14px 0 6px',
-                          padding: '6px 10px',
-                          borderLeft: '3px solid var(--primary)',
-                          borderRadius: 8,
-                          background: 'var(--primary-glow)',
-                          fontSize: 10,
-                          fontWeight: 800,
-                          letterSpacing: '.08em',
-                          textTransform: 'uppercase',
-                          color: 'var(--muted)',
-                        }}>{c.label}</div>
-                      ) : (
-                        <NavLink key={c.to} to={c.to} onClick={() => setOpen(false)}
-                          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} style={{ fontSize: 13 }}>
-                          {c.label}
-                        </NavLink>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-            return (
-              <NavLink key={n.to} to={n.to} onClick={() => setOpen(false)}
-                className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                <n.icon size={18} /> {n.label}
-              </NavLink>
-            );
-          })}
-        </nav>
-      </aside>
-
-      <div className="main">
-        <header className="topbar">
-          <button className="btn btn-ghost btn-icon mobile-only" onClick={() => setOpen((o) => !o)}><Menu size={18} /></button>
-          <div><h1>{title}</h1><div className="crumb">Seventh Sky Property Care · Admin</div></div>
-          <div className="topbar-spacer" />
-          <button className="btn btn-ghost btn-icon" title="Notifications"><Bell size={18} /></button>
-          <div className="row">
-            <div className="avatar" title={user?.email}>{initials}</div>
-            <div style={{ lineHeight: 1.2 }}>
-              <div style={{ fontWeight: 700, fontSize: 13 }}>{user?.name || 'User'}</div>
-              <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'capitalize' }}>{(user?.role || '').replace(/_/g, ' ')}</div>
-            </div>
-            <button className="btn btn-ghost btn-icon" title="Sign out" onClick={async () => { await logout(); nav('/login'); }}><LogOut size={17} /></button>
-          </div>
-        </header>
-        <main className="content"><Outlet /></main>
-      </div>
-    </div>
+      )}
+    </ShellFrame>
   );
 }

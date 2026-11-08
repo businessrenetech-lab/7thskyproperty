@@ -14,7 +14,7 @@
 
 const express = require('express');
 const biometric = require('../controllers/biometric.controller');
-const { authMiddleware, roleMiddleware } = require('../middleware/auth.middleware');
+const { authMiddleware } = require('../middleware/auth.middleware');
 const { branchMiddleware } = require('../middleware/branch.middleware');
 
 /* ═══════════════════════════════════════════════════════════════
@@ -45,7 +45,7 @@ admsRouter.post('/devicecmd', biometric.handleDeviceCmd);
 const apiRouter = express.Router();
 
 apiRouter.use(authMiddleware);
-apiRouter.use(roleMiddleware(['super_admin', 'branch_admin', 'hr']));
+apiRouter.use(require('../services/hrAccess.service').hrRole('biometric.manage'));
 apiRouter.use(branchMiddleware);
 
 // ─── Dashboard ───────────────────────────────────────────────

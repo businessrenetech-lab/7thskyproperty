@@ -53,7 +53,9 @@ const WT_BIND = [...new Set([...WT_LEGAL, ...WT_ADMIN])];
  * every route above still enforces the same tiers server-side.
  */
 const capabilitiesFor = (role) => {
-  const has = (list) => list.includes(String(role || ''));
+  // One role, or the list a custom role counts as here (roleRank.effectiveRoles).
+  const held = [].concat(role || []).map(String);
+  const has = (list) => held.some((r) => list.includes(r));
   return {
     read: has(WT_READ),
     operate: has(WT_OPERATE),

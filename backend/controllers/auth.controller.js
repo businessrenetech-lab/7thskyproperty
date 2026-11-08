@@ -3,11 +3,11 @@ const bcrypt = require('bcryptjs');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Branch = require('../models/Branch');
-const RbacConfig = require('../models/RbacConfig');
 const { getTableColumns, hasColumn } = require('../utils/schemaSafe');
 
-const ASSIGNABLE_ROLES = ['super_admin', 'branch_admin', 'property_manager', 'sales_executive', 'accounts', 'owner', 'tenant', 'buyer', 'supplier', 'staff', 'unassigned'];
-const BRANCH_ADMIN_ROLES = ['property_manager', 'sales_executive', 'accounts', 'staff', 'unassigned'];
+// Role rules (who may give which role, who may act on whose account): services/roleRank.service.js.
+const roleRank = require('../services/roleRank.service');
+const AuditLog = require('../models/AuditLog');
 const LEGACY_ROLE_ALIASES = {
   accounting: 'accounts',
   counselor: 'sales_executive',
@@ -77,18 +77,14 @@ const getManageableUserWhere = (actor, userId = null) => {
 
 const normalizeRole = (role) => LEGACY_ROLE_ALIASES[role] || role;
 
-const getCustomRoleKeys = async () => {
-  const config = await RbacConfig.findOne({ order: [['id', 'DESC']] });
-  if (!Array.isArray(config?.custom_roles_json)) return [];
-  return config.custom_roles_json.map((role) => role?.key).filter(Boolean);
-};
+const canAssignRole = async (actor, role) => roleRank.canAssignRole(actor, role, await roleRank.customRoleKeys());
+const canActOn = async (actor, target) => roleRank.canActOn(actor, target, await roleRank.customRoleKeys());
 
-const canAssignRole = async (actor, role) => {
-  const customRoleKeys = await getCustomRoleKeys();
-  if (![...ASSIGNABLE_ROLES, ...customRoleKeys].includes(role)) return false;
-  if (actor.role === 'super_admin') return true;
-  return BRANCH_ADMIN_ROLES.includes(role) || customRoleKeys.includes(role);
-};
+// Best effort: an audit row must never block the change it records.
+const audit = (req, action, user, oldValue, newValue) => AuditLog.create({
+  user_id: req.user.id, branch_id: user.branch_id, action, entity: 'users', entity_id: user.id,
+  old_value: oldValue, new_value: newValue, ip_address: req.ip,
+}).catch((e) => console.warn('[auth] audit:', e.message));
 
 exports.register = async (req, res) => {
   try {
@@ -138,8 +134,11 @@ exports.register = async (req, res) => {
       email,
       password: hashedPassword,
       branch_id: targetBranchId,
-      role: requestedRole
+      role: requestedRole,
+      // A password typed by an administrator is temporary: the person picks their own at first sign-in.
+      must_change_password: true,
     });
+    audit(req, 'CREATE_USER', user, null, { role: user.role });
 
     // M5 Fix: Never return password hash
     res.status(201).json({ message: 'User registered successfully', user: { id: user.id, name, email, role: user.role } });
@@ -250,21 +249,26 @@ exports.getMe = async (req, res) => {
   // M5 Fix: Exclude password from response
   const safeUser = { ...req.user.toJSON() };
   delete safeUser.password;
+  // For a custom role: its name and the areas it may use, so the menus show only those (roleRank.accessSummary).
+  safeUser.access = roleRank.accessSummary(req.user);
   res.json({ user: safeUser });
 };
 
 exports.getStaff = async (req, res) => {
   try {
+    const { Op } = require('sequelize');
     const where = {
       ...getManageableUserWhere(req.user),
       role: {
-        [require('sequelize').Op.notIn]: ['student', 'guardian']
+        [Op.notIn]: ['student', 'guardian']
       },
     };
+    // ?staff=1 (Users & roles): staff roles and custom roles only, not customer and provider logins.
+    if (req.query.staff) where.role = { [Op.or]: [{ [Op.in]: roleRank.STAFF_ROLES }, { [Op.in]: await roleRank.customRoleKeys() }] };
 
     const staff = await User.findAll({
       where,
-      attributes: ['id', 'name', 'email', 'role', 'status', 'branch_id'], // Never include password
+      attributes: ['id', 'name', 'email', 'role', 'status', 'branch_id', 'must_change_password'], // Never include password
       include: [{ model: Branch, attributes: ['id', 'name', 'code', 'type'] }],
       order: [['branch_id', 'ASC'], ['name', 'ASC']],
     });
@@ -291,9 +295,12 @@ exports.updateRole = async (req, res) => {
 
     const user = await User.findOne({ where: getManageableUserWhere(req.user, userId) });
     if (!user) return res.status(404).json({ error: 'User not found or you do not have permission.' });
+    if (!(await canActOn(req.user, user))) return res.status(403).json({ error: 'You cannot change this account.' });
 
+    const before = user.role;
     user.role = requestedRole;
     await user.save();
+    audit(req, 'UPDATE_ROLE', user, { role: before }, { role: requestedRole });
 
     res.json({ message: 'User role updated successfully.', user: { id: user.id, name: user.name, role: user.role } });
   } catch (error) {
@@ -314,14 +321,37 @@ exports.setStaffPassword = async (req, res) => {
 
     const user = await User.findOne({ where: getManageableUserWhere(req.user, userId) });
     if (!user) return res.status(404).json({ error: 'User not found' });
-    
+    if (!(await canActOn(req.user, user))) return res.status(403).json({ error: 'You cannot change this account.' });
+
     user.password = await bcrypt.hash(newPassword, 12); // Increased from 10 to 12 rounds
+    // An admin-set password is temporary unless the admin says otherwise.
+    user.must_change_password = req.body.mustChange !== false;
     await user.save();
+    audit(req, 'SET_PASSWORD', user, null, { must_change_password: user.must_change_password });
     
     res.json({ message: 'Password updated successfully.' });
   } catch (error) {
     console.error('[SetPassword Error]:', error.message);
     res.status(500).json({ error: 'Failed to update password.' });
+  }
+};
+
+/** PATCH /auth/staff-status { userId, status: 'active' | 'suspended' } — a suspended account cannot sign in. */
+exports.setStaffStatus = async (req, res) => {
+  try {
+    const { userId, status } = req.body;
+    if (!userId || !['active', 'suspended'].includes(status)) return res.status(400).json({ error: 'userId and a status of active or suspended are required.' });
+    const user = await User.findOne({ where: getManageableUserWhere(req.user, userId) });
+    if (!user) return res.status(404).json({ error: 'User not found or you do not have permission.' });
+    if (!(await canActOn(req.user, user))) return res.status(403).json({ error: 'You cannot change this account.' });
+    const before = user.status;
+    user.status = status;
+    await user.save();
+    audit(req, 'UPDATE_STATUS', user, { status: before }, { status });
+    res.json({ message: status === 'active' ? 'Account active.' : 'Account suspended.', user: { id: user.id, status: user.status } });
+  } catch (error) {
+    console.error('[SetStatus Error]:', error.message);
+    res.status(500).json({ error: 'Failed to update the account.' });
   }
 };
 
